@@ -28,8 +28,11 @@ object Keys {
   case object IgnoreSourceChanges extends WatchBuildSourceOption
   case object WarnOnSourceChanges extends WatchBuildSourceOption
   case object ReloadOnSourceChanges extends WatchBuildSourceOption
+
+  @transient
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
+  @transient
   val changedInputFiles =
     taskKey[Seq[(Path, FileStamp)] => FileChanges]("The changed files for a task")
   val fileInputs = settingKey[Seq[Glob]](
@@ -50,8 +53,10 @@ object Keys {
     settingKey[PathFilter]("A filter to apply to the outputs of a task.")
   val fileOutputExcludeFilter =
     settingKey[PathFilter]("An exclusion filter to apply to the outputs of a task.")
+  @transient
   val allOutputFiles =
     taskKey[Seq[Path]]("All of the file outputs for a task excluding directories and hidden files.")
+  @transient
   val changedOutputFiles =
     taskKey[Seq[(Path, FileStamp)] => FileChanges](
       "The files that have changed since the last task run."
@@ -158,9 +163,12 @@ object Keys {
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
 
+  @transient
   val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
       .withRank(Invisible)
+
+  @transient
   val outputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
       .withRank(Invisible)
@@ -181,9 +189,11 @@ object Keys {
   private[sbt] val managedFileStampCache = taskKey[FileStamp.Cache](
     "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
+  @transient
   private[sbt] val managedSourcePaths =
     taskKey[Seq[Path]]("Transforms the managedSources to Seq[Path] to induce setting injection.")
       .withRank(Invisible)
+  @transient
   private[sbt] val dependencyClasspathFiles =
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)

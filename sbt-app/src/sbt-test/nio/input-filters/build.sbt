@@ -2,6 +2,7 @@ import java.nio.file.{ Files, Path }
 import sbt.internal.FileChangesMacro.inputFiles
 import sbt.internal.FileChangesMacro.outputFiles
 
+@transient
 val copyPaths = taskKey[Seq[Path]]("Copy paths")
 copyPaths / fileInputs += baseDirectory.value.toGlob / "inputs" / *
 copyPaths := {

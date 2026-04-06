@@ -1,5 +1,6 @@
 import java.nio.file.Path
 
+@transient
 val foo = taskKey[Path]("foo")
 // Check a direct override
 foo / outputFileStamps := Nil
@@ -7,12 +8,14 @@ foo := baseDirectory.value.toPath / "foo.txt"
 
 TaskKey[Unit]("checkFoo") := assert((foo / outputFileStamps).value == Nil)
 
+@transient
 val bar = taskKey[Path]("bar")
 // Check an append
 bar / outputFileStamps ++= (baz / outputFileStamps).value
 bar / outputFileStamps ++= (baz / outputFileStamps).value
 bar := baseDirectory.value.toPath / "bar.txt"
 
+@transient
 val baz = taskKey[Path]("baz")
 baz := baseDirectory.value.toPath / "baz.txt"
 
