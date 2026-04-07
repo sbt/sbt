@@ -1,0 +1,4 @@
+> nativeLink
+
+$ exists target/out/native0.5/scala-2.13.18/app/app
+$ exists target/out/native0.5/scala-2.13.18/core/core
