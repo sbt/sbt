@@ -17,6 +17,7 @@ import sbt.internal.util.{ SourcePosition, SourcePositionImpl }
 import language.experimental.macros
 import scala.quoted.*
 import sbt.util.BuildWideCacheConfiguration
+import sjsonnew.JsonFormat
 
 object TaskMacro:
   @deprecated("will be removed", "2.0.0")
@@ -127,6 +128,15 @@ object TaskMacro:
   )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     val convert1 = new FullConvert(qctx, 1000)
     convert1.contFlatMap[A1, F, Id](t, convert1.appExpr, None)
+
+  def previousImpl[A1: Type](t: Expr[TaskKey[A1]])(using qctx: Quotes): Expr[Option[A1]] =
+    import qctx.reflect.*
+    Expr.summon[JsonFormat[A1]] match
+      case Some(ev) =>
+        '{
+          InputWrapper.`wrapInitTask_\u2603\u2603`[Option[A1]](Previous.runtime[A1]($t)(using $ev))
+        }
+      case _ => report.errorAndAbort(s"JsonFormat[${Type.show[A1]}] missing")
 
   /** Implementation of := macro for settings. */
   def settingAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableSetting[A1]], v: Expr[A1])(using

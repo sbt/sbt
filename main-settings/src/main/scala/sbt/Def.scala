@@ -408,8 +408,16 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
 
   extension [A1](inline in: TaskKey[A1])
     // implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
-    inline def previous(using JsonFormat[A1]): Option[A1] =
-      InputWrapper.`wrapInitTask_\u2603\u2603`[Option[A1]](Previous.runtime[A1](in))
+    // Previously, we implemented `.previous` as a plain inline expansion of
+    // `wrapInitTask(Previous.runtime(in))`. For composite types such as `Seq[String]`, the
+    // compiler can rewrite the format argument into a synthetic local like
+    // `{ val x$2$proxy1 = immSeqFormat(StringJsonFormat); Previous.runtime(in)(using x$2$proxy1) }`.
+    // The outer task macro later hoists only `Previous.runtime(...)` as an input dependency,
+    // leaving `x$2$proxy1` behind and causing "used outside the scope where it was defined".
+    // Now we implement `.previous` as a macro so the wrapped tree is already self-contained.
+    // See https://github.com/sbt/sbt/issues/9037.
+    inline def previous(using @scala.annotation.unused format: JsonFormat[A1]): Option[A1] =
+      ${ TaskMacro.previousImpl[A1]('in) }
 
   // The following conversions enable the types Parser[T], Initialize[Parser[T]], and
   // Initialize[State => Parser[T]] to be used in the inputTask macro as an input with an ultimate
