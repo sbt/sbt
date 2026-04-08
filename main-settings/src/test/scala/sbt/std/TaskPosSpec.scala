@@ -107,6 +107,23 @@ class TaskPosSpec {
   }
 
   locally {
+    // .previous should compile for task with complex return type like `Seq[String]`
+    // https://github.com/sbt/sbt/issues/9037
+    import sbt.*, Def.*
+    import sjsonnew.BasicJsonProtocol.given
+    val link = taskKey[Int]("")
+    val fingerprints = taskKey[Seq[String]]("")
+    Def.taskDyn[Int] {
+      val currentFingerprints = (link / fingerprints).value
+      val previousFingerprints = (link / fingerprints).previous
+      Def.task {
+        if previousFingerprints.exists(_ != currentFingerprints) then currentFingerprints.size
+        else 0
+      }
+    }
+  }
+
+  locally {
     // missing .value error should not happen inside task dyn
     import sbt.*, Def.*
     val foo = taskKey[String]("")
