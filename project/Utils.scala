@@ -6,7 +6,6 @@ import scalafix.sbt.ScalafixPlugin.autoImport.scalafix
 import sbt.internal.inc.Analysis
 
 object Utils {
-  val version2_13 = settingKey[String]("version number")
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
   val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")

@@ -14,7 +14,6 @@ ThisBuild / version := {
   val v = "2.0.0-RC9-bin-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
-ThisBuild / Utils.version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -798,10 +797,6 @@ lazy val sbtProj = (project in file("sbt-app"))
     testedBaseSettings,
     name := "sbt",
     normalizedName := "sbt",
-    version := {
-      if (scalaVersion.value == baseScalaVersion) version.value
-      else Utils.version2_13.value
-    },
     crossPaths := false,
     crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
