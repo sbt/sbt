@@ -694,6 +694,7 @@ object Defaults extends BuildCommon with DefExtra {
         case vf: VirtualFile => vf
     },
     semanticdbTargetRoot := target.value / (prefix(configuration.value.name) + "meta"),
+    bestEffortTargetRoot := target.value / (prefix(configuration.value.name) + "betasty"),
     compileAnalysisTargetRoot := target.value / (prefix(configuration.value.name) + "zinc"),
     earlyCompileAnalysisTargetRoot := target.value / (prefix(
       configuration.value.name

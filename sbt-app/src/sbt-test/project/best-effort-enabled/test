@@ -1,0 +1,19 @@
+# Step 1: Verify best effort flags appear in scalacOptions for Scala 3.5+
+> show Compile / scalacOptions
+> compile
+
+# Step 2: Introduce a type error — compile should fail but produce .betasty
+$ copy-file changes/ErrorFile.scala src/main/scala/A.scala
+-> compile
+
+# Step 3: Fix the error — compile should succeed again
+$ copy-file changes/FixedFile.scala src/main/scala/A.scala
+> compile
+
+# Step 4: Verify best effort flags are absent for Scala 2
+> set scalaVersion := "2.13.16"
+> show Compile / scalacOptions
+
+# Step 5: Switch back to Scala 3 and verify flags are restored
+> set scalaVersion := "3.6.4"
+> show Compile / scalacOptions
