@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.{ File, IOException }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.nio.file.{ AtomicMoveNotSupportedException, Files, Path, Paths, StandardCopyOption }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -270,6 +270,36 @@ object ActionCache:
 
   private val default2010Timestamp: Long = 1262304000000L
 
+  /**
+   * Publishes `builtZip` as `destZip` by staging next to the destination and renaming into place.
+   * Avoids races from a direct `Files.copy` into `destZip` under parallel task execution.
+   */
+  private def installPackagedZip(builtZip: Path, destZip: Path, fallbackStagingDir: Path): Unit =
+    val stagingDir = Option(destZip.getParent) match
+      case Some(parent) =>
+        Files.createDirectories(parent)
+        parent
+      case None => fallbackStagingDir
+
+    val staging = Files.createTempFile(
+      stagingDir,
+      destZip.getFileName.toString + ".",
+      dirZipExt + ".tmp",
+    )
+    try
+      Files.copy(builtZip, staging, StandardCopyOption.REPLACE_EXISTING)
+      try
+        Files.move(
+          staging,
+          destZip,
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE,
+        )
+      catch
+        case _: AtomicMoveNotSupportedException =>
+          Files.move(staging, destZip, StandardCopyOption.REPLACE_EXISTING)
+    finally Files.deleteIfExists(staging)
+
   def packageDirectory(
       dir: VirtualFileRef,
       conv: FileConverter,
@@ -311,7 +341,7 @@ object ActionCache:
         tempZipPath.toFile(),
         Some(default2010Timestamp)
       )
-      Files.copy(tempZipPath, zipPath, StandardCopyOption.REPLACE_EXISTING)
+      installPackagedZip(tempZipPath, zipPath, tempDir.toPath())
 
       conv.toVirtualFile(zipPath)
 

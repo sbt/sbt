@@ -1,5 +1,10 @@
 package sbt.util
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{ Files, Path, Paths }
+import java.util.Optional
+import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUnit }
+
 import sbt.internal.util.CacheEventLog
 import sbt.internal.util.StringVirtualFile1
 import sbt.io.IO
@@ -7,18 +12,15 @@ import sbt.io.syntax.*
 import verify.BasicTestSuite
 import xsbti.{
   CompileFailed,
+  FileConverter,
   HashedVirtualFileRef,
   Problem,
   Position,
   Severity,
   VirtualFile,
-  FileConverter,
-  VirtualFileRef
+  VirtualFileRef,
 }
-import java.nio.file.Path
-import java.nio.file.Paths
-import java.nio.file.Files
-import java.util.Optional
+
 import ActionCache.InternalActionResult
 
 object ActionCacheTest extends BasicTestSuite:
@@ -258,6 +260,36 @@ object ActionCacheTest extends BasicTestSuite:
     val v2 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config2)(action)
     assert(v2 == 42)
     assert(called == 2)
+
+  test("packageDirectory is safe when many threads package the same directory concurrently"):
+    IO.withTemporaryDirectory: tmp =>
+      val root = tmp.toPath
+      val classesDir = root.resolve("classes")
+      Files.createDirectories(classesDir)
+      Files.writeString(classesDir.resolve("A.class"), "compiled")
+      val classesPathStr = classesDir.toString
+      val dirRef = VirtualFileRef.of(classesPathStr)
+      val conv = new FileConverter:
+        override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+        override def toVirtualFile(path: Path): VirtualFile =
+          val content =
+            if Files.isRegularFile(path) then
+              new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
+            else ""
+          StringVirtualFile1(path.toString, content)
+      val threadCount = 64
+      val barrier = new CyclicBarrier(threadCount)
+      val pool: ExecutorService = Executors.newFixedThreadPool(threadCount)
+      try
+        val tasks =
+          for _ <- 1 to threadCount yield pool.submit: () =>
+            barrier.await(30, TimeUnit.SECONDS)
+            ActionCache.packageDirectory(dirRef, conv, root)
+        tasks.foreach(_.get(60, TimeUnit.SECONDS))
+        val zipPath = Paths.get(classesPathStr + ActionCache.dirZipExt)
+        assert(Files.isRegularFile(zipPath))
+        assert(Files.size(zipPath) > 0L)
+      finally pool.shutdown()
 
   test("Changing cacheVersion invalidates the cache"):
     withDiskCache(testCacheVersionInvalidation)
