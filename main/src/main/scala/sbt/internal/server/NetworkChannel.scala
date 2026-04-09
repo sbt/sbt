@@ -595,6 +595,7 @@ final class NetworkChannel(
     try jsonRpcNotify(Shutdown, (logShutdown, remainingCommands))
     catch { case _: IOException => }
     running.set(false)
+    inputBuffer.add(-1) // unblock any thread waiting on stdin with EOF
     out.close()
     outputStream.close()
     thread.interrupt()
@@ -663,15 +664,20 @@ final class NetworkChannel(
   private lazy val inputStream: InputStream = new Terminal.SimpleInputStream {
     override def read(): Int = {
       import sjsonnew.BasicJsonProtocol.*
-      try {
-        jsonRpcNotify(readSystemIn, "")
-        inputBuffer.take
-      } catch {
-        case e: IOException =>
-          try jsonRpcNotify(cancelReadSystemIn, "")
-          catch { case _: IOException => }
-          -1
-      }
+      if (!running.get) -1
+      else
+        try {
+          jsonRpcNotify(readSystemIn, "")
+          val result = inputBuffer.take
+          if (!running.get && result == -1) -1
+          else result
+        } catch {
+          case _: IOException =>
+            try jsonRpcNotify(cancelReadSystemIn, "")
+            catch { case _: IOException => }
+            -1
+          case _: InterruptedException => -1
+        }
     }
     override def available(): Int = inputBuffer.size
   }
