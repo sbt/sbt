@@ -1,0 +1,6 @@
+> compile
+$ exists src_managed/demo/Test.scala
+
+> Compile / managedSourcePaths
+> Compile / managedSourcePaths / clean
+$ absent src_managed/demo/Test.scala

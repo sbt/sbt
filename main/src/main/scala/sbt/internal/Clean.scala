@@ -167,10 +167,9 @@ private[sbt] object Clean {
       })
       .flatMapTask { case scope =>
         Def.task {
-          val targetDir = (scope / target).value.toPath
+          val baseDir = (scope / baseDirectory).value.toPath
           val filter = cleanFilter(scope).value
-          // We do not want to inadvertently delete files that are not in the target directory.
-          val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
+          val excludeFilter: Path => Boolean = path => !path.startsWith(baseDir) || filter(path)
           val delete = cleanDelete(scope).value
           val st = (scope / streams).value
           taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
