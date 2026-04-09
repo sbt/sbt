@@ -82,40 +82,40 @@ object ActionCache:
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
-      val json = Converter.toJsonUnsafe(result)
-      val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
-      val uncacheableOutputs =
-        outputs.filter(f =>
-          f match
-            case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
-              false
-            case _ =>
-              val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
-              !outputPath.startsWith(normalizedOutputDir)
-        )
-      if uncacheableOutputs.nonEmpty then
-        cacheEventLog.append(ActionCacheEvent.Error)
-        logger.error(
-          s"Cannot cache task because its output files are outside the output directory: \n" +
-            uncacheableOutputs.mkString("  - ", "\n  - ", "")
-        )
-        result
-      else
-        cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-        val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
-        val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
-        val newOutputs = Vector(valueFile) ++ outputs.toVector
-        try
+      try
+        val json = Converter.toJsonUnsafe(result)
+        val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
+        val uncacheableOutputs =
+          outputs.filter(f =>
+            f match
+              case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
+                false
+              case _ =>
+                val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
+                !outputPath.startsWith(normalizedOutputDir)
+          )
+        if uncacheableOutputs.nonEmpty then
+          cacheEventLog.append(ActionCacheEvent.Error)
+          logger.error(
+            s"Cannot cache task because its output files are outside the output directory: \n" +
+              uncacheableOutputs.mkString("  - ", "\n  - ", "")
+          )
+          result
+        else
+          cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+          val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+          val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
+          val newOutputs = Vector(valueFile) ++ outputs.toVector
           store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
             case Right(cachedResult) =>
               store.syncBlobs(cachedResult.outputFiles, outputDirectory)
               result
             case Left(e) => throw e
-        catch
-          case e: IOException =>
-            logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
-            cacheEventLog.append(ActionCacheEvent.Error)
-            result
+      catch
+        case e: IOException =>
+          logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
+          cacheEventLog.append(ActionCacheEvent.Error)
+          result
 
     // Single cache lookup - use exitCode to distinguish success from failure
     getWithFailure(key, codeContentHash, extraHash, tags, config) match
