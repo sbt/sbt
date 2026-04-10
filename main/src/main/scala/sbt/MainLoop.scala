@@ -22,6 +22,7 @@ import sbt.internal.util.{
   Terminal as ITerminal
 }
 import sbt.io.{ IO, Using }
+import sbt.librarymanagement.SbtArtifacts
 import sbt.protocol.*
 import sbt.util.{ Logger, LoggerContext }
 
@@ -75,6 +76,7 @@ private[sbt] object MainLoop:
       case e: RebootCurrent =>
         deleteLastLog(logBacking)
         deleteCurrentArtifacts(state)
+        deleteZincBridgeSecondaryCache(state)
         throw new xsbti.FullReload(e.arguments.toArray, false)
       case NonFatal(e) =>
         System.err.println(
@@ -108,6 +110,15 @@ private[sbt] object MainLoop:
       IO.delete(dir)
     }
   }
+
+  /** Removes the Zinc compiler bridge secondary cache (`…/zinc/org.scala-sbt`). */
+  private[sbt] def deleteZincBridgeSecondaryCache(state: State): Unit =
+    import sbt.io.syntax.*
+    val zincDir = BuildPaths.getZincDirectory(state, BuildPaths.getGlobalBase(state))
+    val bridgeCache = zincDir / SbtArtifacts.Organization
+    if bridgeCache.exists() then
+      state.log.info(s"deleting $bridgeCache")
+      IO.delete(bridgeCache)
 
   /** Runs the next sequence of commands with global logging in place. */
   def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
