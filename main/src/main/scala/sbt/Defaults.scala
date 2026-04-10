@@ -204,6 +204,7 @@ object Defaults extends BuildCommon with DefExtra {
       testForkedParallelism :== None,
       javaOptions :== Nil,
       sbtPlugin :== false,
+      bestEffortEnabled :== internal.SysProp.bestEffort,
       isMetaBuild :== false,
       reresolveSbtArtifacts :== false,
       crossPaths :== true,
@@ -694,7 +695,6 @@ object Defaults extends BuildCommon with DefExtra {
         case vf: VirtualFile => vf
     },
     semanticdbTargetRoot := target.value / (prefix(configuration.value.name) + "meta"),
-    bestEffortTargetRoot := target.value / (prefix(configuration.value.name) + "betasty"),
     compileAnalysisTargetRoot := target.value / (prefix(configuration.value.name) + "zinc"),
     earlyCompileAnalysisTargetRoot := target.value / (prefix(
       configuration.value.name
@@ -1077,6 +1077,12 @@ object Defaults extends BuildCommon with DefExtra {
         if sbtPlugin.value && VersionNumber(scalaVersion.value)
             .matchesSemVer(SemanticSelector("=2.12"))
         then old ++ Seq("-Wconf:cat=unused-nowarn:s", "-Xsource:3")
+        else old
+      },
+      scalacOptions := {
+        val old = scalacOptions.value
+        if bestEffortEnabled.value && plugins.BestEffortPlugin.isScala35Plus(scalaVersion.value)
+        then old ++ Seq("-Ybest-effort", "-Ywith-best-effort-tasty")
         else old
       },
       persistJarClasspath :== true,

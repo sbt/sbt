@@ -1,8 +1,7 @@
-# Step 1: Verify best effort flags appear in scalacOptions for Scala 3.5+
-> show Compile / scalacOptions
+# Step 1: Compile succeeds with best effort enabled (Scala 3.5+)
 > compile
 
-# Step 2: Introduce a type error — compile should fail but produce .betasty
+# Step 2: Introduce a type error — compile should fail
 $ copy-file changes/ErrorFile.scala src/main/scala/A.scala
 -> compile
 
