@@ -22,6 +22,7 @@ import sbt.internal.util.{
   Terminal as ITerminal
 }
 import sbt.io.{ IO, Using }
+import sbt.io.syntax.*
 import sbt.librarymanagement.SbtArtifacts
 import sbt.protocol.*
 import sbt.util.{ Logger, LoggerContext }
@@ -91,7 +92,6 @@ private[sbt] object MainLoop:
 
   /** Deletes the current sbt artifacts from boot. */
   private[sbt] def deleteCurrentArtifacts(state: State): Unit = {
-    import sbt.io.syntax.*
     val provider = state.configuration.provider
     val appId = provider.id
     // If we can obtain boot directory more accurately it'd be better.
@@ -113,7 +113,6 @@ private[sbt] object MainLoop:
 
   /** Removes the Zinc compiler bridge secondary cache (`…/zinc/org.scala-sbt`). */
   private[sbt] def deleteZincBridgeSecondaryCache(state: State): Unit =
-    import sbt.io.syntax.*
     val zincDir = BuildPaths.getZincDirectory(state, BuildPaths.getGlobalBase(state))
     val bridgeCache = zincDir / SbtArtifacts.Organization
     if bridgeCache.exists() then

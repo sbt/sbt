@@ -149,9 +149,9 @@ $HelpCommand <regular expression>
     remaining commands with the exception that the JVM is not shut down.
 
   If 'dev' is specified, the current sbt artifacts from the boot directory
-    (`~/.sbt/boot` by default) are deleted before restarting, and the compiler bridge
-    secondary cache (`zinc/org.scala-sbt` under the global sbt directory, respecting
-    `sbt.global.base` and `sbt.global.zinc`) is removed.
+    (under the default global base; `sbt.global.base` selects that location) are deleted
+    before restarting, and the compiler bridge secondary cache at `zinc/org.scala-sbt`
+    (honoring `sbt.global.base` and `sbt.global.zinc`) is removed.
   This forces an update of sbt and Scala, which is useful when working with development
     versions of sbt.
   If 'full' is specified, the boot directory is wiped out before restarting.
