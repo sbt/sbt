@@ -158,6 +158,16 @@ public class ForkTestMain {
       return originalName + ": " + originalMessage;
     }
 
+    /** Returns the fully qualified class name of the original exception. */
+    public String getOriginalName() {
+      return originalName;
+    }
+
+    /** Returns the original exception message (without the class name prefix). */
+    public String getOriginalMessage() {
+      return originalMessage;
+    }
+
     public Exception getCause() {
       return cause1;
     }

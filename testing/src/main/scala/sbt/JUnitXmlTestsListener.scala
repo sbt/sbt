@@ -28,6 +28,7 @@ import testing.{
 }
 import util.Logger
 import sbt.protocol.testing.TestResult
+import sbt.internal.worker1.ForkTestMain
 
 /**
  * Companion object for JUnitXmlTestsListener that caches the hostname lazily.
@@ -159,25 +160,36 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
             } time={(e.duration() / 1000.0).toString}>
                       {
               val trace: String = if (e.throwable.isDefined) {
-                val stringWriter = new StringWriter()
-                val writer = new PrintWriter(stringWriter)
-                e.throwable.get.printStackTrace(writer)
-                writer.flush()
-                stringWriter.toString
+                e.throwable.get match {
+                  case fe: ForkTestMain.ForkError =>
+                    formatForkErrorTrace(fe)
+                  case other =>
+                    val stringWriter = new StringWriter()
+                    val writer = new PrintWriter(stringWriter)
+                    other.printStackTrace(writer)
+                    writer.flush()
+                    stringWriter.toString
+                }
               } else {
                 ""
               }
+              val (exType, exMessage) = e.throwable match {
+                case t if t.isDefined =>
+                  t.get match {
+                    case fe: ForkTestMain.ForkError =>
+                      (fe.getOriginalName, fe.getOriginalMessage)
+                    case other =>
+                      (other.getClass.getName, other.getMessage)
+                  }
+                case _ => ("", "")
+              }
               e.status match {
                 case TStatus.Error if (e.throwable.isDefined) =>
-                  <error message={e.throwable.get.getMessage} type={
-                    e.throwable.get.getClass.getName
-                  }>{trace}</error>
+                  <error message={exMessage} type={exType}>{trace}</error>
                 case TStatus.Error =>
                   <error message={"No Exception or message provided"}/>
                 case TStatus.Failure if (e.throwable.isDefined) =>
-                  <failure message={e.throwable.get.getMessage} type={
-                    e.throwable.get.getClass.getName
-                  }>{trace}</failure>
+                  <failure message={exMessage} type={exType}>{trace}</failure>
                 case TStatus.Failure =>
                   <failure message={"No Exception or message provided"}/>
                 case TStatus.Ignored | TStatus.Skipped | TStatus.Pending =>
@@ -260,6 +272,36 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    */
   override def endGroup(name: String, result: TestResult): Unit = {
     writeSuite()
+  }
+
+  /**
+   * Formats a ForkError stacktrace using the original exception name instead of
+   * the ForkError wrapper class. This fixes the JUnit XML report showing
+   * `sbt.internal.worker1.ForkTestMain$ForkError` instead of the actual exception type.
+   * See https://github.com/sbt/sbt/issues/1469
+   */
+  private def formatForkErrorTrace(fe: ForkTestMain.ForkError): String = {
+    val sb = new StringBuilder
+    sb.append(fe.getOriginalName)
+    val msg = fe.getOriginalMessage
+    if (msg != null) sb.append(": ").append(msg)
+    sb.append('\n')
+    for (elem <- fe.getStackTrace)
+      sb.append("\tat ").append(elem).append('\n')
+    val cause = fe.getCause
+    if (cause != null) {
+      cause match {
+        case feCause: ForkTestMain.ForkError =>
+          sb.append("Caused by: ").append(formatForkErrorTrace(feCause))
+        case other =>
+          val stringWriter = new StringWriter()
+          val writer = new PrintWriter(stringWriter)
+          other.printStackTrace(writer)
+          writer.flush()
+          sb.append("Caused by: ").append(stringWriter.toString)
+      }
+    }
+    sb.toString
   }
 
   // Here we normalize the name to ensure that it's a nicer filename, rather than

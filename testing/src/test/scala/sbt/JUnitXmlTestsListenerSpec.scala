@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicReference
 import testing.{ Event as TEvent, OptionalThrowable, Status as TStatus, TestSelector }
 import util.{ AbstractLogger, Level, ControlEvent, LogEvent }
 import sbt.protocol.testing.TestResult
+import sbt.internal.worker1.ForkTestMain
 import verify.BasicTestSuite
+import scala.xml.XML
 
 object JUnitXmlTestsListenerSpec extends BasicTestSuite:
 
@@ -97,6 +99,63 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
       // Verify XML file was still created
       val xmlFile = new File(tempDir, "TEST-TestSuite.xml")
       assert(xmlFile.exists(), "XML file should be created even when logger is null")
+    finally
+      if tempDir.exists() then
+        tempDir.listFiles().foreach(_.delete())
+        tempDir.delete()
+
+  test("JUnit XML report should use original exception type for forked test failures"):
+    val tempDir = File.createTempFile("junit-test", "")
+    tempDir.delete()
+    tempDir.mkdirs()
+    try
+      val listener = new JUnitXmlTestsListener(tempDir, false, null)
+      listener.doInit()
+      listener.startGroup("TestSuite")
+
+      // Simulate a forked test failure: the original NullPointerException gets
+      // wrapped in ForkError during serialization across the forked JVM boundary.
+      val originalException = new NullPointerException("something was null")
+      originalException.setStackTrace(
+        Array(new StackTraceElement("com.example.MyTest", "testFoo", "MyTest.java", 42))
+      )
+      val forkError = new ForkTestMain.ForkError(originalException)
+
+      val testEvent = new TEvent:
+        def fullyQualifiedName = "TestSuite.testFoo"
+        def duration() = 100L
+        def status = TStatus.Failure
+        def fingerprint = null
+        def selector = new TestSelector("testFoo")
+        def throwable = new OptionalThrowable(forkError)
+
+      listener.testEvent(sbt.TestEvent(Seq(testEvent)))
+      listener.endGroup("TestSuite", TestResult.Failed)
+
+      val xmlFile = new File(tempDir, "TEST-TestSuite.xml")
+      assert(xmlFile.exists(), "XML file should be created")
+      val xml = XML.loadFile(xmlFile)
+      val failureNodes = xml \\ "failure"
+      assert(failureNodes.nonEmpty, "Should have a failure element")
+      val failureType = (failureNodes.head \ "@type").text
+      val failureMessage = (failureNodes.head \ "@message").text
+      assert(
+        failureType == "java.lang.NullPointerException",
+        s"Expected type 'java.lang.NullPointerException' but got '$failureType'"
+      )
+      assert(
+        failureMessage == "something was null",
+        s"Expected message 'something was null' but got '$failureMessage'"
+      )
+      val traceText = failureNodes.head.text
+      assert(
+        traceText.contains("java.lang.NullPointerException"),
+        s"Stacktrace should contain original exception name, got: $traceText"
+      )
+      assert(
+        !traceText.contains("ForkError"),
+        s"Stacktrace should not contain ForkError, got: $traceText"
+      )
     finally
       if tempDir.exists() then
         tempDir.listFiles().foreach(_.delete())
