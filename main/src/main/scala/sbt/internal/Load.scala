@@ -40,6 +40,22 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import sbt.internal.util.Util
 
+/**
+ * Caches `AutoPlugin.projectSettings` and `projectConfigurations` so they are
+ * evaluated only once per plugin instance during build loading, regardless of how
+ * many subprojects activate the plugin.  See https://github.com/sbt/sbt/issues/5166
+ */
+private[sbt] final class AutoPluginCache {
+  private val settingsCache: mutable.HashMap[AutoPlugin, Seq[Def.Setting[?]]] = mutable.HashMap.empty
+  private val configCache: mutable.HashMap[AutoPlugin, Seq[Configuration]] = mutable.HashMap.empty
+
+  def projectSettings(plugin: AutoPlugin): Seq[Def.Setting[?]] =
+    settingsCache.getOrElseUpdate(plugin, plugin.projectSettings)
+
+  def projectConfigurations(plugin: AutoPlugin): Seq[Configuration] =
+    configCache.getOrElseUpdate(plugin, plugin.projectConfigurations)
+}
+
 private[sbt] object Load {
   // note that there is State passed in but not pulled out
   def defaultLoad(
@@ -832,6 +848,7 @@ private[sbt] object Load {
         defsScala.exists(_.rootProject.isDefined) || rootFromExtra.nonEmpty
 
       val memoSettings = new mutable.HashMap[VirtualFile, LoadedSbtFile]
+      val pluginCache = new AutoPluginCache
       def loadProjects(ps: Seq[Project], createRoot: Boolean) =
         loadTransitive(
           ps,
@@ -849,6 +866,7 @@ private[sbt] object Load {
           Nil,
           s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil),
           converter = config.converter,
+          pluginCache = pluginCache,
         )
       val loadedProjectsRaw = timed("Load.loadUnit: loadedProjectsRaw", log) {
         loadProjects(initialProjects, !hasRootAlreadyDefined)
@@ -1010,6 +1028,7 @@ private[sbt] object Load {
       generatedConfigClassFiles: Seq[Path],
       extraSbtFiles: Seq[VirtualFile],
       converter: MappedFileConverter,
+      pluginCache: AutoPluginCache,
   ): LoadedProjects =
     // alias for parameter forwarding
     def loadTransitive1(
@@ -1034,6 +1053,7 @@ private[sbt] object Load {
         generated,
         Nil,
         converter,
+        pluginCache,
       )
 
     // alias for parameter forwarding
@@ -1085,6 +1105,7 @@ private[sbt] object Load {
           extraSbtFiles = extraFiles,
           converter = converter,
           log = log,
+          pluginCache = pluginCache,
         )
       val projectLevelExtra =
         if (expand) {
@@ -1207,12 +1228,13 @@ private[sbt] object Load {
       machineWideUserSettings: InjectSettings,
       memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
       extraSbtFiles: Seq[VirtualFile],
+      pluginCache: AutoPluginCache,
       converter: MappedFileConverter,
       log: Logger
   ): Project =
     timed(s"Load.resolveProjectSettings(${p.id})", log) {
       import AddSettings.*
-      val autoConfigs = projectPlugins.flatMap(_.projectConfigurations)
+      val autoConfigs = projectPlugins.flatMap(pluginCache.projectConfigurations)
       val auto = AddSettings.allDefaults
       // 3. Use AddSettings instance to order all Setting[_]s appropriately
       // Settings are ordered as:
@@ -1221,7 +1243,7 @@ private[sbt] object Load {
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
-          projectPlugins.withFilter(f.include).flatMap(_.projectSettings)
+          projectPlugins.withFilter(f.include).flatMap(pluginCache.projectSettings)
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandPluginSettings(auto: AddSettings): Seq[Setting[?]] =
           auto match
