@@ -21,6 +21,7 @@ import scala.util.Properties
 import scala.xml.{ Elem, Node as XNode, XML }
 import testing.{
   Event as TEvent,
+  Logger as TLogger,
   NestedTestSelector,
   Status as TStatus,
   OptionalThrowable,
@@ -61,14 +62,31 @@ object JUnitXmlTestsListener {
  * @param targetDir
  *   directory in which test reports are generated
  */
-class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logger: Logger)
-    extends TestsListener {
+class JUnitXmlTestsListener(
+    val targetDir: File,
+    legacyTestReport: Boolean,
+    logger: Logger,
+    captureStdOut: Boolean,
+    captureStdErr: Boolean
+) extends TestsListener {
   // These constructors are for binary compatibility with older versions of sbt
   // Use old hard-coded behaviour for constructing `targetDir` from `outputDir`
+  def this(
+      outputDir: String,
+      legacyTestReport: Boolean,
+      logger: Logger,
+      captureStdOut: Boolean,
+      captureStdErr: Boolean
+  ) =
+    this(new File(outputDir, "test-reports"), legacyTestReport, logger, captureStdOut, captureStdErr)
+  def this(targetDir: File, legacyTestReport: Boolean, logger: Logger) =
+    this(targetDir, legacyTestReport, logger, false, false)
   def this(outputDir: String, legacyTestReport: Boolean, logger: Logger) =
-    this(new File(outputDir, "test-reports"), legacyTestReport, logger)
+    this(new File(outputDir, "test-reports"), legacyTestReport, logger, false, false)
   def this(outputDir: String, logger: Logger) = this(outputDir, false, logger)
   def this(outputDir: String) = this(outputDir, false, null)
+
+  private val captureEnabled: Boolean = captureStdOut || captureStdErr
 
   /** Current hostname so we know which machine executed the tests */
   lazy val hostname: String = {
@@ -108,6 +126,8 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
     def this(name: String) = this(name, LocalDateTime.now())
 
     val events: ListBuffer[TEvent] = new ListBuffer()
+    val stdOutBuffer: StringBuilder = new StringBuilder()
+    val stdErrBuffer: StringBuilder = new StringBuilder()
 
     /** Adds one test result to this suite. */
     def addEvent(e: TEvent): ListBuffer[TEvent] = events += e
@@ -188,8 +208,8 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
                     </testcase>
 
         }
-          <system-out><![CDATA[]]></system-out>
-          <system-err><![CDATA[]]></system-err>
+          <system-out>{scala.xml.PCData(stdOutBuffer.toString)}</system-out>
+          <system-err>{scala.xml.PCData(stdErrBuffer.toString)}</system-err>
         </testsuite>
 
       result
@@ -289,6 +309,40 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   /** Does nothing, as we write each file after a suite is done. */
   override def doComplete(finalResult: TestResult): Unit = {}
 
-  /** Returns None */
-  override def contentLogger(test: TestDefinition): Option[ContentLogger] = None
+  /**
+   * Returns a ContentLogger that captures test output into the suite's
+   * stdout/stderr buffers when capture is enabled via testReportXmlCaptureStdOut
+   * or testReportXmlCaptureStdErr settings.
+   */
+  override def contentLogger(test: TestDefinition): Option[ContentLogger] = {
+    if (!captureEnabled) None
+    else testSuite.get().map { suite =>
+      val tLogger = new TLogger {
+        def error(s: String): Unit =
+          if (captureStdErr) suite.stdErrBuffer.synchronized {
+            suite.stdErrBuffer.append(s).append('\n')
+          }
+        def warn(s: String): Unit =
+          if (captureStdErr) suite.stdErrBuffer.synchronized {
+            suite.stdErrBuffer.append(s).append('\n')
+          }
+        def info(s: String): Unit =
+          if (captureStdOut) suite.stdOutBuffer.synchronized {
+            suite.stdOutBuffer.append(s).append('\n')
+          }
+        def debug(s: String): Unit =
+          if (captureStdOut) suite.stdOutBuffer.synchronized {
+            suite.stdOutBuffer.append(s).append('\n')
+          }
+        def trace(t: Throwable): Unit =
+          if (captureStdErr) suite.stdErrBuffer.synchronized {
+            val sw = new StringWriter()
+            t.printStackTrace(new PrintWriter(sw))
+            suite.stdErrBuffer.append(sw.toString)
+          }
+        def ansiCodesSupported(): Boolean = false
+      }
+      new ContentLogger(tLogger, () => ())
+    }
+  }
 }

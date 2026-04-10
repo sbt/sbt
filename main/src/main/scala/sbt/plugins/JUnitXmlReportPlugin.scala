@@ -38,14 +38,26 @@ object JUnitXmlReportPlugin extends AutoPlugin {
   object autoImport {
     val testReportsDirectory =
       settingKey[File]("Directory for outputting junit test reports.").withRank(AMinusSetting)
+    val testReportXmlCaptureStdOut =
+      settingKey[Boolean](
+        "If true, capture test framework log output into <system-out> in JUnit XML reports."
+      ).withRank(BSetting)
+    val testReportXmlCaptureStdErr =
+      settingKey[Boolean](
+        "If true, capture test framework error output into <system-err> in JUnit XML reports."
+      ).withRank(BSetting)
 
     lazy val testReportSettings: Seq[Setting[?]] = Seq(
       testReportsDirectory := target.value / (prefix(configuration.value.name) + "reports"),
+      testReportXmlCaptureStdOut := false,
+      testReportXmlCaptureStdErr := false,
       testListeners += Def.uncached {
         JUnitXmlTestsListener(
           testReportsDirectory.value,
           SysProp.legacyTestReport,
-          streams.value.log
+          streams.value.log,
+          testReportXmlCaptureStdOut.value,
+          testReportXmlCaptureStdErr.value
         )
       }
     )
