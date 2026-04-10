@@ -4289,7 +4289,9 @@ object Classpaths {
             configuration.allRepositories,
           )
         val processed = configuration.process(pomXml)
-        scala.xml.XML.save(file.getAbsolutePath, processed, "UTF-8", xmlDecl = true)
+        val printer = new scala.xml.PrettyPrinter(1000, 4)
+        val formatted = scala.xml.XML.loadString(printer.format(processed))
+        scala.xml.XML.save(file.getAbsolutePath, formatted, "UTF-8", xmlDecl = true)
         log.info("Wrote " + file.getAbsolutePath)
         file
     })
