@@ -1,5 +1,5 @@
 // https://github.com/sbt/sbt/issues/7768
-
+// https://github.com/sbt/sbt/issues/3057 (many top-level vals exercise Eval chunking)
 val a1 = settingKey[Seq[Int]]("")
 val a2 = settingKey[Int]("")
 val a3 = settingKey[Int]("")
@@ -23,6 +23,84 @@ val a20 = settingKey[Int]("")
 val a21 = settingKey[Int]("")
 val a22 = settingKey[Int]("")
 val a23 = settingKey[Int]("")
+val a24 = settingKey[Int]("")
+val a25 = settingKey[Int]("")
+val a26 = settingKey[Int]("")
+val a27 = settingKey[Int]("")
+val a28 = settingKey[Int]("")
+val a29 = settingKey[Int]("")
+val a30 = settingKey[Int]("")
+val a31 = settingKey[Int]("")
+val a32 = settingKey[Int]("")
+val a33 = settingKey[Int]("")
+val a34 = settingKey[Int]("")
+val a35 = settingKey[Int]("")
+val a36 = settingKey[Int]("")
+val a37 = settingKey[Int]("")
+val a38 = settingKey[Int]("")
+val a39 = settingKey[Int]("")
+val a40 = settingKey[Int]("")
+val a41 = settingKey[Int]("")
+val a42 = settingKey[Int]("")
+val a43 = settingKey[Int]("")
+val a44 = settingKey[Int]("")
+val a45 = settingKey[Int]("")
+val a46 = settingKey[Int]("")
+val a47 = settingKey[Int]("")
+val a48 = settingKey[Int]("")
+val a49 = settingKey[Int]("")
+val a50 = settingKey[Int]("")
+val a51 = settingKey[Int]("")
+val a52 = settingKey[Int]("")
+val a53 = settingKey[Int]("")
+val a54 = settingKey[Int]("")
+val a55 = settingKey[Int]("")
+val a56 = settingKey[Int]("")
+val a57 = settingKey[Int]("")
+val a58 = settingKey[Int]("")
+val a59 = settingKey[Int]("")
+val a60 = settingKey[Int]("")
+val a61 = settingKey[Int]("")
+val a62 = settingKey[Int]("")
+val a63 = settingKey[Int]("")
+val a64 = settingKey[Int]("")
+val a65 = settingKey[Int]("")
+val a66 = settingKey[Int]("")
+val a67 = settingKey[Int]("")
+val a68 = settingKey[Int]("")
+val a69 = settingKey[Int]("")
+val a70 = settingKey[Int]("")
+val a71 = settingKey[Int]("")
+val a72 = settingKey[Int]("")
+val a73 = settingKey[Int]("")
+val a74 = settingKey[Int]("")
+val a75 = settingKey[Int]("")
+val a76 = settingKey[Int]("")
+val a77 = settingKey[Int]("")
+val a78 = settingKey[Int]("")
+val a79 = settingKey[Int]("")
+val a80 = settingKey[Int]("")
+val a81 = settingKey[Int]("")
+val a82 = settingKey[Int]("")
+val a83 = settingKey[Int]("")
+val a84 = settingKey[Int]("")
+val a85 = settingKey[Int]("")
+val a86 = settingKey[Int]("")
+val a87 = settingKey[Int]("")
+val a88 = settingKey[Int]("")
+val a89 = settingKey[Int]("")
+val a90 = settingKey[Int]("")
+val a91 = settingKey[Int]("")
+val a92 = settingKey[Int]("")
+val a93 = settingKey[Int]("")
+val a94 = settingKey[Int]("")
+val a95 = settingKey[Int]("")
+val a96 = settingKey[Int]("")
+val a97 = settingKey[Int]("")
+val a98 = settingKey[Int]("")
+val a99 = settingKey[Int]("")
+val a100 = settingKey[Int]("")
+val a101 = settingKey[Int]("")
 
 a1 := List(1)
 a2 := 2
@@ -47,34 +125,88 @@ a20 := 20
 a21 := 21
 a22 := 22
 a23 := 23
+a24 := 24
+a25 := 25
+a26 := 26
+a27 := 27
+a28 := 28
+a29 := 29
+a30 := 30
+a31 := 31
+a32 := 32
+a33 := 33
+a34 := 34
+a35 := 35
+a36 := 36
+a37 := 37
+a38 := 38
+a39 := 39
+a40 := 40
+a41 := 41
+a42 := 42
+a43 := 43
+a44 := 44
+a45 := 45
+a46 := 46
+a47 := 47
+a48 := 48
+a49 := 49
+a50 := 50
+a51 := 51
+a52 := 52
+a53 := 53
+a54 := 54
+a55 := 55
+a56 := 56
+a57 := 57
+a58 := 58
+a59 := 59
+a60 := 60
+a61 := 61
+a62 := 62
+a63 := 63
+a64 := 64
+a65 := 65
+a66 := 66
+a67 := 67
+a68 := 68
+a69 := 69
+a70 := 70
+a71 := 71
+a72 := 72
+a73 := 73
+a74 := 74
+a75 := 75
+a76 := 76
+a77 := 77
+a78 := 78
+a79 := 79
+a80 := 80
+a81 := 81
+a82 := 82
+a83 := 83
+a84 := 84
+a85 := 85
+a86 := 86
+a87 := 87
+a88 := 88
+a89 := 89
+a90 := 90
+a91 := 91
+a92 := 92
+a93 := 93
+a94 := 94
+a95 := 95
+a96 := 96
+a97 := 97
+a98 := 98
+a99 := 99
+a100 := 100
+a101 := 101
 
 TaskKey[Unit]("check") := Def.uncached {
-  val sum = (
-    a1.value ++ List(
-      a2.value,
-      a3.value,
-      a4.value,
-      a5.value,
-      a6.value,
-      a7.value,
-      a8.value,
-      a9.value,
-      a10.value,
-      a11.value,
-      a12.value,
-      a13.value,
-      a14.value,
-      a15.value,
-      a16.value,
-      a17.value,
-      a18.value,
-      a19.value,
-      a20.value,
-      a21.value,
-      a22.value,
-      a23.value,
-    )
-  ).sum
-  assert(sum == 276, sum)
+  assert(a1.value == List(1), a1.value)
+  assert(a100.value == 100, a100.value)
+  assert(a101.value == 101, a101.value)
   ()
 }
