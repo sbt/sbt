@@ -219,13 +219,6 @@ private[sbt] object Clean:
           case _                       => ()
         val s2 = s.unsafeRunAggregated(LocalRootProject / clean)
         IO.delete(outputDirectory.toFile())
-        IO.delete(
-          s.configuration
-            .provider()
-            .scalaProvider()
-            .launcher()
-            .bootDirectory()
-        )
         s
     Command.command(CleanFull, h)(expunge andThen clearCachesFun)
   end cleanFull
