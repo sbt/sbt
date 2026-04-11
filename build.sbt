@@ -742,8 +742,10 @@ lazy val mainProj = (project in file("main"))
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
-    // TODO: Fix doc
-    Compile / doc / sources := Nil,
+    libraryDependencies += {
+      // https://github.com/scala/scala3/issues/18487
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // Moved to sbt-ivy module (Step 5 of sbt#7640)
@@ -782,8 +784,10 @@ lazy val sbtIvyProj = (project in file("sbt-ivy"))
     name := "sbt-ivy",
     sbtPlugin := true,
     pluginCrossBuild / sbtVersion := version.value,
-    // TODO: Fix doc
-    Compile / doc / sources := Nil,
+    libraryDependencies += {
+      // https://github.com/scala/scala3/issues/18487
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
+    },
     mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
   )
   .configure(addSbtIO)
