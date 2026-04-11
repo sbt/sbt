@@ -85,7 +85,7 @@ object Main:
             else Memory.addDefaultMemory(javaOpts, sbtOpts, javaVer, LauncherOptions.defaultMemMb)
             sbtOpts = finalSbt
 
-            if !opts.noHideJdkWarnings && javaVer == 25 then
+            if !opts.noHideJdkWarnings && javaVer >= 25 then
               sbtOpts = sbtOpts ++ Seq(
                 "--sun-misc-unsafe-memory-access=allow",
                 "--enable-native-access=ALL-UNNAMED"

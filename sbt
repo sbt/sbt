@@ -362,7 +362,7 @@ addSbtScriptProperty () {
 }
 
 addJdkWorkaround () {
-  local is_25="$(expr $java_version "=" 25)"
+  local is_25="$(expr $java_version ">=" 25)"
   if [[ "$hide_jdk_warnings" == "0" ]]; then
     :
   else
