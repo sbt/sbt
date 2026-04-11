@@ -4748,6 +4748,13 @@ trait BuildExtra extends BuildCommon with DefExtra {
   }
 
   /**
+   * Adds dependency tree plugin.
+   */
+  @deprecated("dependencyTree is built into sbt 2.x; this is now a no-op", "2.0.0")
+  def addDependencyTreePlugin: Setting[Seq[ModuleID]] =
+    libraryDependencies ++= Nil
+
+  /**
    * Adds Maven resolver plugin.
    */
   def addMavenResolverPlugin: Setting[Seq[ModuleID]] =
