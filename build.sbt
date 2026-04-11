@@ -1023,10 +1023,6 @@ lazy val sbtwProj = (project in file("sbtw"))
     description := "Windows drop-in launcher for sbt (replaces sbt.bat)",
     scalaVersion := "3.8.3",
     crossPaths := false,
-    Compile / scalafix / unmanagedSources := {
-      // https://github.com/scalameta/scalameta/issues/4531
-      (Compile / unmanagedSources).value.filterNot(_.getName == "Main.scala")
-    },
     Compile / mainClass := Some("sbtw.Main"),
     libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
     libraryDependencies += scalaVerify % Test,
