@@ -1,8 +1,8 @@
 val root = project in file(".")
 val subJar = project in file("subJar")
-def warArtifact = (Compile / packageBin / artifact) ~= (_ withType "war" withExtension "war")
-val subWar = project in file("subWar") settings warArtifact
-val subParent = project in file("subParent") settings ((Compile / publishArtifact) := false)
+def warArtifact = (Compile / packageBin / artifact) ~= (_.withType("war").withExtension("war"))
+val subWar = project.in(file("subWar")).settings(warArtifact)
+val subParent = project.in(file("subParent")).settings((Compile / publishArtifact) := false)
 
 val checkPom = taskKey[Unit]("")
 (ThisBuild / checkPom) := {

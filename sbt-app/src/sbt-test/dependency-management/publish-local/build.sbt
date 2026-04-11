@@ -7,7 +7,7 @@ lazy val root = (project in file(".")).
       organization := "A",
       version := "1.0",
       ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy" / "cache")) ).value,
-      externalResolvers := (baseDirectory map { base => Resolver.file("local", base / "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil }).value
+      externalResolvers := (baseDirectory map { base => Resolver.file("local", base / "ivy" / "local" asFile)(using Resolver.ivyStylePatterns) :: Nil }).value
     )),
     mavenStyle,
     interProject,

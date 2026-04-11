@@ -9,7 +9,7 @@ packageOptions := {
   def manifestExtra = {
     import java.util.jar._
     val mf = new Manifest
-    mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJars))
+    mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJars.toSeq))
     mf
   }
   Package.JarManifest(manifestExtra) +: packageOptions.value

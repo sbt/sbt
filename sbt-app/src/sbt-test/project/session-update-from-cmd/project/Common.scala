@@ -21,7 +21,7 @@ object Common {
 
 
   val UpdateK3 = Command.command("UpdateK3"): (st: State) =>
-    val ex = Project extract st
+    val ex = Project.extract(st)
     import ex._
     val session2 = BuiltinCommands.setThis(ex, Seq(k3 := {}), """k3 := {
                                                                     |//

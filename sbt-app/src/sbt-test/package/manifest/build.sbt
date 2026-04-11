@@ -10,7 +10,7 @@ mainClass := Some("jartest.Main")
 Compile / packageBin / packageOptions := {
   def manifestExtra = {
     val mf = new Manifest
-    mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJars))
+    mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJars.toSeq))
     mf
   }
   (Compile / packageBin / packageOptions).value :+ Package.JarManifest(manifestExtra)

@@ -27,7 +27,7 @@ lazy val root = (project in file(".")).
   )
 
 def checkServletAPI(paths: Seq[File], shouldBeIncluded: Boolean, label: String) = {
-  val servletAPI = paths.find(_.getName contains "servlet-api")
+  val servletAPI = paths.find(_.getName.contains("servlet-api"))
   if (shouldBeIncluded) {
     if (servletAPI.isEmpty) sys.error(s"Servlet API should have been included in $label.")
   } else

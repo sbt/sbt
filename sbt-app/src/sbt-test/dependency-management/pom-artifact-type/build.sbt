@@ -4,7 +4,7 @@ lazy val root = (project in file("."))
   .settings(
     scalaVersion := "2.13.16",
     autoScalaLibrary := false,
-    libraryDependencies += "org.eclipse.jetty" % "jetty-webapp" % "11.0.15" artifacts (Artifact("jetty-webapp", "war", "war")),
+    libraryDependencies += ("org.eclipse.jetty" % "jetty-webapp" % "11.0.15").artifacts(Artifact("jetty-webapp", "war", "war")),
     libraryDependencies += "com.typesafe" % "config" % "1.4.3",
     // classified artifact with non-default type: both <type> and <classifier> must appear
     libraryDependencies += ("com.example" % "classified-war" % "1.0")

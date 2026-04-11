@@ -15,7 +15,7 @@ def check(className: String): Def.Initialize[Task[Unit]] =
   import sbt.TupleSyntax.*
   (Compile / fullClasspath, fileConverter.toTaskable) mapN { (cp, c) =>
     given FileConverter = c
-    val existing = cp.files.filter(_.toFile.getName contains "scala-library")
+    val existing = cp.files.filter(_.toFile.getName.contains("scala-library"))
     println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
     println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))
     val loader = ClasspathUtilities.toLoader(existing.map(_.toFile()))

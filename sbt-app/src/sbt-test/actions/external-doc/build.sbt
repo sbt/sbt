@@ -17,7 +17,7 @@ val aResolver = Def.setting {
 
 val bResolver = Def.setting {
   val dir = (ThisBuild / baseDirectory).value / "b-repo"
-  Resolver.file("b-resolver", dir)(Resolver.defaultIvyPatterns)
+  Resolver.file("b-resolver", dir)(using Resolver.defaultIvyPatterns)
 }
 
 val apiBaseSetting = apiURL := Some(apiBase(name.value))

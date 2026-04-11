@@ -1,5 +1,5 @@
 libraryDependencies ++= Seq("natives-windows", "natives-linux", "natives-osx") map ( c =>
-  "org.lwjgl.lwjgl" % "lwjgl-platform" % "2.8.2" classifier c
+  ("org.lwjgl.lwjgl" % "lwjgl-platform" % "2.8.2").classifier(c)
 )
 
 autoScalaLibrary := false

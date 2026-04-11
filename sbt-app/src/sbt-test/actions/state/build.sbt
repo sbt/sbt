@@ -14,11 +14,11 @@ val check = inputKey[Unit]("")
 val sample = AttributeKey[Int]("demo-key")
 val dummyKey = taskKey[Unit]("")
 
-def updateDemoInit = state map { s => (s get sample getOrElse 9) + 1 }
+def updateDemoInit = state map { s => s.get(sample).getOrElse(9) + 1 }
 
 lazy val root = (project in file(".")).
   settings(
-    updateDemo := (updateDemoInit updateState demoState).value,
+    updateDemo := updateDemoInit.updateState(demoState).value,
     check := checkInit.evaluated,
     inMemorySetting,
     persistedSetting,
@@ -27,19 +27,19 @@ lazy val root = (project in file(".")).
     dummyKey := (),
   )
 
-def demoState(s: State, i: Int): State = s put (sample, i + 1)
+def demoState(s: State, i: Int): State = s.put(sample, i + 1)
 
 def checkInit: Initialize[InputTask[Unit]] = Def inputTask {
   val key = (token(Space ~> IntBasic) ~ token(Space ~> IntBasic).?).parsed
   val (curExpected, prevExpected) = key
   val value = updateDemo.value
-  val prev = state.value get sample
+  val prev = state.value.get(sample)
   assert(value == curExpected, s"Expected current value to be $curExpected, got $value")
   assert(prev == prevExpected, s"Expected previous value to be $prevExpected, got $prev")
 }
 
-def  inMemorySetting = keep    :=  (getPrevious(keep)    map { case None =>  3; case Some(x) => x + 1}  keepAs(keep)).value
-def persistedSetting = persist := (loadPrevious(persist) map { case None => 17; case Some(x) => x + 1} storeAs(persist)).value
+def  inMemorySetting = keep    :=  getPrevious(keep)   .map { case None =>  3; case Some(x) => x + 1}.keepAs(keep).value
+def persistedSetting = persist := loadPrevious(persist).map { case None => 17; case Some(x) => x + 1}.storeAs(persist).value
 
 def  inMemoryCheck = checkKeep    := (inputCheck( (ctx, s) => Space ~> str( getFromContext(   keep, ctx, s)) )).evaluated
 def persistedCheck = checkPersist := (inputCheck( (ctx, s) => Space ~> str(loadFromContext(persist, ctx, s)) )).evaluated

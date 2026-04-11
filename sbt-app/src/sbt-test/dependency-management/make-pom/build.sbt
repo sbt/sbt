@@ -1,6 +1,6 @@
 import scala.xml._
 
-lazy val root = (project in file(".")) settings (
+lazy val root = (project in file(".")).settings(
   readPom := Def.uncached {
     val vf = makePom.value
     val converter = fileConverter.value
@@ -71,7 +71,7 @@ lazy val checkPom = Def.task {
     val writtenRepositories = repositories.map(read).distinct
     val mavenStyleRepositories = (ivyRepositories.collect {
       case x: MavenRepository
-          if (x.name != "public") && (x.name != "jcenter") && !(x.root startsWith "file:") =>
+          if (x.name != "public") && (x.name != "jcenter") && !(x.root.startsWith("file:")) =>
         normalize(x)
     }).distinct
 

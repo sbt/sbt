@@ -1,3 +1,3 @@
-libraryDependencies += "org.vaadin" % "dontpush-addon-ozonelayer" % "0.4.6" exclude("org.atmosphere", "atmosphere-compat-jetty")
+libraryDependencies += ("org.vaadin" % "dontpush-addon-ozonelayer" % "0.4.6").exclude("org.atmosphere", "atmosphere-compat-jetty")
 
 resolvers += "asdf" at "https://maven.vaadin.com/vaadin-addons"

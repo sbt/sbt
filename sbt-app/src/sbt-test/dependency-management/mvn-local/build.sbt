@@ -7,7 +7,7 @@ def commonSettings: Seq[Def.Setting[?]] =
     scalaVersion := "2.10.4",
     ThisBuild / organization := "org.example",
     ThisBuild / version := "1.0-SNAPSHOT",
-    resolvers += Resolver.file("old-local", file(sys.props("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns)
+    resolvers += Resolver.file("old-local", file(sys.props("user.home") + "/.ivy2/local"))(using Resolver.ivyStylePatterns)
   )
 
 lazy val main = project.

@@ -29,7 +29,7 @@ def pomIncludeRepository(base: File, prev: MavenRepository => Boolean): MavenRep
 }
 
 def addSlash(s: String): String = s match {
-  case s if s endsWith "/" => s
+  case s if s.endsWith("/") => s
   case _ => s + "/"
 }
 

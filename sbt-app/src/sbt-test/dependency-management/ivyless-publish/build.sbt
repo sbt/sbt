@@ -9,7 +9,7 @@ scalaVersion := "3.8.3"
 val publishRepoBase = settingKey[File]("Base directory for publish repo")
 publishRepoBase := baseDirectory.value / "repo"
 
-publishTo := Some(Resolver.file("test-repo", publishRepoBase.value)(Resolver.ivyStylePatterns))
+publishTo := Some(Resolver.file("test-repo", publishRepoBase.value)(using Resolver.ivyStylePatterns))
 
 useIvy := false
 

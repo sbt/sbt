@@ -15,7 +15,7 @@ lazy val commonSettings = Seq(
     val ivyHome = Classpaths.bootIvyHome(appConfiguration.value) getOrElse sys.error(
       "Launcher did not provide the Ivy home directory."
     )
-    Resolver.file("real-local", ivyHome / "local")(Resolver.ivyStylePatterns)
+    Resolver.file("real-local", ivyHome / "local")(using Resolver.ivyStylePatterns)
   },
   resolvers += Resolver.mavenLocal,
   resolvers += ("test-repo" at ((ThisBuild / baseDirectory).value / "repo/").asURL.toString)

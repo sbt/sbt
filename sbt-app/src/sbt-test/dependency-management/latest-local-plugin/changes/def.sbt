@@ -12,7 +12,7 @@ version := ( if(stable.value) "1.0" else "1.1-SNAPSHOT" )
 
 publishTo := {
 	val base = baseDirectory.value / ( if(stable.value) "stable" else "snapshot" )
-	Some( Resolver.file("local-" + base, base)(Resolver.ivyStylePatterns) )
+	Some( Resolver.file("local-" + base, base)(using Resolver.ivyStylePatterns) )
 }
 
 publishMavenStyle := false

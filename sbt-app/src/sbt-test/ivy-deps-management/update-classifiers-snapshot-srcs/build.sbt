@@ -14,7 +14,7 @@ val commonSettings = Seq[Def.Setting[?]](
 lazy val bippy = project settings (
   commonSettings,
   resolvers += Resolver
-    .file("ivy-local", file(sys.props("user.home")) / ".ivy2" / "local")(Resolver.ivyStylePatterns),
+    .file("ivy-local", file(sys.props("user.home")) / ".ivy2" / "local")(using Resolver.ivyStylePatterns),
   publishTo := Some(Resolver.file("local-repo", localRepo.value))
 )
 
@@ -40,6 +40,6 @@ InputKey[Unit]("check") := {
   val s = IO readStream jar.getInputStream(jar.getJarEntry("Bippy.scala"))
 
   val expected = s"def release = $n"
-  assert(s contains expected, s"""Bippy should contain $expected, contents:\n$s""")
+  assert(s.contains(expected), s"""Bippy should contain $expected, contents:\n$s""")
   ()
 }

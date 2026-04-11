@@ -31,10 +31,10 @@ lazy val root = (project in file(".")).
       val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
       val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
 
-      if (acp exists { _.data.name contains "slf4j-api-1.7.5.jar" }) {
+      if (acp exists { _.data.name.contains("slf4j-api-1.7.5.jar") }) {
         sys.error("slf4j-api-1.7.5.jar found when it should NOT be included: " + acp.toString)
       }
-      if (bcp exists { _.data.name contains "dispatch-core_2.11-0.11.1.jar" }) {
+      if (bcp exists { _.data.name.contains("dispatch-core_2.11-0.11.1.jar") }) {
         sys.error("dispatch-core_2.11-0.11.1.jar found when it should NOT be included: " + bcp.toString)
       }
 

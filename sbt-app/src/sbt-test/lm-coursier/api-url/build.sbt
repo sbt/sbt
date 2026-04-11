@@ -10,7 +10,7 @@ lazy val b = project
 
 lazy val bResolver = Def.setting {
   val dir = (ThisBuild / baseDirectory).value / "b-repo"
-  Resolver.file("b-resolver", dir)(Resolver.defaultIvyPatterns)
+  Resolver.file("b-resolver", dir)(using Resolver.defaultIvyPatterns)
 }
 
 lazy val check = taskKey[Unit]("")

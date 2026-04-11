@@ -5,8 +5,8 @@ lazy val root = (project in file("."))
     autoScalaLibrary := false,
     managedScalaInstance := false,
     transitiveClassifiers := Seq("sources"),
-    TaskKey[Unit]("checkSources") := (updateClassifiers map checkSources).value,
-    TaskKey[Unit]("checkBinaries") := (update map checkBinaries).value,
+    TaskKey[Unit]("checkSources") := updateClassifiers.map(checkSources).value,
+    TaskKey[Unit]("checkBinaries") := update.map(checkBinaries).value,
   )
 
 def getSources(report: UpdateReport)  = report.matching(artifactFilter(`classifier` = "sources") )
