@@ -84,19 +84,21 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
-  /*
   Compile / doc / scalacOptions ++= {
-    import scala.sys.process._
-    val devnull = ProcessLogger(_ => ())
-    val tagOrSha = ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
-    Seq(
-      "-sourcepath",
-      (LocalRootProject / baseDirectory).value.getAbsolutePath,
-      "-doc-source-url",
-      s"https://github.com/sbt/sbt/tree/$tagOrSha€{FILE_PATH}.scala"
-    )
+    if (Dependencies.sbtIoPath.isEmpty && Dependencies.sbtZincPath.isEmpty) {
+      import scala.sys.process.*
+      val devnull = ProcessLogger(_ => ())
+      val tagOrSha =
+        ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
+      Seq(
+        "-source-links:github://sbt/sbt",
+        "-revision",
+        tagOrSha
+      )
+    } else {
+      Nil
+    }
   },
-   */
   Compile / javafmtOnCompile := scalafmtOnCompile.value,
   Test / javafmtOnCompile := (Test / scalafmtOnCompile).value,
   Compile / unmanagedSources / inputFileStamps :=
