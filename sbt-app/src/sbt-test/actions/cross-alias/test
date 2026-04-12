@@ -1,0 +1,11 @@
+# Test that "cross" works as an alias for "+"
+> cross clean
+
+# Test that "cross" works with verbose flag
+> cross -v compile
+
+# Test that "switch" works as an alias for "++"
+> switch 2.13.12!
+
+# Test that "switch" works with a command
+> switch 2.12.21! compile

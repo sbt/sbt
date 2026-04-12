@@ -331,15 +331,19 @@ defaults
       Nil
 
   val CrossCommand = "+"
+  val CrossAlias = "cross"
   val CrossRestoreSessionCommand = "+-"
   val SwitchCommand = "++"
+  val SwitchAlias = "switch"
 
-  def crossHelp: Help = Help.more(CrossCommand, CrossDetailed)
+  def crossHelp: Help =
+    Help.more(CrossCommand, CrossDetailed) ++ Help.more(CrossAlias, CrossDetailed)
   def crossRestoreSessionHelp = Help.more(CrossRestoreSessionCommand, CrossRestoreSessionDetailed)
-  def switchHelp: Help = Help.more(SwitchCommand, SwitchDetailed)
+  def switchHelp: Help =
+    Help.more(SwitchCommand, SwitchDetailed) ++ Help.more(SwitchAlias, SwitchDetailed)
 
   def CrossDetailed =
-    s"""$CrossCommand [-v] <command>
+    s"""$CrossCommand (or $CrossAlias) [-v] <command>
 	Runs <command> for each Scala version specified for cross-building.
 
 	For each string in `crossScalaVersions` in each project project, this command sets
@@ -359,7 +363,7 @@ defaults
 """
 
   def SwitchDetailed =
-    s"""$SwitchCommand <scala-version>[!] [-v] [<command>]
+    s"""$SwitchCommand (or $SwitchAlias) <scala-version>[!] [-v] [<command>]
 	Changes the Scala version and runs a command.
 
 	<scala-version> may be an actual Scala version such as 3.1.3, or a Semantic Version selector
