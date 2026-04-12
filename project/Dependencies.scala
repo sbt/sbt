@@ -36,8 +36,6 @@ object Dependencies {
   }
 
   lazy val sbtIoPath = getSbtModulePath("sbtio.path")
-  lazy val sbtUtilPath = getSbtModulePath("sbtutil.path")
-  lazy val sbtLmPath = getSbtModulePath("sbtlm.path")
   lazy val sbtZincPath = getSbtModulePath("sbtzinc.path")
 
   def addSbtModule(
