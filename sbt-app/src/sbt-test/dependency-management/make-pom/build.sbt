@@ -6,6 +6,8 @@ lazy val root = (project in file(".")).settings(
     val converter = fileConverter.value
     XML.loadFile(converter.toPath(vf).toFile)
   },
+  description := "pom.xml test description",
+  homepage := Some(url("https://example.com/pom_test_url")),
   TaskKey[Unit]("checkPom") := checkPom.value,
   TaskKey[Unit]("checkExtra") := checkExtra.value,
   TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,
@@ -65,6 +67,10 @@ lazy val checkReleaseNotesURL = readPom.map: pomXml =>
 lazy val checkPom = Def.task {
   val pomXML = readPom.value
   checkProject(pomXML)
+  val urlFromPom = (pomXML \ "url").text
+  assert(urlFromPom == "https://example.com/pom_test_url", s"Expected homepage url, got: $urlFromPom")
+  val descriptionFromPom = (pomXML \ "description").text
+  assert(descriptionFromPom == "pom.xml test description", s"Expected description, got: $descriptionFromPom")
   val ivyRepositories = fullResolvers.value
   withRepositories(pomXML) { repositoriesElement =>
     val repositories = repositoriesElement \ "repository"

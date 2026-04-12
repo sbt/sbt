@@ -46,6 +46,8 @@ private[sbt] object PomGenerator:
       <modelVersion>4.0.0</modelVersion>
       {makeModuleID(crossMid)}
       {info.map(i => <name>{i.nameFormal}</name>).getOrElse(NodeSeq.Empty)}
+      {info.map(makeDescription).getOrElse(NodeSeq.Empty)}
+      {info.map(makeHomePage).getOrElse(NodeSeq.Empty)}
       {info.map(makeStartYear).getOrElse(NodeSeq.Empty)}
       {info.map(makeOrganization).getOrElse(NodeSeq.Empty)}
       {info.map(makeScmInfo).getOrElse(NodeSeq.Empty)}
@@ -95,6 +97,16 @@ private[sbt] object PomGenerator:
 
   private val IgnoreTypes: Set[String] =
     Set(Artifact.SourceType, Artifact.DocType, Artifact.PomType)
+
+  private def makeDescription(info: ModuleInfo): NodeSeq =
+    if info.description != null && info.description.nonEmpty then
+      <description>{info.description}</description>
+    else NodeSeq.Empty
+
+  private def makeHomePage(info: ModuleInfo): NodeSeq =
+    info.homepage match
+      case Some(h) => <url>{h}</url>
+      case _       => NodeSeq.Empty
 
   private def makeStartYear(info: ModuleInfo): NodeSeq =
     info.startYear match
