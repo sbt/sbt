@@ -53,7 +53,9 @@ object ConsoleProject:
   ): Unit = {
     val extracted = Project.extract(state)
     val cpImports = new Imports(extracted, state)
-    // Bindings are blocked by https://github.com/scala/scala3/issues/5069
+    // Bindings are ignored by Scala 3 bridge: https://github.com/scala/scala3/issues/5069
+    // Workaround: vals are injected via initialCommands from ConsoleProjectBindings holder.
+    // bindings are still passed to Console for Scala 2 backward compatibility.
     val bindings =
       ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
@@ -86,20 +88,29 @@ object ConsoleProject:
           classLoaderCache = state.get(BasicKeys.classLoaderCache),
           log = log
         )
-    val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
-    val importString = imports.mkString("", ";\n", ";\n\n")
-    val initCommands = importString + extra
+    ConsoleProjectBindings.set(state, extracted, cpImports)
+    val baseImports = BuildUtil.getImports(unit.unit)
+    val bindingDefs = Seq(
+      "val currentState = _root_.sbt.internal.ConsoleProjectBindings.state",
+      "val extracted = _root_.sbt.internal.ConsoleProjectBindings.extracted",
+      "val cpHelpers = _root_.sbt.internal.ConsoleProjectBindings.cpHelpers",
+    )
+    val bindingImports = BuildUtil.importAll(bindings.map(_._1))
+    val allLines = baseImports ++ bindingDefs ++ bindingImports
+    val initCommands = allLines.mkString("", ";\n", ";\n\n") + extra
     val loader = ClasspathUtil.makeLoader(unit.classpath, si, tempDir)
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
-    (new Console(compiler))(
-      unit.classpath.map(_.toFile),
-      options,
-      initCommands,
-      cleanupCommands,
-      terminal
-    )(Some(loader), bindings).get
-    ()
+    try
+      (new Console(compiler))(
+        unit.classpath.map(_.toFile),
+        options,
+        initCommands,
+        cleanupCommands,
+        terminal
+      )(Some(loader), bindings).get
+      ()
+    finally ConsoleProjectBindings.clear()
   }
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */

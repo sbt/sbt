@@ -27,6 +27,8 @@ import sbt.librarymanagement.{
   Configuration,
   Configurations,
   ConfigurationReport,
+  CrossVersion,
+  DependencyResolution,
   ModuleID,
   ScalaArtifacts,
   SemanticSelector,
@@ -109,6 +111,73 @@ object Compiler:
         )
       case _ => ScalaInstance(sv, scalaProvider)
   }
+
+  /**
+   * Resolves extra REPL tool jars required for Scala 3.8+.
+   *
+   * In Scala 3.8+, `dotty.tools.repl.ReplDriver` was extracted from
+   * `scala3-compiler_3` into a new artifact `scala3-repl_3`. The sbt launcher's
+   * Scala provider only includes `scala3-compiler_3`, so we need to resolve
+   * `scala3-repl_3` explicitly for `consoleProject` to work.
+   *
+   * Returns an empty sequence for Scala versions < 3.8.
+   *
+   * @see https://github.com/sbt/sbt/issues/7722
+   * @see https://github.com/scala/scala3/pull/24243
+   */
+  private[sbt] def scala3ReplToolJars(
+      scalaVersion: String,
+      scalaOrg: String,
+      dr: DependencyResolution,
+      retrieveDir: File,
+      log: Logger
+  ): Seq[File] =
+    if !ScalaArtifacts.isScala3_8Plus(scalaVersion) then Nil
+    else
+      // Scala 3 artifacts use the `_3` suffix, not `_3.8`. Bake the suffix into
+      // the artifact name and disable cross-version resolution, because the
+      // caller's scalaModuleInfo may be None or reflect a different project
+      // Scala version than the one we actually need.
+      val replModule = ModuleID(scalaOrg, s"${ScalaArtifacts.Scala3ReplID}_3", scalaVersion)
+        .withCrossVersion(CrossVersion.disabled)
+      dr.retrieve(replModule, scalaModuleInfo = None, retrieveDir, log) match
+        case Right(resolved) => resolved.toSeq
+        case Left(unresolved) =>
+          log.warn(
+            s"Could not resolve $replModule for consoleProject; REPL may fail to start: ${unresolved.resolveException.getMessage}"
+          )
+          Nil
+
+  /**
+   * Resolves the pre-built Scala 3 compiler bridge jar for `consoleProject`.
+   *
+   * The default `scalaCompilerBridgeBin` uses the project's Scala version, but
+   * `consoleProject` compiles the build definition with sbt's own Scala
+   * version. Resolve the pre-built bridge directly for that version to keep
+   * the bridge consistent with `consoleProject / scalaInstance`.
+   *
+   * The bridge is a Java-compiled jar (cross-version disabled).
+   *
+   * @see https://github.com/sbt/sbt/issues/7722
+   */
+  private[sbt] def scala3ConsoleProjectBridgeJar(
+      scalaVersion: String,
+      scalaOrg: String,
+      dr: DependencyResolution,
+      retrieveDir: File,
+      log: Logger
+  ): Option[File] =
+    if !ScalaArtifacts.isScala3(scalaVersion) then None
+    else
+      val bridgeModule = ModuleID(scalaOrg, "scala3-sbt-bridge", scalaVersion)
+        .withCrossVersion(CrossVersion.disabled)
+      dr.retrieve(bridgeModule, scalaModuleInfo = None, retrieveDir, log) match
+        case Right(resolved) => resolved.find(_.getName.startsWith("scala3-sbt-bridge"))
+        case Left(unresolved) =>
+          log.warn(
+            s"Could not resolve $bridgeModule for consoleProject: ${unresolved.resolveException.getMessage}"
+          )
+          None
 
   def scalaInstanceConfigFromHome(dir: File): Def.Initialize[Task[ScalaInstanceConfig]] =
     Def.task {
