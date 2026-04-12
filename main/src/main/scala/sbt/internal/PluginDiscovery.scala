@@ -51,6 +51,7 @@ object PluginDiscovery:
       "sbt.ScriptedPlugin" -> sbt.ScriptedPlugin,
       "sbt.plugins.SbtPlugin" -> sbt.plugins.SbtPlugin,
       "sbt.plugins.SemanticdbPlugin" -> sbt.plugins.SemanticdbPlugin,
+      "sbt.plugins.BestEffortPlugin" -> sbt.plugins.BestEffortPlugin,
       "sbt.plugins.JUnitXmlReportPlugin" -> sbt.plugins.JUnitXmlReportPlugin,
       "sbt.plugins.Giter8TemplatePlugin" -> sbt.plugins.Giter8TemplatePlugin,
       "sbt.plugins.DependencyTreePlugin" -> sbt.plugins.DependencyTreePlugin,
