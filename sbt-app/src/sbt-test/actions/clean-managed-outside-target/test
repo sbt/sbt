@@ -5,10 +5,3 @@ $ exists src_managed/demo/Test.scala
 > Compile / managedSourcePaths
 > Compile / managedSourcePaths / clean
 $ absent src_managed/demo/Test.scala
-
-# Test that clean also removes managed sources outside target
-> compile
-$ exists src_managed/demo/Test.scala
-
-> clean
-$ absent src_managed/demo/Test.scala

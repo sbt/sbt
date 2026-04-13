@@ -1965,18 +1965,7 @@ object Defaults extends BuildCommon with DefExtra {
   }
 
   /** Implements `cleanFiles` task. */
-  private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = {
-    import ScopeFilter.Make.*
-    val allConfigs = ScopeFilter(configurations = inAnyConfiguration)
-    Def.task {
-      val targetDir = target.value.toPath
-      val managedSrcDirs = managedSourceDirectories.?.all(allConfigs).value.flatten.flatten
-      val managedRscDirs = managedResourceDirectories.?.all(allConfigs).value.flatten.flatten
-      (managedSrcDirs ++ managedRscDirs)
-        .filter(d => !d.toPath.startsWith(targetDir))
-        .toVector
-    }
-  }
+  private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
 
   def runMainTask(
       classpath: Initialize[Task[Classpath]],
