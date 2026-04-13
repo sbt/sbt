@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import testing.{ Event as TEvent, OptionalThrowable, Status as TStatus, TestSelector }
 import util.{ AbstractLogger, Level, ControlEvent, LogEvent }
+import sbt.io.IO
 import sbt.protocol.testing.TestResult
 import verify.BasicTestSuite
 
