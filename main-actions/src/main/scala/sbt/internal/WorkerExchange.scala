@@ -50,6 +50,8 @@ object WorkerExchange:
           val scanner = Scanner(socket.getInputStream(), "UTF-8")
           while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
         })
+        accepter.setName("sbt-fork-test-response-reader")
+        accepter.setPriority(Thread.NORM_PRIORITY + 1)
         accepter.start()
         Some(serverSocket)
       case _ => None

@@ -12,7 +12,7 @@ import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.*;
@@ -137,6 +137,26 @@ public class ForkTestMain {
       this.id = id;
       this.group = group;
       this.events = events;
+    }
+  }
+
+  public static class ForkGroupStart implements Serializable {
+    public long id;
+    public String group;
+
+    public ForkGroupStart(long id, String group) {
+      this.id = id;
+      this.group = group;
+    }
+  }
+
+  public static class ForkGroupEnd implements Serializable {
+    public long id;
+    public String group;
+
+    public ForkGroupEnd(long id, String group) {
+      this.id = id;
+      this.group = group;
     }
   }
 
@@ -296,16 +316,38 @@ public class ForkTestMain {
       };
     }
 
-    private void writeEvents(final TaskDef taskDef, final ForkEvent[] events) {
+    private void writeGroupStart(final TaskDef taskDef) {
+      ForkGroupStart info = new ForkGroupStart(this.id, taskDef.fullyQualifiedName());
+      String params = this.gson.toJson(info, ForkGroupStart.class);
+      String notification =
+          String.format(
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"startTestGroup\", \"params\": %s, \"re\": %d }",
+              params, this.id);
+      this.originalOut.println(notification);
+      this.originalOut.flush();
+    }
+
+    private void writeTestProgress(final TaskDef taskDef, final ForkEvent event) {
       ForkEventsInfo info =
           new ForkEventsInfo(
               this.id,
               taskDef.fullyQualifiedName(),
-              new ArrayList<ForkEvent>(Arrays.asList(events)));
+              new ArrayList<ForkEvent>(Collections.singletonList(event)));
       String params = this.gson.toJson(info, ForkEventsInfo.class);
       String notification =
           String.format(
-              "{ \"jsonrpc\": \"2.0\", \"method\": \"testEvents\", \"params\": %s, \"re\": %d }",
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"testProgress\", \"params\": %s, \"re\": %d }",
+              params, this.id);
+      this.originalOut.println(notification);
+      this.originalOut.flush();
+    }
+
+    private void writeGroupEnd(final TaskDef taskDef) {
+      ForkGroupEnd info = new ForkGroupEnd(this.id, taskDef.fullyQualifiedName());
+      String params = this.gson.toJson(info, ForkGroupEnd.class);
+      String notification =
+          String.format(
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"endTestGroup\", \"params\": %s, \"re\": %d }",
               params, this.id);
       this.originalOut.println(notification);
       this.originalOut.flush();
@@ -414,41 +456,32 @@ public class ForkTestMain {
         final ExecutorService executor, final Task task, final Logger[] loggers) {
       return executor.submit(
           () -> {
-            ForkEvent[] events;
             Task[] nestedTasks;
             final TaskDef taskDef = task.taskDef();
+            writeGroupStart(taskDef);
             try {
-              final Collection<ForkEvent> eventList = new ConcurrentLinkedDeque<>();
               final EventHandler handler =
                   new EventHandler() {
                     public void handle(final Event e) {
-                      eventList.add(new ForkEvent(e));
+                      writeTestProgress(taskDef, new ForkEvent(e));
                     }
                   };
               logDebug("  Running " + taskDef);
               nestedTasks = task.execute(handler, loggers);
-              if (nestedTasks.length > 0 || eventList.size() > 0)
-                logDebug(
-                    "    Produced "
-                        + nestedTasks.length
-                        + " nested tasks and "
-                        + eventList.size()
-                        + " events.");
-              events = eventList.toArray(new ForkEvent[eventList.size()]);
+              logDebug("    Produced " + nestedTasks.length + " nested tasks (events streamed).");
             } catch (final Throwable t) {
               nestedTasks = new Task[0];
-              events =
-                  new ForkEvent[] {
-                    testError(
-                        taskDef,
-                        "Uncaught exception when running "
-                            + taskDef.fullyQualifiedName()
-                            + ": "
-                            + t.toString(),
-                        t)
-                  };
+              writeTestProgress(
+                  taskDef,
+                  testError(
+                      taskDef,
+                      "Uncaught exception when running "
+                          + taskDef.fullyQualifiedName()
+                          + ": "
+                          + t.toString(),
+                      t));
             }
-            writeEvents(taskDef, events);
+            writeGroupEnd(taskDef);
             return nestedTasks;
           });
     }
