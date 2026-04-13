@@ -1,1 +1,2 @@
 > consoleProject
+$ exists target/out/**/console-bindings-ok

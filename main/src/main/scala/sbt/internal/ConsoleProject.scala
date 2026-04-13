@@ -98,7 +98,19 @@ object ConsoleProject:
     val bindingImports = BuildUtil.importAll(bindings.map(_._1))
     val allLines = baseImports ++ bindingDefs ++ bindingImports
     val initCommands = allLines.mkString("", ";\n", ";\n\n") + extra
-    val loader = ClasspathUtil.makeLoader(unit.classpath, si, tempDir)
+    // Remove sbt's own module jars from the runtime loader's URL list so
+    // that `sbt.*` classes (including `sbt.State`, `sbt.Extracted` and
+    // `sbt.internal.ConsoleProjectBindings`) can only be resolved via
+    // parent delegation, reaching sbt's own class loader. Without this,
+    // the Scala 3 REPL's `AbstractFileClassLoader` would define a fresh
+    // copy of each sbt class from `unit.classpath`, and any attempt to
+    // use the bindings would trigger
+    // `LinkageError: loader constraint violation` — two different JVM
+    // `Class` objects for the same `sbt.State`. The full classpath is
+    // still passed to `Console` below so the REPL's compile-time
+    // classpath is unchanged. See sbt/sbt#7722.
+    val runtimeClasspath = unit.classpath.filterNot(isSbtModuleJar)
+    val loader = ClasspathUtil.makeLoader(runtimeClasspath, si, tempDir)
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
     try
@@ -112,6 +124,38 @@ object ConsoleProject:
       ()
     finally ConsoleProjectBindings.clear()
   }
+
+  /**
+   * Classes that identify an sbt module jar — if any of these entries is
+   * present, the jar ships sbt core code that must be excluded from the
+   * consoleProject runtime classloader. See `isSbtModuleJar`.
+   */
+  private val SbtModuleMarkerClasses: Seq[String] = Seq(
+    "sbt/State.class",
+    "sbt/Extracted.class",
+    "sbt/internal/ConsoleProjectBindings$.class",
+    "sbt/internal/Load$.class",
+  )
+
+  /**
+   * Returns true when a `Path` refers to a jar that ships sbt core code
+   * (anything containing `sbt.State`, `sbt.Extracted`, etc.). These jars
+   * must be excluded from the `consoleProject` REPL runtime classloader
+   * so that `sbt.*` references resolve via parent delegation and reach
+   * sbt's own singleton copies — rather than being defined fresh by the
+   * Scala 3 REPL's `AbstractFileClassLoader`, which would break the
+   * static-field bindings and trigger a `LinkageError: loader
+   * constraint violation` when the bindings are used. See sbt/sbt#7722.
+   */
+  private def isSbtModuleJar(p: java.nio.file.Path): Boolean =
+    val name = p.getFileName.toString
+    if !name.endsWith(".jar") || !java.nio.file.Files.isRegularFile(p) then false
+    else
+      try
+        val zf = new java.util.zip.ZipFile(p.toFile)
+        try SbtModuleMarkerClasses.exists(zf.getEntry(_) ne null)
+        finally zf.close()
+      catch case _: java.io.IOException => false
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */
   final class Imports private[sbt] (extracted: Extracted, state: State) {
