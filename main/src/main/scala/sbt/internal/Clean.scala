@@ -107,6 +107,7 @@ private[sbt] object Clean {
           val excludeFilter = cleanFilter(scope).value
           val delete = cleanDelete(scope).value
           val targetDir = (scope / target).?.value.map(_.toPath)
+          val baseDir = (scope / baseDirectory).?.value.map(_.toPath)
 
           targetDir.withFilter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
           (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
@@ -123,8 +124,10 @@ private[sbt] object Clean {
           val streamsGlobs =
             (streamsKey.toSeq ++ stampsKey)
               .map(k => manager(k).cacheDirectory.toPath.toGlob / **)
+          // Use baseDirectory instead of target so that file outputs outside the
+          // target directory but within the project root are also cleaned.
           ((scope / fileOutputs).value.filter { g =>
-            targetDir.fold(true)(g.base.startsWith)
+            baseDir.fold(true)(g.base.startsWith)
           } ++ streamsGlobs)
             .foreach { g =>
               val filter: Path => Boolean = { path =>
