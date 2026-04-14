@@ -525,15 +525,15 @@ class BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/dependencyModules") {
-    val buildTarget = buildTargetUri("util", "Compile")
+    val buildTarget = buildTargetUri("runAndTest", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
     val targets = Vector(buildTarget, badBuildTarget).map(BuildTargetIdentifier.apply)
     val id = dependencyModules(targets.map(_.uri))
     val res = svr.session.waitForResultInResponseMsg[DependencyModulesResult](10.seconds, id).get
-    val utilItem = res.items.find(_.target.contains(BuildTargetIdentifier(buildTarget))).get
+    val runAndTestItem = res.items.find(_.target.contains(BuildTargetIdentifier(buildTarget))).get
     assert(
-      utilItem.modules.exists(_.name.contains("jsoniter-scala-core")),
-      s"dependencyModules should include jsoniter-scala-core, got: ${utilItem.modules.map(_.name)}"
+      runAndTestItem.modules.exists(_.name.contains("jsoniter-scala-core")),
+      s"dependencyModules should include jsoniter-scala-core, got: ${runAndTestItem.modules.map(_.name)}"
     )
   }
 
