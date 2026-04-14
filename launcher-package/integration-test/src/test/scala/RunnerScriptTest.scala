@@ -339,8 +339,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
   // Test for issue #8755: Inline comments should be supported in .jvmopts
   testOutput(
     "sbt with inline comments in .jvmopts",
-    jvmoptsFileContents =
-      """--add-opens=java.base/java.util=ALL-UNNAMED # This is an inline comment
+    jvmoptsFileContents = """--add-opens=java.base/java.util=ALL-UNNAMED # This is an inline comment
         |-Dtest.key=value # Another comment
         |-Dtest.key2=file:/log4j2#prod.xml""".stripMargin,
     windowsSupport = false,
