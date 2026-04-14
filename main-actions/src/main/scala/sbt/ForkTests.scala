@@ -194,6 +194,7 @@ private class React(
 ) extends WorkerResponseListener:
   val g = WorkerMain.mkGson()
   val promise: Promise[Int] = Promise()
+
   /** Events per test group, accumulated for [[SuiteResult]] (listeners get each event immediately). */
   private val progressEvents = mutable.Map.empty[String, mutable.ArrayBuffer[testing.Event]]
   override def apply(line: String): Unit =
