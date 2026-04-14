@@ -99,16 +99,15 @@ object ConsoleProject:
     val allLines = baseImports ++ bindingDefs ++ bindingImports
     val initCommands = allLines.mkString("", ";\n", ";\n\n") + extra
     // Remove sbt's own module jars from the runtime loader's URL list so
-    // that `sbt.*` classes (including `sbt.State`, `sbt.Extracted` and
+    // that `sbt.*` classes (e.g. `sbt.State`, `sbt.TaskKey`, `sbt.Keys`,
     // `sbt.internal.ConsoleProjectBindings`) can only be resolved via
     // parent delegation, reaching sbt's own class loader. Without this,
     // the Scala 3 REPL's `AbstractFileClassLoader` would define a fresh
-    // copy of each sbt class from `unit.classpath`, and any attempt to
-    // use the bindings would trigger
-    // `LinkageError: loader constraint violation` — two different JVM
-    // `Class` objects for the same `sbt.State`. The full classpath is
-    // still passed to `Console` below so the REPL's compile-time
-    // classpath is unchanged. See sbt/sbt#7722.
+    // copy of each sbt class from `unit.classpath`, and any reference
+    // from REPL code would trigger `LinkageError: loader constraint
+    // violation` — two different JVM `Class` objects for the same type.
+    // The full classpath is still passed to `Console` below so the REPL's
+    // compile-time classpath is unchanged. See sbt/sbt#7722.
     val runtimeClasspath = unit.classpath.filterNot(isSbtModuleJar)
     val loader = ClasspathUtil.makeLoader(runtimeClasspath, si, tempDir)
     val terminal = Terminal.get
@@ -126,26 +125,21 @@ object ConsoleProject:
   }
 
   /**
-   * Classes that identify an sbt module jar — if any of these entries is
-   * present, the jar ships sbt core code that must be excluded from the
-   * consoleProject runtime classloader. See `isSbtModuleJar`.
-   */
-  private val SbtModuleMarkerClasses: Seq[String] = Seq(
-    "sbt/State.class",
-    "sbt/Extracted.class",
-    "sbt/internal/ConsoleProjectBindings$.class",
-    "sbt/internal/Load$.class",
-  )
-
-  /**
-   * Returns true when a `Path` refers to a jar that ships sbt core code
-   * (anything containing `sbt.State`, `sbt.Extracted`, etc.). These jars
-   * must be excluded from the `consoleProject` REPL runtime classloader
-   * so that `sbt.*` references resolve via parent delegation and reach
-   * sbt's own singleton copies — rather than being defined fresh by the
-   * Scala 3 REPL's `AbstractFileClassLoader`, which would break the
-   * static-field bindings and trigger a `LinkageError: loader
-   * constraint violation` when the bindings are used. See sbt/sbt#7722.
+   * Returns true when a `Path` refers to a jar published by
+   * `org.scala-sbt`. These jars ship sbt's own classes (e.g. `sbt.State`,
+   * `sbt.TaskKey`, `sbt.Keys`) that are already reachable via the parent
+   * class loader used by `consoleProject`. They must be excluded from the
+   * REPL's runtime classloader so that `sbt.*` references resolve via
+   * parent delegation and reach sbt's singleton copies — rather than
+   * being defined fresh by the Scala 3 REPL's `AbstractFileClassLoader`,
+   * which would trigger a `LinkageError: loader constraint violation`
+   * whenever those classes are used from the REPL. See sbt/sbt#7722.
+   *
+   * Detection is done via `META-INF/MANIFEST.MF`'s `Implementation-Vendor-Id`
+   * attribute, which all sbt module jars set to `org.scala-sbt`. This is
+   * more robust than checking for specific class entries, because it
+   * uniformly catches every sbt module (main, main-settings, command, io,
+   * util-*, etc.) without enumerating them.
    */
   private def isSbtModuleJar(p: java.nio.file.Path): Boolean =
     val name = p.getFileName.toString
@@ -153,7 +147,16 @@ object ConsoleProject:
     else
       try
         val zf = new java.util.zip.ZipFile(p.toFile)
-        try SbtModuleMarkerClasses.exists(zf.getEntry(_) ne null)
+        try
+          val entry = zf.getEntry("META-INF/MANIFEST.MF")
+          if entry eq null then false
+          else
+            val is = zf.getInputStream(entry)
+            try
+              val manifest = new java.util.jar.Manifest(is)
+              val attrs = manifest.getMainAttributes
+              attrs != null && "org.scala-sbt" == attrs.getValue("Implementation-Vendor-Id")
+            finally is.close()
         finally zf.close()
       catch case _: java.io.IOException => false
 
