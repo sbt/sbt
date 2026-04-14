@@ -30,7 +30,7 @@ object EvictionError {
       assumedVersionScheme,
       assumedVersionSchemeJava,
       assumedEvictionErrorLevel,
-      Configurations.Compile,
+      EvictionWarningOptions.full,
     )
   }
 
@@ -41,9 +41,8 @@ object EvictionError {
       assumedVersionScheme: String,
       assumedVersionSchemeJava: String,
       assumedEvictionErrorLevel: Level.Value,
-      configuration: ConfigRef,
+      options: EvictionWarningOptions,
   ): EvictionError = {
-    val options = EvictionWarningOptions.full.withConfigurations(Vector(configuration))
     val evictions = EvictionWarning.buildEvictions(options, report)
     processEvictions(
       module,
@@ -53,7 +52,6 @@ object EvictionError {
       assumedVersionScheme,
       assumedVersionSchemeJava,
       assumedEvictionErrorLevel,
-      configuration,
     )
   }
 
@@ -65,7 +63,6 @@ object EvictionError {
       assumedVersionScheme: String,
       assumedVersionSchemeJava: String,
       assumedEvictionErrorLevel: Level.Value,
-      configuration: ConfigRef = Configurations.Compile,
   ): EvictionError = {
     val directDependencies = module.directDependencies
     val pairs = reports map { detail =>
@@ -155,7 +152,6 @@ object EvictionError {
     new EvictionError(
       incompatibleEvictions.toList,
       assumedIncompatibleEvictions.toList,
-      configuration,
     )
   }
 
@@ -167,7 +163,6 @@ object EvictionError {
 final class EvictionError private[sbt] (
     val incompatibleEvictions: Seq[(EvictionPair, String)],
     val assumedIncompatibleEvictions: Seq[(EvictionPair, String)],
-    val configuration: ConfigRef = Configurations.Compile,
 ) {
   def run(): Unit =
     if (incompatibleEvictions.nonEmpty) {
@@ -178,13 +173,9 @@ final class EvictionError private[sbt] (
 
   def toAssumedLines: List[String] = toLines(assumedIncompatibleEvictions, true)
 
-  private def configurationLabel: String =
-    if (configuration.name == Configurations.Compile.name) "library dependencies"
-    else s"${configuration.name.capitalize} dependencies"
-
   def toLines(evictions: Seq[(EvictionPair, String)], assumed: Boolean): List[String] = {
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-    out += s"found version conflict(s) in $configurationLabel; some are suspected to be binary incompatible:"
+    out += "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
     out += ""
     evictions.foreach({ (a, scheme) =>
       val seen: mutable.Set[ModuleID] = mutable.Set()

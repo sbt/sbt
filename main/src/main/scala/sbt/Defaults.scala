@@ -2985,7 +2985,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         conflictWarning :== ConflictWarning.default("global"),
-        evictionWarningOptions := EvictionWarningOptions.default,
+        evictionWarningOptions := EvictionWarningOptions.full,
         compatibilityWarningOptions :== CompatibilityWarningOptions.default,
         homepage :== None,
         startYear :== None,
@@ -3405,8 +3405,6 @@ object Classpaths {
       ConflictWarning(conflictWarning.value, report, streams.value.log)
       report
     },
-    update / evictionWarningOptions := evictionWarningOptions.value,
-    evicted / evictionWarningOptions := EvictionWarningOptions.full,
     evicted := Def.uncached {
       import ShowLines.*
       val report = updateTask.value
@@ -3908,6 +3906,7 @@ object Classpaths {
           Seq[UpdateReport],
           UnresolvedWarningConfiguration,
           Level.Value,
+          EvictionWarningOptions,
           Seq[ModuleID],
           Level.Value,
           String,
@@ -3938,6 +3937,7 @@ object Classpaths {
       transitiveUpdate.toTaskable,
       (update / unresolvedWarningConfiguration).toTaskable,
       evictionErrorLevel.toTaskable,
+      (update / evictionWarningOptions).toTaskable,
       libraryDependencySchemes.toTaskable,
       assumedEvictionErrorLevel.toTaskable,
       assumedVersionScheme.toTaskable,
@@ -3968,6 +3968,7 @@ object Classpaths {
           tu,
           uwConfig,
           eel,
+          ewo,
           lds,
           aeel,
           avs,
@@ -4036,6 +4037,7 @@ object Classpaths {
           transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = eel,
+          evictionWarningOptions = ewo,
           versionSchemeOverrides = lds,
           assumedEvictionErrorLevel = aeel,
           assumedVersionScheme = avs,
