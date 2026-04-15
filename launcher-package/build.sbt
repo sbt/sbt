@@ -132,7 +132,7 @@ val launcherPackage = (project in file(".")).
       file
     },
     // update sbt.sh at root
-    sbtnVersion := "1.12.1",
+    sbtnVersion := "2.0.0-RC12",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
