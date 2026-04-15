@@ -63,6 +63,6 @@ object Main {
     notFromCoursierCache("scala-library")
     assert(props.lengthCompare(1) == 0, s"Found several library.properties files in classpath: $props")
 
-    Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+    Files.writeString(new File("output").toPath, "OK")
   }
 }

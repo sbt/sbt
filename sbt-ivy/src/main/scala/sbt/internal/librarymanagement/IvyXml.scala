@@ -10,7 +10,6 @@ package sbt
 package internal
 package librarymanagement
 
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
 import lmcoursier.definitions.{ Configuration, Project }
@@ -66,7 +65,7 @@ object IvyXml {
     val content0 = rawContent(currentProject, shadedConfigOpt, bomForcedDeps)
     cacheIvyFile.getParentFile.mkdirs()
     log.debug(s"writing Ivy file $cacheIvyFile")
-    Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
+    Files.writeString(cacheIvyFile.toPath, content0)
 
     // Just writing an empty file here... Are these only used?
     cacheIvyPropertiesFile.getParentFile.mkdirs()

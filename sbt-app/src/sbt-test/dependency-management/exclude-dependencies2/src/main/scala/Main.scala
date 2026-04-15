@@ -29,6 +29,6 @@ object Main {
       "Expected not to find classes from argonaut"
     )
 
-    Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+    Files.writeString(new File("output").toPath, "OK")
   }
 }
