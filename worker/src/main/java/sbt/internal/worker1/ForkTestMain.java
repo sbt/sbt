@@ -147,7 +147,7 @@ public class ForkTestMain {
     private final String originalName;
     private ForkError cause1;
 
-    ForkError(final Throwable t) {
+    public ForkError(final Throwable t) {
       originalMessage = t.getMessage();
       originalName = t.getClass().getName();
       setStackTrace(t.getStackTrace());

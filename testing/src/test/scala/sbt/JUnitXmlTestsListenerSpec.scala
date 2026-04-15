@@ -15,16 +15,14 @@ import testing.{ Event as TEvent, OptionalThrowable, Status as TStatus, TestSele
 import util.{ AbstractLogger, Level, ControlEvent, LogEvent }
 import sbt.protocol.testing.TestResult
 import sbt.internal.worker1.ForkTestMain
+import sbt.io.IO
 import verify.BasicTestSuite
 import scala.xml.XML
 
 object JUnitXmlTestsListenerSpec extends BasicTestSuite:
 
   test("JUnitXmlTestsListener should log debug message when writing test report"):
-    val tempDir = File.createTempFile("junit-test", "")
-    tempDir.delete()
-    tempDir.mkdirs()
-    try
+    IO.withTemporaryDirectory: tempDir =>
       val loggedMessages = new AtomicReference[List[String]](Nil)
       val mockLogger = new AbstractLogger:
         def getLevel: Level.Value = Level.Debug
@@ -68,17 +66,9 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
         messages.exists(_.contains("TEST-TestSuite.xml")),
         s"Expected log message containing 'TEST-TestSuite.xml', but got: $messages"
       )
-    finally
-      // Cleanup
-      if tempDir.exists() then
-        tempDir.listFiles().foreach(_.delete())
-        tempDir.delete()
 
   test("JUnitXmlTestsListener should handle null logger gracefully"):
-    val tempDir = File.createTempFile("junit-test", "")
-    tempDir.delete()
-    tempDir.mkdirs()
-    try
+    IO.withTemporaryDirectory: tempDir =>
       val listener = new JUnitXmlTestsListener(tempDir, false, null)
       listener.doInit()
       listener.startGroup("TestSuite")
@@ -99,16 +89,9 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
       // Verify XML file was still created
       val xmlFile = new File(tempDir, "TEST-TestSuite.xml")
       assert(xmlFile.exists(), "XML file should be created even when logger is null")
-    finally
-      if tempDir.exists() then
-        tempDir.listFiles().foreach(_.delete())
-        tempDir.delete()
 
   test("JUnit XML report should use original exception type for forked test failures"):
-    val tempDir = File.createTempFile("junit-test", "")
-    tempDir.delete()
-    tempDir.mkdirs()
-    try
+    IO.withTemporaryDirectory: tempDir =>
       val listener = new JUnitXmlTestsListener(tempDir, false, null)
       listener.doInit()
       listener.startGroup("TestSuite")
@@ -156,9 +139,5 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
         !traceText.contains("ForkError"),
         s"Stacktrace should not contain ForkError, got: $traceText"
       )
-    finally
-      if tempDir.exists() then
-        tempDir.listFiles().foreach(_.delete())
-        tempDir.delete()
 
 end JUnitXmlTestsListenerSpec
