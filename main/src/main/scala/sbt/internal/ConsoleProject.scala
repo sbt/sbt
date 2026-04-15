@@ -98,24 +98,51 @@ object ConsoleProject:
     val bindingImports = BuildUtil.importAll(bindings.map(_._1))
     val allLines = baseImports ++ bindingDefs ++ bindingImports
     val initCommands = allLines.mkString("", ";\n", ";\n\n") + extra
-    // Remove sbt's own module jars from the runtime loader's URL list so
-    // that `sbt.*` classes (e.g. `sbt.State`, `sbt.TaskKey`, `sbt.Keys`,
-    // `sbt.internal.ConsoleProjectBindings`) can only be resolved via
-    // parent delegation, reaching sbt's own class loader. Without this,
-    // the Scala 3 REPL's `AbstractFileClassLoader` would define a fresh
-    // copy of each sbt class from `unit.classpath`, and any reference
-    // from REPL code would trigger `LinkageError: loader constraint
-    // violation` — two different JVM `Class` objects for the same type.
+    // Two things are required so the REPL resolves `sbt.*` (e.g.
+    // `sbt.TaskKey`, `sbt.Keys`, `sbt.State`, `sbt.internal.ConsoleProjectBindings`)
+    // and `scala.*` (e.g. `scala.Function2`) via the *same* class objects
+    // that sbt itself uses. See sbt/sbt#7722.
+    //
+    //   1. Remove sbt's own module jars from the runtime URL classloader,
+    //      so that `sbt.*` references resolve via parent delegation back
+    //      to sbt's `MetaBuildLoader` rather than being defined a second
+    //      time by the REPL's URL classloader (which would break the
+    //      `ConsoleProjectBindings` singleton's static state and
+    //      trigger `LinkageError: loader constraint violation` when REPL
+    //      code touches a method whose signature mentions a duplicated
+    //      type — e.g. `sbt.TaskKey.zipWith(_, scala.Function2)`).
+    //
+    //   2. On Scala 3.8+ switch the REPL's bytecode interrupt
+    //      instrumentation to `local` mode. The default (`true`) for
+    //      `dotty.tools.repl.AbstractFileClassLoader` (added in 3.8)
+    //      reads every class's bytes from the parent loader via
+    //      `getResourceAsStream` and `defineClass`-es them a *second*
+    //      time inside the REPL loader, producing duplicate `Class`
+    //      objects for every `sbt.*` and `scala.*` class. `local` skips
+    //      that re-definition and falls through to standard parent-first
+    //      delegation (so the REPL sees the same singleton classes as
+    //      the surrounding sbt process) while still keeping interrupt
+    //      support for REPL-defined code — preserving Ctrl+C for long-
+    //      running expressions like `(Compile / compile).eval`. The flag
+    //      does not exist on Scala 3.7 and earlier (which use the older
+    //      AFClassLoader without instrumentation), so we only pass it
+    //      when the consoleProject scala instance is 3.8+ to avoid a
+    //      "bad option" warning.
+    //
     // The full classpath is still passed to `Console` below so the REPL's
-    // compile-time classpath is unchanged. See sbt/sbt#7722.
+    // compile-time classpath is unchanged.
     val runtimeClasspath = unit.classpath.filterNot(isSbtModuleJar)
     val loader = ClasspathUtil.makeLoader(runtimeClasspath, si, tempDir)
+    val replOptions =
+      if needsInterruptInstrumentationOptOut(si.version) then
+        "-Xrepl-interrupt-instrumentation:local" +: options
+      else options
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
     try
       (new Console(compiler))(
         unit.classpath.map(_.toFile),
-        options,
+        replOptions,
         initCommands,
         cleanupCommands,
         terminal
@@ -125,13 +152,28 @@ object ConsoleProject:
   }
 
   /**
+   * `dotty.tools.repl.AbstractFileClassLoader`'s bytecode interrupt
+   * instrumentation was added in Scala 3.8 and is enabled by default —
+   * see Scala 3 PR scala/scala3#22720. The setting that disables it is
+   * also a 3.8+ addition (see `Xrepl-interrupt-instrumentation` in
+   * `dotty.tools.dotc.config.ScalaSettings`). For 3.7 and earlier the
+   * REPL classloader doesn't re-define classes locally, so the flag is
+   * unnecessary and would only produce a "bad option" warning.
+   */
+  private def needsInterruptInstrumentationOptOut(scalaVersion: String): Boolean =
+    scalaVersion match
+      case s"3.$rest" =>
+        rest.takeWhile(_.isDigit).toIntOption.exists(_ >= 8)
+      case _ => false
+
+  /**
    * Returns true when a `Path` refers to a jar published by
    * `org.scala-sbt`. These jars ship sbt's own classes (e.g. `sbt.State`,
    * `sbt.TaskKey`, `sbt.Keys`) that are already reachable via the parent
    * class loader used by `consoleProject`. They must be excluded from the
    * REPL's runtime classloader so that `sbt.*` references resolve via
    * parent delegation and reach sbt's singleton copies — rather than
-   * being defined fresh by the Scala 3 REPL's `AbstractFileClassLoader`,
+   * being defined fresh by the URL classloader from `unit.classpath`,
    * which would trigger a `LinkageError: loader constraint violation`
    * whenever those classes are used from the REPL. See sbt/sbt#7722.
    *
