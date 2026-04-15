@@ -19,6 +19,7 @@ import sbt.Scope.Global
 import sbt.internal.CommandStrings.LoadProject
 import sbt.internal.SysProp
 import sbt.internal.server.BuildServerProtocol
+import sbt.internal.server.NetworkChannel
 import sbt.internal.util.{ AttributeKey, Terminal }
 import sbt.io.syntax.*
 import sbt.nio.FileChanges
@@ -114,11 +115,13 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
       exec: Exec
   ): Boolean = {
     val name = exec.source.map(_.channelName)
-    val loggerOrTerminal =
-      name.flatMap(StandardMain.exchange.channelForName(_).map(_.terminal)) match {
-        case Some(t) => Right(t)
-        case _       => Left(state.globalLogging.full)
-      }
+    val loggerOrTerminal = name.flatMap(StandardMain.exchange.channelForName) match {
+      // Non-interactive network clients only consume build/logMessage notifications.
+      // Route these warnings through the logger so they are delivered to sbt -client.
+      case Some(c: NetworkChannel) if !c.isAttached => Left(state.globalLogging.full)
+      case Some(c)                                  => Right(c.terminal)
+      case None                                     => Left(state.globalLogging.full)
+    }
 
     needsReload(state, loggerOrTerminal, exec.commandLine)
   }

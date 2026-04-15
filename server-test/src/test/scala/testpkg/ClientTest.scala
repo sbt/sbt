@@ -8,6 +8,8 @@
 package testpkg
 
 import java.io.{ InputStream, OutputStream, PrintStream }
+import java.nio.charset.StandardCharsets
+import java.nio.file.{ Files, StandardOpenOption }
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit, TimeoutException }
 import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
@@ -145,6 +147,25 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach {
     assert(
       lines.toList.exists(_.contains("running (fork) hello")),
       lines.toList.mkString(",")
+    )
+  }
+  test("warn on changed build source is forwarded to non-interactive client") {
+    assert(client("""set Global / onChangedBuildSource := WarnOnSourceChanges""") == 0)
+    val buildFile = testPath.resolve("build.sbt")
+    Files.write(
+      buildFile,
+      "\n// trigger build source change warning\n".getBytes(StandardCharsets.UTF_8),
+      StandardOpenOption.APPEND
+    )
+    val (exitCode, lines) = clientWithStdoutLines("willSucceed")
+    assert(exitCode == 0)
+    assert(
+      lines.exists(_.contains("build source files have changed")),
+      lines.mkString("\n")
+    )
+    assert(
+      lines.exists(_.contains("Apply these changes by running `reload`.")),
+      lines.mkString("\n")
     )
   }
   test("compi completions") {
