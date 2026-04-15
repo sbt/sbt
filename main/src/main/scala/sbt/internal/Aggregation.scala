@@ -17,6 +17,7 @@ import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util.*
 import sbt.internal.client.NetworkClient
+import sbt.internal.worker.ClientJobParams
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
 import scala.annotation.tailrec
@@ -87,16 +88,18 @@ object Aggregation {
     import complete.*
     val log = state.log
     val extracted = Project.extract(state)
-    val success = results match
-      case Result.Value(_) => true
-      case Result.Inc(_)   => false
+    // omit success printing for client-side run
+    val (success, jobParams) = results match
+      case Result.Value(Seq(KeyValue(_, p: ClientJobParams))) => (true, true)
+      case Result.Value(_)                                    => (true, false)
+      case Result.Inc(_)                                      => (false, false)
     val isPaused = currentChannel(state) match
       case Some(channel) => channel.isPaused
       case None          => false
     results.toEither.foreach { r =>
       if show.taskValues then printSettings(r, show.print) else ()
     }
-    if !isPaused && show.success && !state.get(suppressShow).getOrElse(false) then
+    if !isPaused && show.success && !state.get(suppressShow).getOrElse(false) && !jobParams then
       printSuccess(start, stop, extracted, success, cacheSummary, log)
     else ()
 

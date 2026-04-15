@@ -200,6 +200,8 @@ object Tests {
       new Group(name, tests, runPolicy, tags)
     }
 
+    override def hashCode(): Int = (name, tests, runPolicy, tags).##
+
     override def equals(x$1: Any): Boolean = {
       this.eq(x$1.asInstanceOf[Object]) || (x$1.isInstanceOf[Group] && ({
         val Group$1: Group = x$1.asInstanceOf[Group]

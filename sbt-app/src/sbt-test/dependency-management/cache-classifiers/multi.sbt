@@ -33,5 +33,5 @@ val a = project
 // use the user local resolver to fetch the SNAPSHOT version of the compiler-bridge
 def userLocalFileResolver(appConfig: AppConfiguration): Resolver = {
   val ivyHome = appConfig.provider.scalaProvider.launcher.ivyHome
-  Resolver.file("User Local", ivyHome / "local")(Resolver.defaultIvyPatterns)
+  Resolver.file("User Local", ivyHome / "local")(using Resolver.defaultIvyPatterns)
 }

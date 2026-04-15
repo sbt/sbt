@@ -166,6 +166,21 @@ object BuildServerProtocol {
       state.value.respondEvent(result)
     }.evaluated,
     bspBuildTargetDependencySources / aggregate := false,
+    bspBuildTargetDependencyModules := bspInputTask { (workspace, filter) =>
+      val items = bspBuildTargetDependencyModulesItem.result.all(filter).value
+      val successfulItems = anyOrThrow(items)
+      val buildItems = workspace.builds
+        .map { case (targetId, loadedBuildUnit) =>
+          val projRef = ProjectRef(loadedBuildUnit.unit.uri, loadedBuildUnit.root)
+          (projRef / updateSbtClassifiers).map(getDependencyModulesItem(targetId, _))
+        }
+        .toSeq
+        .join
+        .value
+      val result = DependencyModulesResult((successfulItems ++ buildItems).toVector)
+      state.value.respondEvent(result)
+    }.evaluated,
+    bspBuildTargetDependencyModules / aggregate := false,
     bspBuildTargetCompile := bspInputTask { (workspace, filter) =>
       val s = state.value
       workspace.warnIfBuildsNonEmpty(Method.Compile, s.log)
@@ -306,6 +321,7 @@ object BuildServerProtocol {
       ResourcesItem(id, uris)
     },
     bspBuildTargetDependencySourcesItem := dependencySourcesItemTask.value,
+    bspBuildTargetDependencyModulesItem := dependencyModulesItemTask.value,
     bspBuildTargetOutputPathsItem := {
       val id = bspTargetIdentifier.value
       OutputPathsItem(id, Vector(OutputPathItem(target.value.toURI, OutputPathItemKind.Directory)))
@@ -374,6 +390,7 @@ object BuildServerProtocol {
     final val Resources = "buildTarget/resources"
     final val OutputPaths = "buildTarget/outputPaths"
     final val DependencySources = "buildTarget/dependencySources"
+    final val DependencyModules = "buildTarget/dependencyModules"
     final val Compile = "buildTarget/compile"
     final val Test = "buildTarget/test"
     final val Run = "buildTarget/run"
@@ -437,6 +454,12 @@ object BuildServerProtocol {
             val param = Converter.fromJson[DependencySourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetDependencySources.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == Method.DependencyModules =>
+            val param = Converter.fromJson[DependencyModulesParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetDependencyModules.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
           case r if r.method == Method.Compile =>
@@ -856,6 +879,13 @@ object BuildServerProtocol {
     )
   }
 
+  private def dependencyModulesItemTask: Def.Initialize[Task[DependencyModulesItem]] = Def.task {
+    getDependencyModulesItem(
+      Keys.bspTargetIdentifier.value,
+      Keys.updateClassifiers.value
+    )
+  }
+
   private def getDependencySourceItem(
       targetId: BuildTargetIdentifier,
       updateReport: UpdateReport
@@ -867,6 +897,25 @@ object BuildServerProtocol {
       classifier <- artifact.classifier if classifier == "sources"
     } yield file.toURI
     DependencySourcesItem(targetId, sources.toVector.distinct)
+  }
+
+  private def getDependencyModulesItem(
+      targetId: BuildTargetIdentifier,
+      updateReport: UpdateReport
+  ): DependencyModulesItem = {
+    val modules = for {
+      configuration <- updateReport.configurations.view
+      module <- configuration.modules.view
+    } yield {
+      val moduleId = module.module
+      DependencyModule(
+        name = s"${moduleId.organization}:${moduleId.name}",
+        version = moduleId.revision,
+        dataKind = None,
+        data = None,
+      )
+    }
+    DependencyModulesItem(targetId, modules.toVector.distinct)
   }
 
   private def bspCompileState: Initialize[BuildServerProtocol.BspCompileState] = Def.setting {

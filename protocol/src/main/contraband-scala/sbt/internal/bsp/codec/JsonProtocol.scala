@@ -43,6 +43,10 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.DependencySourcesParamsFormats
   with sbt.internal.bsp.codec.DependencySourcesItemFormats
   with sbt.internal.bsp.codec.DependencySourcesResultFormats
+  with sbt.internal.bsp.codec.DependencyModulesParamsFormats
+  with sbt.internal.bsp.codec.DependencyModuleFormats
+  with sbt.internal.bsp.codec.DependencyModulesItemFormats
+  with sbt.internal.bsp.codec.DependencyModulesResultFormats
   with sbt.internal.bsp.codec.TaskStartParamsFormats
   with sbt.internal.bsp.codec.TaskProgressParamsFormats
   with sbt.internal.bsp.codec.TaskFinishParamsFormats

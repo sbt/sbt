@@ -7,7 +7,7 @@ def localCache =
 
 lazy val sharedResolver: Resolver = {
   val r = Resolver.defaultShared
-  r withConfiguration (r.configuration withIsLocal false)
+  r.withConfiguration(r.configuration.withIsLocal(false))
   //MavenRepository("example-shared-repo", "file:///tmp/shared-maven-repo-bad-example")
   //Resolver.file("example-shared-repo", repoDir)(Resolver.defaultPatterns)
 }

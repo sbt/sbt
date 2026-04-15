@@ -142,7 +142,7 @@ download_url () {
   local jar="$2"
   mkdir -p $(dirname "$jar") && {
     if command -v curl > /dev/null; then
-      curl --silent -L "$url" --output "$jar"
+      curl --fail --silent -L "$url" --output "$jar"
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
     else
@@ -362,7 +362,7 @@ addSbtScriptProperty () {
 }
 
 addJdkWorkaround () {
-  local is_25="$(expr $java_version "=" 25)"
+  local is_25="$(expr $java_version ">=" 25)"
   if [[ "$hide_jdk_warnings" == "0" ]]; then
     :
   else

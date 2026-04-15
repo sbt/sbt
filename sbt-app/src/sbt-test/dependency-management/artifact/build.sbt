@@ -63,7 +63,7 @@ def org = "test"
 def mainArtifact = Artifact(artifactID, tpe, ext, classifier)
 
 // define the IDs to use for publishing and retrieving
-def publishedID = org % artifactID % vers artifacts(mainArtifact)
+def publishedID = (org % artifactID % vers).artifacts(mainArtifact)
 def retrieveID = org % "test-retrieve" % "2.0"
 
 // check that the test class is on the compile classpath, either because it was compiled or because it was properly retrieved
@@ -80,5 +80,5 @@ def checkTask(classpath: TaskKey[Classpath]) =
 // use the user local resolver to fetch the SNAPSHOT version of the compiler-bridge
 def userLocalFileResolver(appConfig: AppConfiguration): Resolver = {
   val ivyHome = appConfig.provider.scalaProvider.launcher.ivyHome
-  Resolver.file("User Local", ivyHome / "local")(Resolver.defaultIvyPatterns)
+  Resolver.file("User Local", ivyHome / "local")(using Resolver.defaultIvyPatterns)
 }

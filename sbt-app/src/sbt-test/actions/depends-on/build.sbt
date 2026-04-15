@@ -2,7 +2,7 @@
 
 import sbt.TupleSyntax.*
 lazy val root = (project in file(".")).settings(
-  a := (baseDirectory mapN (b => if ((b / "succeed").exists) () else sys.error("fail"))).value,
+  a := baseDirectory.mapN(b => if ((b / "succeed").exists) () else sys.error("fail")).value,
   // deprecated?
   // b := (a.task(at => nop dependsOn(at))).value,
   c := (a mapN { _ => () }).value,

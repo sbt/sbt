@@ -30,7 +30,10 @@ object ServerHandler {
 
   lazy val fallback: ServerHandler = ServerHandler({ handler =>
     ServerIntent(
-      onRequest = { case x => handler.log.debug(s"Unhandled request received: ${x.method}: $x") },
+      onRequest = { case x =>
+        handler.log.debug(s"Unhandled request received: ${x.method}: $x")
+        handler.jsonRpcRespondError(Some(x.id), -32601, s"Unknown method: ${x.method}")
+      },
       onResponse = { case x => handler.log.debug(s"Unhandled response received") },
       onNotification = { case x =>
         handler.log.debug(s"Unhandled notification received: ${x.method}: $x")

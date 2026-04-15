@@ -79,6 +79,16 @@ class ResponseTest extends AbstractServerTest {
     }
   }
 
+  test("unknown method returns error") {
+    val id = svr.session.nextId()
+    svr.session.sendJsonRpc(id, "build/foo", "{}").get
+    val response = svr.session.waitForResponseMsg(10.seconds, id).get
+    assert(
+      response.error.exists(_.code == -32601),
+      s"Expected method-not-found error, got: $response"
+    )
+  }
+
   private def neverReceiveResponse(
       duration: FiniteDuration
   )(predicate: sbt.internal.protocol.JsonRpcResponseMessage => Boolean): Unit =

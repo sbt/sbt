@@ -181,6 +181,7 @@ class NetworkClient(
     def success(message: => String): Unit = ()
     def log(level: Level.Value, message: => String): Unit = console.appendLog(level, message)
   }
+  private val interactive = arguments.commandArguments.isEmpty
 
   private[sbt] def connectOrStartServerAndConnect(
       promptCompleteUsers: Boolean,
@@ -712,8 +713,19 @@ class NetworkClient(
         case (`clientJob`, Some(json)) =>
           import sbt.internal.worker.codec.JsonProtocol.given
           Converter.fromJson[ClientJobParams](json) match {
-            case Success(params) => clientSideRun(params).get; Vector.empty
-            case Failure(_)      => Vector.empty
+            case Success(params) =>
+              clientSideRun(params) match
+                case Success(_) =>
+                  if interactive then console.success("ok")
+                  else ()
+                  Vector.empty
+                case Failure(e) =>
+                  if interactive then
+                    Vector(
+                      (Level.Error, e.getMessage)
+                    )
+                  else throw e
+            case Failure(_) => Vector.empty
           }
         case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
@@ -921,9 +933,8 @@ class NetworkClient(
     withSignalHandler(contHandler, Signals.CONT) {
       interactiveThread.set(Thread.currentThread)
       val cleaned = arguments.commandArguments
-      val userCommands = cleaned.takeWhile(_ != TerminateAction)
-      val interactive = cleaned.isEmpty
-      val exit = cleaned.nonEmpty && userCommands.isEmpty
+      val userCommands = arguments.commandArguments.takeWhile(_ != TerminateAction)
+      val exit = arguments.commandArguments.nonEmpty && userCommands.isEmpty
       attachUUID.set(sendJson(attach, s"""{"interactive": $interactive}"""))
       val handler: () => Unit = () => {
         def exitAbruptly() = {

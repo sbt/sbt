@@ -6,3 +6,5 @@ launcher-package/src/windows/sbt text eol=lf
 **/contraband-scala/**/* -diff merge=ours
 **/contraband-scala/**/* linguist-generated=true
 **/contraband-scala/**/* diff
+
+*.contra linguist-language=graphql

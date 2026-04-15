@@ -41,7 +41,7 @@ object Cross {
 
   private def switchParser(state: State): Parser[Switch] = {
     import DefaultParsers.*
-    def versionAndCommand(spacePresent: Boolean) = {
+    def versionAndCommand(commandName: String)(spacePresent: Boolean) = {
       val x = Project.extract(state)
       import x.*
       val knownVersions = crossVersions(x, currentRef)
@@ -56,7 +56,7 @@ object Cross {
             ScalaHomeVersion(new File(home), Some(v).filterNot(_.isEmpty), force)
         }
       }
-      val spacedVersion = if (spacePresent) version else version & spacedFirst(SwitchCommand)
+      val spacedVersion = if (spacePresent) version else version & spacedFirst(commandName)
       val verboseOpt = Parser.opt(token(Space ~> "-v"))
       // Accept valid commands, or project/command patterns that may reference projects
       // not yet available after version switch (fixes #7574)
@@ -74,19 +74,24 @@ object Cross {
       switch1 | switch2
     }
 
-    token(SwitchCommand ~> OptSpace) flatMap { sp =>
-      versionAndCommand(sp.nonEmpty)
-    }
+    def parse(commandName: String) =
+      token(commandName ~> OptSpace) flatMap { sp =>
+        versionAndCommand(commandName)(sp.nonEmpty)
+      }
+    parse(SwitchCommand) | parse(SwitchAlias)
   }
 
   private case class CrossArgs(command: String, verbose: Boolean)
 
-  private def crossParser(state: State): Parser[CrossArgs] =
-    token(CrossCommand <~ OptSpace) flatMap { _ =>
-      (token(Parser.opt("-v" <~ Space)) ~ token(matched(state.combinedParser))).map {
-        (verbose, command) => CrossArgs(command, verbose.isDefined)
+  private def crossParser(state: State): Parser[CrossArgs] = {
+    def parse(commandName: String) =
+      token(commandName <~ OptSpace) flatMap { _ =>
+        (token(Parser.opt("-v" <~ Space)) ~ token(matched(state.combinedParser))).map {
+          (verbose, command) => CrossArgs(command, verbose.isDefined)
+        }
       }
-    }
+    parse(CrossCommand) | parse(CrossAlias)
+  }
 
   private def crossRestoreSessionParser: Parser[String] = token(CrossRestoreSessionCommand)
 

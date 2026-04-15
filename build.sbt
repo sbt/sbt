@@ -84,19 +84,21 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
-  /*
   Compile / doc / scalacOptions ++= {
-    import scala.sys.process._
-    val devnull = ProcessLogger(_ => ())
-    val tagOrSha = ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
-    Seq(
-      "-sourcepath",
-      (LocalRootProject / baseDirectory).value.getAbsolutePath,
-      "-doc-source-url",
-      s"https://github.com/sbt/sbt/tree/$tagOrSha€{FILE_PATH}.scala"
-    )
+    if (Dependencies.sbtIoPath.isEmpty && Dependencies.sbtZincPath.isEmpty) {
+      import scala.sys.process.*
+      val devnull = ProcessLogger(_ => ())
+      val tagOrSha =
+        ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
+      Seq(
+        "-source-links:github://sbt/sbt",
+        "-revision",
+        tagOrSha
+      )
+    } else {
+      Nil
+    }
   },
-   */
   Compile / javafmtOnCompile := scalafmtOnCompile.value,
   Test / javafmtOnCompile := (Test / scalafmtOnCompile).value,
   Compile / unmanagedSources / inputFileStamps :=
@@ -186,7 +188,6 @@ lazy val sbtRoot: Project = (project in file("."))
     },
     Utils.baseScalacOptions,
     Docs.settings,
-    scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     Utils.publishPomSettings,
     otherRootSettings,
     Utils.noPublish,
@@ -742,8 +743,10 @@ lazy val mainProj = (project in file("main"))
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
-    // TODO: Fix doc
-    Compile / doc / sources := Nil,
+    libraryDependencies += {
+      // https://github.com/scala/scala3/issues/18487
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // Moved to sbt-ivy module (Step 5 of sbt#7640)
@@ -782,8 +785,10 @@ lazy val sbtIvyProj = (project in file("sbt-ivy"))
     name := "sbt-ivy",
     sbtPlugin := true,
     pluginCrossBuild / sbtVersion := version.value,
-    // TODO: Fix doc
-    Compile / doc / sources := Nil,
+    libraryDependencies += {
+      // https://github.com/scala/scala3/issues/18487
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
+    },
     mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
   )
   .configure(addSbtIO)
@@ -1019,10 +1024,6 @@ lazy val sbtwProj = (project in file("sbtw"))
     description := "Windows drop-in launcher for sbt (replaces sbt.bat)",
     scalaVersion := "3.8.3",
     crossPaths := false,
-    Compile / scalafix / unmanagedSources := {
-      // https://github.com/scalameta/scalameta/issues/4531
-      (Compile / unmanagedSources).value.filterNot(_.getName == "Main.scala")
-    },
     Compile / mainClass := Some("sbtw.Main"),
     libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
     libraryDependencies += scalaVerify % Test,

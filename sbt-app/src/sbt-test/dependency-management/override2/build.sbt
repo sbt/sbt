@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
     dependencyOverrides += "org.webjars.npm" % "is-number" % "5.0.0",
     check := {
       val cp = (Compile / externalDependencyClasspath).value.map {_.data.name}.sorted
-      if (!(cp contains "is-number-5.0.0.jar")) {
+      if (!cp.contains("is-number-5.0.0.jar")) {
         sys.error("is-number-5.0.0 not found when it should be included: " + cp.toString)
       }
     }

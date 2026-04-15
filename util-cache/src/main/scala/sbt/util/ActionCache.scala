@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.{ File, IOException }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.nio.file.{ AtomicMoveNotSupportedException, Files, Path, Paths, StandardCopyOption }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -82,40 +82,40 @@ object ActionCache:
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
-      val json = Converter.toJsonUnsafe(result)
-      val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
-      val uncacheableOutputs =
-        outputs.filter(f =>
-          f match
-            case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
-              false
-            case _ =>
-              val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
-              !outputPath.startsWith(normalizedOutputDir)
-        )
-      if uncacheableOutputs.nonEmpty then
-        cacheEventLog.append(ActionCacheEvent.Error)
-        logger.error(
-          s"Cannot cache task because its output files are outside the output directory: \n" +
-            uncacheableOutputs.mkString("  - ", "\n  - ", "")
-        )
-        result
-      else
-        cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-        val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
-        val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
-        val newOutputs = Vector(valueFile) ++ outputs.toVector
-        try
+      try
+        val json = Converter.toJsonUnsafe(result)
+        val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
+        val uncacheableOutputs =
+          outputs.filter(f =>
+            f match
+              case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
+                false
+              case _ =>
+                val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
+                !outputPath.startsWith(normalizedOutputDir)
+          )
+        if uncacheableOutputs.nonEmpty then
+          cacheEventLog.append(ActionCacheEvent.Error)
+          logger.error(
+            s"Cannot cache task because its output files are outside the output directory: \n" +
+              uncacheableOutputs.mkString("  - ", "\n  - ", "")
+          )
+          result
+        else
+          cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+          val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+          val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
+          val newOutputs = Vector(valueFile) ++ outputs.toVector
           store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
             case Right(cachedResult) =>
               store.syncBlobs(cachedResult.outputFiles, outputDirectory)
               result
             case Left(e) => throw e
-        catch
-          case e: IOException =>
-            logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
-            cacheEventLog.append(ActionCacheEvent.Error)
-            result
+      catch
+        case e: IOException =>
+          logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
+          cacheEventLog.append(ActionCacheEvent.Error)
+          result
 
     // Single cache lookup - use exitCode to distinguish success from failure
     getWithFailure(key, codeContentHash, extraHash, tags, config) match
@@ -270,6 +270,36 @@ object ActionCache:
 
   private val default2010Timestamp: Long = 1262304000000L
 
+  /**
+   * Publishes `builtZip` as `destZip` by staging next to the destination and renaming into place.
+   * Avoids races from a direct `Files.copy` into `destZip` under parallel task execution.
+   */
+  private def installPackagedZip(builtZip: Path, destZip: Path, fallbackStagingDir: Path): Unit =
+    val stagingDir = Option(destZip.getParent) match
+      case Some(parent) =>
+        Files.createDirectories(parent)
+        parent
+      case None => fallbackStagingDir
+
+    val staging = Files.createTempFile(
+      stagingDir,
+      destZip.getFileName.toString + ".",
+      dirZipExt + ".tmp",
+    )
+    try
+      Files.copy(builtZip, staging, StandardCopyOption.REPLACE_EXISTING)
+      try
+        Files.move(
+          staging,
+          destZip,
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE,
+        )
+      catch
+        case _: AtomicMoveNotSupportedException =>
+          Files.move(staging, destZip, StandardCopyOption.REPLACE_EXISTING)
+    finally Files.deleteIfExists(staging)
+
   def packageDirectory(
       dir: VirtualFileRef,
       conv: FileConverter,
@@ -311,7 +341,7 @@ object ActionCache:
         tempZipPath.toFile(),
         Some(default2010Timestamp)
       )
-      Files.copy(tempZipPath, zipPath, StandardCopyOption.REPLACE_EXISTING)
+      installPackagedZip(tempZipPath, zipPath, tempDir.toPath())
 
       conv.toVirtualFile(zipPath)
 

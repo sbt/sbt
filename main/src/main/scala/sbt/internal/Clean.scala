@@ -226,6 +226,13 @@ private[sbt] object Clean {
           case d: DiskActionCacheStore => d.clear()
           case _                       => ()
         IO.delete(outputDirectory.toFile())
+        IO.delete(
+          s.configuration
+            .provider()
+            .scalaProvider()
+            .launcher()
+            .bootDirectory()
+        )
         s
     Command.command(CleanFull, h)(expunge andThen clearCachesFun)
 }

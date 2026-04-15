@@ -2,7 +2,7 @@ lazy val check = taskKey[Unit]("check classifier in update report")
 
 lazy val root = (project in file(".")).settings(
   scalaVersion := "2.13.16",
-  libraryDependencies += "io.netty" % "netty-transport-native-epoll" % "4.1.118.Final" classifier "linux-x86_64",
+  libraryDependencies += ("io.netty" % "netty-transport-native-epoll" % "4.1.118.Final").classifier("linux-x86_64"),
   check := {
     val report = update.value
     val modules = report.configurations.flatMap(_.modules)

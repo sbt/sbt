@@ -2,7 +2,7 @@
   val loadCount = AttributeKey[Int]("load-count")
   val unloadCount = AttributeKey[Int]("unload-count")
   def f(key: AttributeKey[Int]) = (s: State) => {
-    val previous = s get key getOrElse 0
+    val previous = s.get(key)getOrElse(0)
     s.put(key, previous + 1)
   }
   Seq(
@@ -14,7 +14,7 @@
 InputKey[Unit]("checkCount") := {
   val s = state.value
   val args = Def.spaceDelimited().parsed
-  def get(label: String) = s get AttributeKey[Int](label) getOrElse 0
+  def get(label: String) = s.get(AttributeKey[Int](label)).getOrElse(0)
   val loadCount = get("load-count")
   val unloadCount = get("unload-count")
   val expectedLoad = args(0).toInt

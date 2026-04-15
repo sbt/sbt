@@ -1144,12 +1144,20 @@ object BuiltinCommands {
         .getOpt(Keys.minForcegcInterval)
         .getOrElse(GCUtil.defaultMinForcegcInterval)
       val exec: Exec = getExec(s1, minGCInterval)
+      val isInteractive = exec.source match {
+        case Some(src) if src.channelName.startsWith("network") =>
+          exchange.channelForName(src.channelName) match {
+            case Some(nc: NetworkChannel) => nc.isInteractive
+            case _                        => true
+          }
+        case _ => true
+      }
       val newState = s1
         .copy(
           onFailure = Some(Exec(Shell, None)),
           remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
         )
-        .setInteractive(true)
+        .setInteractive(isInteractive)
       val res =
         if (exec.commandLine.trim.isEmpty) newState
         else newState.clearGlobalLog

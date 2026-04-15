@@ -8,7 +8,7 @@ def localCache =
 lazy val root = (project in file(".")).
   settings(
     localCache,
-    libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" % Test from "https://jsoup.org/packages/jsoup-1.9.1.jar",
+    libraryDependencies += ("org.jsoup" % "jsoup" % "1.9.1" % Test).from("https://jsoup.org/packages/jsoup-1.9.1.jar"),
     ivyLoggingLevel := UpdateLogging.Full,
     TaskKey[Unit]("checkInTest") := checkClasspath(Test).value,
     TaskKey[Unit]("checkInCompile") := checkClasspath(Compile).value

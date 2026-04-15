@@ -409,6 +409,35 @@ type DependencySourcesItem {
   sources: [java.net.URI]
 }
 
+## Dependency Modules Request
+type DependencyModulesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+## Dependency Modules Result
+type DependencyModulesResult {
+  items: [sbt.internal.bsp.DependencyModulesItem]
+}
+
+type DependencyModulesItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier
+  modules: [sbt.internal.bsp.DependencyModule]
+}
+
+type DependencyModule {
+  ## Module name
+  name: String!
+
+  ## Module version
+  version: String!
+
+  ## Kind of data to expect in the `data` field.
+  dataKind: String
+
+  ## Language-specific metadata about this module.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
 ## Task Notifications
 
 type TaskStartParams {

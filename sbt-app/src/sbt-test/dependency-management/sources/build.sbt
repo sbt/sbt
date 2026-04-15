@@ -3,8 +3,8 @@ ThisBuild / scalaVersion := "2.12.12"
 lazy val root = (project in file("."))
   .settings(
     libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.22",
-    TaskKey[Unit]("checkSources") := (updateClassifiers map checkSources).value,
-    TaskKey[Unit]("checkBinaries") := (update map checkBinaries).value
+    TaskKey[Unit]("checkSources") := updateClassifiers.map(checkSources).value,
+    TaskKey[Unit]("checkBinaries") := update.map(checkBinaries).value
   )
 
 def getSources(report: UpdateReport)  = report.matching(artifactFilter(`classifier` = "sources") )

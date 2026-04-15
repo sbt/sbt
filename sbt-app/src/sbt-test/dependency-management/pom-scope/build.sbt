@@ -15,8 +15,8 @@ lazy val root = (project in file(".")).
       "d" % "d" % "1.0" % "test",
       "e" % "e" % "1.0" % Custom,
       "f" % "f" % "1.0" % "custom,optional,runtime",
-      "g" % "g" % "1.0" % "custom,runtime" classifier "foo",
-      "h" % "h" % "1.0" % "custom,optional,runtime" classifier "foo"
+     ("g" % "g" % "1.0" % "custom,runtime").classifier("foo"),
+     ("h" % "h" % "1.0" % "custom,optional,runtime").classifier("foo")
     )
   )
 

@@ -15,7 +15,7 @@ def completionsParser(state: State) =
   {
     val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => (nq +: s).mkString }
     val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
-    applyEffect(token(quotedOrUnquotedSingleArgument ?? "" examples ("", " ")))(runCompletions(state))
+    applyEffect(token((quotedOrUnquotedSingleArgument ?? "").examples("", " ")))(runCompletions(state))
   }
 def runCompletions(state: State)(input: String): State = {
   val xs = Parser.completions(state.combinedParser, input, 9).get map {
