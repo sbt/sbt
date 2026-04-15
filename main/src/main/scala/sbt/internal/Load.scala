@@ -46,7 +46,8 @@ import sbt.internal.util.Util
  * many subprojects activate the plugin.  See https://github.com/sbt/sbt/issues/5166
  */
 private[sbt] final class AutoPluginCache {
-  private val settingsCache: mutable.HashMap[AutoPlugin, Seq[Def.Setting[?]]] = mutable.HashMap.empty
+  private val settingsCache: mutable.HashMap[AutoPlugin, Seq[Def.Setting[?]]] =
+    mutable.HashMap.empty
   private val configCache: mutable.HashMap[AutoPlugin, Seq[Configuration]] = mutable.HashMap.empty
 
   def projectSettings(plugin: AutoPlugin): Seq[Def.Setting[?]] =
