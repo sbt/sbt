@@ -463,6 +463,7 @@ object Compiler:
     Def.task {
       val s = Keys.streams.value
       val conv = Keys.fileConverter.value
+      val rootPaths = Keys.rootPaths.value
       val cside = (task / Keys.clientSide).value
       val depsJars = (task / Keys.externalDependencyClasspath).value.toVector
         .map(_.data)
@@ -481,12 +482,14 @@ object Compiler:
         workingDir,
         conv,
       )
+      val consoleScalacOptions =
+        resolveVirtualizedScalacOptions((task / Keys.scalacOptions).value, rootPaths)
       val param = ConsoleInfo(
         ArrayList(toolJars.asJava),
         ArrayList(bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()).asJava),
         ArrayList(),
         ArrayList(Attributed.data(cp).toVector.map(vf => conv.toPath(vf).toUri()).asJava),
-        ArrayList((task / Keys.scalacOptions).value.asJava),
+        ArrayList(consoleScalacOptions.asJava),
         (task / Keys.initialCommands).value,
         (task / Keys.cleanupCommands).value,
       )
@@ -556,6 +559,7 @@ object Compiler:
         val cp = Attributed.data(Keys.dependencyClasspath.value).toList
         val reporter = (Keys.compile / Keys.bspReporter).value
         val converter = Keys.fileConverter.value
+        val rootPaths = Keys.rootPaths.value
         val tFiles = Keys.tastyFiles.value
         val sv = Keys.scalaVersion.value
         (hasScala, hasJava) match {
@@ -567,13 +571,7 @@ object Compiler:
               if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
               else Opts.doc.externalAPI(xapisFiles)
             val options = sOpts ++ externalApiOpts
-            def convertVfRef(value: String): String =
-              if !value.contains("$") then value
-              else converter.toPath(xsbti.VirtualFileRef.of(value)).toString
-            val resolvedOptions = options.map { x =>
-              if !x.contains("$") then x
-              else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
-            }
+            val resolvedOptions = resolveVirtualizedScalacOptions(options, rootPaths)
             val scalac = cs.scalac match
               case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
             val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
@@ -640,5 +638,24 @@ object Compiler:
       case "-Ypickle-java" +: rest         => toConsoleScalacOptions(rest)
       case head +: rest                    => head +: toConsoleScalacOptions(rest)
       case _                               => Seq.empty
+
+  /**
+   * Converts mapped virtual file ids in compiler plugin options back to machine paths.
+   *
+   * Compiler plugin options are often encoded using `FileConverter.toVirtualFile` to keep
+   * paths portable in persisted settings (for example `-Xplugin:${CSR_CACHE}/...`). Before we
+   * launch tools that expect concrete filesystem paths (forked console, scaladoc), these ids
+   * must be resolved using the `rootPaths`.
+   */
+  private[sbt] def resolveVirtualizedScalacOptions(
+      options: Seq[String],
+      rootPaths: Map[String, Path]
+  ): Seq[String] =
+    def convertValue(value: String): String =
+      rootPaths.find((key, _) => value.startsWith(s"$${$key}/")) match
+        case Some((key, p)) => p.resolve(value.stripPrefix(s"$${$key}/")).toString()
+        case None           => value
+
+    options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
 
 end Compiler
