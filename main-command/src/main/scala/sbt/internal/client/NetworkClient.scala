@@ -174,7 +174,7 @@ class NetworkClient(
       }
     res match {
       case Some(r) => r
-      case None    =>
+      case None =>
         Thread.sleep(new java.util.Random().nextInt(20).toLong)
         connect(file, attempt + 1)
     }
@@ -265,7 +265,7 @@ class NetworkClient(
         try connect(portfile)
         catch {
           case e: NetworkClient.AccessDeniedException => throw e
-          case NonFatal(e)                            =>
+          case NonFatal(e) =>
             Thread.sleep(20)
             loop(Some(e))
         }
