@@ -470,7 +470,7 @@ private[sbt] final class CommandExchange {
             case e if e.commandLine.startsWith(CompleteExec) =>
               e.commandLine.split(CompleteExec).last.trim
           }
-          nc.shutdown(true, execId.map(_ -> remainingCommands))
+          nc.shutdown(true, Some(execId.getOrElse("") -> remainingCommands))
         case nc: NetworkChannel => nc.shutdown(true, Some(("", "")))
         case _                  =>
       }
