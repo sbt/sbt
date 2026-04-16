@@ -37,7 +37,7 @@ import sbt.librarymanagement.{
 import sbt.util.Logger
 import scala.jdk.CollectionConverters.*
 import scala.util.Random
-import xsbti.{ HashedVirtualFileRef, ScalaProvider }
+import xsbti.{ FileConverter, HashedVirtualFileRef, ScalaProvider }
 
 object Compiler:
   private val r = Random()
