@@ -649,11 +649,8 @@ object Compiler:
       options: Seq[String],
       converter: FileConverter
   ): Seq[String] =
-    def convertValue(value: String): String =
-      if !value.contains("$") then value
-      else converter.toPath(xsbti.VirtualFileRef.of(value)).toString
     options.map: option =>
-      if !option.contains("$") then option
-      else option.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":")
+      if !option.startsWith("-Xplugin:") then option
+      else "-Xplugin:" + converter.toPath(xsbti.VirtualFileRef.of(option.stripPrefix("-Xplugin:")))
 
 end Compiler
