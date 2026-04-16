@@ -2,7 +2,6 @@ package sbt.internal
 
 import hedgehog.*
 import hedgehog.runner.*
-import sbt.internal.inc.MappedFileConverter
 
 import java.nio.file.Files
 import scala.collection.immutable.ListMap
@@ -139,7 +138,11 @@ object CompilerConsoleOptsTest extends Properties:
 
   private def checkResolvedVirtualizedOptions: Result =
     val cacheRoot = Files.createTempDirectory("compiler-console-opts")
-    val converter = MappedFileConverter(ListMap("CSR_CACHE" -> cacheRoot), allowMachinePath = false)
+    val converter =
+      _root_.sbt.internal.inc.MappedFileConverter(
+        ListMap("CSR_CACHE" -> cacheRoot),
+        allowMachinePath = false
+      )
     val pluginJar = cacheRoot.resolve("plugins/acyclic.jar")
     val pluginRef = converter.toVirtualFile(pluginJar).toString
     val input = Seq(s"-Xplugin:$pluginRef", "-P:acyclic:force")
