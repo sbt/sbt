@@ -481,12 +481,14 @@ object Compiler:
         workingDir,
         conv,
       )
+      val consoleScalacOptions =
+        resolveVirtualizedScalacOptions((task / Keys.scalacOptions).value, conv)
       val param = ConsoleInfo(
         ArrayList(toolJars.asJava),
         ArrayList(bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()).asJava),
         ArrayList(),
         ArrayList(Attributed.data(cp).toVector.map(vf => conv.toPath(vf).toUri()).asJava),
-        ArrayList((task / Keys.scalacOptions).value.asJava),
+        ArrayList(consoleScalacOptions.asJava),
         (task / Keys.initialCommands).value,
         (task / Keys.cleanupCommands).value,
       )
@@ -567,13 +569,7 @@ object Compiler:
               if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
               else Opts.doc.externalAPI(xapisFiles)
             val options = sOpts ++ externalApiOpts
-            def convertVfRef(value: String): String =
-              if !value.contains("$") then value
-              else converter.toPath(xsbti.VirtualFileRef.of(value)).toString
-            val resolvedOptions = options.map { x =>
-              if !x.contains("$") then x
-              else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
-            }
+            val resolvedOptions = resolveVirtualizedScalacOptions(options, converter)
             val scalac = cs.scalac match
               case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
             val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
@@ -640,5 +636,24 @@ object Compiler:
       case "-Ypickle-java" +: rest         => toConsoleScalacOptions(rest)
       case head +: rest                    => head +: toConsoleScalacOptions(rest)
       case _                               => Seq.empty
+
+  /**
+   * Converts mapped virtual file ids in scalac options back to machine paths.
+   *
+   * Compiler plugin options are often encoded using `FileConverter.toVirtualFile` to keep
+   * paths portable in persisted settings (for example `-Xplugin:${CSR_CACHE}/...`). Before we
+   * launch tools that expect concrete filesystem paths (forked console, scaladoc), these ids
+   * must be resolved via the active `FileConverter`.
+   */
+  private[sbt] def resolveVirtualizedScalacOptions(
+      options: Seq[String],
+      converter: FileConverter
+  ): Seq[String] =
+    def convertValue(value: String): String =
+      if !value.contains("$") then value
+      else converter.toPath(xsbti.VirtualFileRef.of(value)).toString
+    options.map: option =>
+      if !option.contains("$") then option
+      else option.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":")
 
 end Compiler

@@ -2,6 +2,10 @@ package sbt.internal
 
 import hedgehog.*
 import hedgehog.runner.*
+import sbt.internal.inc.MappedFileConverter
+
+import java.nio.file.Files
+import scala.collection.immutable.ListMap
 
 /**
  * Tests for [[Compiler.toConsoleScalacOptions]] — pipelining flags must be stripped before
@@ -102,6 +106,10 @@ object CompilerConsoleOptsTest extends Properties:
         Seq("-encoding", "utf8")
       )
     ),
+    example(
+      "virtualized compiler plugin paths are resolved for tool invocation",
+      checkResolvedVirtualizedOptions
+    ),
 
     // ── property-based cases ──────────────────────────────────────────────────
 
@@ -123,6 +131,20 @@ object CompilerConsoleOptsTest extends Properties:
 
   private def check(input: Seq[String], expected: Seq[String]): Result =
     val got = Compiler.toConsoleScalacOptions(input)
+    Result
+      .assert(got == expected)
+      .log(s"input:    $input")
+      .log(s"expected: $expected")
+      .log(s"got:      $got")
+
+  private def checkResolvedVirtualizedOptions: Result =
+    val cacheRoot = Files.createTempDirectory("compiler-console-opts")
+    val converter = MappedFileConverter(ListMap("CSR_CACHE" -> cacheRoot), allowMachinePath = false)
+    val pluginJar = cacheRoot.resolve("plugins/acyclic.jar")
+    val pluginRef = converter.toVirtualFile(pluginJar).toString
+    val input = Seq(s"-Xplugin:$pluginRef", "-P:acyclic:force")
+    val expected = Seq(s"-Xplugin:${pluginJar.toString}", "-P:acyclic:force")
+    val got = Compiler.resolveVirtualizedScalacOptions(input, converter)
     Result
       .assert(got == expected)
       .log(s"input:    $input")
