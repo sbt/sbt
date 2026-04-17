@@ -16,7 +16,6 @@ import sbt.io.*, syntax.*
 import sbt.util.*
 import sbt.internal.util.{ ConsoleAppender, Terminal as ITerminal }
 import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers.*
-import sbt.internal.VcsUriFragment
 import xsbti.AppConfiguration
 import sbt.librarymanagement.*
 import sbt.internal.inc.classpath.ClasspathUtil
@@ -51,16 +50,15 @@ private[sbt] object TemplateCommandUtil {
         case exec :: Nil if exec.commandLine == "shell" => Nil
         case xs                                         => xs map (_.commandLine)
       })
-    val args = normalizeTemplateArgs(args0)
     def terminate = TerminateAction :: s1.copy(remainingCommands = Nil)
     def reload = "reboot" :: s1.copy(remainingCommands = Nil)
-    if (args.nonEmpty) {
-      args match {
+    if (args0.nonEmpty) {
+      args0 match {
         case arg :: Nil if arg.endsWith(".local") =>
           extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
           reload
         case _ =>
-          run(infos, args, s0.configuration, lm, globalBase, scalaModuleInfo, log)
+          run(infos, args0, s0.configuration, lm, globalBase, scalaModuleInfo, log)
           terminate
       }
     } else {
@@ -275,27 +273,6 @@ private[sbt] object TemplateCommandUtil {
     val ans0 = System.console.readLine()
     if (ans0 == "") default
     else ans0
-  }
-
-  // Work around resolver behavior for `ssh://` templates by encoding `--branch` as URI fragment.
-  // This keeps branch checkout working for `sbt new ssh://... --branch x`.
-  private[sbt] def normalizeTemplateArgs(arguments: List[String]): List[String] = {
-    val branchArgIndex = arguments.indexOf("--branch")
-    if (branchArgIndex < 0 || branchArgIndex + 1 >= arguments.length) arguments
-    else {
-      val branch = arguments(branchArgIndex + 1)
-      val sshTemplateIndex =
-        arguments.indexWhere(arg => arg.startsWith("ssh://") && !arg.contains("#"))
-      if (sshTemplateIndex < 0) arguments
-      else {
-        VcsUriFragment.validate(branch)
-        arguments.zipWithIndex.collect {
-          case (_, idx) if idx == branchArgIndex || idx == branchArgIndex + 1 => None
-          case (arg, idx) if idx == sshTemplateIndex => Some(s"$arg#$branch")
-          case (arg, _)                              => Some(arg)
-        }.flatten
-      }
-    }
   }
 
   // This is used by Defaults.runLocalTemplate, which implements

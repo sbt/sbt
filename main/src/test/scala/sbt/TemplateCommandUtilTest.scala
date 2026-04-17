@@ -33,38 +33,3 @@ object TemplateCommandUtilTest extends verify.BasicTestSuite:
     assert(ex ne null)
     assert(ex.getMessage.contains("Local template not found for:"))
     assert(ex.getMessage.contains("unknown/template.local"))
-
-  test("normalizeTemplateArgs rewrites ssh url with branch option"):
-    val args = List(
-      "ssh://git@github.com/scala/scala-seed.g8.git",
-      "--branch",
-      "2.12.x"
-    )
-    val normalized = TemplateCommandUtil.normalizeTemplateArgs(args)
-    assert(
-      normalized == List("ssh://git@github.com/scala/scala-seed.g8.git#2.12.x"),
-      s"unexpected normalized args: $normalized"
-    )
-
-  test("normalizeTemplateArgs keeps non-ssh url unchanged"):
-    val args = List(
-      "https://github.com/scala/scala-seed.g8.git",
-      "--branch",
-      "2.12.x"
-    )
-    val normalized = TemplateCommandUtil.normalizeTemplateArgs(args)
-    assert(normalized == args, s"unexpected normalized args: $normalized")
-
-  test("normalizeTemplateArgs keeps ssh url unchanged when fragment already exists"):
-    val args = List(
-      "ssh://git@github.com/scala/scala-seed.g8.git#main",
-      "--branch",
-      "2.12.x"
-    )
-    val normalized = TemplateCommandUtil.normalizeTemplateArgs(args)
-    assert(normalized == args, s"unexpected normalized args: $normalized")
-
-  test("normalizeTemplateArgs does not rewrite when branch value is missing"):
-    val args = List("ssh://git@github.com/scala/scala-seed.g8.git", "--branch")
-    val normalized = TemplateCommandUtil.normalizeTemplateArgs(args)
-    assert(normalized == args, s"unexpected normalized args: $normalized")
