@@ -219,8 +219,8 @@ object Serialization {
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json @ JObject(fields)) =>
         import sbt.internal.protocol.codec.JsonRPCProtocol.given
-        if ((fields find { _.field == "method" }).isDefined) {
-          if ((fields find { _.field == "id" }).isDefined)
+        if (fields.exists(_.field == "method")) {
+          if (fields.exists(_.field == "id"))
             Converter.fromJson[JsonRpcRequestMessage](json) match {
               case Success(request) => Right(request)
               case Failure(e)       => Left(s"conversion error: ${e.getMessage}")
@@ -230,7 +230,7 @@ object Serialization {
               case Success(notification) => Right(notification)
               case Failure(e)            => Left(s"conversion error: ${e.getMessage}")
             }
-        } else if ((fields find { _.field == "id" }).isDefined)
+        } else if (fields.exists(_.field == "id"))
           Converter.fromJson[JsonRpcResponseMessage](json) match {
             case Success(res) => Right(res)
             case Failure(e)   => Left(s"conversion error: ${e.getMessage}")
