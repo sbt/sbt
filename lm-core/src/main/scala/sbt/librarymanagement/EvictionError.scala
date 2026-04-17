@@ -30,7 +30,7 @@ object EvictionError {
       assumedVersionScheme,
       assumedVersionSchemeJava,
       assumedEvictionErrorLevel,
-      EvictionWarningOptions.full,
+      EvictionWarningOptions.default.configurations,
     )
   }
 
@@ -41,12 +41,11 @@ object EvictionError {
       assumedVersionScheme: String,
       assumedVersionSchemeJava: String,
       assumedEvictionErrorLevel: Level.Value,
-      options: EvictionWarningOptions,
+      configurations: Seq[ConfigRef],
   ): EvictionError = {
-    val evictions = EvictionWarning.buildEvictions(options, report)
+    val evictions = EvictionWarning.buildEvictions(configurations, report)
     processEvictions(
       module,
-      options,
       evictions,
       schemes,
       assumedVersionScheme,
@@ -57,7 +56,6 @@ object EvictionError {
 
   private[sbt] def processEvictions(
       module: ModuleDescriptor,
-      options: EvictionWarningOptions,
       reports: Seq[OrganizationArtifactReport],
       schemes: Seq[ModuleID],
       assumedVersionScheme: String,
@@ -73,8 +71,8 @@ object EvictionError {
         detail.name,
         winner,
         evicteds,
-        true,
-        options.showCallers
+        includesDirect = true,
+        showCallers = true
       )
     }
     val incompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
@@ -195,7 +193,7 @@ final class EvictionError private[sbt] (
         case _       => " is evicted for all versions"
       }
       val title = s"\t* ${a.organization}:${a.name}$winnerRev"
-      val lines = title :: (if (a.showCallers) callers.reverse else Nil) ::: List("")
+      val lines = title :: callers.reverse ::: List("")
       out ++= lines
     })
     out.toList

@@ -1234,6 +1234,9 @@ lazy val lmCore = (project in file("lm-core"))
       ProblemFilters.exclude[DirectMissingMethodProblem](
         "sbt.librarymanagement.EvictionError.processEvictions*"
       ),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "sbt.librarymanagement.EvictionWarning.buildEvictions"
+      ),
       ProblemFilters.exclude[DirectMissingMethodProblem](
         "sbt.librarymanagement.EvictionError.<init>$*"
       ),

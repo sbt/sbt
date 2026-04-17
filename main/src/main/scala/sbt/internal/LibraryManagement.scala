@@ -82,7 +82,7 @@ private[sbt] object LibraryManagement {
         assumedVersionScheme,
         assumedVersionSchemeJava,
         assumedEvictionErrorLevel,
-        evictionWarningOptions,
+        evictionWarningOptions.configurations,
       )
       def extraLines = List(
         "",
@@ -393,7 +393,7 @@ private[sbt] object LibraryManagement {
           transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = Level.Debug,
-          evictionWarningOptions = EvictionWarningOptions.full,
+          evictionWarningOptions = EvictionWarningOptions.default,
           versionSchemeOverrides = Nil,
           assumedEvictionErrorLevel = Level.Debug,
           assumedVersionScheme = VersionScheme.Always,

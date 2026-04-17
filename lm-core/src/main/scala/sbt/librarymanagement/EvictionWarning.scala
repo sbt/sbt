@@ -86,7 +86,7 @@ object EvictionWarningOptions {
     )
   def summary: EvictionWarningOptions =
     new EvictionWarningOptions(
-      Vector(Compile),
+      Vector(Compile, Test),
       warnScalaVersionEviction = false,
       warnDirectEvictions = false,
       warnTransitiveEvictions = false,
@@ -269,17 +269,17 @@ object EvictionWarning {
       options: EvictionWarningOptions,
       report: UpdateReport
   ): EvictionWarning = {
-    val evictions = buildEvictions(options, report)
+    val evictions = buildEvictions(options.configurations, report)
     processEvictions(module, options, evictions)
   }
 
   private[sbt] def buildEvictions(
-      options: EvictionWarningOptions,
+      configurations: Seq[ConfigRef],
       report: UpdateReport
   ): Seq[OrganizationArtifactReport] = {
     val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
     val confs = report.configurations filter { x =>
-      options.configurations.contains[ConfigRef](x.configuration)
+      configurations.contains[ConfigRef](x.configuration)
     }
     confs flatMap { confReport =>
       confReport.details map { detail =>

@@ -2985,7 +2985,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         conflictWarning :== ConflictWarning.default("global"),
-        evictionWarningOptions := EvictionWarningOptions.full,
+        evictionWarningOptions := EvictionWarningOptions.default,
         compatibilityWarningOptions :== CompatibilityWarningOptions.default,
         homepage :== None,
         startYear :== None,
@@ -3405,6 +3405,8 @@ object Classpaths {
       ConflictWarning(conflictWarning.value, report, streams.value.log)
       report
     },
+    update / evictionWarningOptions := evictionWarningOptions.value,
+    evicted / evictionWarningOptions := EvictionWarningOptions.full,
     evicted := Def.uncached {
       import ShowLines.*
       val report = updateTask.value
