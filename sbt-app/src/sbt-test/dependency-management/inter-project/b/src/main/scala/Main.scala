@@ -10,6 +10,6 @@ object Main {
   def main(args: Array[String]): Unit = {
     val msg = CC(2, A.msg).asJson.spaces2
 
-    Files.write(new File("output").toPath, msg.getBytes("UTF-8"))
+    Files.writeString(new File("output").toPath, msg)
   }
 }

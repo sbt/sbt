@@ -13,7 +13,7 @@ csrExtraCredentials += {
        |foo.https-only=false
      """.stripMargin
   val dest = (ThisBuild / baseDirectory).value / "project" / "target" / "cred"
-  Files.write(dest.toPath, content.getBytes("UTF-8"))
+  Files.writeString(dest.toPath, content)
   lmcoursier.credentials.FileCredentials(dest.toString)
 }
 

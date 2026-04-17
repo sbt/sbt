@@ -8,6 +8,6 @@ object Main {
   // assert(Thread.currentThread.getContextClassLoader.getResource("org/nlogo/nvm/Task.class") != null)
   // Thread.currentThread.getContextClassLoader.getResource("org/nlogo/nvm/Task.class")
   def main(args: Array[String]): Unit = {
-    Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+    Files.writeString(new File("output").toPath, "OK")
   }
 }

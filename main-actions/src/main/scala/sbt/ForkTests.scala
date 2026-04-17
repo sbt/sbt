@@ -194,6 +194,9 @@ private class React(
 ) extends WorkerResponseListener:
   val g = WorkerMain.mkGson()
   val promise: Promise[Int] = Promise()
+
+  /** Events per test group, accumulated for [[SuiteResult]] (listeners get each event immediately). */
+  private val progressEvents = mutable.Map.empty[String, mutable.ArrayBuffer[testing.Event]]
   override def apply(line: String): Unit =
     try
       val o = JsonParser.parseString(line).getAsJsonObject()
@@ -235,15 +238,30 @@ private class React(
             case ForkTags.Debug => log.debug(info.message)
             case _              => ()
         else ()
-      case "testEvents" =>
+      case "startTestGroup" =>
+        val params = o.getAsJsonObject("params")
+        val info =
+          g.fromJson[ForkTestMain.ForkGroupStart](params, classOf[ForkTestMain.ForkGroupStart])
+        if info.id == id then
+          progressEvents(info.group) = mutable.ArrayBuffer.empty
+          listeners.foreach(_.startGroup(info.group))
+        else ()
+      case "testProgress" =>
         val params = o.getAsJsonObject("params")
         val info =
           g.fromJson[ForkTestMain.ForkEventsInfo](params, classOf[ForkTestMain.ForkEventsInfo])
         if info.id == id then
-          val events = info.events.asScala.toSeq
-          listeners.foreach(_.startGroup(info.group))
-          val event = TestEvent(events)
-          listeners.foreach(_.testEvent(event))
+          val buf = progressEvents.getOrElseUpdate(info.group, mutable.ArrayBuffer.empty)
+          for e <- info.events.asScala do
+            buf += e
+            listeners.foreach(_.testEvent(TestEvent(Seq(e))))
+        else ()
+      case "endTestGroup" =>
+        val params = o.getAsJsonObject("params")
+        val info =
+          g.fromJson[ForkTestMain.ForkGroupEnd](params, classOf[ForkTestMain.ForkGroupEnd])
+        if info.id == id then
+          val events = progressEvents.remove(info.group).getOrElse(mutable.ArrayBuffer.empty).toSeq
           val suiteResult = SuiteResult(events)
           results += info.group -> suiteResult
           listeners.foreach(_.endGroup(info.group, suiteResult.result))

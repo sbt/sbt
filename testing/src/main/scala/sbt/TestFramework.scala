@@ -135,7 +135,12 @@ private[sbt] final class TestRunner(
       // Thread-safe collection so AsyncFunSuite (and other async frameworks) can call
       // handle() from multiple threads without corrupting results (fixes #5245).
       val results = new CopyOnWriteArrayList[Event]
-      val handler = new EventHandler { def handle(e: Event): Unit = { results.add(e) } }
+      val handler = new EventHandler {
+        def handle(e: Event): Unit = {
+          results.add(e)
+          safeListenersCall(_.testEvent(TestEvent(Seq(e))))
+        }
+      }
       val loggers: Vector[ContentLogger] = listeners.flatMap(_.contentLogger(testDefinition))
       def errorEvents(e: Throwable): Array[sbt.testing.Task] = {
         val taskDef = testTask.taskDef
@@ -148,6 +153,7 @@ private[sbt] final class TestRunner(
           val duration = -1L
         }
         results.add(event)
+        safeListenersCall(_.testEvent(TestEvent(Seq(event))))
         Array.empty
       }
       val nestedTasks =
@@ -160,8 +166,6 @@ private[sbt] final class TestRunner(
           loggers.foreach(_.flush())
         }
       val resultsList = results.asScala.toList
-      val event = TestEvent(resultsList)
-      safeListenersCall(_.testEvent(event))
       (SuiteResult(resultsList), nestedTasks.toSeq)
     }
 

@@ -11,6 +11,6 @@ object Main {
     val l = Generic[CC].to(cc)
     val msg = l.head
 
-    Files.write(new File("output").toPath, msg.getBytes("UTF-8"))
+    Files.writeString(new File("output").toPath, msg)
   }
 }

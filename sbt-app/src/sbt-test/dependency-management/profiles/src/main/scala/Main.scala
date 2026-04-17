@@ -16,6 +16,6 @@ object Main {
 
     assert(hadoopVersion == "2.6.0")
 
-    Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+    Files.writeString(new File("output").toPath, "OK")
   }
 }

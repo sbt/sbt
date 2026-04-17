@@ -31,7 +31,7 @@ object LockFile {
       val json = Converter.toJson(data).get
       val content = PrettyPrinter(json)
       lockFile.getParentFile.mkdirs()
-      Files.write(lockFile.toPath, content.getBytes(StandardCharsets.UTF_8))
+      Files.writeString(lockFile.toPath, content)
     } match {
       case Success(_)  => Right(())
       case Failure(ex) => Left(s"Failed to write lock file: ${ex.getMessage}")
