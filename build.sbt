@@ -17,6 +17,7 @@ ThisBuild / version := {
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
+ThisBuild / javafmtFormatterCompatibleJavaVersion := 17
 // ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
 ThisBuild / organization := "org.scala-sbt"

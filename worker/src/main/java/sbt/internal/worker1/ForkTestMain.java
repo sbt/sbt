@@ -321,7 +321,8 @@ public class ForkTestMain {
       String params = this.gson.toJson(info, ForkGroupStart.class);
       String notification =
           String.format(
-              "{ \"jsonrpc\": \"2.0\", \"method\": \"startTestGroup\", \"params\": %s, \"re\": %d }",
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"startTestGroup\", \"params\": %s, \"re\": %d"
+                  + " }",
               params, this.id);
       this.originalOut.println(notification);
       this.originalOut.flush();

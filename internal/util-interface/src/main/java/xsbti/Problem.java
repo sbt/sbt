@@ -42,7 +42,9 @@ public interface Problem {
     return Optional.empty();
   }
 
-  /** @deprecated use {@link #diagnosticRelatedInformation()} instead. */
+  /**
+   * @deprecated use {@link #diagnosticRelatedInformation()} instead.
+   */
   @Deprecated
   default List<DiagnosticRelatedInformation> diagnosticRelatedInforamation() {
     return diagnosticRelatedInformation();
