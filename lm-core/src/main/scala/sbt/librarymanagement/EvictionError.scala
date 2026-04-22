@@ -130,8 +130,22 @@ object EvictionError {
             .orElse(fromLibraryDependencySchemes()) // global
         }
 
-        def revisionAndCallers(module: ModuleReport): RevisionAndCallers =
-          RevisionAndCallers(module.module.revision, module.callers.map(_.caller))
+        def callers(
+            winner: Option[ModuleReport],
+            evicteds: Vector[ModuleReport],
+        ): List[(ModuleID, String)] = {
+          val seen: mutable.Set[ModuleID] = mutable.Set()
+          (evicteds.toList ::: winner.toList).flatMap { r =>
+            val rev = r.module.revision
+            r.callers.toList flatMap { caller =>
+              if (seen(caller.caller)) Nil
+              else {
+                seen += caller.caller
+                List((caller.caller, rev))
+              }
+            }
+          }
+        }
 
         // We want the user to be able to suppress eviction errors for a specific library,
         // which would result in an incompatible eviction based on the assumed version scheme.
@@ -142,8 +156,9 @@ object EvictionError {
               val eviction = EvictionErrorPair(
                 p.name,
                 p.organization,
-                p.winner.map(revisionAndCallers),
-                p.evicteds.map(revisionAndCallers),
+                p.winner.map(_.module.revision),
+                p.evicteds.map(_.module.revision),
+                callers(p.winner, p.evicteds),
                 givenScheme
               )
               if (!incompatibleEvictions.contains(eviction)) {
@@ -159,8 +174,9 @@ object EvictionError {
               val eviction = EvictionErrorPair(
                 p.name,
                 p.organization,
-                p.winner.map(revisionAndCallers),
-                p.evicteds.map(revisionAndCallers),
+                p.winner.map(_.module.revision),
+                p.evicteds.map(_.module.revision).distinct,
+                callers(p.winner, p.evicteds),
                 assumedScheme
               )
               if (!assumedIncompatibleEvictions.contains(eviction)) {
@@ -186,19 +202,10 @@ object EvictionError {
 private final case class EvictionErrorPair(
     name: String,
     organization: String,
-    winner: Option[RevisionAndCallers],
-    evicteds: Vector[RevisionAndCallers],
+    winnerRevision: Option[String],
+    evictedRevisions: Vector[String],
+    callers: List[(ModuleID, String)],
     scheme: String
-) {
-  val evictedRevs: String = {
-    val revs = evicteds map { _.moduleRevision }
-    if (revs.size <= 1) revs.mkString else revs.distinct.mkString("{", ", ", "}")
-  }
-}
-
-private final case class RevisionAndCallers(
-    moduleRevision: String,
-    callers: Vector[ModuleID]
 )
 
 final class EvictionError private[sbt] (
@@ -220,20 +227,17 @@ final class EvictionError private[sbt] (
     out += ""
     evictions.foreach({ a =>
       val seen: mutable.Set[ModuleID] = mutable.Set()
-      val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
 
-        val rev = r.moduleRevision
-        r.callers.toList flatMap { caller =>
-          if (seen(caller)) Nil
-          else {
-            seen += caller
-            List(f"\t    +- ${caller}%-50s (depends on $rev)")
-          }
-        }
+      val callers: List[String] = a.callers.map { case (caller, rev) =>
+        f"\t    +- ${caller}%-50s (depends on $rev)"
       }
       val que = if (assumed) "?" else ""
-      val winnerRev = a.winner match {
-        case Some(r) => s":${r.moduleRevision} (${a.scheme}$que) is selected over ${a.evictedRevs}"
+      val evictedRevs =
+        if (a.evictedRevisions.size <= 1) a.evictedRevisions.mkString
+        else a.evictedRevisions.mkString("{", ", ", "}")
+
+      val winnerRev = a.winnerRevision match {
+        case Some(r) => s":${r} (${a.scheme}$que) is selected over ${evictedRevs}"
         case _       => " is evicted for all versions"
       }
       val title = s"\t* ${a.organization}:${a.name}$winnerRev"
