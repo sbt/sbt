@@ -63,18 +63,24 @@ object EvictionError {
       assumedEvictionErrorLevel: Level.Value,
   ): EvictionError = {
     val directDependencies = module.directDependencies
-    val pairs = reports map { detail =>
-      val evicteds = detail.modules filter { _.evicted }
-      val winner = (detail.modules filterNot { _.evicted }).headOption
-      new EvictionPair(
-        detail.organization,
-        detail.name,
-        winner,
-        evicteds,
-        includesDirect = true,
-        showCallers = true
-      )
-    }
+    val pairs = reports
+      .map { detail =>
+        val evicteds = detail.modules filter { _.evicted }
+        val winner = (detail.modules filterNot { _.evicted }).headOption
+
+        (detail.organization, detail.name, winner, evicteds)
+      }
+      .distinct
+      .map { case (org, name, winner, evicteds) =>
+        new EvictionPair(
+          org,
+          name,
+          winner,
+          evicteds,
+          includesDirect = true,
+          showCallers = true
+        )
+      }
     val incompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
     val assumedIncompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] =
       mutable.ListBuffer()
