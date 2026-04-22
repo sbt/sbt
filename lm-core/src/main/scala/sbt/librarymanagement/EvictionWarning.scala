@@ -277,12 +277,11 @@ object EvictionWarning {
       configurations: Seq[ConfigRef],
       report: UpdateReport
   ): Seq[OrganizationArtifactReport] = {
-    val allEvictionsBuffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
+    val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
     val confs = report.configurations filter { x =>
       configurations.contains[ConfigRef](x.configuration)
     }
     confs flatMap { confReport =>
-      val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
       confReport.details map { detail =>
         if (
           (detail.modules exists { _.evicted }) &&
@@ -293,9 +292,8 @@ object EvictionWarning {
           buffer += detail
         }
       }
-      allEvictionsBuffer ++= buffer
     }
-    allEvictionsBuffer.toList.toVector
+    buffer.toList.toVector
   }
 
   private[sbt] def isScalaArtifact(

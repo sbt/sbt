@@ -43,7 +43,9 @@ object EvictionError {
       assumedEvictionErrorLevel: Level.Value,
       configurations: Seq[ConfigRef],
   ): EvictionError = {
-    val evictions = EvictionWarning.buildEvictions(configurations, report)
+    val evictions = configurations.flatMap { configuration =>
+      EvictionWarning.buildEvictions(Vector(configuration), report)
+    }
     processEvictions(
       module,
       evictions,
@@ -67,23 +69,17 @@ object EvictionError {
       .map { detail =>
         val evicteds = detail.modules filter { _.evicted }
         val winner = (detail.modules filterNot { _.evicted }).headOption
-
-        (detail.organization, detail.name, winner, evicteds)
-      }
-      .distinct
-      .map { case (org, name, winner, evicteds) =>
         new EvictionPair(
-          org,
-          name,
+          detail.organization,
+          detail.name,
           winner,
           evicteds,
           includesDirect = true,
           showCallers = true
         )
       }
-    val incompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
-    val assumedIncompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] =
-      mutable.ListBuffer()
+    val incompatibleEvictions: mutable.ListBuffer[EvictionErrorPair] = mutable.ListBuffer()
+    val assumedIncompatibleEvictions: mutable.ListBuffer[EvictionErrorPair] = mutable.ListBuffer()
     val sbvOpt = module.scalaModuleInfo.map(_.scalaBinaryVersion)
     val userDefinedSchemes: Map[(String, String), String] = Map(schemes flatMap { s =>
       val organization = s.organization
@@ -134,20 +130,43 @@ object EvictionError {
             .orElse(fromLibraryDependencySchemes()) // global
         }
 
+        def revisionAndCallers(module: ModuleReport): RevisionAndCallers =
+          RevisionAndCallers(module.module.revision, module.callers.map(_.caller))
+
         // We want the user to be able to suppress eviction errors for a specific library,
         // which would result in an incompatible eviction based on the assumed version scheme.
         // So, only fall back to the assumed scheme if there is no given scheme by the user or the pom.
         userDefinedSchemeOrFromPom match {
           case Some(givenScheme) =>
-            if (hasIncompatibleVersionForScheme(givenScheme))
-              incompatibleEvictions += (p -> givenScheme)
+            if (hasIncompatibleVersionForScheme(givenScheme)) {
+              val eviction = EvictionErrorPair(
+                p.name,
+                p.organization,
+                p.winner.map(revisionAndCallers),
+                p.evicteds.map(revisionAndCallers),
+                givenScheme
+              )
+              if (!incompatibleEvictions.contains(eviction)) {
+                incompatibleEvictions += eviction
+              }
+            }
           case None =>
             val assumedScheme =
               if (isNameScalaSuffixed(p.name)) assumedVersionScheme
               else assumedVersionSchemeJava
 
-            if (hasIncompatibleVersionForScheme(assumedScheme))
-              assumedIncompatibleEvictions += (p -> assumedScheme)
+            if (hasIncompatibleVersionForScheme(assumedScheme)) {
+              val eviction = EvictionErrorPair(
+                p.name,
+                p.organization,
+                p.winner.map(revisionAndCallers),
+                p.evicteds.map(revisionAndCallers),
+                assumedScheme
+              )
+              if (!assumedIncompatibleEvictions.contains(eviction)) {
+                assumedIncompatibleEvictions += eviction
+              }
+            }
         }
 
       case _ => ()
@@ -164,9 +183,27 @@ object EvictionError {
   }
 }
 
+private final case class EvictionErrorPair(
+    name: String,
+    organization: String,
+    winner: Option[RevisionAndCallers],
+    evicteds: Vector[RevisionAndCallers],
+    scheme: String
+) {
+  val evictedRevs: String = {
+    val revs = evicteds map { _.moduleRevision }
+    if (revs.size <= 1) revs.mkString else revs.distinct.mkString("{", ", ", "}")
+  }
+}
+
+private final case class RevisionAndCallers(
+    moduleRevision: String,
+    callers: Vector[ModuleID]
+)
+
 final class EvictionError private[sbt] (
-    val incompatibleEvictions: Seq[(EvictionPair, String)],
-    val assumedIncompatibleEvictions: Seq[(EvictionPair, String)],
+    val incompatibleEvictions: Seq[EvictionErrorPair],
+    val assumedIncompatibleEvictions: Seq[EvictionErrorPair],
 ) {
   def run(): Unit =
     if (incompatibleEvictions.nonEmpty) {
@@ -177,25 +214,26 @@ final class EvictionError private[sbt] (
 
   def toAssumedLines: List[String] = toLines(assumedIncompatibleEvictions, true)
 
-  def toLines(evictions: Seq[(EvictionPair, String)], assumed: Boolean): List[String] = {
+  def toLines(evictions: Seq[EvictionErrorPair], assumed: Boolean): List[String] = {
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
     out += "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
     out += ""
-    evictions.foreach({ (a, scheme) =>
+    evictions.foreach({ a =>
       val seen: mutable.Set[ModuleID] = mutable.Set()
       val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
-        val rev = r.module.revision
+
+        val rev = r.moduleRevision
         r.callers.toList flatMap { caller =>
-          if (seen(caller.caller)) Nil
+          if (seen(caller)) Nil
           else {
-            seen += caller.caller
+            seen += caller
             List(f"\t    +- ${caller}%-50s (depends on $rev)")
           }
         }
       }
       val que = if (assumed) "?" else ""
       val winnerRev = a.winner match {
-        case Some(r) => s":${r.module.revision} ($scheme$que) is selected over ${a.evictedRevs}"
+        case Some(r) => s":${r.moduleRevision} (${a.scheme}$que) is selected over ${a.evictedRevs}"
         case _       => " is evicted for all versions"
       }
       val title = s"\t* ${a.organization}:${a.name}$winnerRev"
