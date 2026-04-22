@@ -3586,6 +3586,7 @@ object Classpaths {
     val p0 = ModuleID(organization.value, moduleName.value, version.value)
       .cross((projectID / crossVersion).value)
       .artifacts(artifacts.value*)
+      .withPlatformOpt(platform.?.value)
     val p1 = apiURL.value match
       case Some(u) => p0.extra(SbtPomExtraProperties.POM_API_KEY -> u.toURL().toExternalForm)
       case _       => p0

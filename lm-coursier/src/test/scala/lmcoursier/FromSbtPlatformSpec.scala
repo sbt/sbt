@@ -107,4 +107,21 @@ final class FromSbtPlatformSpec extends AnyPropSpec with Matchers {
     // Should just have cross-version suffix, no platform
     module.name.value shouldBe "qux_2.13"
   }
+
+  property("issue #9117: project with native0.5 publishes as _native0.5_3") {
+    val projectID = ModuleID("com.indoorvivants", "sniper", "0.0.9-SNAPSHOT")
+      .withCrossVersion(Binary())
+      .platform("native0.5")
+
+    val (module, version) = FromSbt.moduleVersion(
+      projectID,
+      scalaVersion = "3.8.3",
+      scalaBinaryVersion = "3",
+      optionalCrossVer = false,
+      projectPlatform = Some("native0.5")
+    )
+
+    module.name.value shouldBe "sniper_native0.5_3"
+    version shouldBe "0.0.9-SNAPSHOT"
+  }
 }
