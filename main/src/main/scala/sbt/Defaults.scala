@@ -769,9 +769,8 @@ object Defaults extends BuildCommon with DefExtra {
       scalaCompilerBridgeBin := Def
         .ifS(Def.task {
           val sv = scalaVersion.value
-          val managed = managedScalaInstance.value
           val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ScalaArtifacts.hasScala2SbtBridge(sv)
-          hasSbtBridge && managed
+          hasSbtBridge
         })(Compiler.compilerBridgeFromUpdate)(Def.task(Vector.empty))
         .value,
       scalaCompilerBridgeJars := (Def.taskDyn {

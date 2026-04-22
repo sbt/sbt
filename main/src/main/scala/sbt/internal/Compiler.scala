@@ -64,12 +64,14 @@ object Compiler:
       val sh = Keys.scalaHome.value
       val app = Keys.appConfiguration.value
       val managed = Keys.managedScalaInstance.value
-      sh match
-        case Some(h) => scalaInstanceConfigFromHome(h)
-        case _ =>
-          val scalaProvider = app.provider.scalaProvider
-          if !managed then emptyScalaInstanceConfig
-          else scalaInstanceConfigFromUpdate(extraToolConf)
+      val configs = Keys.ivyConfigurations.value
+      (sh, extraToolConf) match
+        case (Some(h), _) => scalaInstanceConfigFromHome(h)
+        case _ if !managed =>
+          val extra = extraToolConf.getOrElse(Configurations.ScalaTool)
+          if configs.contains(extra) then scalaInstanceConfigFromUpdate(extraToolConf)
+          else emptyScalaInstanceConfig
+        case _ => scalaInstanceConfigFromUpdate(extraToolConf)
     }
 
   /**
