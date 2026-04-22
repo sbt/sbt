@@ -85,6 +85,13 @@ object EvictionErrorSpec extends BaseIvySpecification {
           "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
           "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
           "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
+          "",
+          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0}",
+          "\t    +- com.example:foo:0.1.0                              (depends on 2.2.0)",
+          "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
+          "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
+          "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
+          "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
           ""
         )
     )
