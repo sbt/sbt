@@ -276,24 +276,13 @@ object EvictionWarning {
   private[sbt] def buildEvictions(
       configurations: Seq[ConfigRef],
       report: UpdateReport
-  ): Seq[OrganizationArtifactReport] = {
-    val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
+  ): Seq[(ConfigRef, OrganizationArtifactReport)] = {
     val confs = report.configurations filter { x =>
       configurations.contains[ConfigRef](x.configuration)
     }
-    confs flatMap { confReport =>
-      confReport.details map { detail =>
-        if (
-          (detail.modules exists { _.evicted }) &&
-          !(buffer exists { x =>
-            (x.organization == detail.organization) && (x.name == detail.name)
-          })
-        ) {
-          buffer += detail
-        }
-      }
-    }
-    buffer.toList.toVector
+    confs.flatMap { confReport =>
+      confReport.details.map(report => (confReport.configuration, report))
+    }.toVector
   }
 
   private[sbt] def isScalaArtifact(
@@ -311,9 +300,21 @@ object EvictionWarning {
   private[sbt] def processEvictions(
       module: ModuleDescriptor,
       options: EvictionWarningOptions,
-      reports: Seq[OrganizationArtifactReport]
+      configsAndReports: Seq[(ConfigRef, OrganizationArtifactReport)]
   ): EvictionWarning = {
     val directDependencies = module.directDependencies
+    val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
+    configsAndReports.foreach { case (_, detail) =>
+      if (
+        (detail.modules exists { _.evicted }) &&
+        !(buffer exists { x =>
+          (x.organization == detail.organization) && (x.name == detail.name)
+        })
+      ) {
+        buffer += detail
+      }
+    }
+    val reports = buffer.toList.toVector
     val pairs = reports map { detail =>
       val evicteds = detail.modules filter { _.evicted }
       val winner = (detail.modules filterNot { _.evicted }).headOption

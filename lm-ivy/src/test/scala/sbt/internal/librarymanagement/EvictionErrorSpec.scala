@@ -27,7 +27,7 @@ object EvictionErrorSpec extends BaseIvySpecification {
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* com.typesafe.akka:akka-actor_2.10:2.3.0 (pvp) is selected over 2.1.4",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.0 (pvp) is selected over 2.1.4 for {compile, test}",
           "\t    +- com.example:foo:0.1.0                              (depends on 2.1.4)",
           ""
         )
@@ -43,7 +43,7 @@ object EvictionErrorSpec extends BaseIvySpecification {
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp) is selected over 2.1.4",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp) is selected over 2.1.4 for {compile, test}",
           "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
           "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
@@ -61,7 +61,7 @@ object EvictionErrorSpec extends BaseIvySpecification {
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp?) is selected over 2.1.4",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp?) is selected over 2.1.4 for {compile, test}",
           "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
           "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
@@ -79,20 +79,20 @@ object EvictionErrorSpec extends BaseIvySpecification {
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0}",
+          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0} for compile",
           "\t    +- com.example:foo:0.1.0                              (depends on 3.0.0-M4)",
           "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
           "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
           "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
           "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
           "",
-          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0}",
+          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0} for test",
           "\t    +- com.example:foo:0.1.0                              (depends on 2.2.0)",
           "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
           "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
           "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
           "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
-          ""
+          "",
         )
     )
   }
@@ -148,6 +148,27 @@ object EvictionErrorSpec extends BaseIvySpecification {
     // The key should include the platform suffix "_sjs1" before the Scala version
     assert(userDefinedSchemes.contains(("com.lihaoyi", "geny_sjs1_2.12")))
     assert(userDefinedSchemes(("com.lihaoyi", "geny_sjs1_2.12")) == "always")
+  }
+
+  test("it should detect evictions for Test configuration") {
+    val deps =
+      Vector(`scala2.13.3`, `http4s0.21.11`.withConfigurations(Some("test")), `cats-effect3.0.0-M4`)
+    val m = module(defaultModuleId, deps, Some("2.13.3"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionError(report, m, Nil).lines ==
+        List(
+          "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+          "",
+          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0} for test",
+          "\t    +- com.example:foo:0.1.0                              (depends on 2.2.0)",
+          "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
+          "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
+          "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
+          "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
+          ""
+        )
+    )
   }
 
   // older Akka was on pvp
