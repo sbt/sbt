@@ -771,9 +771,8 @@ object Defaults extends BuildCommon {
       scalaCompilerBridgeBin := Def
         .ifS(Def.task {
           val sv = scalaVersion.value
-          val managed = managedScalaInstance.value
           val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ZincLmUtil.hasScala2SbtBridge(sv)
-          hasSbtBridge && managed
+          hasSbtBridge
         })(Def.cachedTask {
           // Use scalaDynVersion to resolve dynamic versions (e.g., "3-latest.candidate" -> "3.8.1-RC1")
           val sv = scalaDynVersion.value
