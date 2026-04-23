@@ -35,14 +35,18 @@ private[sbt] object Compiler {
       val app = Keys.appConfiguration.value
       val managed = Keys.managedScalaInstance.value
       val sv = Keys.scalaVersion.value
+      val configs = Keys.ivyConfigurations.value
       // if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
       //  appropriately to avoid cycles
-      sh match {
-        case Some(h) => scalaInstanceFromHome(h)
+      (sh, extraToolConf) match {
+        case (Some(h), _) => scalaInstanceFromHome(h)
+        case _ if !managed =>
+          val extra = extraToolConf.getOrElse(Configurations.ScalaTool)
+          if (configs.contains(extra)) scalaInstanceFromUpdate(extraToolConf)
+          else emptyScalaInstance
         case _ =>
           val scalaProvider = app.provider.scalaProvider
-          if (!managed) emptyScalaInstance
-          else if (sv == scalaProvider.version) optimizedScalaInstance(sv, scalaProvider)
+          if (sv == scalaProvider.version) optimizedScalaInstance(sv, scalaProvider)
           else scalaInstanceFromUpdate(extraToolConf)
       }
     }
