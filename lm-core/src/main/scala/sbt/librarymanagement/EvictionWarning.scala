@@ -2,6 +2,7 @@ package sbt.librarymanagement
 
 import collection.mutable
 import Configurations.Compile
+import Configurations.Test
 import ScalaArtifacts.{ LibraryID, CompilerID }
 import sbt.internal.librarymanagement.{ VersionSchemes, VersionRange }
 import sbt.util.Logger
@@ -74,7 +75,7 @@ object EvictionWarningOptions {
   def default: EvictionWarningOptions = summary
   def full: EvictionWarningOptions =
     new EvictionWarningOptions(
-      Vector(Compile),
+      Vector(Compile, Test),
       warnScalaVersionEviction = true,
       warnDirectEvictions = true,
       warnTransitiveEvictions = true,
@@ -85,7 +86,7 @@ object EvictionWarningOptions {
     )
   def summary: EvictionWarningOptions =
     new EvictionWarningOptions(
-      Vector(Compile),
+      Vector(Compile, Test),
       warnScalaVersionEviction = false,
       warnDirectEvictions = false,
       warnTransitiveEvictions = false,
@@ -268,31 +269,20 @@ object EvictionWarning {
       options: EvictionWarningOptions,
       report: UpdateReport
   ): EvictionWarning = {
-    val evictions = buildEvictions(options, report)
+    val evictions = buildEvictions(options.configurations, report)
     processEvictions(module, options, evictions)
   }
 
   private[sbt] def buildEvictions(
-      options: EvictionWarningOptions,
+      configurations: Seq[ConfigRef],
       report: UpdateReport
-  ): Seq[OrganizationArtifactReport] = {
-    val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
+  ): Seq[(ConfigRef, OrganizationArtifactReport)] = {
     val confs = report.configurations filter { x =>
-      options.configurations.contains[ConfigRef](x.configuration)
+      configurations.contains[ConfigRef](x.configuration)
     }
-    confs flatMap { confReport =>
-      confReport.details map { detail =>
-        if (
-          (detail.modules exists { _.evicted }) &&
-          !(buffer exists { x =>
-            (x.organization == detail.organization) && (x.name == detail.name)
-          })
-        ) {
-          buffer += detail
-        }
-      }
-    }
-    buffer.toList.toVector
+    confs.flatMap { confReport =>
+      confReport.details.map(report => (confReport.configuration, report))
+    }.toVector
   }
 
   private[sbt] def isScalaArtifact(
@@ -310,9 +300,21 @@ object EvictionWarning {
   private[sbt] def processEvictions(
       module: ModuleDescriptor,
       options: EvictionWarningOptions,
-      reports: Seq[OrganizationArtifactReport]
+      configsAndReports: Seq[(ConfigRef, OrganizationArtifactReport)]
   ): EvictionWarning = {
     val directDependencies = module.directDependencies
+    val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
+    configsAndReports.foreach { case (_, detail) =>
+      if (
+        (detail.modules exists { _.evicted }) &&
+        !(buffer exists { x =>
+          (x.organization == detail.organization) && (x.name == detail.name)
+        })
+      ) {
+        buffer += detail
+      }
+    }
+    val reports = buffer.toList.toVector
     val pairs = reports map { detail =>
       val evicteds = detail.modules filter { _.evicted }
       val winner = (detail.modules filterNot { _.evicted }).headOption

@@ -1,1 +1,9 @@
+# Update should fail as test dependencies have version conflicts
 -> update
+# Update should succeed if the error level is reduced to Warn
+> set evictionErrorLevel := Level.Warn
+> update
+# Update should succeed if eviction options are less strict
+> set evictionErrorLevel := Level.Error
+> set update / evictionWarningOptions := EvictionWarningOptions.default.withConfigurations(Vector(Compile))
+> update

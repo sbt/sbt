@@ -46,6 +46,7 @@ private[sbt] object LibraryManagement {
       transitiveUpdates: Seq[UpdateReport],
       uwConfig: UnresolvedWarningConfiguration,
       evictionLevel: Level.Value,
+      evictionWarningOptions: EvictionWarningOptions,
       versionSchemeOverrides: Seq[ModuleID],
       assumedEvictionErrorLevel: Level.Value,
       assumedVersionScheme: String,
@@ -74,29 +75,20 @@ private[sbt] object LibraryManagement {
       val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val evictionErrorCompile = EvictionError(
+      val evictionError = EvictionError(
         report1,
         module,
         versionSchemeOverrides,
         assumedVersionScheme,
         assumedVersionSchemeJava,
         assumedEvictionErrorLevel,
-        Configurations.Compile,
-      )
-      val evictionErrorTest = EvictionError(
-        report1,
-        module,
-        versionSchemeOverrides,
-        assumedVersionScheme,
-        assumedVersionSchemeJava,
-        assumedEvictionErrorLevel,
-        Configurations.Test,
+        evictionWarningOptions.configurations,
       )
       def extraLines = List(
         "",
         "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
       )
-      def errorLinesFor(evictionError: EvictionError): Seq[String] =
+      val errorLines: Seq[String] =
         (if (
            evictionError.incompatibleEvictions.isEmpty
            || evictionLevel != Level.Error
@@ -107,20 +99,13 @@ private[sbt] object LibraryManagement {
              || assumedEvictionErrorLevel != Level.Error
            ) Nil
            else evictionError.toAssumedLines)
-      val errorLines: Seq[String] =
-        errorLinesFor(evictionErrorCompile) ++ errorLinesFor(evictionErrorTest)
       if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(System.lineSeparator))
       else {
-        if (evictionErrorCompile.incompatibleEvictions.isEmpty) ()
-        else evictionErrorCompile.lines.foreach(log.log(evictionLevel, _: String))
-        if (evictionErrorCompile.assumedIncompatibleEvictions.isEmpty) ()
+        if (evictionError.incompatibleEvictions.isEmpty) ()
+        else evictionError.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionError.assumedIncompatibleEvictions.isEmpty) ()
         else
-          evictionErrorCompile.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
-
-        if (evictionErrorTest.incompatibleEvictions.isEmpty) ()
-        else evictionErrorTest.lines.foreach(log.log(evictionLevel, _: String))
-        if (evictionErrorTest.assumedIncompatibleEvictions.isEmpty) ()
-        else evictionErrorTest.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
+          evictionError.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
       }
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
       val report2 = transformDetails(report1, includeCallers, includeDetails)
@@ -419,6 +404,7 @@ private[sbt] object LibraryManagement {
           transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = Level.Debug,
+          evictionWarningOptions = EvictionWarningOptions.default,
           versionSchemeOverrides = Nil,
           assumedEvictionErrorLevel = Level.Debug,
           assumedVersionScheme = VersionScheme.Always,
