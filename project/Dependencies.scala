@@ -115,7 +115,7 @@ object Dependencies {
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
-  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.3"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.4"
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
