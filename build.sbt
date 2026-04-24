@@ -1011,7 +1011,9 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
       .filterNot(_.getName.contains("scala-compiler")),
     (bundledLauncherProj / Compile / packageBin).value,
     streams.value.log,
-    scriptedKeepTempDirectory.value
+    scriptedKeepTempDirectory.value,
+    (scripted / includeFilter).value,
+    (scripted / excludeFilter).value,
   )
 }
 
@@ -1090,6 +1092,8 @@ def otherRootSettings =
     scriptedSource := (sbtProj / sourceDirectory).value / "sbt-test",
     scripted / watchTriggers += scriptedSource.value.toGlob / **,
     scriptedUnpublished / watchTriggers := (scripted / watchTriggers).value,
+    scripted / includeFilter := AllPassFilter,
+    scripted / excludeFilter := Scripted.sbtWindowsExcludeFilter,
     scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
       (sys.props.get("sbt.ivy.home") match {
         case Some(home) => List(s"-Dsbt.ivy.home=$home")

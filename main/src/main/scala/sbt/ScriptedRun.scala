@@ -8,8 +8,10 @@
 
 package sbt
 
-import java.io.File
+import java.io.{ File, FileFilter as JFileFilter }
 import java.lang.reflect.Method
+
+import sbt.io.{ AllPassFilter, NothingFilter }
 
 sealed trait ScriptedRun {
   final def run(
@@ -62,6 +64,37 @@ sealed trait ScriptedRun {
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
 
+  final def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Seq[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Seq[String],
+      prescripted: java.util.List[File],
+      instances: Int,
+      keepTempDirectory: Boolean,
+      includeFilter: JFileFilter,
+      excludeFilter: JFileFilter,
+  ): Unit = {
+    try {
+      invoke(
+        resourceBaseDirectory,
+        bufferLog,
+        tests.toArray,
+        launcherJar,
+        javaCommand,
+        launchOpts.toArray,
+        prescripted,
+        instances,
+        keepTempDirectory,
+        includeFilter,
+        excludeFilter,
+      )
+      ()
+    } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+  }
+
   protected def invoke(
       resourceBaseDirectory: File,
       bufferLog: java.lang.Boolean,
@@ -97,6 +130,33 @@ sealed trait ScriptedRun {
       keepTempDirectory: java.lang.Boolean,
   ): AnyRef
 
+  // Default drops filters and calls V3 invoke so V1/V2/V3 subclasses need not override.
+  protected def invoke(
+      resourceBaseDirectory: File,
+      bufferLog: java.lang.Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instances: java.lang.Integer,
+      keepTempDirectory: java.lang.Boolean,
+      includeFilter: JFileFilter,
+      excludeFilter: JFileFilter,
+  ): AnyRef = {
+    invoke(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      launcherJar,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      instances,
+      keepTempDirectory,
+    )
+  }
+
 }
 
 object ScriptedRun {
@@ -108,48 +168,92 @@ object ScriptedRun {
     val sCls = classOf[String]
     val lfCls = classOf[java.util.List[File]]
     val iCls = classOf[Int]
+    val ffCls = classOf[JFileFilter]
 
     val clazz = scriptedTests.getClass
     if (batchExecution)
       try
-        new RunInParallelV3(
+        new RunInParallelV4(
           scriptedTests,
-          clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls, bCls)
+          clazz.getMethod(
+            "runInParallel",
+            fCls,
+            bCls,
+            asCls,
+            fCls,
+            sCls,
+            asCls,
+            lfCls,
+            iCls,
+            bCls,
+            ffCls,
+            ffCls,
+          )
         )
       catch {
         case _: NoSuchMethodException =>
           try
-            new RunInParallelV2(
+            new RunInParallelV3(
               scriptedTests,
-              clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
+              clazz
+                .getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls, bCls)
             )
           catch {
             case _: NoSuchMethodException =>
-              new RunInParallelV1(
-                scriptedTests,
-                clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
-              )
+              try
+                new RunInParallelV2(
+                  scriptedTests,
+                  clazz
+                    .getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
+                )
+              catch {
+                case _: NoSuchMethodException =>
+                  new RunInParallelV1(
+                    scriptedTests,
+                    clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
+                  )
+              }
           }
       }
     else
       try
-        new RunV3(
+        new RunV4(
           scriptedTests,
-          clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, bCls)
+          clazz.getMethod(
+            "run",
+            fCls,
+            bCls,
+            asCls,
+            fCls,
+            sCls,
+            asCls,
+            lfCls,
+            bCls,
+            ffCls,
+            ffCls,
+          )
         )
       catch {
         case _: NoSuchMethodException =>
           try
-            new RunV2(
+            new RunV3(
               scriptedTests,
-              clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
+              clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, bCls)
             )
           catch {
             case _: NoSuchMethodException =>
-              new RunV1(
-                scriptedTests,
-                clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
-              )
+              try
+                new RunV2(
+                  scriptedTests,
+                  clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
+                )
+              catch {
+                case _: NoSuchMethodException =>
+                  new RunV1(
+                    scriptedTests,
+                    clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
+                  )
+              }
           }
       }
   }
@@ -298,6 +402,115 @@ object ScriptedRun {
         prescripted,
         instances,
         keepTempDirectory,
+      )
+  }
+
+  private class RunV4(scriptedTests: AnyRef, run: Method) extends ScriptedRun {
+    override protected def invoke(
+        resourceBaseDirectory: File,
+        bufferLog: java.lang.Boolean,
+        tests: Array[String],
+        launcherJar: File,
+        javaCommand: String,
+        launchOpts: Array[String],
+        prescripted: java.util.List[File],
+        instances: java.lang.Integer,
+        keepTempDirectory: java.lang.Boolean,
+    ): AnyRef =
+      invoke(
+        resourceBaseDirectory,
+        bufferLog,
+        tests,
+        launcherJar,
+        javaCommand,
+        launchOpts,
+        prescripted,
+        instances,
+        keepTempDirectory,
+        AllPassFilter,
+        NothingFilter,
+      )
+
+    override protected def invoke(
+        resourceBaseDirectory: File,
+        bufferLog: java.lang.Boolean,
+        tests: Array[String],
+        launcherJar: File,
+        javaCommand: String,
+        launchOpts: Array[String],
+        prescripted: java.util.List[File],
+        instances: java.lang.Integer,
+        keepTempDirectory: java.lang.Boolean,
+        includeFilter: JFileFilter,
+        excludeFilter: JFileFilter,
+    ): AnyRef =
+      run.invoke(
+        scriptedTests,
+        resourceBaseDirectory,
+        bufferLog,
+        tests,
+        launcherJar,
+        javaCommand,
+        launchOpts,
+        prescripted,
+        keepTempDirectory,
+        includeFilter,
+        excludeFilter,
+      )
+  }
+
+  private class RunInParallelV4(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun {
+    override protected def invoke(
+        resourceBaseDirectory: File,
+        bufferLog: java.lang.Boolean,
+        tests: Array[String],
+        launcherJar: File,
+        javaCommand: String,
+        launchOpts: Array[String],
+        prescripted: java.util.List[File],
+        instances: Integer,
+        keepTempDirectory: java.lang.Boolean,
+    ): AnyRef =
+      invoke(
+        resourceBaseDirectory,
+        bufferLog,
+        tests,
+        launcherJar,
+        javaCommand,
+        launchOpts,
+        prescripted,
+        instances,
+        keepTempDirectory,
+        AllPassFilter,
+        NothingFilter,
+      )
+
+    override protected def invoke(
+        resourceBaseDirectory: File,
+        bufferLog: java.lang.Boolean,
+        tests: Array[String],
+        launcherJar: File,
+        javaCommand: String,
+        launchOpts: Array[String],
+        prescripted: java.util.List[File],
+        instances: Integer,
+        keepTempDirectory: java.lang.Boolean,
+        includeFilter: JFileFilter,
+        excludeFilter: JFileFilter,
+    ): AnyRef =
+      runInParallel.invoke(
+        scriptedTests,
+        resourceBaseDirectory,
+        bufferLog,
+        tests,
+        launcherJar,
+        javaCommand,
+        launchOpts,
+        prescripted,
+        instances,
+        keepTempDirectory,
+        includeFilter,
+        excludeFilter,
       )
   }
 

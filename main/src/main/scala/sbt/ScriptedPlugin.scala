@@ -63,6 +63,8 @@ object ScriptedPlugin extends AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
+    scripted / includeFilter := AllPassFilter,
+    scripted / excludeFilter := NothingFilter,
     scriptedSbt := (pluginCrossBuild / sbtVersion).value,
     sbtLauncher := Def.uncached(
       getJars(ScriptedLaunchConf)
@@ -183,7 +185,9 @@ object ScriptedPlugin extends AutoPlugin {
         scriptedLaunchOpts.value,
         new java.util.ArrayList[File](),
         scriptedParallelInstances.value,
-        scriptedKeepTempDirectory.value
+        scriptedKeepTempDirectory.value,
+        (scripted / includeFilter).value,
+        (scripted / excludeFilter).value,
       )
     }
 

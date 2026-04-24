@@ -102,7 +102,6 @@ final class ScriptedTests(
     Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler)
   }
 
-  /** Returns a sequence of test runners that have to be applied in the call site. */
   def batchScriptedRunner(
       testGroupAndNames: Seq[(String, String)],
       prescripted: File => Unit,
@@ -110,6 +109,28 @@ final class ScriptedTests(
       prop: RemoteSbtCreatorProp,
       log: Logger,
       keepTempDirectory: Boolean = false,
+  ): Seq[TestRunner] =
+    batchScriptedRunner(
+      testGroupAndNames,
+      prescripted,
+      sbtInstances,
+      prop,
+      log,
+      keepTempDirectory,
+      AllPassFilter,
+      NothingFilter,
+    )
+
+  /** Returns a sequence of test runners that have to be applied in the call site. */
+  def batchScriptedRunner(
+      testGroupAndNames: Seq[(String, String)],
+      prescripted: File => Unit,
+      sbtInstances: Int,
+      prop: RemoteSbtCreatorProp,
+      log: Logger,
+      keepTempDirectory: Boolean,
+      includeFilter: java.io.FileFilter,
+      excludeFilter: java.io.FileFilter,
   ): Seq[TestRunner] = {
     // Test group and names may be file filters (like '*')
     val groupAndNameDirs = {
@@ -117,12 +138,14 @@ final class ScriptedTests(
         (group, name) <- testGroupAndNames
         groupDir <- (resourceBaseDirectory * group).get()
         testDir <- (groupDir * name).get()
+        if !testDir.isFile
+        if includeFilter.accept(testDir) && !excludeFilter.accept(testDir)
       } yield (groupDir, testDir)
     }
 
     type TestInfo = ((String, String), File)
 
-    val labelsAndDirs = groupAndNameDirs.filterNot(_._2.isFile).map { (groupDir, nameDir) =>
+    val labelsAndDirs = groupAndNameDirs.map { (groupDir, nameDir) =>
       val groupName = groupDir.getName
       val testName = nameDir.getName
       val testDirectory = testResources.readOnlyResourceDirectory(groupName, testName)
@@ -137,18 +160,15 @@ final class ScriptedTests(
         case s => s
       }
 
-      val runFromSourceBasedTestsUnfiltered = labelsAndDirs
-      val runFromSourceBasedTests = runFromSourceBasedTestsUnfiltered.filterNot(windowsExclude)
-
       def logTests(size: Int, how: String) =
         log.info(
           f"Running $size / $totalSize (${size * 100d / totalSize}%3.2f%%) scripted tests with $how"
         )
-      logTests(runFromSourceBasedTests.size, prop.toString)
+      logTests(labelsAndDirs.size, prop.toString)
 
-      if (keepTempDirectory && runFromSourceBasedTests.size > 1) {
+      if (keepTempDirectory && labelsAndDirs.size > 1) {
         sys.error(
-          s"scriptedKeepTempDirectory requires exactly one test, but ${runFromSourceBasedTests.size} tests were requested"
+          s"scriptedKeepTempDirectory requires exactly one test, but ${labelsAndDirs.size} tests were requested"
         )
       }
 
@@ -170,26 +190,9 @@ final class ScriptedTests(
           .toList
       }
 
-      createTestRunners(runFromSourceBasedTests)
+      createTestRunners(labelsAndDirs)
     }
   }
-
-  private val windowsExclude: (((String, String), File)) => Boolean =
-    if (scala.util.Properties.isWin) { case (testName, _) =>
-      testName match {
-        case ("classloader-cache", "jni") => true // no native lib is built for windows
-        case ("classloader-cache", "snapshot") =>
-          true // the test overwrites a jar that is being used which is verboten in windows
-        // The test spark server is unable to bind to a local socket on Visual Studio 2019
-        case ("classloader-cache", "spark") => true
-        case ("nio", "make-clone")          => true // uses gcc which isn't set up on all systems
-        // symlinks don't work the same on windows. Symlink monitoring does work in many cases
-        // on windows but not to the same level as it does on osx and linux
-        case ("watch", "symlinks") => true
-        case _                     => false
-      }
-    }
-    else _ => false
 
   /**
    * Defines the batch execution of scripted tests.
@@ -512,6 +515,37 @@ class ScriptedRunner {
     )
   }
 
+  /** Entry point with configurable include/exclude filters. */
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      keepTempDirectory: Boolean,
+      includeFilter: java.io.FileFilter,
+      excludeFilter: java.io.FileFilter,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    run(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      Int.MaxValue,
+      parallelExecution = false,
+      keepTempDirectory,
+      includeFilter,
+      excludeFilter,
+    )
+  }
+
   /**
    * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x, 1.4.x etc.
    * Removing this method will break scripted and sbt plugin cross building.
@@ -596,6 +630,37 @@ class ScriptedRunner {
     )
   }
 
+  /** Entry point with configurable include/exclude filters. */
+  def runInParallel(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instance: Int,
+      keepTempDirectory: Boolean,
+      includeFilter: java.io.FileFilter,
+      excludeFilter: java.io.FileFilter,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      instance,
+      keepTempDirectory,
+      includeFilter,
+      excludeFilter,
+    )
+  }
+
   // This is called by project/Scripted.scala
   // Using java.util.List[File] to encode File => Unit
   def runInParallel(
@@ -634,6 +699,35 @@ class ScriptedRunner {
       instances: Int,
       keepTempDirectory: Boolean = false,
   ): Unit =
+    runInParallel(
+      baseDir,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      prop,
+      instances,
+      keepTempDirectory,
+      AllPassFilter,
+      NothingFilter,
+    )
+
+  private[sbt] def runInParallel(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: Logger,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      prop: RemoteSbtCreatorProp,
+      instances: Int,
+      keepTempDirectory: Boolean,
+      includeFilter: java.io.FileFilter,
+      excludeFilter: java.io.FileFilter,
+  ): Unit =
     run(
       baseDir,
       bufferLog,
@@ -646,6 +740,8 @@ class ScriptedRunner {
       instances,
       parallelExecution = true,
       keepTempDirectory,
+      includeFilter,
+      excludeFilter,
     )
 
   private def run(
@@ -660,6 +756,8 @@ class ScriptedRunner {
       instances: Int,
       parallelExecution: Boolean,
       keepTempDirectory: Boolean = false,
+      includeFilter: java.io.FileFilter = AllPassFilter,
+      excludeFilter: java.io.FileFilter = NothingFilter,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
     val runner = new ScriptedTests(baseDir, bufferLog, javaCommand, launchOpts.toIndexedSeq)
@@ -682,7 +780,9 @@ class ScriptedRunner {
         groupCount,
         prop,
         logger,
-        keepTempDirectory
+        keepTempDirectory,
+        includeFilter,
+        excludeFilter,
       )
     // Fail if user provided test patterns but none matched any existing test directories
     if (tests.nonEmpty && scriptedRunners.isEmpty) {
