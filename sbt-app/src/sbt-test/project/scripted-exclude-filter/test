@@ -1,0 +1,23 @@
+# `passing` is a project that compiles; `skipped` has a project/plugins.sbt referencing a
+# fictitious plugin so its sbt session fails to load if actually run.
+$ copy-file changes/ok-test src/sbt-test/group/passing/test
+$ copy-file changes/ok-test src/sbt-test/group/skipped/test
+$ copy-file changes/broken-plugins.sbt src/sbt-test/group/skipped/project/plugins.sbt
+
+> scripted
+
+# Explicit selection of the un-filtered test. Succeeds.
+> scripted group/passing
+
+# Explicit selection of a filtered test yields "No tests found matching" error.
+-> scripted group/skipped
+
+# Replace the excludeFilter to let both run. `skipped` now fails.
+> set scripted / excludeFilter := NothingFilter
+-> scripted
+-> scripted group/skipped
+
+# Flip to includeFilter: only accept tests whose name is "passing".
+> set scripted / includeFilter := new SimpleFileFilter(_.getName == "passing")
+> scripted
+-> scripted group/skipped

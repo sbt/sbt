@@ -36,12 +36,12 @@ object Scripted {
     if (scala.util.Properties.isWin)
       new SimpleFileFilter(f =>
         (f.getParentFile.getName, f.getName) match {
-          case ("classloader-cache", "jni")      => true // no native lib is built for windows
-          case ("classloader-cache", "snapshot") => true // the test overwrites a jar that is being used which is verboten in windows
-          case ("classloader-cache", "spark")    => true // the test spark server is unable to bind to a local socket on Visual Studio 2019
-          case ("nio", "make-clone")             => true // uses gcc which isn't set up on all systems
-          case ("watch", "symlinks")             => true // symlinks don't work the same on windows
-          case _                                 => false
+          case ("classloader-cache", "jni") => true // no native lib is built for windows
+          case ("classloader-cache", "spark") =>
+            true // the test spark server is unable to bind to a local socket on Visual Studio 2019
+          case ("nio", "make-clone") => true // uses gcc which isn't set up on all systems
+          case ("watch", "symlinks") => true // symlinks don't work the same on windows
+          case _                     => false
         }
       )
     else NothingFilter
