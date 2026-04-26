@@ -4803,8 +4803,8 @@ trait BuildExtra extends BuildCommon with DefExtra {
     }
 
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
-  def compilerPlugin(dependency: ModuleID): ModuleID = {
-    dependency.configurations match {
+  def compilerPlugin(dependency: ModuleID): ModuleID =
+    dependency.configurations match
       case Some(confs) if confs.toLowerCase != "compile" && confs.nonEmpty =>
         sys.error(
           s"""Configuration-scoped compiler plugins are not supported.
@@ -4813,9 +4813,10 @@ trait BuildExtra extends BuildCommon with DefExtra {
              |The plugin will be applied to all configurations.""".stripMargin
         )
       case _ =>
-        dependency.withConfigurations(Some("plugin->default(compile)"))
-    }
-  }
+        // Compiler plugins should ignore the subproject platform and use JVM
+        dependency
+          .withConfigurations(Some("plugin->default(compile)"))
+          .platform(Platform.jvm)
 
   /** Adds `dependency` to `libraryDependencies` in the auto-compiler plugin configuration. */
   def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
