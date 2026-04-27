@@ -318,7 +318,9 @@ OPTIONS
   ): Boolean =
     try
       if !isDesktopSupported then
-        log.warn(s"Could not open browser for dependency graph at $uri: desktop API is not supported")
+        log.warn(
+          s"Could not open browser for dependency graph at $uri: desktop API is not supported"
+        )
         false
       else
         val desktop = getDesktop
