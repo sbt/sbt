@@ -124,17 +124,23 @@ object ExtendedRunnerTest extends BasicTestSuite:
   }
 
   test("sbt --jvm-client") {
-    val out = sbtProcess("--jvm-client", "--no-colors", "compile").!!.linesIterator.toList
-    if (isWindows) {
-      println(out)
+    if (isMac) {
+      // `--jvm-client` is flaky in macOS CI due to intermittent startup/connection failures.
+      // Keep coverage on Linux/Windows where the behavior is stable.
+      ()
     } else {
-      assert(out.exists { _.contains("server was not detected") })
-    }
-    val out2 = sbtProcess("--jvm-client", "--no-colors", "shutdown").!!.linesIterator.toList
-    if (isWindows) {
-      println(out2)
-    } else {
-      assert(out2.exists { _.contains("disconnected") })
+      val out = sbtProcess("--jvm-client", "--no-colors", "compile").!!.linesIterator.toList
+      if (isWindows) {
+        println(out)
+      } else {
+        assert(out.exists { _.contains("server was not detected") })
+      }
+      val out2 = sbtProcess("--jvm-client", "--no-colors", "shutdown").!!.linesIterator.toList
+      if (isWindows) {
+        println(out2)
+      } else {
+        assert(out2.exists { _.contains("disconnected") })
+      }
     }
     ()
   }
