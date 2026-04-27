@@ -56,7 +56,6 @@ val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
 val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 val moduleID = (organization) apply { (o) => ModuleID(o, "sbt", sbtVersionToRelease) }
-val sbtnVersion = SettingKey[String]("sbtn-version")
 val sbtnJarsMappings = TaskKey[Seq[(File, String)]]("sbtn-jars-mappings", "Resolves sbtn JARs")
 val sbtnJarsBaseUrl = SettingKey[String]("sbtn-jars-base-url")
 
@@ -144,12 +143,10 @@ val launcherPackage = (project in file("."))
       // TODO - GPG Trust validation.
       file
     },
-    // update sbt.sh at root
-    sbtnVersion := "1.12.1",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
-      val v = sbtnVersion.value
+      val v = Utils.sbtnVersion.value
       val macosUniversalImageTar = s"sbtn-$universalMacPlatform-$v.tar.gz"
       val linuxX86ImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
       val linuxAarch64ImageTar = s"sbtn-$aarch64LinuxPlatform-$v.tar.gz"

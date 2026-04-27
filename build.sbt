@@ -11,9 +11,11 @@ import com.eed3si9n.jarjarabrams.ModuleCoordinate
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-RC9-bin-SNAPSHOT"
+  val v = "2.0.0-RC13-bin-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
+// update sbt.sh at root
+ThisBuild / Utils.sbtnVersion := "2.0.0-RC13"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value

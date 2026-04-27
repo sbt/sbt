@@ -11,6 +11,7 @@ object Utils {
   val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")
   val scalaKeywords: TaskKey[Set[String]] = taskKey[Set[String]]("")
   val generateKeywords: TaskKey[File] = taskKey[File]("")
+  val sbtnVersion = SettingKey[String]("sbtn-version")
 
   lazy val noPublish = Seq(
     publish := {},
