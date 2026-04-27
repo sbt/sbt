@@ -9,6 +9,7 @@
 package sbt
 package plugins
 
+import java.net.URI
 import sbt.internal.util.complete.Parser
 import DependencyTreeSettings.{
   Arg,
@@ -111,6 +112,25 @@ object DependencyTreeTest extends verify.BasicTestSuite:
 
     // No version should be selectable
     assert(Parser.parse(" org1 name1", parser) == Right(ArtifactPattern("org1", "name1", None)))
+  }
+
+  test("openBrowser returns false when desktop API is unsupported") {
+    val opened = DependencyTreeSettings.openBrowser(
+      new URI("file:///tmp/deps.html"),
+      sbt.util.Logger.Null,
+      isDesktopSupported = false
+    )
+    assert(!opened)
+  }
+
+  test("openBrowser returns false when getting desktop throws") {
+    val opened = DependencyTreeSettings.openBrowser(
+      new URI("file:///tmp/deps.html"),
+      sbt.util.Logger.Null,
+      isDesktopSupported = true,
+      getDesktop = throw new UnsupportedOperationException("Failed to open Wayland display")
+    )
+    assert(!opened)
   }
 
   def parseArgs(args: List[String]): Seq[Arg] =

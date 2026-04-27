@@ -25,6 +25,7 @@ import sbt.io.syntax.*
 import sbt.librarymanagement.*
 import sbt.util.{ Level, Logger }
 import scala.Console
+import scala.util.control.NonFatal
 
 private[sbt] object DependencyTreeSettings:
   import sjsonnew.BasicJsonProtocol.*
@@ -200,7 +201,7 @@ OPTIONS
                 val graph = dependencyTreeModuleGraph0.value
                 val renderedTree = TreeView.createJson(graph)
                 val outputFile = TreeView.createFile(renderedTree, targetDir)
-                if isBrowse then openBrowser(outputFile.toURI)
+                if isBrowse then openBrowser(outputFile.toURI, s.log)
                 outputFile.getAbsolutePath
               }
             case Fmt.Graph | Fmt.HtmlGraph =>
@@ -217,7 +218,7 @@ OPTIONS
                   handleOutput(output, outFileOpt, isQuiet, isAppend, s.log)
                 else
                   val outputFile = DagreHTML.createFile(output, targetDir)
-                  if isBrowse then openBrowser(outputFile.toURI)
+                  if isBrowse then openBrowser(outputFile.toURI, s.log)
                   outputFile.getAbsolutePath
               }
       }).evaluated,
@@ -309,11 +310,34 @@ OPTIONS
         else
           Console.out.println(content); ""
 
-  def openBrowser(uri: URI): Unit =
-    val desktop = java.awt.Desktop.getDesktop
-    desktop.synchronized {
-      desktop.browse(uri)
-    }
+  def openBrowser(
+      uri: URI,
+      log: Logger,
+      isDesktopSupported: => Boolean = java.awt.Desktop.isDesktopSupported,
+      getDesktop: => java.awt.Desktop = java.awt.Desktop.getDesktop
+  ): Boolean =
+    try
+      if !isDesktopSupported then
+        log.warn(s"Could not open browser for dependency graph at $uri: desktop API is not supported")
+        false
+      else
+        val desktop = getDesktop
+        if !desktop.isSupported(java.awt.Desktop.Action.BROWSE) then
+          log.warn(
+            s"Could not open browser for dependency graph at $uri: browse action is not supported"
+          )
+          false
+        else
+          desktop.synchronized {
+            desktop.browse(uri)
+          }
+          true
+    catch
+      case NonFatal(e) =>
+        log.warn(
+          s"Could not open browser for dependency graph at $uri: ${Option(e.getMessage).getOrElse(e.getClass.getSimpleName)}"
+        )
+        false
 
   case class ArtifactPattern(organization: String, name: String, version: Option[String])
 
