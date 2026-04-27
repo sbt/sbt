@@ -151,6 +151,7 @@ class ClassStamper(
     converter: FileConverter,
 ):
   private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
+  private val internalStamps = mutable.Map.empty[String, SortedSet[Digest]]
   private val vfStamps = mutable.Map.empty[VirtualFileRef, Digest]
   private lazy val analyses = classpath
     .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
@@ -180,11 +181,11 @@ class ClassStamper(
     import analysis.relations
     // log.debug(s"test: internalStamp($javaClassName)")
     def internalStamp0(className: String): SortedSet[Digest] =
-      // log.debug(s"  internalStamp: relations = $relations")
+      // Zinc doesn't fully track the transitive dependencies
       val internalDeps = relations
         .internalClassDeps(className)
         .flatMap: otherCN =>
-          internalStamp(otherCN, analysis, alreadySeen + javaClassName, log)
+          internalDepStamp(otherCN, analysis, alreadySeen + javaClassName, log)
       // log.debug(s"  internalStamp: internalDeps: $className = $internalDeps")
       val internalJarDeps = relations
         .externalDeps(className)
@@ -196,17 +197,11 @@ class ClassStamper(
           relations.libraryClassName
             .reverse(libClassName)
             .map(stampVf)
-      val classDigests = relations
-        .definesClass(className)
-        .flatMap: sourceFile =>
-          relations
-            .products(sourceFile)
-            .map(stampVf)
-      // TODO: substitute the above with
-      // val classDigests = analysis.apis.internal
-      //   .get(className)
-      //   .map: analyzed =>
-      //   0L // analyzed.??? we need a hash here
+      val classDigests = analysis.apis.internal
+        .get(className)
+        .toSet
+        .map: analyzed =>
+          Digest.dummy(37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash)
       val xs =
         (internalDeps union internalJarDeps union externalDeps union classDigests)
           .to(SortedSet)
@@ -216,6 +211,36 @@ class ClassStamper(
     if alreadySeen.contains(javaClassName) then SortedSet.empty
     else
       stamps.get(javaClassName) match
+        case Some(xs) => xs
+        case _        =>
+          // Note: internalClassDeps uses Scala-encoded class name for companion objects
+          val classNames = relations.productClassName.reverse(javaClassName)
+          SortedSet(classNames.toSeq*).flatMap(internalStamp0)
+
+  private def internalDepStamp(
+      javaClassName: String,
+      analysis: Analysis,
+      alreadySeen: Set[String],
+      log: Logger,
+  ): SortedSet[Digest] =
+    import analysis.relations
+    def internalStamp0(className: String): SortedSet[Digest] =
+      val internalDeps = relations
+        .internalClassDeps(className)
+        .flatMap: otherCN =>
+          internalDepStamp(otherCN, analysis, alreadySeen + javaClassName, log)
+      val classDigests = analysis.apis.internal
+        .get(className)
+        .toSet
+        .map: analyzed =>
+          Digest.dummy(analyzed.bytecodeHash)
+      val xs = (internalDeps union classDigests).to(SortedSet)
+      if xs.nonEmpty then internalStamps(className) = xs
+      else ()
+      xs
+    if alreadySeen.contains(javaClassName) then SortedSet.empty
+    else
+      internalStamps.get(javaClassName) match
         case Some(xs) => xs
         case _        =>
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
