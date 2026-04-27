@@ -519,10 +519,10 @@ class ScriptedRunner {
   def run(
       resourceBaseDirectory: File,
       bufferLog: Boolean,
-      tests: Array[String],
+      tests: java.util.List[String],
       launcherJar: File,
       javaCommand: String,
-      launchOpts: Array[String],
+      launchOpts: java.util.List[String],
       prescripted: java.util.List[File],
       keepTempDirectory: Boolean,
       includeFilter: java.io.FileFilter,
@@ -532,10 +532,10 @@ class ScriptedRunner {
     run(
       resourceBaseDirectory,
       bufferLog,
-      tests,
+      tests.toArray(Array.empty[String]),
       logger,
       javaCommand,
-      launchOpts,
+      launchOpts.toArray(Array.empty[String]),
       prescripted,
       LauncherBased(launcherJar),
       Int.MaxValue,
@@ -572,6 +572,7 @@ class ScriptedRunner {
       prescripted,
       LauncherBased(launcherJar),
       instance,
+      keepTempDirectory = false,
     )
   }
 
@@ -601,6 +602,7 @@ class ScriptedRunner {
       prescripted,
       LauncherBased(launcherJar),
       instance,
+      keepTempDirectory = false,
     )
   }
 
@@ -634,10 +636,10 @@ class ScriptedRunner {
   def runInParallel(
       resourceBaseDirectory: File,
       bufferLog: Boolean,
-      tests: Array[String],
+      tests: java.util.List[String],
       launcherJar: File,
       javaCommand: String,
-      launchOpts: Array[String],
+      launchOpts: java.util.List[String],
       prescripted: java.util.List[File],
       instance: Int,
       keepTempDirectory: Boolean,
@@ -684,34 +686,8 @@ class ScriptedRunner {
       launchOpts,
       prescripted,
       RunFromSourceBased(scalaVersion, sbtVersion, classpath.toSeq),
-      instances
-    )
-
-  private[sbt] def runInParallel(
-      baseDir: File,
-      bufferLog: Boolean,
-      tests: Array[String],
-      logger: Logger,
-      javaCommand: String,
-      launchOpts: Array[String],
-      prescripted: java.util.List[File],
-      prop: RemoteSbtCreatorProp,
-      instances: Int,
-      keepTempDirectory: Boolean = false,
-  ): Unit =
-    runInParallel(
-      baseDir,
-      bufferLog,
-      tests,
-      logger,
-      javaCommand,
-      launchOpts,
-      prescripted,
-      prop,
       instances,
-      keepTempDirectory,
-      AllPassFilter,
-      NothingFilter,
+      keepTempDirectory = false,
     )
 
   private[sbt] def runInParallel(
@@ -725,8 +701,6 @@ class ScriptedRunner {
       prop: RemoteSbtCreatorProp,
       instances: Int,
       keepTempDirectory: Boolean,
-      includeFilter: java.io.FileFilter,
-      excludeFilter: java.io.FileFilter,
   ): Unit =
     run(
       baseDir,
@@ -735,6 +709,36 @@ class ScriptedRunner {
       logger,
       javaCommand,
       launchOpts,
+      prescripted,
+      prop,
+      instances,
+      parallelExecution = true,
+      keepTempDirectory,
+      includeFilter = AllPassFilter,
+      excludeFilter = NothingFilter,
+    )
+
+  private[sbt] def runInParallel(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: java.util.List[String],
+      logger: Logger,
+      javaCommand: String,
+      launchOpts: java.util.List[String],
+      prescripted: java.util.List[File],
+      prop: RemoteSbtCreatorProp,
+      instances: Int,
+      keepTempDirectory: Boolean,
+      includeFilter: java.io.FileFilter,
+      excludeFilter: java.io.FileFilter,
+  ): Unit =
+    run(
+      baseDir,
+      bufferLog,
+      tests.toArray(Array.empty[String]),
+      logger,
+      javaCommand,
+      launchOpts.toArray(Array.empty[String]),
       prescripted,
       prop,
       instances,

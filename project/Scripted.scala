@@ -6,6 +6,7 @@ import sbt.*
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
 import scala.annotation.nowarn
+import scala.collection.JavaConverters.*
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -139,10 +140,10 @@ object Scripted {
       def runInParallel(
           resourceBaseDirectory: File,
           bufferLog: Boolean,
-          tests: Array[String],
+          tests: java.util.List[String],
           launcherJar: File,
           javaCommand: String,
-          launchOpts: Array[String],
+          launchOpts: java.util.List[String],
           prescripted: java.util.List[File],
           instance: Int,
           keepTempDirectory: Boolean,
@@ -175,10 +176,10 @@ object Scripted {
         bridge.runInParallel(
           sourcePath,
           bufferLog,
-          args.toArray,
+          args.toList.asJava,
           launcherJar,
           "java",
-          launchOpts.toArray,
+          launchOpts.toList.asJava,
           callback,
           instances,
           keepTempDirectory,

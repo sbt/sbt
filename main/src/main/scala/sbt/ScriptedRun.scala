@@ -12,6 +12,7 @@ import java.io.{ File, FileFilter as JFileFilter }
 import java.lang.reflect.Method
 
 import sbt.io.{ AllPassFilter, NothingFilter }
+import scala.jdk.CollectionConverters.*
 
 sealed trait ScriptedRun {
   final def run(
@@ -64,13 +65,14 @@ sealed trait ScriptedRun {
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
 
+  // v4
   final def run(
       resourceBaseDirectory: File,
       bufferLog: Boolean,
-      tests: Seq[String],
+      tests: java.util.List[String],
       launcherJar: File,
       javaCommand: String,
-      launchOpts: Seq[String],
+      launchOpts: java.util.List[String],
       prescripted: java.util.List[File],
       instances: Int,
       keepTempDirectory: Boolean,
@@ -81,10 +83,10 @@ sealed trait ScriptedRun {
       invoke(
         resourceBaseDirectory,
         bufferLog,
-        tests.toArray,
+        tests,
         launcherJar,
         javaCommand,
-        launchOpts.toArray,
+        launchOpts,
         prescripted,
         instances,
         keepTempDirectory,
@@ -130,14 +132,14 @@ sealed trait ScriptedRun {
       keepTempDirectory: java.lang.Boolean,
   ): AnyRef
 
-  // Default drops filters and calls V3 invoke so V1/V2/V3 subclasses need not override.
+  // v4. Default drops filters and calls V3 invoke so V1/V2/V3 subclasses need not override.
   protected def invoke(
       resourceBaseDirectory: File,
       bufferLog: java.lang.Boolean,
-      tests: Array[String],
+      tests: java.util.List[String],
       launcherJar: File,
       javaCommand: String,
-      launchOpts: Array[String],
+      launchOpts: java.util.List[String],
       prescripted: java.util.List[File],
       instances: java.lang.Integer,
       keepTempDirectory: java.lang.Boolean,
@@ -147,10 +149,10 @@ sealed trait ScriptedRun {
     invoke(
       resourceBaseDirectory,
       bufferLog,
-      tests,
+      tests.toArray(Array.empty[String]),
       launcherJar,
       javaCommand,
-      launchOpts,
+      launchOpts.toArray(Array.empty[String]),
       prescripted,
       instances,
       keepTempDirectory,
@@ -167,6 +169,7 @@ object ScriptedRun {
     val asCls = classOf[Array[String]]
     val sCls = classOf[String]
     val lfCls = classOf[java.util.List[File]]
+    val lsCls = classOf[java.util.List[String]]
     val iCls = classOf[Int]
     val ffCls = classOf[JFileFilter]
 
@@ -179,10 +182,10 @@ object ScriptedRun {
             "runInParallel",
             fCls,
             bCls,
-            asCls,
+            lsCls,
             fCls,
             sCls,
-            asCls,
+            lsCls,
             lfCls,
             iCls,
             bCls,
@@ -223,10 +226,10 @@ object ScriptedRun {
             "run",
             fCls,
             bCls,
-            asCls,
+            lsCls,
             fCls,
             sCls,
-            asCls,
+            lsCls,
             lfCls,
             bCls,
             ffCls,
@@ -420,10 +423,10 @@ object ScriptedRun {
       invoke(
         resourceBaseDirectory,
         bufferLog,
-        tests,
+        tests.toList.asJava,
         launcherJar,
         javaCommand,
-        launchOpts,
+        launchOpts.toList.asJava,
         prescripted,
         instances,
         keepTempDirectory,
@@ -434,10 +437,10 @@ object ScriptedRun {
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
-        tests: Array[String],
+        tests: java.util.List[String],
         launcherJar: File,
         javaCommand: String,
-        launchOpts: Array[String],
+        launchOpts: java.util.List[String],
         prescripted: java.util.List[File],
         instances: java.lang.Integer,
         keepTempDirectory: java.lang.Boolean,
@@ -474,10 +477,10 @@ object ScriptedRun {
       invoke(
         resourceBaseDirectory,
         bufferLog,
-        tests,
+        tests.toList.asJava,
         launcherJar,
         javaCommand,
-        launchOpts,
+        launchOpts.toList.asJava,
         prescripted,
         instances,
         keepTempDirectory,
@@ -488,10 +491,10 @@ object ScriptedRun {
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
-        tests: Array[String],
+        tests: java.util.List[String],
         launcherJar: File,
         javaCommand: String,
-        launchOpts: Array[String],
+        launchOpts: java.util.List[String],
         prescripted: java.util.List[File],
         instances: Integer,
         keepTempDirectory: java.lang.Boolean,

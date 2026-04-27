@@ -522,6 +522,9 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem](
+        "sbt.scriptedtest.ScriptedTests.runInParallel$default$10"
+      ),
     ),
   )
   .dependsOn(lmCore)
