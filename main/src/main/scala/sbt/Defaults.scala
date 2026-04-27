@@ -2042,20 +2042,6 @@ object Defaults extends BuildCommon with DefExtra {
       s.log.debug(s"javaOptions: $options")
       new ForkRun(opts)
     } else {
-      if (options.nonEmpty) {
-        val mask = ScopeMask(project = false)
-        val showJavaOptions = Scope.displayMasked(
-          (resolvedScope / javaOptions).scopedKey.scope,
-          (resolvedScope / javaOptions).key.label,
-          mask
-        )
-        val showFork = Scope.displayMasked(
-          (resolvedScope / fork).scopedKey.scope,
-          (resolvedScope / fork).key.label,
-          mask
-        )
-        s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
-      }
       new Run(si, trap, tmp)
     }
   }

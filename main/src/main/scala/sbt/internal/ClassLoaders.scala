@@ -95,21 +95,6 @@ private[sbt] object ClassLoaders {
         val s = streams.value
         val opts = forkOptions.value
         val options = javaOptions.value
-
-        if options.nonEmpty then
-          val mask = ScopeMask(project = false)
-          val showJavaOptions = Scope.displayMasked(
-            (resolvedScope / javaOptions).scopedKey.scope,
-            (resolvedScope / javaOptions).key.label,
-            mask
-          )
-          val showFork = Scope.displayMasked(
-            (resolvedScope / fork).scopedKey.scope,
-            (resolvedScope / fork).key.label,
-            mask
-          )
-          s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
-
         val exclude = dependencyJars(exportedProducts).value
           .map(converter.toPath)
           .map(_.toFile)

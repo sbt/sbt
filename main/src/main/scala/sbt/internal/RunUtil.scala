@@ -44,9 +44,6 @@ object RunUtil:
           val newFo = fo.withRunJVMOptions(fo.runJVMOptions ++ jvmArgs)
           (new ForkRun(newFo), newFo)
         case _ =>
-          log.warn(
-            s"JVM options (${jvmArgs.mkString(" ")}) will be ignored, fork is set to false"
-          )
           (scalaRun, fo)
 
   private def setWindowTitle(title: String): Unit =
