@@ -1233,7 +1233,7 @@ lazy val lmCore = (project in file("lm-core"))
       val sdirs = (Compile / managedSourceDirectories).value
       val base = baseDirectory.value
       import Path.*
-      (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
+      (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)).toSeq)
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(

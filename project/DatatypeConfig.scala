@@ -7,14 +7,14 @@ object DatatypeConfig {
   def oneArg(tpe: Type): Type = {
     val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?)[>\\]]""".r
     val pat(arg0) = tpe.name
-    NamedType(arg0 split '.' toList)
+    NamedType(arg0.split('.').toList)
   }
 
   /** Extract the two type parameters from a TpeRef */
   def twoArgs(tpe: Type): List[Type] = {
     val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?), (.+?)[>\\]]""".r
     val pat(arg0, arg1) = tpe.name
-    NamedType(arg0 split '.' toList) :: NamedType(arg1 split '.' toList) :: Nil
+    NamedType(arg0.split('.').toList) :: NamedType(arg1.split('.').toList) :: Nil
   }
 
   /** Codecs that were manually written. */

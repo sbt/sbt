@@ -263,9 +263,9 @@ val launcherPackage = (project in file("."))
     Debian / debianPackageRecommends += "git",
     Debian / linuxPackageMappings += {
       val bd = sourceDirectory.value
-      (packageMapping(
+      packageMapping(
         (bd / "debian" / "changelog") -> "/usr/share/doc/sbt/changelog.gz"
-      ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs ()
+      ).withUser("root").withGroup("root").withPerms("0644").gzipped.asDocs()
     },
     Debian / debianChangelog := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, (Debian / packageBin), "deb"),
@@ -352,7 +352,7 @@ val launcherPackage = (project in file("."))
 
           if (FileSystems.getDefault.supportedFileAttributeViews.contains("posix")) {
             val perms = Files.getPosixFilePermissions(k.toPath)
-            Files.setPosixFilePermissions(t / "sbt" toPath, perms)
+            Files.setPosixFilePermissions((t / "sbt").toPath, perms)
           }
 
           (t / "sbt", BinSbt)
