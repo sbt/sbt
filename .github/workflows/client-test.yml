@@ -39,7 +39,7 @@ jobs:
         cache: sbt
     - uses: sbt/setup-sbt@v1
       with:
-        sbt-runner-version: 1.11.5
+        disk-cache: false
     - name: Set up Python 3.12
       uses: actions/setup-python@v7
       with:
@@ -54,11 +54,11 @@ jobs:
         # test building sbtn on Linux (sbtw native-image dropped: scopt lazy vals break under Graal)
         sbt "-Dsbt.io.virtual=false" nativeImage
         # smoke test native Image
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt about
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt shutdown
+        ./target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$(pwd)/sbt about
+        ./target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$(pwd)/sbt shutdown
         # test launcher script
         echo build using JDK 17 test using JDK 17 and JDK 25
-        sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackage/Rpm/packageBin launcherPackage/Debian/packageBin
+        sbt --server -Dsbt.build.version=$TEST_SBT_VER launcherPackage/Rpm/packageBin launcherPackage/Debian/packageBin
         sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackageIntegrationTest/test
         cd launcher-package/citest && ./test.sh
         JAVA_HOME="$JAVA_HOME_25_X64"
@@ -91,8 +91,8 @@ jobs:
       shell: bash
       run: |
         # smoke test native Image (sbtn)
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
+        ./target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
+        ./target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
         # test launcher script
         echo build using JDK 17 test using JDK 17 and JDK 25
         launcher-package/bin/coursier.bat resolve

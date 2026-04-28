@@ -1,5 +1,6 @@
 import sbt.*
 import Keys.*
+import sbt.util.CacheImplicits.given
 
 object HouseRulesPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin

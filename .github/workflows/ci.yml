@@ -110,6 +110,8 @@ jobs:
           cache: "sbt"
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
+        with:
+          disk-cache: false
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
         with:
@@ -172,8 +174,7 @@ jobs:
         if: ${{ matrix.jobtype == 5 }}
         shell: bash
         run: |
-          ./sbt -v "scripted global-plugin/*"
-          ./sbt -v "scripted project/*"
+          ./sbt -v "scripted global-plugin/* project/*"
       # - name: Build and test (6)
       #  if: ${{ matrix.jobtype == 6 }}
       #  shell: bash
@@ -206,7 +207,7 @@ jobs:
         if: ${{ matrix.jobtype == 12 }}
         shell: bash
         run: |
-          ./sbt -v "scripted cache/*"
+          ./sbt -v --server "scripted cache/*"
       # - name: Hash Benchmark
       #   if: ${{ matrix.jobtype == 13 }}
       #   shell: bash

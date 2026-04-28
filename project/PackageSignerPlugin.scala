@@ -1,5 +1,6 @@
 import sbt.*
 import Keys.*
+import sbt.util.CacheImplicits.given
 import sbt.internal.librarymanagement.IvyActions
 import com.jsuereth.sbtpgp.SbtPgp
 import com.typesafe.sbt.packager.universal.{ UniversalPlugin, UniversalDeployPlugin }
@@ -25,28 +26,34 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
     art.withExtension(ext)
 
   def packageSignerSettings: Seq[Setting[?]] = Seq(
-    signedArtifacts := {
+    signedArtifacts := Def.uncached {
       val artifacts = packagedArtifacts.value
       val r = pgpSigner.value
       val skipZ = (pgpSigner / skip).value
       val s = streams.value
+      val converter = fileConverter.value
       if (!skipZ) {
-        artifacts flatMap { case (art, f) =>
+        artifacts flatMap { case (art, virtualFile) =>
+          val f = converter.toPath(virtualFile).toFile
           Seq(
-            art -> f,
+            art -> virtualFile,
             subExtension(art, art.extension + gpgExtension) ->
-              r.sign(f, file(f.getAbsolutePath + gpgExtension), s)
+              converter.toVirtualFile(r.sign(f, file(f.getAbsolutePath + gpgExtension), s).toPath)
           )
         }
       } else artifacts
     },
     publishSignedConfiguration := Classpaths.publishConfig(
       publishMavenStyle = publishMavenStyle.value,
-      deliverIvyPattern =
-        (Compile / packageBin / artifactPath).value.getParent + "/[artifact]-[revision](-[classifier]).[ext]",
+      deliverIvyPattern = fileConverter.value
+        .toPath((Compile / packageBin / artifactPath).value)
+        .toFile
+        .getParent + "/[artifact]-[revision](-[classifier]).[ext]",
       status = if (isSnapshot.value) "integration" else "release",
       configurations = Vector.empty,
-      artifacts = signedArtifacts.value.toVector,
+      artifacts = signedArtifacts.value.map { (k, v) =>
+        k -> fileConverter.value.toPath(v).toFile
+      }.toVector,
       checksums = (publish / checksums).value.toVector,
       resolverName = Classpaths.getPublishTo(publishTo.value).name,
       logging = ivyLoggingLevel.value,
@@ -54,11 +61,15 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
     ),
     publishLocalSignedConfiguration := Classpaths.publishConfig(
       publishMavenStyle = publishMavenStyle.value,
-      deliverIvyPattern =
-        (Compile / packageBin / artifactPath).value.getParent + "/[artifact]-[revision](-[classifier]).[ext]",
+      deliverIvyPattern = fileConverter.value
+        .toPath((Compile / packageBin / artifactPath).value)
+        .toFile
+        .getParent + "/[artifact]-[revision](-[classifier]).[ext]",
       status = if (isSnapshot.value) "integration" else "release",
       configurations = Vector.empty,
-      artifacts = signedArtifacts.value.toVector,
+      artifacts = signedArtifacts.value.map { (k, v) =>
+        k -> fileConverter.value.toPath(v).toFile
+      }.toVector,
       checksums = (publish / checksums).value.toVector,
       resolverName = "local",
       logging = ivyLoggingLevel.value,
