@@ -27,6 +27,7 @@ import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.StoreReporter
 import scala.util.Random
+import scala.collection.concurrent.TrieMap
 import xsbti.VirtualFileRef
 
 private[sbt] object SbtParser:
@@ -49,6 +50,9 @@ private[sbt] object SbtParser:
 
   private final val defaultClasspath =
     sbt.io.Path.makeString(sbt.io.IO.classLocationPath(classOf[Product]).toFile :: Nil)
+
+  def apply(path: VirtualFileRef, lines: Seq[String]): SbtParser =
+    new SbtParser(path, lines)
 
   def isIdentifier(ident: String): Boolean =
     val code = s"val $ident = 0; val ${ident}${ident} = $ident"
@@ -135,10 +139,21 @@ private[sbt] object SbtParser:
   // Retry since Scala 3 compiler initialization can fail due to sys.props change
   private[sbt] val defaultGlobalForParser: ParseDriver =
     Retry(ParseDriver())
-  private[sbt] final class ParseDriver extends Driver:
+
+  private val parseDriverCache: TrieMap[Seq[String], ParseDriver] =
+    TrieMap.empty
+
+  private[sbt] def defaultGlobalForParserWithOption(options: Seq[String]): ParseDriver =
+    parseDriverCache.getOrElseUpdate(
+      options,
+      Retry(ParseDriver(options.toList))
+    )
+
+  private[sbt] final class ParseDriver(
+      options: List[String] = List("-classpath", s"$defaultClasspath")
+  ) extends Driver:
     override protected val sourcesRequired: Boolean = false
     val compileCtx0 = initCtx.fresh
-    val options = List("-classpath", s"$defaultClasspath")
     val compileCtx1 = setup(options.toArray, compileCtx0) match
       case Some((_, ctx)) => ctx
       case _              => sys.error(s"initialization failed for $options")
@@ -219,8 +234,15 @@ end ParsedSbtFileExpressions
  * @param path  The path we're parsing (may be a dummy file)
  * @param lines The parsed "lines" of the file, where each string is a line.
  */
-private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
-    extends ParsedSbtFileExpressions:
+private[sbt] case class SbtParser(
+    path: VirtualFileRef,
+    lines: Seq[String],
+    private val options: Seq[String]
+) extends ParsedSbtFileExpressions:
+
+  def this(path: VirtualFileRef, lines: Seq[String]) =
+    this(path, lines, Nil)
+
   // settingsTrees,modifiedContent needed for "session save"
   // TODO - We should look into splitting out "definitions" vs. "settings" here instead of further string lookups, since we have the
   // parsed trees.
@@ -241,7 +263,12 @@ private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
       VirtualFile(reporterId, wrapCode.getBytes(StandardCharsets.UTF_8)),
       scala.io.Codec.UTF8
     )
-    given Context = SbtParser.defaultGlobalForParser.compileCtx.fresh.setSource(sourceFile)
+    val ctx =
+      if options.isEmpty then SbtParser.defaultGlobalForParser
+      else SbtParser.defaultGlobalForParserWithOption(options)
+
+    given Context = ctx.compileCtx.fresh.setSource(sourceFile)
+
     val parsedTrees = parse(fileName, reporterId)
 
     // Check No val (a,b) = foo *or* val a,b = foo as these are problematic to range positions and the WHOLE architecture.

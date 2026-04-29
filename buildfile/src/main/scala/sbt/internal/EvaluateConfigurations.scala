@@ -93,10 +93,11 @@ private[sbt] object EvaluateConfigurations {
       file: VirtualFileRef,
       lines: Seq[String],
       builtinImports: Seq[String],
-      offset: Int
+      offset: Int,
+      options: Seq[String]
   ): ParsedFile = {
     def loseTree(l: (String, Tree, LineRange)): (String, LineRange) = (l._1, l._3)
-    val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines)
+    val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines, options)
     val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
     val (definitions, settings) = splitSettingsDefinitions(
       addOffsetToRange(offset, settingsAndDefinitions)
@@ -147,7 +148,7 @@ private[sbt] object EvaluateConfigurations {
     val name = file match
       case file: PathBasedFile => file.toPath.toString
       case file                => file.id
-    val parsed = parseConfiguration(file, lines, imports, offset)
+    val parsed = parseConfiguration(file, lines, imports, offset, eval.nonCpOptions)
     val (importDefs, definitions) =
       if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty)
       else {
@@ -277,15 +278,22 @@ private[sbt] object EvaluateConfigurations {
       case _                                => Nil
     }
 
+  private[sbt] def splitExpressions(
+      file: VirtualFileRef,
+      lines: Seq[String],
+  ): (Seq[(String, Int)], Seq[(String, Tree, LineRange)]) =
+    splitExpressions(file, lines, Nil)
+
   /**
    * Splits a set of lines into (imports, expressions).  That is,
    * anything on the right of the tuple is a scala expression (definition or setting).
    */
   private[sbt] def splitExpressions(
       file: VirtualFileRef,
-      lines: Seq[String]
+      lines: Seq[String],
+      options: Seq[String]
   ): (Seq[(String, Int)], Seq[(String, Tree, LineRange)]) =
-    val split = SbtParser(file, lines)
+    val split = SbtParser(file, lines, options)
     // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
     // scala compiler rather than re-parsing.
     (
