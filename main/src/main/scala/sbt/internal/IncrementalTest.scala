@@ -19,6 +19,7 @@ import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.protocol.testing.TestResult
 import sbt.util.{ ActionCache, BuildWideCacheConfiguration, CacheLevelTag, Digest, Logger }
+import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
@@ -152,10 +153,11 @@ class ClassStamper(
 ):
   private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
   private val internalStamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private val vfStamps = mutable.Map.empty[VirtualFileRef, Digest]
   private lazy val analyses = classpath
     .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
     .collect { case analysis: Analysis => analysis }
+  private val stampVf: VirtualFileRef => Digest =
+    CacheImplicits.virtualFileRefToDigest(_)(converter)
 
   /**
    * Given a classpath and a class name, this tries to create a SHA-256 digest.
@@ -185,7 +187,7 @@ class ClassStamper(
       val internalDeps = relations
         .internalClassDeps(className)
         .flatMap: otherCN =>
-          internalDepStamp(otherCN, analysis, alreadySeen + javaClassName, log)
+          internalStamp(otherCN, analysis, alreadySeen + javaClassName, log)
       // log.debug(s"  internalStamp: internalDeps: $className = $internalDeps")
       val internalJarDeps = relations
         .externalDeps(className)
@@ -216,40 +218,4 @@ class ClassStamper(
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
           val classNames = relations.productClassName.reverse(javaClassName)
           SortedSet(classNames.toSeq*).flatMap(internalStamp0)
-
-  private def internalDepStamp(
-      javaClassName: String,
-      analysis: Analysis,
-      alreadySeen: Set[String],
-      log: Logger,
-  ): SortedSet[Digest] =
-    import analysis.relations
-    def internalStamp0(className: String): SortedSet[Digest] =
-      val internalDeps = relations
-        .internalClassDeps(className)
-        .flatMap: otherCN =>
-          internalDepStamp(otherCN, analysis, alreadySeen + javaClassName, log)
-      val classDigests = analysis.apis.internal
-        .get(className)
-        .toSet
-        .map: analyzed =>
-          Digest.dummy(analyzed.bytecodeHash)
-      val xs = (internalDeps union classDigests).to(SortedSet)
-      if xs.nonEmpty then internalStamps(className) = xs
-      else ()
-      xs
-    if alreadySeen.contains(javaClassName) then SortedSet.empty
-    else
-      internalStamps.get(javaClassName) match
-        case Some(xs) => xs
-        case _        =>
-          // Note: internalClassDeps uses Scala-encoded class name for companion objects
-          val classNames = relations.productClassName.reverse(javaClassName)
-          SortedSet(classNames.toSeq*).flatMap(internalStamp0)
-
-  def stampVf(vf: VirtualFileRef): Digest =
-    vf match
-      case h: HashedVirtualFileRef => Digest(h)
-      case _ =>
-        vfStamps.getOrElseUpdate(vf, Digest.sha256Hash(converter.toPath(vf)))
 end ClassStamper

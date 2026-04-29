@@ -383,6 +383,7 @@ lazy val utilCache = project
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[ReversedMissingMethodProblem]("sbt.util.CacheImplicits.sbt$util*")
     ),
     Test / fork := true,
   )
@@ -777,7 +778,8 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.creates"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.uniqueSubdirectoryFor"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.run"),
-      exclude[MissingClassProblem]("sbt.Resolvers$DistributedVCS")
+      exclude[MissingClassProblem]("sbt.Resolvers$DistributedVCS"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf")
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)

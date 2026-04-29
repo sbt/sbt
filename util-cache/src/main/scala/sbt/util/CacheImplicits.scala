@@ -13,7 +13,7 @@ import java.nio.file.{ Files, NoSuchFileException }
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 import sjsonnew.BasicJsonProtocol
-import xsbti.{ HashedVirtualFileRef, PathBasedFile }
+import xsbti.{ FileConverter, HashedVirtualFileRef, PathBasedFile, VirtualFileRef }
 
 object CacheImplicits extends CacheImplicits:
   private[sbt] val defaultLocalDigestCacheByteSize = 1024L * 1024L
@@ -24,6 +24,9 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
   private val weigher: Weigher[String, (String, Long, Long)] = { case (k, (v1, _, _)) =>
     k.size + v1.size + 16
   }
+  private val digestWeigher: Weigher[String, (Digest, Long, Long)] = { case (k, (v1, _, _)) =>
+    k.size + v1.digestSize + 16
+  }
 
   private val stampCache: AtomicReference[CCache[String, (String, Long, Long)]] =
     AtomicReference(
@@ -31,6 +34,15 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
         .newBuilder()
         .maximumWeight(localDigestCacheByteSize.get())
         .weigher(weigher)
+        .build()
+    )
+
+  private val digestCache: AtomicReference[CCache[String, (Digest, Long, Long)]] =
+    AtomicReference(
+      Caffeine
+        .newBuilder()
+        .maximumWeight(localDigestCacheByteSize.get())
+        .weigher(digestWeigher)
         .build()
     )
 
@@ -46,6 +58,14 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
           .weigher(weigher)
           .build()
       )
+      digestCache.get().invalidateAll()
+      digestCache.set(
+        Caffeine
+          .newBuilder()
+          .maximumWeight(localDigestCacheByteSize.get())
+          .weigher(digestWeigher)
+          .build()
+      )
 
   private def getOrElseUpdate(ref: HashedVirtualFileRef, lastModified: Long, sizeBytes: Long)(
       value: => String
@@ -55,6 +75,16 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
       case _ =>
         val v = value
         stampCache.get().put(ref.id(), (v, lastModified, sizeBytes))
+        v
+
+  private def getOrElseUpdate(ref: VirtualFileRef, lastModified: Long, sizeBytes: Long)(
+      value: => Digest
+  ) =
+    Option(digestCache.get().getIfPresent(ref.id())) match
+      case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
+      case _ =>
+        val v = value
+        digestCache.get().put(ref.id(), (v, lastModified, sizeBytes))
         v
 
   /**
@@ -76,4 +106,21 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
               getOrElseUpdate(ref, lastModified, sizeBytes)(fallback)
           catch case e: NoSuchFileException => throw e
         case _ => fallback
+
+  def virtualFileRefToDigest(vf: VirtualFileRef)(converter: FileConverter): Digest =
+    vf match
+      case pbf: PathBasedFile =>
+        val path = pbf.toPath
+        val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+        def fallback: Digest = Digest.sha256Hash(path)
+        if attrs.isDirectory then sys.error(s"$vf is a directory")
+        else
+          val lastModified = attrs.lastModifiedTime().toMillis()
+          val sizeBytes = attrs.size()
+          vf match
+            case h: HashedVirtualFileRef =>
+              getOrElseUpdate(vf, lastModified, sizeBytes)(Digest(h))
+            case _ =>
+              getOrElseUpdate(vf, lastModified, sizeBytes)(fallback)
+      case _ => Digest.sha256Hash(converter.toPath(vf))
 end CacheImplicits

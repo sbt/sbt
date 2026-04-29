@@ -26,6 +26,7 @@ object Digest:
     def hashHexString: String = parse(d)._2
     def toBytes: Array[Byte] = parse(d)._4
     def sizeBytes: Long = parse(d)._3
+    private[sbt] def digestSize: Int = d.size
 
   given digestOrd(using ord: Ordering[String]): Ordering[Digest] with
     def compare(x: Digest, y: Digest) =
