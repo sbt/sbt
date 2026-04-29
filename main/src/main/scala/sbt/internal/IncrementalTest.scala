@@ -19,6 +19,7 @@ import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.protocol.testing.TestResult
 import sbt.util.{ ActionCache, BuildWideCacheConfiguration, CacheLevelTag, Digest, Logger }
+import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
@@ -151,10 +152,12 @@ class ClassStamper(
     converter: FileConverter,
 ):
   private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private val vfStamps = mutable.Map.empty[VirtualFileRef, Digest]
+  private val internalStamps = mutable.Map.empty[String, SortedSet[Digest]]
   private lazy val analyses = classpath
     .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
     .collect { case analysis: Analysis => analysis }
+  private val stampVf: VirtualFileRef => Digest =
+    CacheImplicits.virtualFileRefToDigest(_)(converter)
 
   /**
    * Given a classpath and a class name, this tries to create a SHA-256 digest.
@@ -180,7 +183,7 @@ class ClassStamper(
     import analysis.relations
     // log.debug(s"test: internalStamp($javaClassName)")
     def internalStamp0(className: String): SortedSet[Digest] =
-      // log.debug(s"  internalStamp: relations = $relations")
+      // Zinc doesn't fully track the transitive dependencies
       val internalDeps = relations
         .internalClassDeps(className)
         .flatMap: otherCN =>
@@ -196,17 +199,11 @@ class ClassStamper(
           relations.libraryClassName
             .reverse(libClassName)
             .map(stampVf)
-      val classDigests = relations
-        .definesClass(className)
-        .flatMap: sourceFile =>
-          relations
-            .products(sourceFile)
-            .map(stampVf)
-      // TODO: substitute the above with
-      // val classDigests = analysis.apis.internal
-      //   .get(className)
-      //   .map: analyzed =>
-      //   0L // analyzed.??? we need a hash here
+      val classDigests = analysis.apis.internal
+        .get(className)
+        .toSet
+        .map: analyzed =>
+          Digest.dummy(37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash)
       val xs =
         (internalDeps union internalJarDeps union externalDeps union classDigests)
           .to(SortedSet)
@@ -221,10 +218,4 @@ class ClassStamper(
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
           val classNames = relations.productClassName.reverse(javaClassName)
           SortedSet(classNames.toSeq*).flatMap(internalStamp0)
-
-  def stampVf(vf: VirtualFileRef): Digest =
-    vf match
-      case h: HashedVirtualFileRef => Digest(h)
-      case _ =>
-        vfStamps.getOrElseUpdate(vf, Digest.sha256Hash(converter.toPath(vf)))
 end ClassStamper
