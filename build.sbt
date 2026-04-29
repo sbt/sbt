@@ -1145,16 +1145,8 @@ def customCommands: Seq[Setting[?]] = Seq(
     val sv = get(scalaVersion)
     val projs = structure.allProjectRefs
     val ioOpt = projs find { case ProjectRef(_, id) => id == "ioRoot"; case _ => false }
-    val utilOpt = projs find { case ProjectRef(_, id) => id == "utilRoot"; case _ => false }
-    val lmOpt = projs find { case ProjectRef(_, id) => id == "lmRoot"; case _ => false }
     val zincOpt = projs find { case ProjectRef(_, id) => id == "zincRoot"; case _ => false }
     (ioOpt map { case ProjectRef(build, _) => "{" + build.toString + "}/publishLocal" }).toList :::
-      (utilOpt map { case ProjectRef(build, _) =>
-        "{" + build.toString + "}/publishLocal"
-      }).toList :::
-      (lmOpt map { case ProjectRef(build, _) =>
-        "{" + build.toString + "}/publishLocal"
-      }).toList :::
       (zincOpt map { case ProjectRef(build, _) =>
         val zincSv = get((ProjectRef(build, "zinc") / scalaVersion))
         val csv =
