@@ -1,0 +1,1 @@
+scalacOptions += "-language:postfixOps"

@@ -29,7 +29,7 @@ import sbt.io.{ Hash, IO }
  * - mkReporter - an optional factory method to create a reporter
  */
 class Eval(
-    nonCpOptions: Seq[String],
+    private[internal] val nonCpOptions: Seq[String],
     classpath: Seq[Path],
     backingDir: Option[Path],
     mkReporter: Option[() => EvalReporter]

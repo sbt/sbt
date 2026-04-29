@@ -1,7 +1,7 @@
 package sbt.internal
 
 import sbt.internal.parser.SbtParser
-import sbt.internal.util.LineRange
+import sbt.internal.util.{ LineRange, MessageOnlyException }
 import xsbti.VirtualFileRef
 
 object SbtParserTest extends verify.BasicTestSuite:
@@ -101,5 +101,16 @@ val x = 1
 
   test("isIdentifier") {
     assert(SbtParser.isIdentifier("1a") == false)
+  }
+
+  test("postfix") {
+    val ref = VirtualFileRef.of("vfile")
+    val src = "Nil head"
+    intercept[MessageOnlyException] {
+      SbtParser(ref, Seq(src))
+    }
+    val p = SbtParser(ref, Seq(src), Seq("-language:postfixOps"))
+    assert(p.imports.isEmpty)
+    assert(p.lines == Seq(src))
   }
 end SbtParserTest
