@@ -183,7 +183,7 @@ object Utils {
 }
 
 object Licensed {
-  lazy val notice = SettingKey[File]("notice")
+  lazy val notice = SettingKey[Option[File]]("notice")
   lazy val extractLicenses = TaskKey[Seq[File]]("extract-licenses")
 
   lazy val seeRegex = """\(see (.*?)\)""".r
@@ -195,13 +195,17 @@ object Licensed {
     seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(base, d.group(1))).toList
 
   def settings: Seq[Setting[?]] = Seq(
-    notice := (baseDirectory.value / "NOTICE"),
-    Compile / unmanagedResources ++= notice.value +: extractLicenses.value,
-    extractLicenses := extractLicenses0(
-      (ThisBuild / baseDirectory).value,
-      notice.value,
-      streams.value
-    )
+    notice := Option(baseDirectory.value / "NOTICE").filter(_.isFile),
+    Compile / unmanagedResources ++= notice.value.toSeq ++ extractLicenses.value,
+    extractLicenses := notice.value
+      .map { n =>
+        extractLicenses0(
+          (ThisBuild / baseDirectory).value,
+          n,
+          streams.value
+        )
+      }
+      .getOrElse(Nil)
   )
   def extractLicenses0(base: File, note: File, s: TaskStreams): Seq[File] =
     if (!note.exists) Nil
