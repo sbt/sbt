@@ -129,7 +129,7 @@ val sbt20Plus =
     "2.0.0-RC12",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
-def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def settings (
+def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
   mimaPreviousArtifacts := {
     val crossVersion = if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled
     if (sbtPlugin.value) {

@@ -31,7 +31,7 @@ object Scripted {
   // This is to workaround https://github.com/sbt/io/issues/110
   if (!sys.props.contains("jna.nosys")) sys.props.put("jna.nosys", "true")
 
-  val RepoOverrideTest = config("repoOverrideTest") extend Compile
+  val RepoOverrideTest = config("repoOverrideTest").extend(Compile)
 
   val sbtWindowsExcludeFilter: FileFilter =
     if (scala.util.Properties.isWin)
@@ -102,10 +102,10 @@ object Scripted {
       } yield files map (f => s"$group/$f")
 
     val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
-    val testIdAsGroup = matched(testID) map (test => Seq(test))
+    val testIdAsGroup = matched(testID).map(test => Seq(test))
 
     // (token(Space) ~> matched(testID)).*
-    (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
+    (token(Space) ~> (PagedIds | testIdAsGroup)).*.map(_.flatten)
   }
 
   @nowarn

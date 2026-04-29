@@ -42,7 +42,7 @@ object HouseRulesPlugin extends AutoPlugin {
     (c / console / scalacOptions) --= Seq("-Ywarn-unused-import", "-Xlint")
   )
 
-  private def scalaPartV = Def setting (CrossVersion partialVersion scalaVersion.value)
+  private def scalaPartV = Def.setting(CrossVersion.partialVersion(scalaVersion.value))
 
   private implicit final class AnyWithIfScala[A](val __x: A) {
     def ifScala2x(p: Long => Boolean) =

@@ -36,7 +36,7 @@ object Utils {
 
   def projectComponent: Setting[?] =
     projectID := (componentID.value match {
-      case Some(id) => projectID.value extra ("e:component" -> id)
+      case Some(id) => projectID.value.extra("e:component" -> id)
       case None     => projectID.value
     })
 
@@ -127,7 +127,7 @@ object Utils {
     excludePomArtifact(n.text)
   }
 
-  def excludePomArtifact(artifactId: String) = (artifactId startsWith "compiler-bridge")
+  def excludePomArtifact(artifactId: String) = artifactId.startsWith("compiler-bridge")
 
   val testExclusive = test / tags += (ExclusiveTest, 1)
 
