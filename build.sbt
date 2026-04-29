@@ -1229,14 +1229,6 @@ lazy val lmCore = (project in file("lm-core"))
       )
       .taskValue,
     contrabandSettings,
-    // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
-    Compile / packageSrc / mappings ++= {
-      val srcs = (Compile / managedSources).value
-      val sdirs = (Compile / managedSourceDirectories).value
-      val base = baseDirectory.value
-      import Path.*
-      (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)).toSeq)
-    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
