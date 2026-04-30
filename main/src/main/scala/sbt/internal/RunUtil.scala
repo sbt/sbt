@@ -293,9 +293,16 @@ object RunUtil:
       val (mainClass, allArgs) = parser.parsed
       val (jvmArgs, appArgs) = splitArgs(allArgs)
       val hashClasspath = (bgRunMain / bgHashClasspath).value
-      val fo = (run / forkOptions).value
+      // Background runs must not inherit the terminal's stdin/stdout via connectInput.
+      // Without this, ForkRun.configLogged skips setting LoggedOutput, causing
+      // the fork to use inheritIO() which bypasses the background logger entirely.
+      val fo = (run / forkOptions).value.withConnectInput(false)
       val log = streams.value.log
-      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
+      // applyJvmArgs only builds a new ForkRun when jvmArgs is non-empty, so force
+      // construction of a ForkRun that uses the updated ForkOptions above.
+      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log) match
+        case (_: ForkRun, _) => (new ForkRun(fo.withRunJVMOptions(fo.runJVMOptions ++ jvmArgs)), fo)
+        case other           => other
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       val converter = fileConverter.value
       setWindowTitle(mkWindowTitle("bgRunMain", organization.value, name.value, version.value))
@@ -337,9 +344,16 @@ object RunUtil:
       val service = bgJobService.value
       val mainClass = getMainClass(mainClassTask.value)
       val hashClasspath = (bgRun / bgHashClasspath).value
-      val fo = (run / forkOptions).value
+      // Background runs must not inherit the terminal's stdin/stdout via connectInput.
+      // Without this, ForkRun.configLogged skips setting LoggedOutput, causing
+      // the fork to use inheritIO() which bypasses the background logger entirely.
+      val fo = (run / forkOptions).value.withConnectInput(false)
       val log = streams.value.log
-      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
+      // applyJvmArgs only builds a new ForkRun when jvmArgs is non-empty, so force
+      // construction of a ForkRun that uses the updated ForkOptions above.
+      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log) match
+        case (_: ForkRun, _) => (new ForkRun(fo.withRunJVMOptions(fo.runJVMOptions ++ jvmArgs)), fo)
+        case other           => other
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       val converter = fileConverter.value
       setWindowTitle(mkWindowTitle("bgRun", organization.value, name.value, version.value))

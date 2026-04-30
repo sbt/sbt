@@ -123,7 +123,14 @@ object LogManager {
         context: LoggerContext
     ): ManagedLogger = {
       val console = ConsoleAppender.safe("bg-" + ConsoleAppender.generateName(), ITerminal.current)
-      LogManager.backgroundLog(data, state, task, console, relay(()), context)
+      // Use a channel-aware relay appender so background job log output reaches
+      // the originating client even after the spawning task completes and
+      // currentExec is cleared.
+      val channelName = state.currentCommand.flatMap(_.source.map(_.channelName))
+      val bgRelay = channelName match
+        case Some(_) => new RelayAppender("bg-Relay" + generateId.incrementAndGet, channelName)
+        case None    => relay(())
+      LogManager.backgroundLog(data, state, task, console, bgRelay, context)
     }
   }
 

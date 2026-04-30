@@ -424,6 +424,15 @@ private[sbt] final class CommandExchange {
         tryTo(_.notifyEvent(event))(c)
       case _ =>
 
+  // Route a log event to a specific channel, independent of currentExec.
+  // Used for background job output so messages reach the originating client
+  // even after the spawning task has completed and currentExec has been cleared.
+  private[sbt] def logMessage(channelName: String, event: LogEvent): Unit =
+    channels.foreach:
+      case c: NetworkChannel if c.name == channelName =>
+        tryTo(_.notifyEvent(event))(c)
+      case _ =>
+
   private def isChannelOwner(c: NetworkChannel): Boolean =
     currentExec.exists(_.source.exists(_.channelName == c.name))
 
