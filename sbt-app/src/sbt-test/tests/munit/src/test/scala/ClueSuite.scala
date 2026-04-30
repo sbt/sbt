@@ -1,8 +1,8 @@
 package testpkg
 
-import munit._
+import munit.*
 
-class ClueSuite extends FunSuite {
+class ClueSuite extends FunSuite:
   val x = 42
   val y = 32
   checkPrint(
@@ -31,10 +31,10 @@ class ClueSuite extends FunSuite {
       options: TestOptions,
       clues: Clues,
       expected: String
-  )(implicit loc: Location): Unit = {
+  )(using loc: Location): Unit = {
     test(options) {
       val obtained = munitPrint(clues)
       assertNoDiff(obtained, expected)
     }
   }
-}
+end ClueSuite

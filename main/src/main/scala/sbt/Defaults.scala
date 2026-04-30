@@ -1605,6 +1605,7 @@ object Defaults extends BuildCommon with DefExtra {
             opts,
             s.log,
             forkedParallelism,
+            strategy != ClassLoaderLayeringStrategy.Raw,
             (Tags.ForkedTestGroup, 1) +: group.tags*
           )
         case Tests.InProcess =>

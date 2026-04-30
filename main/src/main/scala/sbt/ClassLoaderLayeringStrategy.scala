@@ -78,6 +78,11 @@ object ClassLoaderLayeringStrategy {
   case object Flat extends ClassLoaderLayeringStrategy
 
   /**
+   * Use the system loader. This applises only for forked tests.
+   */
+  case object Raw extends ClassLoaderLayeringStrategy
+
+  /**
    * Add a layer for the scala library class loader.
    */
   sealed trait ScalaLibrary extends ClassLoaderLayeringStrategy

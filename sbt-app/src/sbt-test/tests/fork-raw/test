@@ -1,0 +1,4 @@
+-> testFull
+
+$ copy-file changes/Good.scala src/test/scala/ATest.scala
+> testFull

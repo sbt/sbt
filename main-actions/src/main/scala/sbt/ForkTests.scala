@@ -37,6 +37,10 @@ import sbt.internal.WorkerConnection
 private[sbt] object ForkTests:
   val r = Random()
 
+  /**
+   * virtualClasspath can be controlled by setting
+   * Test / classLoaderLayeringStrategy to ClassLoaderLayeringStrategy.Raw.
+   */
   def apply(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
@@ -46,6 +50,7 @@ private[sbt] object ForkTests:
       fork: ForkOptions,
       log: Logger,
       parallelism: Option[Int],
+      virtualClasspath: Boolean,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     import std.TaskExtra.*
@@ -57,42 +62,20 @@ private[sbt] object ForkTests:
       if opts.tests.isEmpty then
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
-        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel, parallelism)
-          .tagw(
-            config.tags*
-          )
+        mainTestTask(
+          runners = runners,
+          opts = opts,
+          classpath = classpath,
+          converter = converter,
+          fork = fork,
+          log = log,
+          parallel = config.parallel,
+          parallelism = parallelism,
+          virtualClasspath = virtualClasspath,
+        ).tagw(config.tags*)
     main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
-  }
-
-  def apply(
-      runners: Map[TestFramework, Runner],
-      tests: Vector[TestDefinition],
-      config: Execution,
-      classpath: Seq[HashedVirtualFileRef],
-      converter: FileConverter,
-      fork: ForkOptions,
-      log: Logger,
-      parallelism: Option[Int],
-      tags: (Tag, Int)*
-  ): Task[TestOutput] = {
-    val opts = processOptions(config, tests, log)
-    apply(runners, opts, config, classpath, converter, fork, log, parallelism, tags*)
-  }
-
-  def apply(
-      runners: Map[TestFramework, Runner],
-      tests: Vector[TestDefinition],
-      config: Execution,
-      classpath: Seq[HashedVirtualFileRef],
-      converter: FileConverter,
-      fork: ForkOptions,
-      log: Logger,
-      parallelism: Option[Int],
-      tag: Tag
-  ): Task[TestOutput] = {
-    apply(runners, tests, config, classpath, converter, fork, log, parallelism, tag -> 1)
   }
 
   private def mainTestTask(
@@ -103,7 +86,8 @@ private[sbt] object ForkTests:
       fork: ForkOptions,
       log: Logger,
       parallel: Boolean,
-      parallelism: Option[Int]
+      parallelism: Option[Int],
+      virtualClasspath: Boolean,
   ): Task[TestOutput] =
     std.TaskExtra.task {
       val testListeners = opts.testListeners.flatMap:
@@ -131,8 +115,6 @@ private[sbt] object ForkTests:
           ArrayList(mainRunner.remoteArgs().toList.asJava)
         )
       val g = WorkerMain.mkGson()
-      // virtualize classloading by using ClassLoader
-      val useClassLoader = true
       val cpList = ArrayList[FilePath](
         (classpath
           .map: vf =>
@@ -146,7 +128,7 @@ private[sbt] object ForkTests:
         true, /* jvm */
         RunInfo.JvmRunInfo(
           ArrayList(),
-          if useClassLoader then cpList else ArrayList(),
+          if virtualClasspath then cpList else ArrayList(),
           "",
           false /*connectInput*/,
         ),
@@ -160,7 +142,7 @@ private[sbt] object ForkTests:
       testListeners.foreach(_.doInit())
       val result =
         val ct = WorkerConnection.Tcp
-        val w = WorkerExchange.startWorker(fork, if useClassLoader then Nil else cpFiles, ct)
+        val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles, ct)
         val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
         try
           WorkerExchange.registerListener(wl)

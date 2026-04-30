@@ -1,9 +1,7 @@
-ThisBuild / scalaVersion := "2.12.21"
+val munit = "org.scalameta" %% "munit" % "1.0.4"
+scalaVersion := "3.8.2"
 
-lazy val munit = "org.scalameta" %% "munit" % "0.7.22"
-
-lazy val root = (project in file("."))
+lazy val root = rootProject
   .settings(
-    Compile / scalacOptions += "-Yrangepos",
     libraryDependencies += munit % Test
   )

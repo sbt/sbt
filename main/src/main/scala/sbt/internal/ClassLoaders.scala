@@ -159,7 +159,8 @@ private[sbt] object ClassLoaders {
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
     strategy match {
-      case Flat => new FlatLoader(cpFiles.urls, interfaceLoader, tmp, close, allowZombies, logger)
+      case Flat | Raw =>
+        new FlatLoader(cpFiles.urls, interfaceLoader, tmp, close, allowZombies, logger)
       case _ =>
         val layerDependencies = strategy match {
           case _: AllLibraryJars => true

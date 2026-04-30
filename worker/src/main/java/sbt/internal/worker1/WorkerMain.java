@@ -185,8 +185,13 @@ public final class WorkerMain {
     if (info.jvm) {
       RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
       ClassLoader parent = new ForkTestMain().getClass().getClassLoader();
-      try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent)) {
-        ForkTestMain.main(id, info, this.jsonOut, cl);
+      // empty virtual classpath means raw mode
+      if (jvmRunInfo.classpath.isEmpty()) {
+        ForkTestMain.main(id, info, this.jsonOut, parent);
+      } else {
+        try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent)) {
+          ForkTestMain.main(id, info, this.jsonOut, cl);
+        }
       }
     } else {
       throw new RuntimeException("only jvm is supported");
