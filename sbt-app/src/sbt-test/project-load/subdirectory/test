@@ -1,0 +1,6 @@
+> check
+
+# check that it fails to compile a bad source
+-> compile
+$ copy-file changes/Good.scala foo/A.scala
+> compile

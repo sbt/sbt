@@ -31,7 +31,7 @@ import sbt.io.{ GlobFilter, IO }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver, ScalaArtifacts }
 import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
-import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile }
+import xsbti.{ FileConverter, HashedVirtualFileRef, PathBasedFile, VirtualFile }
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 import java.io.File
 import java.net.URI
@@ -1340,13 +1340,19 @@ private[sbt] object Load {
     // TODO - We should import vals defined in other sbt files here, if we wish to
     // share.  For now, build.sbt files have their own unique namespace.
     def loadSettingsFile(src: VirtualFile): LoadedSbtFile =
-      EvaluateConfigurations.evaluateSbtFile(
+      val evaluated = EvaluateConfigurations.evaluateSbtFile(
         eval(),
         src,
         IO.readStream(src.input()).linesIterator.toList,
         loadedPlugins.detected.imports,
         0
       )(loader)
+      evaluated.copy(
+        projects = evaluated.projects.map: p =>
+          src match
+            case file: PathBasedFile => resolveBase(file.toPath.toFile.getParentFile)(p)
+            case _                   => p
+      )
     // How to merge SbtFiles we read into one thing
     def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = ls.foldLeft(LoadedSbtFile.empty) {
       _.merge(_)

@@ -16,15 +16,15 @@ import java.nio.file.Path
  * Represents the exported contents of a .sbt file.  Currently, that includes the list of settings,
  * the values of Project vals, and the import statements for all defined vals/defs.
  */
-private[sbt] final class LoadedSbtFile(
-    val settings: Seq[Setting[?]],
-    val projects: Seq[Project],
-    val importedDefs: Seq[String],
-    val manipulations: Seq[Project => Project],
+private[sbt] final case class LoadedSbtFile(
+    settings: Seq[Setting[?]],
+    projects: Seq[Project],
+    importedDefs: Seq[String],
+    manipulations: Seq[Project => Project],
     // TODO - we may want to expose a simpler interface on top of here for the set command,
     // rather than what we have now...
-    val definitions: DefinedSbtValues,
-    val generatedFiles: Seq[Path]
+    definitions: DefinedSbtValues,
+    generatedFiles: Seq[Path]
 ) {
   // We still use merge for now.  We track originating sbt file in an alternative manner.
   def merge(o: LoadedSbtFile): LoadedSbtFile =
