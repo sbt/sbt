@@ -429,7 +429,7 @@ private[sbt] final class CommandExchange {
   // even after the spawning task has completed and currentExec has been cleared.
   private[sbt] def logMessage(channelName: String, event: LogEvent): Unit =
     channels.foreach:
-      case c: NetworkChannel if c.name == channelName =>
+      case c: NetworkChannel if c.subscribeToAll || c.name == channelName =>
         tryTo(_.notifyEvent(event))(c)
       case _ =>
 
