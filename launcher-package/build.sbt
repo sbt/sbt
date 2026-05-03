@@ -360,7 +360,7 @@ val launcherPackage = (project in file("."))
           val x = IO.read(k)
           IO.write(
             t / "sbt.bat",
-            x.replaceAllLiterally(
+            x.replace(
               "set init_sbt_version=_to_be_replaced",
               s"set init_sbt_version=$sbtVersionToRelease"
             )
