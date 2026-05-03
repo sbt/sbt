@@ -79,7 +79,7 @@ object WorkerExchange:
     )
     val forkWithIo = fo.withOutputStrategy(OutputStrategy.CustomInputOutput(processIo))
     val p = Fork.java.fork(forkWithIo, options)
-    val forkTimeout = fo.timeout.getOrElse(30.seconds)
+    val forkTimeout = fo.connectionTimeout.getOrElse(30.seconds)
     val input = Await.result(inputRef.future, forkTimeout)
     WorkerProxy(input, p, options, socketOpt)
 
