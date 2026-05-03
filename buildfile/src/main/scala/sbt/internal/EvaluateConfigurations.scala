@@ -172,8 +172,7 @@ private[sbt] object EvaluateConfigurations {
         val compositeProjects = definitions
           .values(loader)
           .collect { case p: CompositeProject => p }
-        // todo: resolveBase?
-        CompositeProject.expand(compositeProjects) // .map(resolveBase(file.getParentFile, _))
+        CompositeProject.expand(compositeProjects)
       }
       val loadedDslEntries = dslEntries.map(_.result.apply(loader))
       val settings = loadedDslEntries.collect { case DslEntry.ProjectSettings(s) => s }.flatten
