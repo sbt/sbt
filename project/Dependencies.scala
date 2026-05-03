@@ -62,7 +62,7 @@ object Dependencies {
   def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  lazy val sjsonNewVersion = "0.14.0-M5"
+  lazy val sjsonNewVersion = "0.14.0"
   def sjsonNew(n: String) = Def.setting(
     "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value
