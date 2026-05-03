@@ -30,4 +30,6 @@ type ForkOptions {
 
   ## Use arguments file
   canUseArgumentsFile: Boolean @since("1.11.6")
+
+  connectionTimeout: scala.concurrent.duration.Duration @since("2.0.0")
 }

@@ -27,23 +27,25 @@ final class ForkOptions private (
   val runJVMOptions: Vector[String],
   val connectInput: Boolean,
   val envVars: scala.collection.immutable.Map[String, String],
-  val canUseArgumentsFile: Option[Boolean]) extends Serializable {
+  val canUseArgumentsFile: Option[Boolean],
+  val connectionTimeout: Option[scala.concurrent.duration.Duration]) extends Serializable {
   
-  private def this() = this(None, None, Vector(), None, Vector(), false, Map(), None)
-  private def this(javaHome: Option[java.io.File], outputStrategy: Option[sbt.OutputStrategy], bootJars: Vector[java.io.File], workingDirectory: Option[java.io.File], runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String]) = this(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, None)
+  private def this() = this(None, None, Vector(), None, Vector(), false, Map(), None, None)
+  private def this(javaHome: Option[java.io.File], outputStrategy: Option[sbt.OutputStrategy], bootJars: Vector[java.io.File], workingDirectory: Option[java.io.File], runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String]) = this(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, None, None)
+  private def this(javaHome: Option[java.io.File], outputStrategy: Option[sbt.OutputStrategy], bootJars: Vector[java.io.File], workingDirectory: Option[java.io.File], runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String], canUseArgumentsFile: Option[Boolean]) = this(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, canUseArgumentsFile, None)
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: ForkOptions => (this.javaHome == x.javaHome) && (this.outputStrategy == x.outputStrategy) && (this.bootJars == x.bootJars) && (this.workingDirectory == x.workingDirectory) && (this.runJVMOptions == x.runJVMOptions) && (this.connectInput == x.connectInput) && (this.envVars == x.envVars) && (this.canUseArgumentsFile == x.canUseArgumentsFile)
+    case x: ForkOptions => (this.javaHome == x.javaHome) && (this.outputStrategy == x.outputStrategy) && (this.bootJars == x.bootJars) && (this.workingDirectory == x.workingDirectory) && (this.runJVMOptions == x.runJVMOptions) && (this.connectInput == x.connectInput) && (this.envVars == x.envVars) && (this.canUseArgumentsFile == x.canUseArgumentsFile) && (this.connectionTimeout == x.connectionTimeout)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.ForkOptions".##) + javaHome.##) + outputStrategy.##) + bootJars.##) + workingDirectory.##) + runJVMOptions.##) + connectInput.##) + envVars.##) + canUseArgumentsFile.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.ForkOptions".##) + javaHome.##) + outputStrategy.##) + bootJars.##) + workingDirectory.##) + runJVMOptions.##) + connectInput.##) + envVars.##) + canUseArgumentsFile.##) + connectionTimeout.##)
   }
   override def toString: String = {
-    "ForkOptions(" + javaHome + ", " + outputStrategy + ", " + bootJars + ", " + workingDirectory + ", " + runJVMOptions + ", " + connectInput + ", " + envVars + ", " + canUseArgumentsFile + ")"
+    "ForkOptions(" + javaHome + ", " + outputStrategy + ", " + bootJars + ", " + workingDirectory + ", " + runJVMOptions + ", " + connectInput + ", " + envVars + ", " + canUseArgumentsFile + ", " + connectionTimeout + ")"
   }
-  private def copy(javaHome: Option[java.io.File] = javaHome, outputStrategy: Option[sbt.OutputStrategy] = outputStrategy, bootJars: Vector[java.io.File] = bootJars, workingDirectory: Option[java.io.File] = workingDirectory, runJVMOptions: Vector[String] = runJVMOptions, connectInput: Boolean = connectInput, envVars: scala.collection.immutable.Map[String, String] = envVars, canUseArgumentsFile: Option[Boolean] = canUseArgumentsFile): ForkOptions = {
-    new ForkOptions(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, canUseArgumentsFile)
+  private def copy(javaHome: Option[java.io.File] = javaHome, outputStrategy: Option[sbt.OutputStrategy] = outputStrategy, bootJars: Vector[java.io.File] = bootJars, workingDirectory: Option[java.io.File] = workingDirectory, runJVMOptions: Vector[String] = runJVMOptions, connectInput: Boolean = connectInput, envVars: scala.collection.immutable.Map[String, String] = envVars, canUseArgumentsFile: Option[Boolean] = canUseArgumentsFile, connectionTimeout: Option[scala.concurrent.duration.Duration] = connectionTimeout): ForkOptions = {
+    new ForkOptions(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, canUseArgumentsFile, connectionTimeout)
   }
   def withJavaHome(javaHome: Option[java.io.File]): ForkOptions = {
     copy(javaHome = javaHome)
@@ -81,6 +83,12 @@ final class ForkOptions private (
   def withCanUseArgumentsFile(canUseArgumentsFile: Boolean): ForkOptions = {
     copy(canUseArgumentsFile = Option(canUseArgumentsFile))
   }
+  def withConnectionTimeout(connectionTimeout: Option[scala.concurrent.duration.Duration]): ForkOptions = {
+    copy(connectionTimeout = connectionTimeout)
+  }
+  def withConnectionTimeout(connectionTimeout: scala.concurrent.duration.Duration): ForkOptions = {
+    copy(connectionTimeout = Option(connectionTimeout))
+  }
 }
 object ForkOptions {
   
@@ -89,4 +97,6 @@ object ForkOptions {
   def apply(javaHome: java.io.File, outputStrategy: sbt.OutputStrategy, bootJars: Vector[java.io.File], workingDirectory: java.io.File, runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String]): ForkOptions = new ForkOptions(Option(javaHome), Option(outputStrategy), bootJars, Option(workingDirectory), runJVMOptions, connectInput, envVars)
   def apply(javaHome: Option[java.io.File], outputStrategy: Option[sbt.OutputStrategy], bootJars: Vector[java.io.File], workingDirectory: Option[java.io.File], runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String], canUseArgumentsFile: Option[Boolean]): ForkOptions = new ForkOptions(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, canUseArgumentsFile)
   def apply(javaHome: java.io.File, outputStrategy: sbt.OutputStrategy, bootJars: Vector[java.io.File], workingDirectory: java.io.File, runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String], canUseArgumentsFile: Boolean): ForkOptions = new ForkOptions(Option(javaHome), Option(outputStrategy), bootJars, Option(workingDirectory), runJVMOptions, connectInput, envVars, Option(canUseArgumentsFile))
+  def apply(javaHome: Option[java.io.File], outputStrategy: Option[sbt.OutputStrategy], bootJars: Vector[java.io.File], workingDirectory: Option[java.io.File], runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String], canUseArgumentsFile: Option[Boolean], connectionTimeout: Option[scala.concurrent.duration.Duration]): ForkOptions = new ForkOptions(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars, canUseArgumentsFile, connectionTimeout)
+  def apply(javaHome: java.io.File, outputStrategy: sbt.OutputStrategy, bootJars: Vector[java.io.File], workingDirectory: java.io.File, runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String], canUseArgumentsFile: Boolean, connectionTimeout: scala.concurrent.duration.Duration): ForkOptions = new ForkOptions(Option(javaHome), Option(outputStrategy), bootJars, Option(workingDirectory), runJVMOptions, connectInput, envVars, Option(canUseArgumentsFile), Option(connectionTimeout))
 }
