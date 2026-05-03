@@ -35,7 +35,7 @@ lazy val sbtVersionToRelease = sys.props
 lazy val scala210 = "2.10.7"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
-  if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
+  if (sbtVersionToRelease.startsWith("1.")) "org.fusesource.jansi" % "jansi" % "1.12"
   else "org.fusesource.jansi" % "jansi" % "1.4"
 }
 lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
@@ -45,13 +45,13 @@ lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "2.3.0"
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
 
 lazy val sbt013ExtraDeps = {
-  if (sbtVersionToRelease startsWith "0.13.") Seq(scala210Jline)
+  if (sbtVersionToRelease.startsWith("0.13.")) Seq(scala210Jline)
   else Seq()
 }
 
 lazy val isWindows: Boolean =
   sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
-lazy val isExperimental = (sbtVersionToRelease contains "RC") || (sbtVersionToRelease contains "M")
+lazy val isExperimental = sbtVersionToRelease.contains("RC") || sbtVersionToRelease.contains("M")
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
 val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
@@ -245,7 +245,7 @@ val launcherPackage = (project in file("."))
       val links = linuxPackageSymlinks.value
       for {
         link <- links
-        if !(link.destination endsWith "sbt-launch.jar")
+        if !link.destination.endsWith("sbt-launch.jar")
       } yield link
     },
 
@@ -277,11 +277,11 @@ val launcherPackage = (project in file("."))
     // RPM SPECIFIC
     rpmRelease := debianBuildId.value.toString,
     Rpm / version := {
-      val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
+      val stable0 = (sbtVersionToRelease.split("[^\\d]") filterNot (_.isEmpty) mkString ".")
       val stable =
         if (rpmRelease.value == "0") stable0
         else stable0 + "." + rpmRelease.value
-      if (isExperimental) ((sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty)).toList match {
+      if (isExperimental) (sbtVersionToRelease.split("[^\\d]").filterNot(_.isEmpty).toList match {
         case List(_, _, c, d) => List(0, 99, c, d).mkString(".")
       })
       else stable
@@ -311,7 +311,7 @@ val launcherPackage = (project in file("."))
     Windows / version := {
       val bid = windowsBuildId.value
       val sv = sbtVersionToRelease
-      (sv split "[^\\d]" filterNot (_.isEmpty)) match {
+      sv.split("[^\\d]").filterNot(_.isEmpty) match {
         case Array(major, minor, bugfix, _*) if bid == 0 => Seq(major, minor, bugfix) mkString "."
         case Array(major, minor, bugfix, _*) => Seq(major, minor, bugfix, bid.toString) mkString "."
         case Array(major, minor)             => Seq(major, minor, "0", bid.toString) mkString "."
@@ -394,7 +394,7 @@ val launcherPackage = (project in file("."))
     }).value,
     Universal / mappings ++= {
       val base = baseDirectory.value
-      if (sbtVersionToRelease startsWith "0.13.") Nil
+      if (sbtVersionToRelease.startsWith("0.13.")) Nil
       else
         Seq[(File, String)](
           base.getParentFile / "LICENSE" -> "LICENSE",
@@ -429,7 +429,7 @@ def downloadUrlForVersion(v: String) =
       "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
     case Array(0, y, _*) if y >= 12 =>
       "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
-    case Array(1, _, _*) if v contains ("-20") =>
+    case Array(1, _, _*) if v.contains("-20") =>
       "https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
     case _ =>
       "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/" + v + "/sbt-launch-" + v + ".jar"
@@ -489,7 +489,7 @@ lazy val dist = (project in file("dist"))
   .settings(
     name := "dist",
     scalaVersion := {
-      if (sbtVersionToRelease startsWith "0.13.") scala210
+      if (sbtVersionToRelease.startsWith("0.13.")) scala210
       else scala212
     },
     libraryDependencies ++= Seq(

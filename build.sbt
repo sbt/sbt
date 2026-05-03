@@ -143,7 +143,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings
         )
         .toSet
     } else {
-      versions.map(v => organization.value % moduleName.value % v cross crossVersion).toSet
+      versions.map(v => (organization.value % moduleName.value % v).cross(crossVersion)).toSet
     }
   },
   mimaBinaryIssueFilters ++= Seq(
@@ -623,7 +623,7 @@ lazy val commandProj = (project in file("main-command"))
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
       old filterNot { x =>
-        (x.getName startsWith "NG") || (x.getName == "ReferenceCountedFileDescriptor.java")
+        x.getName.startsWith("NG") || (x.getName == "ReferenceCountedFileDescriptor.java")
       }
     },
   )
