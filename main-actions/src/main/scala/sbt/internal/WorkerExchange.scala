@@ -35,11 +35,12 @@ object WorkerExchange:
       extraCp: Seq[File],
       connectionType: WorkerConnection,
   ): WorkerProxy =
-    val fullCp = Seq(
+    // put extraCp first so we can shadow the WorkerMain class
+    val fullCp = extraCp ++ Seq(
       IO.classLocationPath(classOf[WorkerMain]).toFile,
       IO.classLocationPath(classOf[Framework]).toFile,
       IO.classLocationPath(classOf[Gson]).toFile,
-    ) ++ extraCp
+    )
     val inputRef = Promise[OutputStream]()
     val socketOpt = connectionType match
       case WorkerConnection.Tcp =>
