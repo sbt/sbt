@@ -18,7 +18,9 @@ object VirtualAxis {
    * WeakAxis allows a row to depend on another row with Zero value.
    * For example, Scala version can be Zero for Java project, and it's ok.
    */
-  abstract class WeakAxis extends VirtualAxis
+  abstract class WeakAxis extends VirtualAxis {
+    def axisId: String = getClass.getName
+  }
 
   /** StrongAxis requires a row to depend on another row with the same selected value. */
   abstract class StrongAxis extends VirtualAxis
@@ -26,14 +28,17 @@ object VirtualAxis {
   def isMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean =
     lhs.forall(isStronglyCompatible(_, rhs)) && rhs.forall(isStronglyCompatible(_, lhs))
 
-  private[sbt] def isStronglyCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
+  private[sbt] def isStronglyCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean = {
     v match {
       case v: WeakAxis =>
-        val clazz = v.getClass
-        stack.contains(v) || !stack.exists(_.getClass == clazz)
+        stack.contains(v) || !stack.exists {
+          case wa: WeakAxis => wa.axisId == v.axisId
+          case _ => false
+        }
       case v: StrongAxis =>
         stack.contains(v)
     }
+  }
 
   def isSecondaryMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean =
     lhs.forall(isSecondaryCompatible(_, rhs)) && rhs.forall(isSecondaryCompatible(_, lhs))
