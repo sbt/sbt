@@ -1094,11 +1094,11 @@ echo.
 echo   -h ^| --help         print this message
 echo   -v ^| --verbose      this runner is chattier
 echo   -V ^| --version      print sbt version information
-echo   --numeric-version   print the numeric sbt version (sbt sbtVersion)
-echo   --script-version    print the version of sbt script
-echo   -d ^| --debug        set sbt log level to debug
-echo   -debug-inc ^| --debug-inc
-echo                       enable extra debugging for the incremental compiler
+echo   --server            run sbt server in the foreground, instead of using sbtn
+echo   --client            run sbtn (native client), and start sbt server in the background
+echo   --no-server         run sbtn, and fail if it cannot connect to a server
+echo   --jvm-client        run JVM client, and start sbt server in the background
+echo   --allow-empty       start sbt even if current directory contains no sbt project
 echo   --no-colors         disable ANSI color codes
 echo   --color=auto^|always^|true^|false^|never
 echo                       enable or disable ANSI color codes      ^(sbt 1.3 and above^)
@@ -1136,6 +1136,11 @@ echo                       if this file exists, it is prepended to the runner ar
 echo   -Dkey=val           pass -Dkey=val directly to the java runtime
 echo   -X^<flag^>            pass -X^<flag^> directly to the java runtime
 echo                       ^(e.g., -Xmx1G, -Xms512M, -Xss4M^)
+echo   --numeric-version   print the numeric sbt version (sbt sbtVersion)
+echo   --script-version    print the version of sbt script
+echo   -d ^| --debug        set sbt log level to debug
+echo   -debug-inc ^| --debug-inc
+echo                       enable extra debugging for the incremental compiler
 rem echo   -J-X                pass option -X directly to the java runtime
 rem echo                       ^(-J is stripped^)
 rem echo   -S-X                add -X to sbt's scalacOptions ^(-S is stripped^)

@@ -164,9 +164,9 @@ object Main:
       |  shutdownall         shutdown all running sbt processes
       |  -d | --debug        set sbt log level to debug
       |  --allow-empty       start sbt even if current directory contains no sbt project
-      |  --client            run native client (sbt 1.4+)
-      |  --server            run JVM launcher (disable native client, sbt 2.x)
-      |  --jvm-client        run JVM client
+      |  --client            run sbtn (native client), and start sbt server in the background
+      |  --server            run sbt server in the foreground, instead of using sbtn
+      |  --jvm-client        run JVM client, and start sbt server in the background
       |  --mem <integer>     set memory options (default: 1024)
       |  --sbt-version <v>   use the specified version of sbt
       |  --sbt-jar <path>    use the specified jar as the sbt launcher
