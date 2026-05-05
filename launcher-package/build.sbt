@@ -108,6 +108,7 @@ val launcherPackage = (project in file("."))
     name := "sbt-launcher-packaging",
     packageName := "sbt",
     crossTarget := target.value,
+    autoScalaLibrary := false,
     clean := {
       val _ = (dist / clean).value
       clean.value
