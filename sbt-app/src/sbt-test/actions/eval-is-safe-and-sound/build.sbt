@@ -4,12 +4,15 @@ lazy val boink = project
 
 lazy val woof = project
 
+@transient
 lazy val numConfigClasses = taskKey[Int]("counts number of config classes")
 
 lazy val configClassCountFile = settingKey[File]("File where we write the # of config classes")
 
+@transient
 lazy val saveNumConfigClasses = taskKey[Unit]("Saves the number of config classes")
 
+@transient
 lazy val checkNumConfigClasses = taskKey[Unit]("Checks the number of config classes")
 
 lazy val checkDifferentConfigClasses =
