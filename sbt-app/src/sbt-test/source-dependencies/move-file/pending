@@ -1,0 +1,17 @@
+> checkStampSize 1
+
+# move A.scala elsewhere
+$ copy-file A.scala A.txt
+$ delete A.scala
+> checkStampSize 0
+
+# move A.scala back
+$ copy-file A.txt A.scala
+$ delete A.txt
+$ exists A.scala
+
+> show Compile/sources
+
+# if we recompile, we should regain stamp size 1
+> debug
+> checkStampSize 1
