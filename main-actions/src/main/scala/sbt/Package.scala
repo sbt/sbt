@@ -221,9 +221,7 @@ object Package {
     val path = jar.getAbsolutePath
     log.debug("Packaging " + path + " ...")
     if (jar.exists)
-      if (jar.isFile)
-        IO.delete(jar)
-      else
+      if (!jar.isFile)
         sys.error(path + " exists, but is not a regular file")
     log.debug(sourcesDebugString(sources))
     IO.jar(sources, jar, manifest, time)
