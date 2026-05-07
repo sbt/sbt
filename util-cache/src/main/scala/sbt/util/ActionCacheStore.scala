@@ -1,6 +1,6 @@
 package sbt.util
 
-import java.io.{ IOException, RandomAccessFile }
+import java.io.{ ByteArrayInputStream, IOException }
 import java.nio.ByteBuffer
 import java.nio.file.{
   Files,
@@ -240,23 +240,30 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
 
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)
-    IO.transfer(input, casFile.toFile())
-    casFile
+    if isCompleteBlob(casFile, digest) then casFile
+    else
+      IO.transfer(input, casFile.toFile())
+      casFile
 
   def putBlob(input: ByteBuffer, digest: Digest): Path =
     val casFile = toCasFile(digest)
-    input.flip()
-    val file = RandomAccessFile(casFile.toFile(), "rw")
-    try
-      file.getChannel().write(input)
+    if isCompleteBlob(casFile, digest) then casFile
+    else
+      input.flip()
+      val bytes = new Array[Byte](input.remaining())
+      input.get(bytes)
+      IO.transfer(new ByteArrayInputStream(bytes), casFile.toFile())
       casFile
-    finally file.close()
+
+  private def isCompleteBlob(casFile: Path, digest: Digest): Boolean =
+    try Files.exists(casFile) && Digest.sameDigest(casFile, digest)
+    catch case _: NoSuchFileException => false
 
   private def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
     refs.flatMap: r =>
       try
         val casFile = toCasFile(Digest(r))
-        if casFile.toFile().exists then
+        if isCompleteBlob(casFile, Digest(r)) then
           r match
             case p: PathBasedFile => Some(p)
             case _ =>
@@ -270,7 +277,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
     refs.flatMap: r =>
       try
         val casFile = toCasFile(Digest(r))
-        if casFile.toFile().exists then
+        if isCompleteBlob(casFile, Digest(r)) then
           // println(s"syncBlobs: $casFile exists for $r")
           Some(syncFile(r, casFile, outputDirectory))
         else None
@@ -384,7 +391,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
     refs.flatMap: r =>
       try
         val casFile = toCasFile(Digest(r))
-        if casFile.toFile().exists then Some(r)
+        if isCompleteBlob(casFile, Digest(r)) then Some(r)
         else None
       // Digest(r) can throw NoSuchFileException
       catch case _: NoSuchFileException => None

@@ -1,5 +1,6 @@
 package sbt.util
 
+import java.io.{ IOException, InputStream }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path, Paths }
 import java.util.Optional
@@ -29,6 +30,32 @@ object ActionCacheTest extends BasicTestSuite:
   test("Disk cache can hold a blob"):
     withDiskCache(testHoldBlob)
 
+  test("Disk cache rejects truncated blobs"):
+    withDiskCache: cache =>
+      val blob = StringVirtualFile1("a.txt", "hello")
+      val digest = Digest(blob)
+      val ref: HashedVirtualFileRef = blob
+      val casFile = cache.toCasFile(digest)
+      Files.writeString(casFile, "he", StandardCharsets.UTF_8)
+
+      assert(cache.findBlobs(Seq(ref)).isEmpty)
+      cache.putBlobs(Seq(blob))
+      assert(cache.findBlobs(Seq(ref)) == Seq(ref))
+      assert(Files.readString(casFile, StandardCharsets.UTF_8) == "hello")
+
+  test("Disk cache removes staged blobs when writes fail"):
+    withDiskCache: cache =>
+      val blob = StringVirtualFile1("a.txt", "hello")
+      val digest = Digest(blob)
+      val casFile = cache.toCasFile(digest)
+      try
+        cache.putBlob(FailingInputStream("hello".getBytes(StandardCharsets.UTF_8), 2), digest)
+        assert(false, "expected blob write to fail")
+      catch case _: IOException => ()
+
+      assert(!Files.exists(casFile))
+      assert(Files.list(cache.casBase).toArray.isEmpty)
+
   def testHoldBlob(cache: ActionCacheStore): Unit =
     IO.withTemporaryDirectory: tempDir =>
       val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
@@ -36,6 +63,16 @@ object ActionCacheTest extends BasicTestSuite:
       assert(hashRefs.size == 1)
       val actual = cache.syncBlobs(hashRefs, tempDir.toPath()).head
       assert(actual.getFileName().toString() == "a.txt")
+
+  final class FailingInputStream(bytes: Array[Byte], failAt: Int) extends InputStream:
+    private var index = 0
+    override def read(): Int =
+      if index == failAt then throw IOException("simulated interrupted write")
+      else if index >= bytes.length then -1
+      else
+        val b = bytes(index) & 0xff
+        index += 1
+        b
 
   test("In-memory cache can hold action value"):
     withInMemoryCache(testActionCacheBasic)
