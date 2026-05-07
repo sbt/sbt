@@ -1,0 +1,10 @@
+> checkDiscoveredMainClasses
+$ copy-file src/main/scala/Main.scala tmp/Main.scala
+$ delete src
+-> checkDiscoveredMainClasses
+$ copy-file tmp/Main.scala src/main/scala/Main.scala
+$ exists src/main/scala/Main.scala
+> show Compile/sources
+
+# expect success but failure
+> checkDiscoveredMainClasses
