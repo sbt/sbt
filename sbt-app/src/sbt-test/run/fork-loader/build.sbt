@@ -6,5 +6,6 @@ lazy val root = (project in file("."))
   .settings(
     name := "forked-test",
     organization := "org.example",
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
     libraryDependencies += scalacheck % Test
   )
