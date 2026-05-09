@@ -24,7 +24,6 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import sbt.internal.inc.Analysis
-import sbt.internal.inc.JavaInterfaceUtil.*
 import sbt.internal.parser.SbtParser
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.protocol.codec.JsonRPCProtocol
@@ -34,6 +33,7 @@ import sbt.Keys.*
 import xsbti.{ FileConverter, VirtualFileRef }
 import com.github.benmanes.caffeine.cache.Cache
 import scala.concurrent.Promise
+import scala.jdk.OptionConverters.*
 import com.github.benmanes.caffeine.cache.Caffeine
 
 private[sbt] object Definition {
@@ -177,7 +177,7 @@ private[sbt] object Definition {
         useConsistent = useConsistent,
       )
       .get
-      .toOption
+      .toScala
       .map { _.getAnalysis }
       .collect { case a: Analysis => a }
 
@@ -269,7 +269,7 @@ private[sbt] object Definition {
           .lines(Paths.get(uri))
           .skip(definition.position.line)
           .findFirst
-          .toOption
+          .toScala
           .flatMap { line =>
             log.debug(s"$LspDefinitionLogHead found line: $line")
             textProcessor.identifier(line, definition.position.character.toInt)

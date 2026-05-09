@@ -28,7 +28,6 @@ import sbt.internal.CommandStrings.ExportStream
 import sbt.internal.CompileDebugLogger
 import sbt.internal.*
 import sbt.internal.classpath.AlternativeZincUtil
-import sbt.internal.inc.JavaInterfaceUtil.*
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
 import sbt.internal.librarymanagement.mavenint.{
@@ -77,6 +76,7 @@ import sjsonnew.*
 import scala.annotation.nowarn
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration.*
+import scala.jdk.OptionConverters.*
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
@@ -509,7 +509,7 @@ object Defaults extends BuildCommon with DefExtra {
               Some(path.toFile.getAbsoluteFile)
             } catch {
               case NonFatal(_) => None
-            }).toOptional
+            }).toJava
 
           override def startOffset(): Optional[Integer] = pos.startOffset()
 
@@ -1083,7 +1083,7 @@ object Defaults extends BuildCommon with DefExtra {
                   crossTarget.value / s"${prefix(configuration.value.name)}classes.bak",
                   streams.value.log
                 ): ClassFileManagerType
-            ).toOptional
+            ).toJava
           )
           .withPipelining(usePipelining.value)
       },
@@ -2141,7 +2141,7 @@ object Defaults extends BuildCommon with DefExtra {
     val contents = store.unsafeGet()
     if (exportP) {
       // this stores the early analysis (again) in case the subproject contains a macro
-      setup.earlyAnalysisStore.toOption map { earlyStore =>
+      setup.earlyAnalysisStore.toScala map { earlyStore =>
         earlyStore.set(contents)
       }
     }
@@ -2163,7 +2163,7 @@ object Defaults extends BuildCommon with DefExtra {
       earlyOutputPing.await.value
     }) {
       val store = analysisStore(earlyCompileAnalysisFile)
-      store.get.toOption match {
+      store.get.toScala match {
         case Some(contents) => contents.getAnalysis
         case _              => Analysis.empty
       }
@@ -2316,7 +2316,7 @@ object Defaults extends BuildCommon with DefExtra {
       Keys.classpathEntryDefinesClassVF.value
     val lookup = new PerClasspathEntryLookup:
       override def analysis(classpathEntry: VirtualFile): Optional[CompileAnalysis] =
-        cachedAnalysisMap.get(classpathEntry).toOptional
+        cachedAnalysisMap.get(classpathEntry).toJava
       override def definesClass(classpathEntry: VirtualFile): DefinesClass =
         cachedPerEntryDefinesClassLookup(classpathEntry)
     val extra = extraIncOptions.value.map(t2)
@@ -2329,8 +2329,8 @@ object Defaults extends BuildCommon with DefExtra {
       compilerCache.value,
       incOptions.value,
       (compile / bspReporter).value,
-      Some((compile / compileProgress).value).toOptional,
-      eaOpt.toOptional,
+      Some((compile / compileProgress).value).toJava,
+      eaOpt.toJava,
       extra.toArray,
     )
   }
@@ -2362,10 +2362,10 @@ object Defaults extends BuildCommon with DefExtra {
             foldMappers(sourcePositionMappers.value, reportAbsolutePath.value, fileConverter.value)
           ),
           compileOrder.value,
-          None.toOptional: Optional[NioPath],
-          Some(fileConverter.value).toOptional,
-          Some(reusableStamper.value).toOptional,
-          eoOpt.toOptional,
+          None.toJava: Optional[NioPath],
+          Some(fileConverter.value).toJava,
+          Some(reusableStamper.value).toJava,
+          eoOpt.toJava,
         )
       },
       compilerReporter := Def.uncached {
@@ -2431,15 +2431,15 @@ object Defaults extends BuildCommon with DefExtra {
   }
 
   private[sbt] def none[A]: Option[A] = (None: Option[A])
-  private[sbt] def jnone[A]: Optional[A] = none[A].toOptional
+  private[sbt] def jnone[A]: Optional[A] = none[A].toJava
   def compileAnalysisSettings: Seq[Setting[?]] = Seq(
     previousCompile := Def.uncached {
       val setup = compileIncSetup.value
       val store = analysisStore(compileAnalysisFile)
-      val prev = store.get().toOption match {
+      val prev = store.get().toScala match {
         case Some(contents) =>
-          val analysis = Option(contents.getAnalysis).toOptional
-          val setup = Option(contents.getMiniSetup).toOptional
+          val analysis = Option(contents.getAnalysis).toJava
+          val setup = Option(contents.getMiniSetup).toJava
           PreviousResult.of(analysis, setup)
         case None => PreviousResult.of(jnone[CompileAnalysis], jnone[MiniSetup])
       }

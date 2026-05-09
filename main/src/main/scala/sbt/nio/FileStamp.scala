@@ -13,13 +13,13 @@ import java.nio.file.{ Path, Paths }
 import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.inc.{ EmptyStamp, Stamper, Hash as IncHash, LastModified as IncLastModified }
-import sbt.internal.inc.JavaInterfaceUtil.given
 import sbt.io.IO
 import sbt.nio.file.FileAttributes
 import sbt.util.Digest
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp as XStamp }
 import xsbti.VirtualFileRef
+import scala.jdk.OptionConverters.*
 
 /**
  * A trait that indicates what file stamping implementation should be used to track the state of
@@ -102,7 +102,7 @@ object FileStamp {
 
   def toDigest(path: Path, stamp: FileStamp): Digest = stamp match
     case f: FileHashImpl =>
-      f.xstamp.getHash().toOption match
+      f.xstamp.getHash().toScala match
         case Some(hash) => Digest.sha256Hash(hash.getBytes("UTF-8"))
         case None       => Digest.sha256Hash(path)
     case FileStamp.Hash(hex)       => Digest.sha256Hash(hex.getBytes("UTF-8"))

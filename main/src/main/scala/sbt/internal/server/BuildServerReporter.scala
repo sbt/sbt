@@ -24,6 +24,7 @@ import xsbti.{
 }
 
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 import scala.collection.mutable
 import java.nio.file.Path
 
@@ -86,7 +87,6 @@ final class BuildServerReporterImpl(
     protected override val underlying: Reporter
 ) extends BuildServerReporter {
   import sbt.internal.bsp.codec.JsonProtocol.given
-  import sbt.internal.inc.JavaInterfaceUtil.*
 
   private lazy val exchange = StandardMain.exchange
   private val problemsByFile = mutable.Map[Path, Vector[Problem]]()
@@ -151,7 +151,7 @@ final class BuildServerReporterImpl(
 
   protected override def publishDiagnostic(problem: Problem): Unit = {
     for {
-      id <- problem.position.sourcePath.toOption
+      id <- problem.position.sourcePath.toScala
       (document, diagnostic) <- mapProblemToDiagnostic(problem)
     } {
       // Note: We're putting the real path in `fileRef` because the `id` String can take
@@ -196,13 +196,13 @@ final class BuildServerReporterImpl(
   ): Option[(TextDocumentIdentifier, Diagnostic)] = {
     val mappedPosition = sourcePositionMapper(problem.position)
     for {
-      mappedSource <- mappedPosition.sourcePath.toOption
+      mappedSource <- mappedPosition.sourcePath.toScala
       document <- toDocument(VirtualFileRef.of(mappedSource))
     } yield {
       val diagnostic = Diagnostic(
         toRange(mappedPosition),
         Option(toDiagnosticSeverity(problem.severity)),
-        problem.diagnosticCode().toOption.map(_.code),
+        problem.diagnosticCode().toScala.map(_.code),
         Option("sbt"),
         problem.message
       )
@@ -211,12 +211,12 @@ final class BuildServerReporterImpl(
   }
 
   private def toRange(position: xsbti.Position): Range = {
-    val startLineOpt = position.startLine.toOption.map(_.toLong - 1)
-    val startColumnOpt = position.startColumn.toOption.map(_.toLong)
-    val endLineOpt = position.endLine.toOption.map(_.toLong - 1)
-    val endColumnOpt = position.endColumn.toOption.map(_.toLong)
-    val lineOpt = position.line.toOption.map(_.toLong - 1)
-    val columnOpt = position.pointer.toOption.map(_.toLong)
+    val startLineOpt = position.startLine.toScala.map(_.toLong - 1)
+    val startColumnOpt = position.startColumn.toScala.map(_.toLong)
+    val endLineOpt = position.endLine.toScala.map(_.toLong - 1)
+    val endColumnOpt = position.endColumn.toScala.map(_.toLong)
+    val lineOpt = position.line.toScala.map(_.toLong - 1)
+    val columnOpt = position.pointer.toScala.map(_.toLong)
 
     def toPosition(lineOpt: Option[Long], columnOpt: Option[Long]): Option[Position] =
       lineOpt.map(line => Position(line, columnOpt.getOrElse(0L)))
