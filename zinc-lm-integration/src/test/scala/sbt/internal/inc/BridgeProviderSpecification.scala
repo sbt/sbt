@@ -13,19 +13,19 @@ import java.net.URLClassLoader
 
 import sbt.io.IO
 import sbt.io.syntax.*
-import sbt.internal.librarymanagement.ivy.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import xsbti.compile.CompilerBridgeProvider
 import org.scalatest.*
 import org.scalatest.matchers.should.Matchers
+import lmcoursier.*
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
  *
  * This is a very good example on how to instantiate the compiler bridge provider.
  */
-abstract class IvyBridgeProviderSpecification
+abstract class BridgeProviderSpecification
     extends flatspec.FixtureAnyFlatSpec
     with fixture.TestDataFixture
     with Matchers {
@@ -34,20 +34,20 @@ abstract class IvyBridgeProviderSpecification
   def currentManaged: File = currentBase / "target" / "lib_managed"
   def secondaryCacheDirectory: File = file("target").getAbsoluteFile / "zinc-components"
 
-  val resolvers = Array(
+  val resolvers = Vector(
     ZincComponentCompiler.LocalResolver: Resolver,
     Resolver.mavenCentral: Resolver,
   )
-
-  private def ivyConfiguration(log: Logger) =
-    getDefaultConfiguration(currentBase, currentTarget, resolvers, log)
 
   def getZincProvider(bridge: ModuleID, targetDir: File, log: Logger): CompilerBridgeProvider = {
     val lock = ZincComponentCompiler.getDefaultLock
     val secondaryCache = Some(secondaryCacheDirectory)
     val componentProvider = ZincComponentCompiler.getDefaultComponentProvider(targetDir)
     val manager = new ZincComponentManager(lock, componentProvider, secondaryCache, log)
-    val dependencyResolution = IvyDependencyResolution(ivyConfiguration(log))
+    val dependencyResolution = CoursierDependencyResolution(
+      CoursierConfiguration().withResolvers(resolvers)
+    )
+    // IvyDependencyResolution(ivyConfiguration(log))
     ZincComponentCompiler.interfaceProvider(bridge, manager, dependencyResolution, currentManaged)
   }
 
@@ -76,22 +76,4 @@ abstract class IvyBridgeProviderSpecification
     target
   }
 
-  private def getDefaultConfiguration(
-      baseDirectory: File,
-      ivyHome: File,
-      resolvers0: Array[Resolver],
-      log: xsbti.Logger,
-  ): InlineIvyConfiguration = {
-    val resolvers = resolvers0.toVector
-    val chainResolver = ChainedResolver("zinc-chain", resolvers)
-    InlineIvyConfiguration()
-      .withPaths(IvyPaths(baseDirectory.toString, Some(ivyHome.toString)))
-      .withResolvers(resolvers)
-      .withModuleConfigurations(Vector(ModuleConfiguration("*", chainResolver)))
-      .withLock(None)
-      .withChecksums(Vector.empty)
-      .withResolutionCacheDir(ivyHome / "resolution-cache")
-      .withUpdateOptions(UpdateOptions())
-      .withLog(log)
-  }
 }

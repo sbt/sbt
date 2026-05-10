@@ -687,8 +687,9 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
     mimaBinaryIssueFilters ++= Seq(
     ),
     libraryDependencies += launcherInterface,
+    libraryDependencies += scalaCollectionCompat % Test,
   )
-  .dependsOn(lmCore, lmIvy)
+  .dependsOn(lmCore, lmCoursierShadedPublishing % Test)
   .configure(addSbtZincCompileCore)
 
 lazy val buildFileProj = (project in file("buildfile"))
