@@ -11,7 +11,7 @@ package sbt
 import java.io.{ File, IOException }
 import java.net.URI
 import java.nio.channels.ClosedChannelException
-import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
+import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files, Paths }
 import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
@@ -32,7 +32,7 @@ import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ RunningProcesses, Terminal as ITerminal, * }
 import sbt.io.*
 import sbt.io.syntax.*
-import sbt.util.{ Level, Logger, Show }
+import sbt.util.{ ActionCache, Level, Logger, Show }
 import xsbti.AppProvider
 
 import scala.annotation.{ nowarn, tailrec }
@@ -261,12 +261,21 @@ object StandardMain {
     args.flatMap(levelFromArg).headOption.getOrElse(Level.Info)
 
   private def initialGlobalLogging(file: Option[File], initialLevel: Level.Value): GlobalLogging =
-    def createTemp(attempt: Int = 0): File = Retry:
+    def createTemp(prefix: String)(attempt: Int = 0): File = Retry:
       file.foreach(f => if (!f.exists()) IO.createDirectory(f))
-      File.createTempFile("sbt-global-log", ".log", file.orNull)
+      File.createTempFile(prefix, ".log", file.orNull)
+
+    // Call this experimental since we don't want to commit to the log format for now
+    val execLogProp = "sbt.experimental_execution_log"
+    val execLog =
+      if java.lang.Boolean.getBoolean(execLogProp) then
+        Option(ActionCache.setExecLog(createTemp("exec-log")().toPath()))
+      else sys.props.get(execLogProp).map(Paths.get(_)).map(ActionCache.setExecLog)
+    execLog.foreach: log =>
+      ShutdownHooks.add(() => log.close())
     GlobalLogging.initial(
       MainAppender.globalDefault(ConsoleOut.globalProxy),
-      createTemp(),
+      createTemp("sbt-global-log")(),
       ConsoleOut.globalProxy,
       initialLevel
     )

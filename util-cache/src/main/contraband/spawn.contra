@@ -1,0 +1,21 @@
+package sbt.internal.util
+@target(Scala)
+@codecPackage("sbt.internal.util.codec")
+@fullCodec("SpawnCodec")
+
+# https://github.com/bazelbuild/bazel/blob/master/src/main/protobuf/spawn.proto
+type SpawnInput {
+  digest: sbt.util.Digest!
+  codeContentHash: sbt.util.Digest!
+  extraHash: sbt.util.Digest!
+  cacheVersion: Long
+  str: String
+}
+
+# https://github.com/bazelbuild/bazel/blob/master/src/main/protobuf/spawn.proto
+type SpawnExec {
+  input: sbt.internal.util.SpawnInput!
+  cacheHit: Boolean!
+  exitCode: Int
+  outputs: [xsbti.HashedVirtualFileRef] @since("0.2.0")
+}

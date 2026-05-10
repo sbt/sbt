@@ -8,10 +8,16 @@
 
 package sbt.util
 
-import java.io.{ File, IOException }
+import java.io.{ File, IOException, PrintWriter }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ AtomicMoveNotSupportedException, Files, Path, Paths, StandardCopyOption }
-import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
+import sbt.internal.util.{
+  ActionCacheEvent,
+  CacheEventLog,
+  SpawnExec,
+  SpawnInput,
+  StringVirtualFile1
+}
 import sbt.io.syntax.*
 import sbt.io.IO
 import sbt.nio.file.{ **, FileTreeView }
@@ -19,10 +25,10 @@ import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, StaticAnnotation }
-import scala.util.control.{ Exception, NonFatal }
+import scala.util.control.NonFatal
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser, PrettyPrinter }
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
 import xsbti.{ CompileFailed, FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
@@ -31,6 +37,11 @@ object ActionCache:
   private[sbt] val manifestFileName = "sbtdir_manifest.json"
   private[sbt] val failureFileName = "failure.json"
   private[sbt] val failureExitCode = 1
+  private[sbt] var execLog: Option[PrintWriter] = None
+  private[sbt] def setExecLog(log: Path): PrintWriter =
+    val writer = PrintWriter(log.toFile, "UTF-8")
+    execLog = Option(writer)
+    writer
 
   /**
    * This is a key function that drives remote caching.
@@ -58,17 +69,19 @@ object ActionCache:
   ): O =
     import config.*
 
+    val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion)
+
     def cacheFailure(e: CompileFailed): Nothing =
       // Cache the failure so subsequent builds don't re-run failed compilation
       // This fixes https://github.com/sbt/sbt/issues/7662
       // Use the same input digest as success, distinguished by exitCode
       cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-      val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
       val cachedFailure = CachedCompileFailure.fromException(e)
       val json = Converter.toJsonUnsafe(cachedFailure)
+      val valuePath = mkValuePath(inputDigest)
       val failureFile = StringVirtualFile1(valuePath, CompactPrinter(json))
       store.put(
-        UpdateActionResultRequest(input, Vector(failureFile), exitCode = failureExitCode)
+        UpdateActionResultRequest(inputDigest, Vector(failureFile), exitCode = failureExitCode)
       )
       throw e
 
@@ -81,6 +94,9 @@ object ActionCache:
             cacheFailure(e)
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
+            logExec(
+              SpawnExec(input = spawnInput, cacheHit = false, exitCode = 1)
+            )
             throw e
       try
         val json = Converter.toJsonUnsafe(result)
@@ -103,12 +119,20 @@ object ActionCache:
           result
         else
           cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-          val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+          val valuePath = mkValuePath(inputDigest)
           val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
           val newOutputs = Vector(valueFile) ++ outputs.toVector
-          store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
+          store.put(UpdateActionResultRequest(inputDigest, newOutputs, exitCode = 0)) match
             case Right(cachedResult) =>
               store.syncBlobs(cachedResult.outputFiles, outputDirectory)
+              logExec(
+                SpawnExec(
+                  input = spawnInput,
+                  cacheHit = false,
+                  exitCode = 0,
+                  outputs = cachedResult.outputFiles,
+                )
+              )
               result
             case Left(e) => throw e
       catch
@@ -117,13 +141,35 @@ object ActionCache:
           cacheEventLog.append(ActionCacheEvent.Error)
           result
 
+    def spawnInput = SpawnInput(
+      digest = inputDigest,
+      codeContentHash = codeContentHash,
+      extraHash = extraHash,
+      cacheVersion = if cacheVersion != 0 then Some(cacheVersion) else None,
+      str = Some(key.toString()),
+    )
+    inline def logExec(inline event: SpawnExec): Unit =
+      execLog.foreach: log =>
+        logEvent(event, log)
     // Single cache lookup - use exitCode to distinguish success from failure
-    getWithFailure(key, codeContentHash, extraHash, tags, config) match
-      case Right(value) => value
+    getWithFailure(inputDigest, tags, config) match
+      case Right((value, result)) =>
+        logExec(
+          SpawnExec(
+            input = spawnInput,
+            cacheHit = true,
+            exitCode = result.exitCode,
+            outputs = result.outputFiles,
+          )
+        )
+        value
       case Left(Some(failure)) =>
         config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
         // Replay problems to the logger so users see the cached errors/warnings
         failure.replay(config.logger)
+        logExec(
+          SpawnExec(input = spawnInput, cacheHit = true, exitCode = 1)
+        )
         throw failure.toException
       case Left(None) => organicTask
   end cache
@@ -133,13 +179,11 @@ object ActionCache:
    * Returns Right(value) for cached success, Left(Some(failure)) for cached failure,
    * or Left(None) for cache miss.
    */
-  private def getWithFailure[I: HashWriter, O: JsonFormat](
-      key: I,
-      codeContentHash: Digest,
-      extraHash: Digest,
+  private def getWithFailure[O: JsonFormat](
+      inputDigest: Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
-  ): Either[Option[CachedCompileFailure], O] =
+  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
     import config.store
     def valueFromStr(str: String, origin: Option[String]): O =
       config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
@@ -152,59 +196,36 @@ object ActionCache:
 
     def parseCachedValue(
         str: String,
-        origin: Option[String],
+        result: ActionResult,
         isFailure: Boolean,
-    ): Option[Either[Option[CachedCompileFailure], O]] =
+    ): Option[Either[Option[CachedCompileFailure], (O, ActionResult)]] =
       try
         if isFailure then Some(Left(Some(failureFromStr(str))))
-        else Some(Right(valueFromStr(str, origin)))
+        else Some(Right((valueFromStr(str, result.origin), result)))
       catch case _: Exception => None
 
-    // Optimization: Check if we can read directly from symlinked value file
-    val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
-    val resolvedValuePath = config.fileConverter.toPath(VirtualFileRef.of(valuePath))
-
-    def readFromSymlink(): Option[Either[Option[CachedCompileFailure], O]] =
-      if java.nio.file.Files.isSymbolicLink(resolvedValuePath) && java.nio.file.Files
-          .exists(resolvedValuePath)
-      then
-        Exception.nonFatalCatch
-          .opt(IO.read(resolvedValuePath.toFile(), StandardCharsets.UTF_8))
-          .flatMap: str =>
-            findActionResult(key, codeContentHash, extraHash, config) match
-              case Right(result) =>
-                try
-                  store.syncBlobs(result.outputFiles, config.outputDirectory)
-                  parseCachedValue(str, Some("disk"), result.exitCode.contains(failureExitCode))
-                catch case NonFatal(_) => None
-              case Left(_) => None
-      else None
-
-    readFromSymlink() match
-      case Some(result) => result
-      case None =>
-        findActionResult(key, codeContentHash, extraHash, config) match
-          case Right(result) =>
-            try
-              val isFailure = result.exitCode.contains(failureExitCode)
-              result.contents.headOption match
-                case Some(head) =>
-                  store.syncBlobs(result.outputFiles, config.outputDirectory)
-                  val str = String(head.array(), StandardCharsets.UTF_8)
-                  parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
-                case _ =>
-                  val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-                  if paths.isEmpty then Left(None)
-                  else
-                    val str = IO.read(paths.head.toFile())
-                    parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
-            catch
-              case NonFatal(e) =>
-                config.logger.debug(
-                  s"Ignoring cache retrieval failure, will recompute: ${e.getMessage}"
-                )
-                Left(None)
-          case Left(_) => Left(None)
+    findActionResult(inputDigest, config) match
+      case Right(result) =>
+        try
+          val isFailure = result.exitCode.contains(failureExitCode)
+          result.contents.headOption match
+            case Some(head) =>
+              store.syncBlobs(result.outputFiles, config.outputDirectory)
+              val str = String(head.array(), StandardCharsets.UTF_8)
+              parseCachedValue(str, result, isFailure).getOrElse(Left(None))
+            case _ =>
+              val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+              if paths.isEmpty then Left(None)
+              else
+                val str = IO.read(paths.head.toFile())
+                parseCachedValue(str, result, isFailure).getOrElse(Left(None))
+        catch
+          case NonFatal(e) =>
+            config.logger.debug(
+              s"Ignoring cache retrieval failure, will recompute: ${e.getMessage}"
+            )
+            Left(None)
+      case Left(_) => Left(None)
 
   /**
    * Retrieves the cached value.
@@ -216,8 +237,9 @@ object ActionCache:
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
   ): Option[O] =
-    getWithFailure(key, codeContentHash, extraHash, tags, config) match
-      case Right(value) => Some(value)
+    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+    getWithFailure(inputDigest, tags, config) match
+      case Right(value) => Some(value._1)
       case Left(_)      => None
 
   /**
@@ -229,9 +251,25 @@ object ActionCache:
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
   ): Boolean =
-    findActionResult(key, codeContentHash, extraHash, config) match
+    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+    findActionResult(inputDigest, config) match
       case Right(_) => true
       case Left(_)  => false
+
+  inline private[sbt] def findActionResult(
+      inputDigest: Digest,
+      config: BuildWideCacheConfiguration,
+  ): Either[Throwable, ActionResult] =
+    // val logger = config.logger
+    CacheImplicits.setCacheSize(config.localDigestCacheByteSize)
+    val getRequest =
+      GetActionResultRequest(
+        inputDigest,
+        inlineStdout = false,
+        inlineStderr = false,
+        Vector(mkValuePath(inputDigest))
+      )
+    config.store.get(getRequest)
 
   inline private[sbt] def findActionResult[I: HashWriter](
       key: I,
@@ -241,9 +279,14 @@ object ActionCache:
   ): Either[Throwable, ActionResult] =
     // val logger = config.logger
     CacheImplicits.setCacheSize(config.localDigestCacheByteSize)
-    val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
     val getRequest =
-      GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
+      GetActionResultRequest(
+        inputDigest,
+        inlineStdout = false,
+        inlineStderr = false,
+        Vector(mkValuePath(inputDigest))
+      )
     config.store.get(getRequest)
 
   private inline def mkInput[I: HashWriter](
@@ -251,17 +294,20 @@ object ActionCache:
       codeContentHash: Digest,
       extraHash: Digest,
       cacheVersion: Long,
-  ): (Digest, String) =
-    val effectiveExtraHash =
-      if cacheVersion != 0L then Digest.sha256Hash(extraHash, Digest.dummy(cacheVersion))
-      else extraHash
-    val input =
-      Digest.sha256Hash(
+  ): Digest =
+    Digest.sha256Hash(
+      (Vector(
         codeContentHash,
-        effectiveExtraHash,
-        Digest.dummy(Hasher.hashUnsafe[I](key))
-      )
-    (input, s"$${OUT}/value/$input.json")
+        Digest.dummy(Hasher.hashUnsafe[I](key)),
+        extraHash
+      ) ++ {
+        if cacheVersion == 0 then Vector.empty
+        else Vector(Digest.dummy(cacheVersion))
+      })*
+    )
+
+  private inline def mkValuePath(inputDigest: Digest): String =
+    s"$${OUT}/value/${inputDigest}.json"
 
   def manifestFromFile(manifest: Path): Manifest =
     import sbt.internal.util.codec.ManifestCodec.given
@@ -362,6 +408,14 @@ object ActionCache:
     private[sbt] def unapply[A1](r: InternalActionResult[A1]): Option[(A1, Seq[VirtualFile])] =
       Some(r.value, r.outputs)
   end InternalActionResult
+
+  private[sbt] def logEvent(event: SpawnExec, log: PrintWriter): Unit =
+    import sbt.internal.util.codec.SpawnCodec.given
+    val json = Converter.toJsonUnsafe(event)
+    val s = PrettyPrinter(json)
+    log.println(s)
+    log.flush()
+
 end ActionCache
 
 class BuildWideCacheConfiguration(
@@ -387,7 +441,7 @@ class BuildWideCacheConfiguration(
       logger,
       cacheEventLog,
       CacheImplicits.defaultLocalDigestCacheByteSize,
-      0L
+      0L,
     )
 
   def this(
@@ -398,7 +452,15 @@ class BuildWideCacheConfiguration(
       cacheEventLog: CacheEventLog,
       localDigestCacheByteSize: Long,
   ) =
-    this(store, outputDirectory, fileConverter, logger, cacheEventLog, localDigestCacheByteSize, 0L)
+    this(
+      store,
+      outputDirectory,
+      fileConverter,
+      logger,
+      cacheEventLog,
+      localDigestCacheByteSize,
+      0L,
+    )
 
   override def toString(): String =
     s"BuildWideCacheConfiguration(store = $store, outputDirectory = $outputDirectory)"

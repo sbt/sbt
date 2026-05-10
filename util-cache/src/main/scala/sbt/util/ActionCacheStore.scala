@@ -83,7 +83,8 @@ end AbstractActionCacheStore
 /**
  * An aggregate ActionCacheStore.
  */
-class AggregateActionCacheStore(stores: Seq[ActionCacheStore]) extends AbstractActionCacheStore:
+case class AggregateActionCacheStore(stores: Seq[ActionCacheStore])
+    extends AbstractActionCacheStore:
   extension [A1](xs: Seq[A1])
     // unlike collectFirst this accepts A1 => Seq[A2]
     inline def collectFirst2[A2](f: A1 => Seq[A2], size: Int): Seq[A2] =
@@ -176,7 +177,8 @@ class InMemoryActionCacheStore extends AbstractActionCacheStore:
     underlying.toString()
 end InMemoryActionCacheStore
 
-class DiskActionCacheStore(base: Path, converter: FileConverter) extends AbstractActionCacheStore:
+case class DiskActionCacheStore(base: Path, converter: FileConverter)
+    extends AbstractActionCacheStore:
   lazy val casBase: Path = {
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)

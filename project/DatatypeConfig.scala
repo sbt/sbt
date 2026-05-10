@@ -85,7 +85,7 @@ object DatatypeConfig {
     case "Map" | "Tuple2" | "scala.Tuple2" => { tpe =>
       twoArgs(tpe).flatMap(getFormats)
     }
-    case "Int" | "Long" => { _ =>
+    case "Int" | "Long" | "sbt.util.Digest" => { _ =>
       Nil
     }
   }
