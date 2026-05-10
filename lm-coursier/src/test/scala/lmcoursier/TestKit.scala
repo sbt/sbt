@@ -39,6 +39,20 @@ object TestKit:
     )
 
   def module(
+      moduleId: ModuleID,
+      deps: Vector[ModuleID],
+      scalaFullVersion: Option[String],
+      overrideScalaVersion: Boolean,
+  ): ModuleDescriptor =
+    module(
+      lmEngine = lmEngine,
+      moduleId = moduleId,
+      deps = deps,
+      scalaFullVersion = scalaFullVersion,
+      overrideScalaVersion = overrideScalaVersion,
+    )
+
+  def module(
       lmEngine: DependencyResolution,
       moduleId: ModuleID,
       deps: Vector[ModuleID],
