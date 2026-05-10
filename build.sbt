@@ -1307,6 +1307,7 @@ lazy val lmCoursierDependencies = Def.settings(
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
   ),
   libraryDependencies ++= Dependencies.scalatest,
+  libraryDependencies += scalaVerify % Test,
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
   ),

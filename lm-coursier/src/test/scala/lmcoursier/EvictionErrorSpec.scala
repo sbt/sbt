@@ -1,11 +1,12 @@
-package sbt.internal.librarymanagement
+package lmcoursier
 
 import sbt.librarymanagement.*
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.librarymanagement.syntax.*
 import sbt.util.Level
+import TestKit.*
 
-object EvictionErrorSpec extends BaseIvySpecification {
+object EvictionErrorSpec extends verify.BasicTestSuite {
   // This is a specification to check the eviction errors
 
   import TestShowLines.*
@@ -14,93 +15,89 @@ object EvictionErrorSpec extends BaseIvySpecification {
   test("Eviction error should detect binary incompatible Scala libraries") {
     val deps = Vector(`scala2.10.4`, `akkaActor2.1.4`, `akkaActor2.3.0`)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     assert(EvictionError(report, m, oldAkkaPvp).incompatibleEvictions.size == 1)
   }
 
   test("it should print out message about the eviction") {
     val deps = Vector(`scala2.10.4`, `akkaActor2.1.4`, `akkaActor2.3.0`)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     assert(
       EvictionError(report, m, oldAkkaPvp).lines ==
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
           "\t* com.typesafe.akka:akka-actor_2.10:2.3.0 (pvp) is selected over 2.1.4 for {compile, test}",
-          "\t    +- com.example:foo:0.1.0                              (depends on 2.1.4)",
+          "\t    +- com.typesafe.akka:akka-actor_2.10:2.1.4            (depends on 2.1.4)",
           ""
-        )
+        ),
+      EvictionError(report, m, oldAkkaPvp).lines.mkString("\n")
     )
   }
 
   test("it should print out message including the transitive dependencies") {
     val deps = Vector(`scala2.10.4`, `bananaSesame0.4`, `akkaRemote2.3.4`)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     assert(
       EvictionError(report, m, oldAkkaPvp).lines ==
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp) is selected over 2.1.4 for {compile, test}",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp) is selected over {2.1.4, 2.1.4} for {compile, test}",
           "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
-          "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
+          "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           ""
-        )
+        ),
+      EvictionError(report, m, oldAkkaPvp).lines.mkString("\n")
     )
   }
 
   test("it should be able to emulate eviction warnings") {
     val deps = Vector(`scala2.10.4`, `bananaSesame0.4`, `akkaRemote2.3.4`)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     assert(
       EvictionError(report, m, Nil, "pvp", "early-semver", Level.Warn).toAssumedLines ==
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp?) is selected over 2.1.4 for {compile, test}",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp?) is selected over {2.1.4, 2.1.4} for {compile, test}",
           "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
-          "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
+          "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           ""
-        )
+        ),
+      EvictionError(report, m, Nil, "pvp", "early-semver", Level.Warn).toAssumedLines.mkString("\n")
     )
   }
 
   test("it should detect Semantic Versioning violations") {
     val deps = Vector(`scala2.13.3`, `http4s0.21.11`, `cats-effect3.0.0-M4`)
     val m = module(defaultModuleId, deps, Some("2.13.3"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     assert(
       EvictionError(report, m, Nil).lines ==
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0} for compile",
-          "\t    +- com.example:foo:0.1.0                              (depends on 3.0.0-M4)",
-          "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
+          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.2.0, 2.0.0, 2.0.0, 2.2.0} for {compile, test}",
           "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
           "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
           "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
-          "",
-          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0} for test",
-          "\t    +- com.example:foo:0.1.0                              (depends on 2.2.0)",
           "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
-          "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
-          "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
-          "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
           "",
-        )
+        ),
+      EvictionError(report, m, Nil).lines.mkString("\n") + "'"
     )
   }
 
   test("it should selectively allow opt-out from the error") {
     val deps = Vector(`scala2.13.3`, `http4s0.21.11`, `cats-effect3.0.0-M4`)
     val m = module(defaultModuleId, deps, Some("2.13.3"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     val overrideRules = List("org.typelevel" %% "cats-effect" % "always")
     assert(EvictionError(report, m, overrideRules).incompatibleEvictions.isEmpty)
   }
@@ -108,7 +105,7 @@ object EvictionErrorSpec extends BaseIvySpecification {
   test("it should selectively allow opt-out from the error despite assumed scheme") {
     val deps = Vector(`scala2.12.17`, `akkaActor2.6.0`, `swagger-akka-http1.4.0`)
     val m = module(defaultModuleId, deps, Some("2.12.17"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     val overrideRules = List("org.scala-lang.modules" %% "scala-java8-compat" % "always")
     assert(
       EvictionError(
@@ -154,20 +151,20 @@ object EvictionErrorSpec extends BaseIvySpecification {
     val deps =
       Vector(`scala2.13.3`, `http4s0.21.11`.withConfigurations(Some("test")), `cats-effect3.0.0-M4`)
     val m = module(defaultModuleId, deps, Some("2.13.3"))
-    val report = ivyUpdate(m)
+    val report = coursierUpdate(m)
     assert(
       EvictionError(report, m, Nil).lines ==
         List(
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
-          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.0.0, 2.2.0} for test",
-          "\t    +- com.example:foo:0.1.0                              (depends on 2.2.0)",
-          "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
+          "\t* org.typelevel:cats-effect_2.13:3.0.0-M4 (early-semver) is selected over {2.2.0, 2.0.0, 2.0.0, 2.2.0} for test",
           "\t    +- org.http4s:http4s-core_2.13:0.21.11                (depends on 2.2.0)",
           "\t    +- io.chrisdavenport:vault_2.13:2.0.0                 (depends on 2.0.0)",
           "\t    +- io.chrisdavenport:unique_2.13:2.0.0                (depends on 2.0.0)",
+          "\t    +- co.fs2:fs2-core_2.13:2.4.5                         (depends on 2.2.0)",
           ""
-        )
+        ),
+      EvictionError(report, m, Nil).lines.mkString("\n")
     )
   }
 
