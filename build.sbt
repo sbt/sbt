@@ -715,6 +715,7 @@ lazy val mainProj = (project in file("main"))
     runProj,
     commandProj,
     collectionProj,
+    lmIvy,
     zincLmIntegrationProj,
     utilLogging,
   )
