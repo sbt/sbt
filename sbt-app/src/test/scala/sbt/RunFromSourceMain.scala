@@ -151,14 +151,7 @@ object RunFromSourceMain {
             IvyDependencyResolution
           }
           val ivyConfig = InlineIvyConfiguration().withLog(log)
-          IvyDependencyResolution(
-            ivyConfig.withResolvers(
-              ivyConfig.resolvers ++ Seq(
-                "scala-ea" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
-                "scala-pr" at "https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/",
-              )
-            )
-          )
+          IvyDependencyResolution(ivyConfig)
         }
         val Name = """(.*)(?:\-[\d.]+)\.jar""".r
         val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r

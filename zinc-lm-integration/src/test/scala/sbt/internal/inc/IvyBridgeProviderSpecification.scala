@@ -37,10 +37,6 @@ abstract class IvyBridgeProviderSpecification
   val resolvers = Array(
     ZincComponentCompiler.LocalResolver: Resolver,
     Resolver.mavenCentral: Resolver,
-    MavenRepository(
-      "scala-integration",
-      "https://scala-ci.typesafe.com/artifactory/scala-integration/"
-    ): Resolver,
   )
 
   private def ivyConfiguration(log: Logger) =

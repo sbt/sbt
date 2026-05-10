@@ -341,13 +341,7 @@ public class ScriptedLauncher {
                 private final Repository[] repos =
                     new Repository[] {
                       (PredefinedRepository) () -> Predefined.Local,
-                      (PredefinedRepository) () -> Predefined.MavenCentral,
-                      newMavenRepo(
-                          "scala-ea",
-                          "https://scala-ci.typesafe.com/artifactory/scala-integration/"),
-                      newMavenRepo(
-                          "scala-pr",
-                          "https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/")
+                      (PredefinedRepository) () -> Predefined.MavenCentral
                     };
                 private final Launcher launcher =
                     new Launcher() {
