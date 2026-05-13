@@ -33,8 +33,7 @@ object JsonRpcReader {
      */
     var headerBuffer = new Array[Byte](128)
     def expandHeaderBuffer(): Unit = {
-      val newHeaderBuffer = new Array[Byte](headerBuffer.length * 2)
-      headerBuffer.view.zipWithIndex.foreach { (b, i) => newHeaderBuffer(i) = b }
+      val newHeaderBuffer = java.util.Arrays.copyOf(headerBuffer, headerBuffer.length * 2)
       headerBuffer = newHeaderBuffer
     }
     def getLine(): String = {
