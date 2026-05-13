@@ -17,7 +17,6 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import java.io.{ File, FileOutputStream, InputStream, OutputStream }
 import java.net.URI
-import scala.annotation.tailrec
 
 object TreeView {
   def createJson(graph: ModuleGraph): String = {
@@ -79,17 +78,6 @@ object TreeView {
     }
   }
 
-  def copy(from: InputStream, to: OutputStream): Unit = {
-    val buffer = new Array[Byte](65536)
-
-    @tailrec def rec(): Unit = {
-      val read = from.read(buffer)
-      if (read > 0) {
-        to.write(buffer, 0, read)
-        rec()
-      } else if (read == 0)
-        throw new IllegalStateException("InputStream.read returned 0")
-    }
-    rec()
-  }
+  def copy(from: InputStream, to: OutputStream): Unit =
+    from.transferTo(to)
 }

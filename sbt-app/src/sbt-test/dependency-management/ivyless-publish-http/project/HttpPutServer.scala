@@ -21,9 +21,7 @@ object HttpPutServer {
           val in = ex.getRequestBody
           val out = new FileOutputStream(targetFile)
           try {
-            val buf = new Array[Byte](8192)
-            var n = 0
-            while ({ n = in.read(buf); n } != -1) out.write(buf, 0, n)
+            in.transferTo(out)
           } finally {
             out.close()
             in.close()

@@ -14,14 +14,7 @@ libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
     val is = url.openStream()
     val os = new java.io.FileOutputStream(f)
 
-    var read = -1
-    val b = new Array[Byte](16*1024)
-    while ({
-      read = is.read(b)
-      read >= 0
-    }) {
-      os.write(b, 0, read)
-    }
+    is.transferTo(os)
 
     is.close()
     os.close()
