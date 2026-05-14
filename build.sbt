@@ -780,7 +780,8 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.uniqueSubdirectoryFor"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.run"),
       exclude[MissingClassProblem]("sbt.Resolvers$DistributedVCS"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf")
+      exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
