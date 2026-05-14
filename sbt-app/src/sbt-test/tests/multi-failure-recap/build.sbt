@@ -8,3 +8,9 @@ lazy val c = project.settings(junit)
 
 lazy val root = (project in file("."))
   .aggregate(a, b, c)
+  .settings(
+    commands ++= Seq(
+      sbt.multifailurerecap.Checks.verifyRecap,
+      sbt.multifailurerecap.Checks.verifyNoRecap,
+    )
+  )

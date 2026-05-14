@@ -26,8 +26,12 @@ import sbt.util.Logger
  * name and `Tests.Output`, and we collect those instances from the tree.
  *
  * The current snapshot is also stashed on `State.attributes` under
- * `recapKey` so tools / scripted tests can inspect the most recent recap
- * without parsing log output.
+ * `recapKey` so in-JVM tools (IDE plugins, BSP servers, command-mode
+ * inspections within the same sbt invocation) can inspect the most recent
+ * recap without parsing log output. Note that scripted tests using `->`
+ * cannot read this across the failing-statement boundary because the
+ * inner sbt's IPC server is torn down on failure and a fresh JVM is
+ * spawned for the next statement.
  */
 private[sbt] object TestRecap:
 

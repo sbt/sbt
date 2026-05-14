@@ -174,7 +174,7 @@ object TestRecapTest extends verify.BasicTestSuite:
     assert(log.lines.isEmpty)
   }
 
-  test("recapKey label is stable for tooling identity") {
+  test("recapKey label is camelCased per AttributeKey convention") {
     // AttributeKey converts hyphenated names to camelCase via Util.hyphenToCamel.
     assert(TestRecap.recapKey.label == "testRecap", s"actual label: ${TestRecap.recapKey.label}")
   }
