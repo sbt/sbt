@@ -150,14 +150,15 @@ object Aggregation {
         val afterHandle = complete.state.handleError(i)
         if failures.nonEmpty then
           sbt.internal.testing.TestRecap.formatTo(afterHandle.log, failures)
-          sbt.internal.testing.TestRecap.writeArtifact(
-            afterHandle.baseDir,
-            sbt.internal.testing.TestRecap.format(failures),
-          )
-        afterHandle
+          afterHandle.put(sbt.internal.testing.TestRecap.recapKey, failures.toVector)
+        else afterHandle
       case Result.Value(_) =>
-        sbt.internal.testing.TestRecap.deleteArtifact(complete.state.baseDir)
-        complete.state
+        // Only clear stale recap state when this invocation actually
+        // included a test task; arbitrary `compile` / `update` / `reload`
+        // commands between a failed test run and the user inspecting the
+        // recap must leave the recap intact.
+        if includesTestTask(ts) then complete.state.remove(sbt.internal.testing.TestRecap.recapKey)
+        else complete.state
 
   def printSuccess(
       start: Long,
@@ -327,4 +328,16 @@ object Aggregation {
     (Scope.fillTaskAxis(key.scope, key.key) / Keys.aggregate).get(data).getOrElse(true)
   private[sbt] val suppressShow =
     AttributeKey[Boolean]("suppress-aggregation-show", Int.MaxValue)
+
+  /**
+   * True if any of the keys being evaluated correspond to one of the
+   * standard test entry points. Used to scope `TestRecap.recapKey`
+   * lifecycle to test-bearing aggregations only.
+   */
+  private def includesTestTask[A1](ts: Values[Task[A1]]): Boolean =
+    ts.exists { kv =>
+      kv.key.key.label match
+        case "test" | "testFull" | "testQuick" | "testOnly" | "testSelected" => true
+        case _                                                               => false
+    }
 }

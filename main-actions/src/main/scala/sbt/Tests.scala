@@ -589,9 +589,11 @@ object Tests {
 
 final class TestsFailedException private[sbt] (
     val taskName: String,
-    val output: Option[Tests.Output]
+    val testOutput: Option[Tests.Output]
 ) extends RuntimeException("Tests unsuccessful")
     with FeedbackProvidedException {
-  // Public no-arg constructor preserved for backward compatibility.
-  def this() = this("", None)
+  // Public no-arg constructor preserved for backward compatibility with
+  // callers outside sbt. Internal call sites always use the primary
+  // constructor with a real task name.
+  def this() = this(taskName = "", testOutput = None)
 }

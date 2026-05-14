@@ -19,17 +19,6 @@ import sbt.util.Logger
 
 object TestRecapTest extends verify.BasicTestSuite:
 
-  private def withTempDir(f: java.io.File => Unit): Unit =
-    val base = java.nio.file.Files.createTempDirectory("sbt-test-recap-").toFile
-    try f(base)
-    finally
-      val _ = java.nio.file.Files
-        .walk(base.toPath)
-        .sorted(java.util.Comparator.reverseOrder())
-        .forEach: p =>
-          try java.nio.file.Files.deleteIfExists(p)
-          catch case _: Exception => ()
-
   private def output(result: TestResult, suites: (String, SuiteResult)*): Tests.Output =
     Tests.Output(result, suites.toMap, Iterable.empty)
 
@@ -41,7 +30,10 @@ object TestRecapTest extends verify.BasicTestSuite:
       result: TestResult,
       suiteName: String
   ): TestsFailedException =
-    new TestsFailedException(taskName, Some(output(result, suiteName -> suite(result))))
+    new TestsFailedException(
+      taskName,
+      Some(output(result, suiteName -> suite(result)))
+    )
 
   /** Build an Incomplete tree carrying the given TestsFailedExceptions as direct causes. */
   private def incompleteOf(exceptions: TestsFailedException*): Incomplete =
@@ -65,20 +57,17 @@ object TestRecapTest extends verify.BasicTestSuite:
     )
     val collected = TestRecap.collect(i)
     assert(collected.map(_.taskName).sorted == Seq("a / Test / test", "c / Test / test"))
-    val resultsBy = collected.map(f => f.taskName -> f.output.overall).toMap
+    val resultsBy = collected.flatMap(f => f.testOutput.map(o => f.taskName -> o.overall)).toMap
     assert(resultsBy("a / Test / test") == TestResult.Failed)
     assert(resultsBy("c / Test / test") == TestResult.Error)
   }
 
-  test("collect ignores exceptions that aren't TestsFailedException with output") {
+  test("collect retains TestsFailedException without payload as a stub entry") {
+    val noDetail = new TestsFailedException // back-compat no-arg
     val i = new Incomplete(
       node = None,
       causes = Seq(
-        new Incomplete(node = None, directCause = Some(new RuntimeException("nope"))),
-        new Incomplete(
-          node = None,
-          directCause = Some(new TestsFailedException)
-        ), // no-arg, no output
+        new Incomplete(node = None, directCause = Some(noDetail)),
         new Incomplete(
           node = None,
           directCause = Some(failure("ok / Test / test", TestResult.Failed, "OkFail"))
@@ -86,60 +75,97 @@ object TestRecapTest extends verify.BasicTestSuite:
       )
     )
     val collected = TestRecap.collect(i)
-    assert(collected.size == 1)
-    assert(collected.head.taskName == "ok / Test / test")
+    assert(collected.size == 2, s"expected 2 entries, got $collected")
+    val stub = collected.find(_.testOutput.isEmpty)
+    assert(stub.isDefined, "no-detail failure should still produce a Failure entry")
+    assert(stub.get.taskName == "")
   }
 
-  test("format emits a header, per-task counts, and indented suite names") {
+  test("collect skips exceptions that aren't TestsFailedException") {
+    val i = new Incomplete(
+      node = None,
+      causes = Seq(
+        new Incomplete(node = None, directCause = Some(new RuntimeException("nope"))),
+        new Incomplete(
+          node = None,
+          directCause = Some(failure("ok / Test / test", TestResult.Failed, "OkFail"))
+        ),
+      )
+    )
+    assert(TestRecap.collect(i).map(_.taskName) == Seq("ok / Test / test"))
+  }
+
+  test("render emits header, per-task counts, and indented suite names") {
     val failures = Seq(
       TestRecap.Failure(
         "a / Test / test",
-        output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed))
+        Some(output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed)))
       ),
       TestRecap.Failure(
         "c / Test / test",
-        output(TestResult.Error, "CErroring" -> suite(TestResult.Error))
+        Some(output(TestResult.Error, "CErroring" -> suite(TestResult.Error)))
       ),
     )
-    val text = TestRecap.format(failures)
-    assert(text.startsWith("Test failures recap (2 test tasks failed):\n"))
-    assert(text.contains("a / Test / test:"))
-    assert(text.contains("c / Test / test:"))
-    assert(text.contains("AFailing"))
-    assert(text.contains("CErroring"))
-    assert(text.contains("Failed tests:"))
-    assert(text.contains("Error during tests:"))
-    // ASCII-only output: no em-dashes or other non-ASCII separators.
-    assert(text.forall(ch => ch < 128), s"non-ASCII characters in recap: $text")
+    val lines = TestRecap.render(failures)
+    assert(lines.headOption.contains("Test failures recap (2 test tasks failed):"))
+    assert(lines.exists(_.contains("a / Test / test:")))
+    assert(lines.exists(_.contains("c / Test / test:")))
+    assert(lines.exists(_.contains("AFailing")))
+    assert(lines.exists(_.contains("CErroring")))
+    assert(lines.contains("    Failed tests:"))
+    assert(lines.contains("    Error during tests:"))
+    // ASCII-only output for terminal/CI compatibility.
+    lines.foreach: l =>
+      assert(l.forall(ch => ch < 128), s"non-ASCII characters in recap line: $l")
   }
 
-  test("format is empty when there are no failures") {
-    assert(TestRecap.format(Seq.empty) == "")
-  }
-
-  test("format singular header when exactly one task failed") {
+  test("render emits singular header when exactly one task failed") {
     val one = Seq(
       TestRecap.Failure(
         "a / Test / test",
-        output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed))
+        Some(output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed)))
       )
     )
-    assert(TestRecap.format(one).startsWith("Test failures recap (1 test task failed):\n"))
+    assert(TestRecap.render(one).head == "Test failures recap (1 test task failed):")
   }
 
-  test("formatTo emits each rendered line as a single error-level log call") {
+  test("render shows '(no details)' for failures without a Tests.Output payload") {
+    val failures = Seq(TestRecap.Failure("a / Test / test", testOutput = None))
+    val lines = TestRecap.render(failures)
+    assert(
+      lines.exists(_.contains("a / Test / test: (no details)")),
+      s"expected '(no details)' entry, got $lines"
+    )
+  }
+
+  test("render shows '<unknown>' when a failure carries no task name") {
+    val failures = Seq(TestRecap.Failure(taskName = "", testOutput = None))
+    val lines = TestRecap.render(failures)
+    assert(
+      lines.exists(_.contains("<unknown>: (no details)")),
+      s"expected '<unknown>' placeholder, got $lines"
+    )
+  }
+
+  test("render is empty when there are no failures") {
+    assert(TestRecap.render(Seq.empty).isEmpty)
+  }
+
+  test("formatTo emits one error-level log line per rendered line") {
     val failures = Seq(
       TestRecap.Failure(
         "a / Test / test",
-        output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed))
+        Some(output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed)))
       )
     )
     val log = new Capture
     TestRecap.formatTo(log, failures)
-    assert(log.lines.nonEmpty)
+    val rendered = TestRecap.render(failures)
+    assert(
+      log.lines.size == rendered.size,
+      s"expected ${rendered.size} log calls, got ${log.lines.size}"
+    )
     assert(log.lines.forall(_._1 == "error"), s"all lines should be error level: ${log.lines}")
-    // No trailing blank-line entry.
-    assert(log.lines.forall(_._2.nonEmpty), s"unexpected empty line: ${log.lines}")
   }
 
   test("formatTo is a no-op when there are no failures") {
@@ -148,34 +174,9 @@ object TestRecapTest extends verify.BasicTestSuite:
     assert(log.lines.isEmpty)
   }
 
-  test("writeArtifact persists the recap text under <baseDir>/target/") {
-    withTempDir: base =>
-      TestRecap.writeArtifact(base, "hello recap")
-      val f = TestRecap.artifactFile(base)
-      assert(f.exists, s"artifact file not written at ${f.getAbsolutePath}")
-      val read = java.nio.file.Files
-        .readString(f.toPath, java.nio.charset.StandardCharsets.UTF_8)
-      assert(read == "hello recap")
-  }
-
-  test("writeArtifact is a no-op for empty text") {
-    withTempDir: base =>
-      TestRecap.writeArtifact(base, "")
-      assert(!TestRecap.artifactFile(base).exists)
-  }
-
-  test("deleteArtifact removes a previously written recap") {
-    withTempDir: base =>
-      TestRecap.writeArtifact(base, "stale")
-      assert(TestRecap.artifactFile(base).exists)
-      TestRecap.deleteArtifact(base)
-      assert(!TestRecap.artifactFile(base).exists)
-  }
-
-  test("deleteArtifact is a no-op when no recap exists") {
-    withTempDir: base =>
-      TestRecap.deleteArtifact(base) // must not throw
-      assert(!TestRecap.artifactFile(base).exists)
+  test("recapKey label is stable for tooling identity") {
+    // AttributeKey converts hyphenated names to camelCase via Util.hyphenToCamel.
+    assert(TestRecap.recapKey.label == "testRecap", s"actual label: ${TestRecap.recapKey.label}")
   }
 
 end TestRecapTest
