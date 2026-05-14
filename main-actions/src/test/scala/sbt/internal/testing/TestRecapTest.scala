@@ -95,6 +95,17 @@ object TestRecapTest extends verify.BasicTestSuite:
     assert(TestRecap.collect(i).map(_.taskName) == Vector("ok / Test / test"))
   }
 
+  test("collect retains taskName when a TestsFailedException is rebranded with task name only") {
+    // Simulates the `testFull` / `inputTests0` catch path: an upstream
+    // legacy code path threw `new TestsFailedException()` (no detail), the
+    // task wrapper caught it and re-threw with `(taskName, e.testOutput)`
+    // to attach the project context.
+    val tagged = new TestsFailedException("a / Test / test", None)
+    val i = new Incomplete(node = None, directCause = Some(tagged))
+    val collected = TestRecap.collect(i)
+    assert(collected == Vector(TestRecap.Failure("a / Test / test", None)))
+  }
+
   test("collect deduplicates a TestsFailedException shared across Incomplete paths") {
     val shared = failure("a / Test / test", TestResult.Failed, "AFail")
     val i = new Incomplete(
