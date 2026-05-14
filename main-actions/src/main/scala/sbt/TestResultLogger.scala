@@ -106,14 +106,12 @@ object TestResultLogger {
         else
           run(printFailures)
 
-        // Preserves the historical contract of this extension point: log
-        // first, then throw on failure. The aggregated recap (sbt/sbt#2998)
-        // catches this exception in `Defaults.testFull` / `inputTests0` and
-        // re-throws with the task name and `Tests.Output` attached so
-        // `TestRecap.collect` can surface the per-project detail.
-        results.overall match
-          case TestResult.Error | TestResult.Failed => throw new TestsFailedException
-          case TestResult.Empty | TestResult.Passed => ()
+        // Logging only. Failure propagation lives in the task wrapper
+        // (`Defaults.testFull` / `inputTests0`) so the cross-project recap
+        // (sbt/sbt#2998) can attach the task name and `Tests.Output` to
+        // the `TestsFailedException` thrown there. The trait contract is
+        // "perform logging"; it does not document throwing on failure.
+        ()
       }
     }
 

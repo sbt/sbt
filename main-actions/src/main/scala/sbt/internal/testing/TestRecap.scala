@@ -116,9 +116,15 @@ private[sbt] object TestRecap:
     render(failures).foreach(line => log.error(line))
 
   private def collectByResult(o: Tests.Output, target: TestResult): Vector[String] =
+    // Mirrors `TestResultLogger.Defaults.printFailures` so the per-task
+    // "Failed tests:" block and the cross-project recap render the same
+    // suite name. Whether `NameTransformer.decode` should be applied to
+    // suite FQNs at all is debatable, but changing both sites belongs in
+    // a separate cleanup.
     o.events.iterator
       .collect {
-        case (name, suite) if suite.result == target => name
+        case (name, suite) if suite.result == target =>
+          scala.reflect.NameTransformer.decode(name)
       }
       .toVector
       .sorted

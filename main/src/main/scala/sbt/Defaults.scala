@@ -1273,16 +1273,11 @@ object Defaults extends BuildCommon with DefExtra {
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
       try
         val output = executeTests.value
-        try trl.run(streams.value.log, output, taskName)
-        catch
-          case _: TestsFailedException =>
-            // Re-throw with task name + Output so the cross-project recap
-            // (TestRecap.collect) can surface them. Default `Main.run`
-            // throws the no-arg form; this wraps it in the detail form.
-            throw new TestsFailedException(taskName, Some(output))
-        // User-overridden loggers may not throw on failure. Detect that
-        // case and propagate the failure (idempotent if the logger did
-        // throw above; that branch is unreachable from here).
+        trl.run(streams.value.log, output, taskName)
+        // Throw with task name + Output so the cross-project recap
+        // (TestRecap.collect) can surface them. The throw lives here
+        // rather than in TestResultLogger so user-overridden loggers
+        // cannot accidentally suppress the failure signal.
         output.overall match
           case TestResult.Error | TestResult.Failed =>
             throw new TestsFailedException(taskName, Some(output))
@@ -1460,11 +1455,7 @@ object Defaults extends BuildCommon with DefExtra {
       (Def
         .value[Task[Tests.Output]] { output })
         .map: out =>
-          try trl.run(s.log, out, taskName)
-          catch
-            case _: TestsFailedException =>
-              // Re-throw with task name + Output for the cross-project recap.
-              throw new TestsFailedException(taskName, Some(out))
+          trl.run(s.log, out, taskName)
           out.overall match
             case TestResult.Error | TestResult.Failed =>
               throw new TestsFailedException(taskName, Some(out))
