@@ -2422,13 +2422,15 @@ object Defaults extends BuildCommon {
         val cp0 = classpathTask.value
         val inputs = compileInputs.value
         val c = fileConverter.value
+        val incrementalOptions = extraIncOptions.value.toVector
         CompileInputs2(
           data(cp0).toVector,
           sourcesVF.value,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
           c.toVirtualFile(inputs.options.classesDirectory),
-          c.toVirtualFile(inputs.setup.cacheFile.toPath)
+          c.toVirtualFile(inputs.setup.cacheFile.toPath),
+          incrementalOptions,
         )
       },
       bspCompileTask :=
