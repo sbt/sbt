@@ -150,7 +150,7 @@ object Aggregation {
         val afterHandle = complete.state.handleError(i)
         if failures.nonEmpty then
           sbt.internal.testing.TestRecap.formatTo(afterHandle.log, failures)
-          afterHandle.put(sbt.internal.testing.TestRecap.recapKey, failures.toVector)
+          afterHandle.put(sbt.internal.testing.TestRecap.recapKey, failures)
         else afterHandle
       case Result.Value(_) =>
         // Leave any previously-set recap intact. A successful run after a

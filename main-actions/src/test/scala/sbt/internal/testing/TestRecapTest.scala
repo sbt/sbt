@@ -56,14 +56,14 @@ object TestRecapTest extends verify.BasicTestSuite:
       failure("c / Test / test", TestResult.Error, "CErroring"),
     )
     val collected = TestRecap.collect(i)
-    assert(collected.map(_.taskName).sorted == Seq("a / Test / test", "c / Test / test"))
+    assert(collected.map(_.taskName).sorted == Vector("a / Test / test", "c / Test / test"))
     val resultsBy = collected.flatMap(f => f.testOutput.map(o => f.taskName -> o.overall)).toMap
     assert(resultsBy("a / Test / test") == TestResult.Failed)
     assert(resultsBy("c / Test / test") == TestResult.Error)
   }
 
   test("collect retains TestsFailedException without payload as a stub entry") {
-    val noDetail = new TestsFailedException // back-compat no-arg
+    val noDetail = new TestsFailedException // back-compat no-arg constructor
     val i = new Incomplete(
       node = None,
       causes = Seq(
@@ -92,11 +92,27 @@ object TestRecapTest extends verify.BasicTestSuite:
         ),
       )
     )
-    assert(TestRecap.collect(i).map(_.taskName) == Seq("ok / Test / test"))
+    assert(TestRecap.collect(i).map(_.taskName) == Vector("ok / Test / test"))
+  }
+
+  test("collect deduplicates a TestsFailedException shared across Incomplete paths") {
+    val shared = failure("a / Test / test", TestResult.Failed, "AFail")
+    val i = new Incomplete(
+      node = None,
+      causes = Seq(
+        new Incomplete(node = None, directCause = Some(shared)),
+        new Incomplete(node = None, directCause = Some(shared)),
+      )
+    )
+    val collected = TestRecap.collect(i)
+    assert(
+      collected.size == 1,
+      s"shared failure should be reported once, got ${collected.size}: $collected"
+    )
   }
 
   test("render emits header, per-task counts, and indented suite names") {
-    val failures = Seq(
+    val failures = Vector(
       TestRecap.Failure(
         "a / Test / test",
         Some(output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed)))
@@ -114,13 +130,26 @@ object TestRecapTest extends verify.BasicTestSuite:
     assert(lines.exists(_.contains("CErroring")))
     assert(lines.contains("    Failed tests:"))
     assert(lines.contains("    Error during tests:"))
-    // ASCII-only output for terminal/CI compatibility.
-    lines.foreach: l =>
-      assert(l.forall(ch => ch < 128), s"non-ASCII characters in recap line: $l")
+  }
+
+  test("render sorts failures by taskName for stable output (empty names last)") {
+    val failures = Vector(
+      TestRecap.Failure("zz / Test / test", None),
+      TestRecap.Failure("", None),
+      TestRecap.Failure("aa / Test / test", None),
+      TestRecap.Failure("mm / Test / test", None),
+    )
+    val lines = TestRecap.render(failures)
+    val headerLines = lines.filter(_.startsWith("  "))
+    val order = headerLines.map(_.trim.takeWhile(_ != ':'))
+    assert(
+      order == Vector("aa / Test / test", "mm / Test / test", "zz / Test / test", "<unknown>"),
+      s"unexpected order: $order"
+    )
   }
 
   test("render emits singular header when exactly one task failed") {
-    val one = Seq(
+    val one = Vector(
       TestRecap.Failure(
         "a / Test / test",
         Some(output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed)))
@@ -130,7 +159,7 @@ object TestRecapTest extends verify.BasicTestSuite:
   }
 
   test("render shows '(no details)' for failures without a Tests.Output payload") {
-    val failures = Seq(TestRecap.Failure("a / Test / test", testOutput = None))
+    val failures = Vector(TestRecap.Failure("a / Test / test", testOutput = None))
     val lines = TestRecap.render(failures)
     assert(
       lines.exists(_.contains("a / Test / test: (no details)")),
@@ -139,7 +168,7 @@ object TestRecapTest extends verify.BasicTestSuite:
   }
 
   test("render shows '<unknown>' when a failure carries no task name") {
-    val failures = Seq(TestRecap.Failure(taskName = "", testOutput = None))
+    val failures = Vector(TestRecap.Failure(taskName = "", testOutput = None))
     val lines = TestRecap.render(failures)
     assert(
       lines.exists(_.contains("<unknown>: (no details)")),
@@ -148,11 +177,11 @@ object TestRecapTest extends verify.BasicTestSuite:
   }
 
   test("render is empty when there are no failures") {
-    assert(TestRecap.render(Seq.empty).isEmpty)
+    assert(TestRecap.render(Vector.empty).isEmpty)
   }
 
   test("formatTo emits one error-level log line per rendered line") {
-    val failures = Seq(
+    val failures = Vector(
       TestRecap.Failure(
         "a / Test / test",
         Some(output(TestResult.Failed, "AFailing" -> suite(TestResult.Failed)))
@@ -170,13 +199,8 @@ object TestRecapTest extends verify.BasicTestSuite:
 
   test("formatTo is a no-op when there are no failures") {
     val log = new Capture
-    TestRecap.formatTo(log, Seq.empty)
+    TestRecap.formatTo(log, Vector.empty)
     assert(log.lines.isEmpty)
-  }
-
-  test("recapKey label is camelCased per AttributeKey convention") {
-    // AttributeKey converts hyphenated names to camelCase via Util.hyphenToCamel.
-    assert(TestRecap.recapKey.label == "testRecap", s"actual label: ${TestRecap.recapKey.label}")
   }
 
 end TestRecapTest

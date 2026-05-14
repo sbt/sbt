@@ -21,17 +21,27 @@ import sbt.util.Logger
 /**
  * Stateless formatter that surfaces every failed test task at the end of an
  * aggregated run (see sbt/sbt#2998). The data is read directly off the
- * `Incomplete` tree returned by `Aggregation.runTasks` -- each subproject's
- * `testFull` / `testQuick` throws `TestsFailedException` carrying the task
- * name and `Tests.Output`, and we collect those instances from the tree.
+ * `Incomplete` tree returned by `Aggregation.runTasks`: each subproject's
+ * `testFull` / `inputTests0` catches the `TestsFailedException` thrown by
+ * `TestResultLogger.Defaults.Main.run` and re-throws with `(taskName,
+ * Some(Tests.Output))` attached, and we collect those instances from the
+ * tree.
  *
- * The current snapshot is also stashed on `State.attributes` under
- * `recapKey` so in-JVM tools (IDE plugins, BSP servers, command-mode
- * inspections within the same sbt invocation) can inspect the most recent
- * recap without parsing log output. Note that scripted tests using `->`
- * cannot read this across the failing-statement boundary because the
- * inner sbt's IPC server is torn down on failure and a fresh JVM is
- * spawned for the next statement.
+ * The collected `Vector[Failure]` is also stashed on `State.attributes`
+ * under `recapKey` so in-JVM tools (IDE plugins, BSP servers, scripted
+ * tests that stay inside one sbt invocation via `Command.process`) can
+ * inspect the most recent recap without parsing log output. Scripted tests
+ * crossing a `->` boundary cannot read this because the inner sbt's IPC
+ * server is torn down on failure and a fresh JVM is spawned for the next
+ * statement.
+ *
+ * Lifecycle is monotonic-latest-failure: `Aggregation.runTasks` writes
+ * `recapKey` whenever a run produces at least one `TestsFailedException`,
+ * and never removes it. A successful test run after a failure leaves the
+ * stale attribute in place; the next failure will overwrite it. We do not
+ * attempt to recognize "this is a test invocation" at the aggregation
+ * boundary to avoid a hardcoded list of test-task labels (or a
+ * Tags-detection design exercise).
  */
 private[sbt] object TestRecap:
 
@@ -40,40 +50,50 @@ private[sbt] object TestRecap:
 
   /**
    * State attribute holding the collected failures from the most recent
-   * aggregated test run. Replaced (or removed) only when a top-level run
-   * actually included a test task, so unrelated tasks running between test
-   * invocations don't clobber the recap.
+   * aggregated run that produced at least one `TestsFailedException`.
+   * Monotonic-latest-failure semantics: never cleared on success, only
+   * overwritten by the next failure.
    */
   val recapKey: AttributeKey[Vector[Failure]] = AttributeKey[Vector[Failure]](
-    "test-recap",
-    "Failures collected from the most recent aggregated test run",
-    1000
+    "testRecap",
+    "Failures collected from the most recent aggregated test run"
   )
 
   /**
    * Walk the `Incomplete` tree and return one `Failure` per
    * `TestsFailedException`. Exceptions without a payload (e.g., the
-   * back-compat no-arg constructor) still contribute an entry so the recap
-   * lists at least the task name when one is available.
+   * back-compat no-arg constructor escaping a path that didn't get wrapped
+   * at the task boundary) still contribute a stub entry so the recap lists
+   * at least the task name when one is available.
+   *
+   * Identity-deduplicated via `Incomplete.allExceptions` (which uses an
+   * `IDSet[Throwable]` internally), so a single failing task shared across
+   * multiple Incomplete paths in a DAG is counted once.
    */
-  def collect(i: Incomplete): Seq[Failure] =
+  def collect(i: Incomplete): Vector[Failure] =
     Incomplete
       .allExceptions(i)
       .iterator
-      .flatMap:
+      .flatMap {
         case e: TestsFailedException => Some(Failure(e.taskName, e.testOutput))
         case _                       => None
+      }
       .toVector
 
-  /** The rendered recap as a sequence of `\n`-free lines. */
-  def render(failures: Seq[Failure]): Seq[String] =
+  /**
+   * The rendered recap as a sequence of `\n`-free lines. Failures are
+   * sorted by `taskName` (lexicographically; empty task names last) for
+   * stable, diff-friendly output across runs.
+   */
+  def render(failures: Vector[Failure]): Vector[String] =
     if failures.isEmpty then Vector.empty
     else
-      val n = failures.size
+      val sorted = failures.sortBy(f => (f.taskName.isEmpty, f.taskName))
+      val n = sorted.size
       val plural = if n == 1 then "" else "s"
       val lines = Vector.newBuilder[String]
       lines += s"Test failures recap ($n test task$plural failed):"
-      failures.foreach: f =>
+      sorted.foreach { f =>
         val displayName = if f.taskName.isEmpty then "<unknown>" else f.taskName
         f.testOutput match
           case None =>
@@ -88,17 +108,17 @@ private[sbt] object TestRecap:
             if errored.nonEmpty then
               lines += "    Error during tests:"
               errored.foreach(name => lines += s"      $name")
+      }
       lines.result()
 
   /** Render `failures` and emit one error-level log line per rendered line. */
-  def formatTo(log: Logger, failures: Seq[Failure]): Unit =
-    render(failures).foreach(log.error(_))
+  def formatTo(log: Logger, failures: Vector[Failure]): Unit =
+    render(failures).foreach(line => log.error(line))
 
-  private def collectByResult(o: Tests.Output, target: TestResult): Seq[String] =
+  private def collectByResult(o: Tests.Output, target: TestResult): Vector[String] =
     o.events.iterator
       .collect {
-        case (name, suite) if suite.result == target =>
-          scala.reflect.NameTransformer.decode(name)
+        case (name, suite) if suite.result == target => name
       }
       .toVector
       .sorted

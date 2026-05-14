@@ -106,9 +106,14 @@ object TestResultLogger {
         else
           run(printFailures)
 
-        // No throw here: failure detection lives in the task wrapper (Defaults.testFull / inputTests0)
-        // so that user-overridden testResultLogger implementations cannot accidentally suppress it.
-        ()
+        // Preserves the historical contract of this extension point: log
+        // first, then throw on failure. The aggregated recap (sbt/sbt#2998)
+        // catches this exception in `Defaults.testFull` / `inputTests0` and
+        // re-throws with the task name and `Tests.Output` attached so
+        // `TestRecap.collect` can surface the per-project detail.
+        results.overall match
+          case TestResult.Error | TestResult.Failed => throw new TestsFailedException
+          case TestResult.Empty | TestResult.Passed => ()
       }
     }
 

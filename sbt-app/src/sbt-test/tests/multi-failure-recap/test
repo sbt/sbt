@@ -1,8 +1,11 @@
 # Verify the aggregated test failure recap end-to-end. verifyRecap is a
 # Command (not a Task) that internally runs `test` via Command.process,
 # reads the State attribute set by Aggregation.runTasks, and asserts the
-# recap content -- all inside a single sbt JVM, so the State attribute
-# survives. See project/Checks.scala for the rationale.
+# recap content. The command returns the *original* state (not the
+# post-failure state) so verifyRecap itself is not marked failed -- the
+# inner `test` failure has already been inspected, and we want this
+# statement to succeed when the recap is well-formed. See
+# project/Checks.scala for details.
 > verifyRecap
 
 # After removing the failing tests, the aggregated test should succeed
