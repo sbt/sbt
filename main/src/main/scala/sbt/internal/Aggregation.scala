@@ -139,8 +139,10 @@ object Aggregation {
       extra: DummyTaskMap,
       show: ShowConfig
   )(using display: Show[ScopedKey[?]]): State =
+    sbt.internal.testing.TestRecap.clear()
     val complete = timedRun[A1](s, ts, extra)
     showRun(complete, show)
+    sbt.internal.testing.TestRecap.formatTo(complete.state.log)
     complete.results match
       case Result.Inc(i)   => complete.state.handleError(i)
       case Result.Value(_) => complete.state

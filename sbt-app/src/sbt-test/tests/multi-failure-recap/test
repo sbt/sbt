@@ -1,0 +1,11 @@
+# Aggregated test should fail (two subprojects fail). The recap line emitted by
+# Aggregation.runTasks is verified by the unit tests in main-actions; this
+# scripted test exercises the end-to-end multi-failure code path and confirms
+# the aggregated `test` is restored to success once the failing tests are
+# removed.
+-> test
+
+$ delete a/src/test/java/FailingTestA.java
+$ delete c/src/test/java/FailingTestC.java
+> clean
+> test

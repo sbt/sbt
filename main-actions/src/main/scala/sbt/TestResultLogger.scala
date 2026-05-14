@@ -106,6 +106,7 @@ object TestResultLogger {
         else
           run(printFailures)
 
+        sbt.internal.testing.TestRecap.recordRun(taskName, results)
         results.overall match
           case TestResult.Error | TestResult.Failed => throw new TestsFailedException
           case TestResult.Empty | TestResult.Passed => ()
