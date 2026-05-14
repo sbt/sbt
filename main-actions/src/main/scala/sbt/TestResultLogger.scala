@@ -106,10 +106,9 @@ object TestResultLogger {
         else
           run(printFailures)
 
-        sbt.internal.testing.TestRecap.recordRun(taskName, results)
-        results.overall match
-          case TestResult.Error | TestResult.Failed => throw new TestsFailedException
-          case TestResult.Empty | TestResult.Passed => ()
+        // No throw here: failure detection lives in the task wrapper (Defaults.testFull / inputTests0)
+        // so that user-overridden testResultLogger implementations cannot accidentally suppress it.
+        ()
       }
     }
 
@@ -129,6 +128,20 @@ object TestResultLogger {
         results.summaries.size > 1 || results.summaries.headOption.forall(_.summaryText.isEmpty)
 
     val printStandard = TestResultLogger((log, results, _) => {
+      val counts = countsString(results)
+      results.overall match
+        case TestResult.Empty  => ()
+        case TestResult.Error  => log.error("Error: " + counts)
+        case TestResult.Passed => log.info("Passed: " + counts)
+        case TestResult.Failed => log.error("Failed: " + counts)
+    })
+
+    /**
+     * Renders `Tests.Output`'s aggregate counts as a single line like
+     * `Total 10, Failed 2, Errors 0, Passed 8`. Shared between `printStandard`
+     * and the cross-project recap formatter (see `TestRecap`).
+     */
+    private[sbt] def countsString(results: Output): String = {
       val (
         skippedCount,
         errorsCount,
@@ -154,7 +167,6 @@ object TestResultLogger {
       val totalCount = failuresCount + errorsCount + skippedCount + passedCount
       val base =
         s"Total $totalCount, Failed $failuresCount, Errors $errorsCount, Passed $passedCount"
-
       val otherCounts = Seq(
         "Skipped" -> skippedCount,
         "Ignored" -> ignoredCount,
@@ -162,14 +174,8 @@ object TestResultLogger {
         "Pending" -> pendingCount
       )
       val extra = otherCounts.withFilter(_._2 > 0).map { (label, count) => s", $label $count" }
-
-      val postfix = base + extra.mkString
-      results.overall match
-        case TestResult.Empty  => ()
-        case TestResult.Error  => log.error("Error: " + postfix)
-        case TestResult.Passed => log.info("Passed: " + postfix)
-        case TestResult.Failed => log.error("Failed: " + postfix)
-    })
+      base + extra.mkString
+    }
 
     val printFailures = TestResultLogger((log, results, _) => {
       def select(resultTpe: TestResult) = results.events collect {

@@ -8,3 +8,7 @@ lazy val c = project.settings(junit)
 
 lazy val root = (project in file("."))
   .aggregate(a, b, c)
+  .settings(
+    TaskKey[Unit]("checkRecap") := sbt.multifailurerecap.Checks.checkRecap(baseDirectory.value),
+    TaskKey[Unit]("checkNoRecap") := sbt.multifailurerecap.Checks.checkNoRecap(baseDirectory.value),
+  )

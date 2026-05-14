@@ -1,11 +1,14 @@
-# Aggregated test should fail (two subprojects fail). The recap line emitted by
-# Aggregation.runTasks is verified by the unit tests in main-actions; this
-# scripted test exercises the end-to-end multi-failure code path and confirms
-# the aggregated `test` is restored to success once the failing tests are
-# removed.
+# Aggregated test should fail (two subprojects fail) and emit a recap line
+# listing the two failing subprojects but not the passing one. checkRecap
+# verifies the recap text was actually surfaced through Aggregation.runTasks
+# (read from State, not in-memory only).
 -> test
+> checkRecap
 
+# After removing the failing tests, the aggregated test should succeed and
+# the recap state attribute should be cleared.
 $ delete a/src/test/java/FailingTestA.java
 $ delete c/src/test/java/FailingTestC.java
 > clean
 > test
+> checkNoRecap

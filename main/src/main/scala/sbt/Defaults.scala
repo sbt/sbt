@@ -1274,6 +1274,12 @@ object Defaults extends BuildCommon with DefExtra {
       try
         val output = executeTests.value
         trl.run(streams.value.log, output, taskName)
+        // Throw with details after the logger has had a chance to print so the
+        // per-task failure summary still appears before the aggregated recap.
+        output.overall match
+          case TestResult.Error | TestResult.Failed =>
+            throw new TestsFailedException(taskName, Some(output))
+          case _ => ()
         output.overall
       finally close(testLoader.value)
     },
@@ -1448,6 +1454,10 @@ object Defaults extends BuildCommon with DefExtra {
         .value[Task[Tests.Output]] { output })
         .map: out =>
           trl.run(s.log, out, taskName)
+          out.overall match
+            case TestResult.Error | TestResult.Failed =>
+              throw new TestsFailedException(taskName, Some(out))
+            case _ => ()
           out.overall
     }
   }

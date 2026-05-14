@@ -139,13 +139,25 @@ object Aggregation {
       extra: DummyTaskMap,
       show: ShowConfig
   )(using display: Show[ScopedKey[?]]): State =
-    sbt.internal.testing.TestRecap.clear()
     val complete = timedRun[A1](s, ts, extra)
     showRun(complete, show)
-    sbt.internal.testing.TestRecap.formatTo(complete.state.log)
     complete.results match
-      case Result.Inc(i)   => complete.state.handleError(i)
-      case Result.Value(_) => complete.state
+      case Result.Inc(i) =>
+        // Collect the per-task TestsFailedException payloads off the
+        // Incomplete tree *before* handleError mutates state, then emit the
+        // recap after handleError so it is the last thing the user sees.
+        val failures = sbt.internal.testing.TestRecap.collect(i)
+        val afterHandle = complete.state.handleError(i)
+        if failures.nonEmpty then
+          sbt.internal.testing.TestRecap.formatTo(afterHandle.log, failures)
+          sbt.internal.testing.TestRecap.writeArtifact(
+            afterHandle.baseDir,
+            sbt.internal.testing.TestRecap.format(failures),
+          )
+        afterHandle
+      case Result.Value(_) =>
+        sbt.internal.testing.TestRecap.deleteArtifact(complete.state.baseDir)
+        complete.state
 
   def printSuccess(
       start: Long,

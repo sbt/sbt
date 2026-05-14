@@ -10,110 +10,113 @@ package sbt
 package internal
 package testing
 
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicBoolean
-import scala.jdk.CollectionConverters.*
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.{ Files, StandardOpenOption }
 
+import sbt.Incomplete
 import sbt.Tests
+import sbt.TestResultLogger
+import sbt.TestsFailedException
 import sbt.protocol.testing.TestResult
 import sbt.util.Logger
 
 /**
- * Thread-safe accumulator of per-task test failures collected during one
- * aggregated run. `Aggregation.runTasks` calls `clear` at the start of each
- * top-level invocation; the default `TestResultLogger` calls `recordRun`
- * once per subproject's test task; `formatTo` renders the snapshot to the
- * logger so users can see every failed task at the end of the run instead
- * of having to scroll back through thousands of log lines (sbt/sbt#2998).
+ * Stateless formatter that surfaces every failed test task at the end of an
+ * aggregated run (see sbt/sbt#2998). The data is read directly off the
+ * `Incomplete` tree returned by `Aggregation.runTasks` — each subproject's
+ * `testFull` / `testQuick` throws `TestsFailedException` carrying the task
+ * name and `Tests.Output`, and we collect those instances from the tree.
  */
 private[sbt] object TestRecap:
-  final case class Record(taskName: String, output: Tests.Output)
 
-  private val records = ConcurrentLinkedQueue[Record]()
-  private val testRan = AtomicBoolean(false)
-  @volatile private var previousRecords: Vector[Record] = Vector.empty
+  /** A single failed test task contributing to the recap. */
+  final case class Failure(taskName: String, output: Tests.Output)
 
   /**
-   * Called once per subproject's test task completion. Marks that a test
-   * task ran in this aggregation cycle and, if the result was a failure,
-   * records it for the recap.
+   * Walk the `Incomplete` tree and return one `Failure` per failed
+   * `TestsFailedException` that carries its detail payload. Failures whose
+   * exceptions don't carry the payload (e.g., user-provided custom
+   * exceptions) are skipped — they were not produced by sbt's default test
+   * pipeline and there is nothing for the recap to say about them.
    */
-  def recordRun(taskName: String, output: Tests.Output): Unit =
-    testRan.set(true)
-    output.overall match
-      case TestResult.Failed | TestResult.Error =>
-        val _ = records.add(Record(taskName, output))
-      case _ => ()
+  def collect(i: Incomplete): Seq[Failure] =
+    Incomplete
+      .allExceptions(i)
+      .iterator
+      .collect:
+        case e: TestsFailedException if e.output.isDefined =>
+          Failure(e.taskName, e.output.get)
+      .toVector
 
-  /**
-   * Called at the start of every `Aggregation.runTasks`. If a test ran in
-   * the previous cycle, the current records are rolled into
-   * `previousSnapshot` (so callers can inspect the most recent test run's
-   * failures). Otherwise `previousSnapshot` is left untouched, so a
-   * recovery / housekeeping `runTasks` doesn't clobber the snapshot.
-   */
-  def clear(): Unit =
-    if testRan.getAndSet(false) then
-      previousRecords = records.iterator.asScala.toVector
-    records.clear()
-
-  /** Failures recorded in the current (still-running) cycle. */
-  def snapshot: Seq[Record] = records.iterator.asScala.toVector
-
-  /** Failures recorded in the most recent test cycle. */
-  def previousSnapshot: Seq[Record] = previousRecords
-
-  /**
-   * Emit the current snapshot to `log` as an error-level block. No-op if
-   * no failures were recorded in this cycle.
-   */
-  def formatTo(log: Logger): Unit =
-    val failures = snapshot.filter: r =>
-      r.output.overall match
-        case TestResult.Failed | TestResult.Error => true
-        case _                                    => false
-    if failures.nonEmpty then
+  /** The rendered recap as a single string with `\n`-separated lines. */
+  def format(failures: Seq[Failure]): String =
+    if failures.isEmpty then ""
+    else
       val n = failures.size
       val plural = if n == 1 then "" else "s"
-      log.error(s"Test failures recap ($n test task$plural failed):")
-      failures.foreach: rec =>
-        log.error(s"  ${rec.taskName} — ${countsLine(rec.output)}")
-        val failedNames = collectByResult(rec.output, TestResult.Failed)
-        val erroredNames = collectByResult(rec.output, TestResult.Error)
-        if failedNames.nonEmpty then
-          log.error("    Failed tests:")
-          failedNames.foreach(name => log.error(s"      $name"))
-        if erroredNames.nonEmpty then
-          log.error("    Error during tests:")
-          erroredNames.foreach(name => log.error(s"      $name"))
+      val sb = StringBuilder()
+      sb.append(s"Test failures recap ($n test task$plural failed):\n")
+      failures.foreach: f =>
+        sb.append(s"  ${f.taskName}: ${TestResultLogger.Defaults.countsString(f.output)}\n")
+        val failed = collectByResult(f.output, TestResult.Failed)
+        val errored = collectByResult(f.output, TestResult.Error)
+        if failed.nonEmpty then
+          sb.append("    Failed tests:\n")
+          failed.foreach(name => sb.append(s"      $name\n"))
+        if errored.nonEmpty then
+          sb.append("    Error during tests:\n")
+          errored.foreach(name => sb.append(s"      $name\n"))
+      sb.result()
 
-  private def countsLine(o: Tests.Output): String =
-    val (skipped, errors, passed, failures, ignored, canceled, pending) =
-      o.events.foldLeft((0, 0, 0, 0, 0, 0, 0)):
-        case ((sk, er, pa, fa, ig, ca, pe), (_, ev)) =>
-          (
-            sk + ev.skippedCount,
-            er + ev.errorCount,
-            pa + ev.passedCount,
-            fa + ev.failureCount,
-            ig + ev.ignoredCount,
-            ca + ev.canceledCount,
-            pe + ev.pendingCount
-          )
-    val total = failures + errors + skipped + passed
-    val base = s"Total $total, Failed $failures, Errors $errors, Passed $passed"
-    val extras = Seq(
-      "Skipped" -> skipped,
-      "Ignored" -> ignored,
-      "Canceled" -> canceled,
-      "Pending" -> pending
-    ).withFilter(_._2 > 0).map((label, count) => s", $label $count")
-    base + extras.mkString
+  /** Render `failures` and emit one error-level log line per line of output. */
+  def formatTo(log: Logger, failures: Seq[Failure]): Unit =
+    val text = format(failures)
+    if text.nonEmpty then
+      // Trim trailing newline so the last log call doesn't emit a blank line.
+      text.stripSuffix("\n").split('\n').foreach(log.error(_))
+
+  /**
+   * Path within `baseDir` where the recap is persisted as a CI-consumable
+   * artifact whenever there are failures. Overwritten on each aggregated run
+   * and absent when there are no failures.
+   */
+  def artifactFile(baseDir: File): File =
+    new File(new File(baseDir, "target"), "sbt-test-recap.txt")
+
+  /**
+   * Persist `text` to `artifactFile(baseDir)`. Best-effort: any IO problem is
+   * silently swallowed because the recap has already been printed to the log
+   * and the file is a convenience.
+   */
+  def writeArtifact(baseDir: File, text: String): Unit =
+    if text.nonEmpty then
+      try
+        val out = artifactFile(baseDir)
+        val parent = out.getParentFile
+        if parent != null then parent.mkdirs()
+        Files.write(
+          out.toPath,
+          text.getBytes(StandardCharsets.UTF_8),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.TRUNCATE_EXISTING
+        )
+        ()
+      catch case _: Exception => ()
+
+  /** Remove the artifact file if it exists (used after a passing aggregated run). */
+  def deleteArtifact(baseDir: File): Unit =
+    try
+      val _ = Files.deleteIfExists(artifactFile(baseDir).toPath)
+    catch case _: Exception => ()
 
   private def collectByResult(o: Tests.Output, target: TestResult): Seq[String] =
-    o.events.iterator.collect {
-      case (name, suite) if suite.result == target =>
-        scala.reflect.NameTransformer.decode(name)
-    }.toVector.sorted
+    o.events.iterator
+      .collect {
+        case (name, suite) if suite.result == target =>
+          scala.reflect.NameTransformer.decode(name)
+      }
+      .toVector
+      .sorted
 
 end TestRecap
