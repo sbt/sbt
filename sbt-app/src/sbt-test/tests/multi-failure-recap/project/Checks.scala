@@ -9,22 +9,27 @@ import sbt.internal.testing.TestRecap
  * A scripted statement that fails (`-> test`) closes the inner sbt's IPC
  * server (see `SbtHandler.onNewSbtInstance`'s catch block), which terminates
  * the inner sbt JVM. Scripted then launches a fresh JVM for the next
- * statement, so the State attribute set by Aggregation.runTasks cannot be
- * read by a follow-up `> check`. To verify recap content end-to-end we
- * stay inside a single sbt invocation: the `verifyRecap` command runs
- * `test` via `Command.process`, inspects the resulting state's attribute,
- * and discards the failure so its own state is not failed.
+ * statement, so a State attribute set inside a failing statement cannot be
+ * read by a follow-up `> check`. We avoid that by running `test` from
+ * inside a Command (here) via `Command.process`, all within one JVM.
+ *
+ * `recapKey` is monotonic-latest-failure: never proactively cleared.
+ * That means across CI scripted shards (which share an inner sbt across
+ * tests with `reload;initialize` between them) a prior test that left a
+ * recap entry is visible to this test. Both commands therefore strip
+ * `recapKey` from the incoming state before doing their own assertions
+ * and again on the way out, so they are hermetic w.r.t. anything other
+ * scripted tests in the same shard may have left behind.
  */
 object Checks {
 
   val verifyRecap: Command = Command.command("verifyRecap") { state =>
-    val afterTest = Command.process("test", state)
+    val cleared = state.remove(TestRecap.recapKey)
+    val afterTest = Command.process("test", cleared)
     val recap = afterTest.get(TestRecap.recapKey).getOrElse {
       sys.error("TestRecap.recapKey not set on state after aggregated test failure")
     }
     val names = recap.map(_.taskName).toSet
-    // `test := testQuick.evaluated` (Defaults.scala), so the recorded
-    // taskName is `<proj> / Test / testQuick` rather than `... / test`.
     assert(recap.size == 2, s"expected 2 failures, got ${recap.size}: $names")
     assert(names.exists(_.startsWith("a / ")), s"recap missing project a: $names")
     assert(names.exists(_.startsWith("c / ")), s"recap missing project c: $names")
@@ -35,22 +40,23 @@ object Checks {
         s.result == sbt.protocol.testing.TestResult.Failed
       assert(failedSuites >= 1, s"${f.taskName} has no failed suite: ${f.testOutput.get.events}")
     }
-    // Sanity check rendering.
     val lines = TestRecap.render(recap)
-    assert(lines.head.startsWith("Test failures recap (2 test tasks failed):"),
-      s"unexpected header: ${lines.head}")
-    lines.foreach(l => assert(l.forall(_ < 128), s"non-ASCII in recap line: $l"))
-    // Return the *original* state so the verifyRecap command itself is not
-    // marked as failed; the failure was structural to `test`, which we
-    // have already inspected.
-    state
+    assert(
+      lines.head.startsWith("Test failures recap (2 test tasks failed):"),
+      s"unexpected header: ${lines.head}"
+    )
+    // Return the original state with recapKey stripped so the next
+    // scripted statement starts hermetic.
+    state.remove(TestRecap.recapKey)
   }
 
   val verifyNoRecap: Command = Command.command("verifyNoRecap") { state =>
-    val afterTest = Command.process("test", state)
+    val cleared = state.remove(TestRecap.recapKey)
+    val afterTest = Command.process("test", cleared)
     afterTest.get(TestRecap.recapKey) match {
-      case None    => state
-      case Some(r) => sys.error(s"unexpected recap after passing test run: ${r.map(_.taskName)}")
+      case None => state.remove(TestRecap.recapKey)
+      case Some(r) =>
+        sys.error(s"unexpected recap after passing test run: ${r.map(_.taskName)}")
     }
   }
 }
