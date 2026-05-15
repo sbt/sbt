@@ -143,10 +143,9 @@ object InterfaceUtil {
   ): DiagnosticRelatedInformation =
     new ConcreteDiagnosticRelatedInformation(position, message)
 
-  private final class ConcreteT2[A1, A2](a1: A1, a2: A2) extends T2[A1, A2] {
-    val get1: A1 = a1
-    val get2: A2 = a2
-    override def toString: String = s"ConcreteT2($a1, $a2)"
+  private final class ConcreteT2[A1, A2](override val get1: A1, override val get2: A2)
+      extends T2[A1, A2] {
+    override def toString: String = s"ConcreteT2($get1, $get2)"
     override def equals(o: Any): Boolean = o match {
       case o: ConcreteT2[?, ?] =>
         this.get1 == o.get1 &&
@@ -228,19 +227,15 @@ object InterfaceUtil {
   }
 
   private final class ConcreteProblem(
-      cat: String,
-      pos: Position,
-      msg: String,
-      sev: Severity,
+      override val category: String,
+      override val position: Position,
+      override val message: String,
+      override val severity: Severity,
       rendered0: Option[String],
       diagnosticCode0: Option[DiagnosticCode],
       diagnosticRelatedInformation0: List[DiagnosticRelatedInformation],
       actions0: List[Action],
   ) extends Problem {
-    val category = cat
-    val position = pos
-    val message = msg
-    val severity = sev
     override val rendered = o2jo(rendered0)
     override def diagnosticCode: Optional[DiagnosticCode] = o2jo(diagnosticCode0)
     override def diagnosticRelatedInformation(): ju.List[DiagnosticRelatedInformation] =
@@ -250,7 +245,7 @@ object InterfaceUtil {
       diagnosticRelatedInformation()
     override def actions(): ju.List[Action] =
       l2jl(actions0)
-    override def toString = s"[$severity] $pos: $message"
+    override def toString = s"[$severity] $position: $message"
     private def toTuple(p: Problem) =
       (
         p.category,
@@ -270,16 +265,14 @@ object InterfaceUtil {
   }
 
   private final class ConcreteAction(
-      title0: String,
+      override val title: String,
       description0: Option[String],
-      edit0: WorkspaceEdit,
+      override val edit: WorkspaceEdit,
   ) extends Action {
-    val title: String = title0
-    val edit: WorkspaceEdit = edit0
     override def description(): Optional[String] =
       o2jo(description0)
     override def toString(): String =
-      s"Action($title0, $description0, $edit0)"
+      s"Action($title, $description0, $edit)"
     private def toTuple(a: Action) =
       (
         a.title,
@@ -305,9 +298,10 @@ object InterfaceUtil {
     }
   }
 
-  private final class ConcreteTextEdit(position0: Position, newText0: String) extends TextEdit {
-    val position: Position = position0
-    val newText: String = newText0
+  private final class ConcreteTextEdit(
+      override val position: Position,
+      override val newText: String
+  ) extends TextEdit {
     override def toString(): String =
       s"TextEdit($position, $newText)"
     private def toTuple(edit: TextEdit) =
@@ -322,9 +316,10 @@ object InterfaceUtil {
     }
   }
 
-  private final class ConcreteDiagnosticCode(code0: String, explanation0: Option[String])
-      extends DiagnosticCode {
-    val code: String = code0
+  private final class ConcreteDiagnosticCode(
+      override val code: String,
+      explanation0: Option[String]
+  ) extends DiagnosticCode {
     val explanation: Optional[String] = o2jo(explanation0)
     override def toString(): String = s"DiagnosticCode($code)"
     private def toTuple(c: DiagnosticCode) =
@@ -339,10 +334,10 @@ object InterfaceUtil {
     }
   }
 
-  private final class ConcreteDiagnosticRelatedInformation(position0: Position, message0: String)
-      extends DiagnosticRelatedInformation {
-    val position: Position = position0
-    val message: String = message0
+  private final class ConcreteDiagnosticRelatedInformation(
+      override val position: Position,
+      override val message: String
+  ) extends DiagnosticRelatedInformation {
     override def toString(): String = s"DiagnosticRelatedInformation($position, $message)"
     private def toTuple(info: DiagnosticRelatedInformation) =
       (
