@@ -143,22 +143,13 @@ object Aggregation {
     showRun(complete, show)
     complete.results match
       case Result.Inc(i) =>
-        // Collect the per-task TestsFailedException payloads off the
-        // Incomplete tree *before* handleError mutates state, then emit the
-        // recap after handleError so it is the last thing the user sees.
         val failures = sbt.internal.testing.TestRecap.collect(i)
         val afterHandle = complete.state.handleError(i)
         if failures.nonEmpty then
           sbt.internal.testing.TestRecap.formatTo(afterHandle.log, failures)
           afterHandle.put(sbt.internal.testing.TestRecap.recapKey, failures)
         else afterHandle
-      case Result.Value(_) =>
-        // Leave any previously-set recap intact. A successful run after a
-        // failure does not clear the State attribute -- the next failure
-        // will overwrite it. This avoids guessing whether a particular
-        // command should be considered "test-related" (which would require
-        // a hardcoded label list or Tags-based detection).
-        complete.state
+      case Result.Value(_) => complete.state
 
   def printSuccess(
       start: Long,
