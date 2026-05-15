@@ -1440,8 +1440,23 @@ object Defaults extends BuildCommon with DefExtra {
       val st = state.value
       given display: Show[ScopedKey[?]] = Project.showContextKey(st)
       val modifiedOpts =
-        Tests.ExplicitlyRequestedNames(selected) +: Tests.Filters(filter(selected)) +:
+        Tests.ExplicitlyRequestedNames(selected) +:
+          Tests.Filters(
+            filter(
+              selected ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions else Nil)
+            )
+          ) +:
           Tests.Argument(frameworkOptions*) +: config.options
+      if frameworkOptions.nonEmpty then
+        modifiedOpts.foreach: opt =>
+          opt match
+            case Tests.Listeners(listeners) =>
+              listeners.toList.foreach: l =>
+                l match
+                  case r: TestStatusReporter =>
+                    r.setArguments(frameworkOptions)
+                  case _ => ()
+            case _ => ()
       val newConfig = config.copy(options = modifiedOpts)
       val output = allTestGroupsTask(
         s,
