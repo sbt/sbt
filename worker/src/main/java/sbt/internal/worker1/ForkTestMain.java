@@ -259,6 +259,10 @@ public class ForkTestMain {
               params, this.id);
       this.originalOut.println(notification);
       this.originalOut.flush();
+      try {
+        Thread.sleep(10);
+      } catch (final Exception e) {
+      }
     }
 
     private void log(final String message, final ForkTags level) {

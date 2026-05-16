@@ -7,11 +7,13 @@ testFrameworks := new TestFramework("build.MyFramework") :: Nil
 fork := true
 
 Test / definedTests += new sbt.TestDefinition(
-      "my",
-      // marker fingerprint since there are no test classes
-      // to be discovered by sbt:
-      new sbt.testing.AnnotatedFingerprint {
-        def isModule = true
-        def annotationName = "my"
-      }, true, Array()
-    )
+  "my",
+  // marker fingerprint since there are no test classes
+  // to be discovered by sbt:
+  new sbt.testing.AnnotatedFingerprint {
+    def isModule = true
+    def annotationName = "my"
+  },
+  true,
+  Array()
+)
