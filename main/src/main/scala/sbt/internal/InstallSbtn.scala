@@ -23,6 +23,10 @@ import sbt.io.syntax.*
 import scala.util.{ Properties, Try }
 
 private[sbt] object InstallSbtn {
+  private enum Shell {
+    case bash, fish, powershell, zsh
+  }
+
   private[sbt] val installSbtn =
     Def.inputKey[Unit]("install sbtn and tab completions").withRank(KeyRanks.BTask)
   private[sbt] def installSbtnImpl: Def.Initialize[InputTask[Unit]] = Def.inputTask {
@@ -38,19 +42,18 @@ private[sbt] object InstallSbtn {
       Files.deleteIfExists(tmp)
       ()
     }
-    val shell = if (hasConsole) getShell(term) else "none"
+    val shell = if (hasConsole) getShell(term) else None
     shell match {
-      case "none" =>
-      case s =>
+      case None =>
+      case Some(s) =>
         val completion = shellCompletions(s)
         val completionLocation = baseDirectory.resolve("completions").resolve(completion)
         downloadCompletion(completion, version, completionLocation)
         s match {
-          case "bash"       => setupBash(baseDirectory, term)
-          case "fish"       => setupFish(baseDirectory, term)
-          case "zsh"        => setupZsh(baseDirectory, term)
-          case "powershell" => setupPowershell(baseDirectory, term)
-          case _            => // should be unreachable
+          case Shell.bash       => setupBash(baseDirectory, term)
+          case Shell.fish       => setupFish(baseDirectory, term)
+          case Shell.zsh        => setupZsh(baseDirectory, term)
+          case Shell.powershell => setupPowershell(baseDirectory, term)
         }
         val msg = s"Successfully installed sbtn for $s. You may need to restart $s for the " +
           "changes to take effect."
@@ -113,7 +116,7 @@ private[sbt] object InstallSbtn {
         inputStream.transferTo(os)
       } finally os.close()
     } finally inputStream.close()
-  private def getShell(term: Terminal): String = {
+  private def getShell(term: Terminal): Option[Shell] = {
     term.printStream.print(s"""Setup sbtn for shell:
       | [1] bash
       | [2] fish
@@ -125,11 +128,11 @@ private[sbt] object InstallSbtn {
     val key = term.inputStream.read
     term.printStream.println(key.toChar)
     key match {
-      case 49 => "bash"
-      case 50 => "fish"
-      case 51 => "powershell"
-      case 52 => "zsh"
-      case _  => "none"
+      case 49 => Some(Shell.bash)
+      case 50 => Some(Shell.fish)
+      case 51 => Some(Shell.powershell)
+      case 52 => Some(Shell.zsh)
+      case _  => None
     }
   }
   private def downloadCompletion(completion: String, version: String, target: Path): Unit = {
@@ -226,10 +229,10 @@ private[sbt] object InstallSbtn {
       }
     }
   }
-  private val shellCompletions = Map(
-    "bash" -> "sbtn.bash",
-    "fish" -> "sbtn.fish",
-    "powershell" -> "sbtn.ps1",
-    "zsh" -> "_sbtn",
+  private val shellCompletions: Map[Shell, String] = Map(
+    Shell.bash -> "sbtn.bash",
+    Shell.fish -> "sbtn.fish",
+    Shell.powershell -> "sbtn.ps1",
+    Shell.zsh -> "_sbtn",
   )
 }
