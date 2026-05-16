@@ -25,6 +25,7 @@ import sbt.internal.util.{ StringVirtualFile1, Util }
 import sbt.internal.util.codec.ActionResultCodec.given
 import xsbti.{ FileConverter, HashedVirtualFileRef, PathBasedFile, VirtualFile }
 import java.io.InputStream
+import scala.util.Using
 
 /**
  * An abstraction of a remote or local cache store.
@@ -234,11 +235,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
 
   def putBlob(blob: Path, digest: Digest): Path =
-    val in = Files.newInputStream(blob)
-    try
+    Using.resource(Files.newInputStream(blob)) { in =>
       putBlob(in, digest)
-    finally
-      in.close()
+    }
 
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)

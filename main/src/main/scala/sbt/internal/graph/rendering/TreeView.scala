@@ -17,6 +17,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import java.io.{ File, FileOutputStream, InputStream, OutputStream }
 import java.net.URI
+import scala.util.Using
 
 object TreeView {
   def createJson(graph: ModuleGraph): String = {
@@ -70,11 +71,11 @@ object TreeView {
     val is = getClass.getClassLoader.getResourceAsStream(resourcePath)
     require(is ne null, s"Couldn't load '$resourcePath' from classpath.")
 
-    val fos = new FileOutputStream(to)
-    try copy(is, fos)
-    finally {
-      is.close()
-      fos.close()
+    Using.resource(new FileOutputStream(to)) { fos =>
+      try copy(is, fos)
+      finally {
+        is.close()
+      }
     }
   }
 

@@ -15,6 +15,7 @@ import sbt.util.LoggerContext
 
 import scala.annotation.tailrec
 import scala.sys.process.Process
+import scala.util.Using
 
 object RunFromSourceMain {
   def fork(
@@ -58,9 +59,9 @@ object RunFromSourceMain {
     case Array(wd, scalaVersion, sbtVersion, classpath, args*) =>
       if (System.getProperty("jna.nosys") == null) System.setProperty("jna.nosys", "true")
       if (args.exists(_.startsWith("<"))) System.setProperty("sbt.io.virtual", "false")
-      val context = LoggerContext()
-      try run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
-      finally context.close()
+      Using.resource(LoggerContext()) { context =>
+        run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
+      }
   }
 
   // this arrangement is because Scala does not always properly optimize away

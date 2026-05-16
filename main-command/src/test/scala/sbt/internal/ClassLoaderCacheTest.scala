@@ -14,15 +14,14 @@ import java.nio.file.Files
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.io.IO
 import verify.BasicTestSuite
+import scala.util.Using
 
 object ClassLoaderCacheTest extends BasicTestSuite:
 
   extension (c: ClassLoaderCache) def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
 
   private def withCache[R](f: ClassLoaderCache => R): R =
-    val cache = new ClassLoaderCache(ClassLoader.getSystemClassLoader)
-    try f(cache)
-    finally cache.close()
+    Using.resource(new ClassLoaderCache(ClassLoader.getSystemClassLoader))(f)
 
   test("ClassLoaderCache should make a new loader when cleared"):
     withCache: cache =>

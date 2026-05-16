@@ -9,6 +9,7 @@
 package sbt.internal.inc
 
 import java.util.Properties
+import scala.util.Using
 
 /** Defines utilities to load Java properties from the JVM. */
 private[inc] object ResourceLoader {
@@ -18,10 +19,9 @@ private[inc] object ResourceLoader {
     if (resourceUrl eq null) {
       throw new java.io.FileNotFoundException(s"Resource not found: $resource")
     }
-    val propertiesStream = resourceUrl.openStream
-    try {
+    Using.resource(resourceUrl.openStream) { propertiesStream =>
       properties.load(propertiesStream)
-    } finally propertiesStream.close()
+    }
     properties
   }
 

@@ -13,6 +13,7 @@ import java.net.{ InetAddress, ServerSocket, Socket }
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import scala.util.Using
 
 object IPC {
   private val portMin = 1025
@@ -23,9 +24,9 @@ object IPC {
   def client[T](port: Int)(f: IPC => T): T = ipc(new Socket(loopback, port))(f)
 
   def pullServer[T](f: Server => T): T = {
-    val server = makeServer
-    try f(new Server(server))
-    finally server.close()
+    Using.resource(makeServer) { server =>
+      f(new Server(server))
+    }
   }
 
   def unmanagedServer: Server = new Server(makeServer)

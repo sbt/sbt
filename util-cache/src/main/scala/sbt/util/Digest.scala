@@ -7,6 +7,7 @@ import java.io.{ BufferedInputStream, InputStream }
 import java.nio.ByteBuffer
 import java.nio.file.{ Files, Path }
 import java.security.{ DigestInputStream, MessageDigest }
+import scala.util.Using
 
 opaque type Digest = String
 
@@ -43,11 +44,9 @@ object Digest:
     apply(ref.contentHashStr() + "/" + ref.sizeBytes.toString)
 
   def apply(algo: String, path: Path): Digest =
-    val input = Files.newInputStream(path)
-    try
+    Using.resource(Files.newInputStream(path)) { input =>
       apply(algo, hashBytes(algo, input), Files.size(path))
-    finally
-      input.close()
+    }
 
   // used to wrap a Long value as a fake Digest, which will
   // later be hashed using sha256 anyway.
@@ -82,15 +81,14 @@ object Digest:
 
   private def hashBytes(algo: String, input: InputStream): Array[Byte] =
     val BufferSize = 8192
-    val bis = BufferedInputStream(input)
-    val digest = MessageDigest.getInstance(jvmAlgo(algo))
-    try
+    Using.resource(BufferedInputStream(input)) { bis =>
+      val digest = MessageDigest.getInstance(jvmAlgo(algo))
       val dis = DigestInputStream(bis, digest)
       val buffer = new Array[Byte](BufferSize)
       while dis.read(buffer) >= 0 do ()
       dis.close()
       digest.digest
-    finally bis.close()
+    }
 
   private def validateString(s: String): Unit =
     parse(s)

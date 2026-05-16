@@ -7,6 +7,7 @@ import java.io.File
 import java.util.concurrent.Callable
 import sbt.util.Logger
 import sbt.librarymanagement.*
+import scala.util.Using
 
 /**
  * A component manager provides access to the pieces of xsbt that are distributed as components.
@@ -101,11 +102,8 @@ object IfMissing {
 object ComponentManager {
   lazy val (version, timestamp) = {
     val properties = new java.util.Properties
-    val propertiesStream = getClass.getResourceAsStream("/xsbt.version.properties")
-    try {
+    Using.resource(getClass.getResourceAsStream("/xsbt.version.properties")) { propertiesStream =>
       properties.load(propertiesStream)
-    } finally {
-      propertiesStream.close()
     }
     (properties.getProperty("version"), properties.getProperty("timestamp"))
   }
