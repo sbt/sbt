@@ -1,0 +1,5 @@
+# dependencyTree on the aggregating root prints the diamond shape:
+# root -> subA, subB; both depend on common. The first occurrence of
+# `common` is rendered fully; the second collapses to ` (*)`.
+> dependencyTree --out target/tree.txt
+> check

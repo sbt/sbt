@@ -17,12 +17,12 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import java.io.{ File, FileOutputStream, InputStream, OutputStream }
 import java.net.URI
+import scala.collection.mutable
 import scala.util.Using
 
 object TreeView {
   def createJson(graph: ModuleGraph): String = {
-    val moduleModels = graph.roots
-      .map(module => processSubtree(graph, module))
+    val moduleModels = graph.roots.map(module => processSubtree(graph, module))
     val js = moduleModels.map(Converter.toJsonUnsafe(_))
     js.map(CompactPrinter).mkString("[", ",", "]")
   }
@@ -45,26 +45,41 @@ object TreeView {
       graph: ModuleGraph,
       module: Module,
       parents: Set[GraphModuleId] = Set()
+  ): ModuleModel =
+    processSubtreeImpl(graph, module, parents, mutable.Set.empty[GraphModuleId])
+
+  // `visited` is owned by the caller; do not share it across renders.
+  private def processSubtreeImpl(
+      graph: ModuleGraph,
+      module: Module,
+      parents: Set[GraphModuleId],
+      visited: mutable.Set[GraphModuleId]
   ): ModuleModel = {
     val cycle = parents.contains(module.id)
-    val dependencies = if (cycle) List() else graph.dependencyMap.getOrElse(module.id, List())
+    val duplicate = !cycle && visited.contains(module.id)
+    val dependencies =
+      if (cycle || duplicate) List()
+      else {
+        visited += module.id
+        graph.dependencyMap.getOrElse(module.id, List())
+      }
     val children =
       dependencies
-        .map(dependency => processSubtree(graph, dependency, parents + module.id))
+        .map(dependency => processSubtreeImpl(graph, dependency, parents + module.id, visited))
         .toVector
-    moduleAsModuleAgain(module, cycle, children)
+    ModuleModel(displayText(module, cycle, duplicate), children)
   }
 
-  private def moduleAsModuleAgain(
-      module: Module,
-      isCycle: Boolean,
-      children: Vector[ModuleModel]
-  ): ModuleModel = {
-    val eviction = module.evictedByVersion.map(version => s" (evicted by $version)").getOrElse("")
-    val cycle = if (isCycle) " (cycle)" else ""
-    val error = module.error.map(err => s" (errors: $err)").getOrElse("")
-    val text = module.id.idString + eviction + error + cycle
-    ModuleModel(text, children)
+  // Suffix order is pinned by TreeViewTest "concatenate marker suffixes
+  // in a stable order"; change here means change the test.
+  private def displayText(module: Module, isCycle: Boolean, isDuplicate: Boolean): String = {
+    val suffixes = Vector(
+      module.evictedByVersion.map(v => s" (evicted by $v)"),
+      module.error.map(err => s" (errors: $err)"),
+      if (isCycle) Some(" (cycle)") else None,
+      if (isDuplicate) Some(" (*)") else None,
+    ).flatten
+    module.id.idString + suffixes.mkString
   }
 
   def saveResource(resourcePath: String, to: File): Unit = {

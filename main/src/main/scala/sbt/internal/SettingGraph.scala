@@ -96,11 +96,20 @@ object Graph {
           }) +
           s.slice(at + 1, s.length)
       else s
-    def toAsciiLines(node: A, level: Int, parents: Set[A]): Vector[String] =
+    // Owned by toAsciiLines; grows monotonically over one render.
+    import scala.collection.mutable
+    val visited = mutable.Set.empty[A]
+    def toAsciiLines(node: A, level: Int, parents: Set[A]): Vector[String] = {
+      val prefix = if (level == 0) "" else "+-"
       if (parents contains node) // cycle
         Vector(limitLine((twoSpaces * level) + "#-" + display(node) + " (cycle)"))
+      else if (visited contains node)
+        // `prefix` is always "+-" here in practice (root can't re-enter),
+        // but mirror the level-0 form for symmetry.
+        Vector(limitLine((twoSpaces * level) + prefix + display(node) + " (*)"))
       else {
-        val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
+        visited += node
+        val line = limitLine((twoSpaces * level) + prefix + display(node))
         val cs = Vector(children(node)*)
         val childLines = cs map {
           toAsciiLines(_, level + 1, parents + node)
@@ -116,6 +125,7 @@ object Graph {
         }
         line +: withBar
       }
+    }
 
     toAsciiLines(top, 0, Set.empty).mkString("\n")
   }

@@ -7,7 +7,4 @@ whenis20:whenis20_..
     |   
     +-org.typeleve..
       +-org.typele..
-        +-org.type..
-          +-org.ty..
-          +-org.ty..
-          
+      
