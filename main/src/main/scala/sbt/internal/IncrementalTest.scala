@@ -32,15 +32,22 @@ object IncrementalTest:
       val cp = (Keys.test / fullClasspath).value
       val digests = (Keys.definedTestDigests).value
       val config = Def.cacheConfiguration.value
-      def hasCachedSuccess(ts: Digest): Boolean =
-        val input = cacheInput(ts)
+      def hasCachedSuccess(ts: Digest, options: Seq[String]): Boolean =
+        val input = cacheInput(ts, options)
         ActionCache.exists(input._1, input._2, input._3, config)
-      def hasSucceeded(className: String): Boolean = digests.get(className) match
-        case None     => false
-        case Some(ts) => hasCachedSuccess(ts)
+      def hasSucceeded(className: String, options: Seq[String]): Boolean =
+        digests.get(className) match
+          case None     => false
+          case Some(ts) => hasCachedSuccess(ts, options)
       args =>
-        for filter <- selectedFilter(args)
-        yield (test: String) => filter(test) && !hasSucceeded(test)
+        val (pattern, options) =
+          args.indexOf("--") match
+            case idx if idx >= 0 =>
+              val (s1, s2) = args.splitAt(idx)
+              (s1, s2.drop(1))
+            case _ => (args, Nil)
+        for filter <- selectedFilter(pattern)
+        yield (test: String) => filter(test) && !hasSucceeded(test, options)
     }
 
   // cache the test digests against the fullClasspath.
@@ -84,17 +91,23 @@ object IncrementalTest:
       case _ =>
         includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
 
-  private[sbt] def cacheInput(value: Digest): (Unit, Digest, Digest) =
-    ((), value, Digest.zero)
+  private[sbt] def cacheInput(
+      value: Digest,
+      frameworkOptions: Seq[String]
+  ): (Seq[String], Digest, Digest) = (frameworkOptions, value, Digest.zero)
+
 end IncrementalTest
 
-private[sbt] class TestStatusReporter(
+private[sbt] case class TestStatusReporter(
     digests: Map[String, Digest],
     cacheConfiguration: BuildWideCacheConfiguration,
 ) extends TestsListener:
   // int value to represent success
   private final val successfulTest = 0
-
+  private var _args: Seq[String] = Nil
+  def getArgs: Seq[String] = _args
+  def setArguments(args: Seq[String]): Unit =
+    _args = args
   def doInit(): Unit = ()
   def startGroup(name: String): Unit = ()
   def testEvent(event: TestEvent): Unit = ()
@@ -109,7 +122,7 @@ private[sbt] class TestStatusReporter(
       digests.get(name) match
         case Some(ts) =>
           // treat each test suite as a successful action that returns 0
-          val input = IncrementalTest.cacheInput(ts)
+          val input = IncrementalTest.cacheInput(ts, getArgs)
           ActionCache.cache(
             key = input._1,
             codeContentHash = input._2,

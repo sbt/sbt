@@ -747,6 +747,7 @@ lazy val mainProj = (project in file("main"))
     mimaBinaryIssueFilters ++= Vector(
       exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf"),
       exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)

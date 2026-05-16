@@ -9,11 +9,14 @@ class MyFramework extends sbt.testing.Framework {
     new MyRunner(args, remoteArgs, testClassLoader)
 }
 
-class MyRunner(val args: Array[String], val remoteArgs: Array[String],
-               val testClassLoader: ClassLoader) extends sbt.testing.Runner {
+class MyRunner(
+  val args: Array[String],
+  val remoteArgs: Array[String],
+  val testClassLoader: ClassLoader) extends sbt.testing.Runner {
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] =
-    if (args contains "task-boom") taskDefs map BoomTask else throw new Throwable()
+    if (args.contains("task-boom")) taskDefs.map(BoomTask)
+    else throw new Throwable()
   def done(): String = ""
 
   private case class BoomTask(taskDef: TaskDef) extends Task {
@@ -21,4 +24,3 @@ class MyRunner(val args: Array[String], val remoteArgs: Array[String],
     def execute(handler: EventHandler, loggers: Array[Logger]) = throw new Throwable()
   }
 }
-
