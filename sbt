@@ -672,6 +672,8 @@ Usage: `basename "$0"` [options]
   -d | --debug        set sbt log level to debug
   -debug-inc | --debug-inc
                       enable extra debugging for the incremental compiler
+  --experimental_execution_log=true|<path>
+                      enable experimental execution log
 
   # sbt version (default: from project/build.properties if present, else latest release)
   --sbt-version  <version>   use the specified version of sbt
@@ -738,6 +740,7 @@ map_args () {
              -autostart=*) options=( "${options[@]}" "-Dsbt.server.autostart=${1:12}" ) && shift ;;
                   --color=*) options=( "${options[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
                    -color=*) options=( "${options[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
+     --experimental_execution_log=*) options=( "${options[@]}" "-Dsbt.experimental_execution_log=${1:29}" ) && shift ;;
        -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
      -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
                  -ivy|--ivy) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.ivy.home=$2" ) && shift 2 ;;

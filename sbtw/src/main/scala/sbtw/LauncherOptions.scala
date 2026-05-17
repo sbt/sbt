@@ -35,6 +35,7 @@ case class LauncherOptions(
     server: Boolean = false,
     residual: Seq[String] = Nil,
     sbtNew: Boolean = false,
+    experimentalExecutionLog: Option[String] = None,
 )
 
 object LauncherOptions:

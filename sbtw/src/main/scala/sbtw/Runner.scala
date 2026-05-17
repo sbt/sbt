@@ -63,6 +63,7 @@ object Runner:
     opts.ivy.foreach(v => s = s :+ s"-Dsbt.ivy.home=$v")
     opts.color.foreach(v => s = s :+ s"-Dsbt.color=$v")
     opts.autostart.foreach(v => s = s :+ s"-Dsbt.server.autostart=$v")
+    opts.experimentalExecutionLog.foreach(v => s = s :+ s"-Dsbt.experimental_execution_log=$v")
     if opts.timings then
       s = s ++ Seq("-Dsbt.task.timings=true", "-Dsbt.task.timings.on.shutdown=true")
     if opts.traces then s = s :+ "-Dsbt.traces=true"

@@ -44,6 +44,9 @@ object ArgParser:
         opt[String]("autostart").action((x, c) => c.copy(autostart = Some(x))),
         opt[Int]("jvm-debug").action((x, c) => c.copy(jvmDebug = Some(x))),
         opt[String]("java-home").action((x, c) => c.copy(javaHome = Some(x))),
+        opt[String]("experimental_execution_log").action((x, c) =>
+          c.copy(experimentalExecutionLog = Some(x))
+        ),
         arg[String]("<arg>")
           .unbounded()
           .optional()

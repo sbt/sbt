@@ -54,6 +54,7 @@ set sbt_args_mem=
 set sbt_args_client=
 set sbt_args_jvm_client=
 set sbt_args_no_server=
+set sbt_args_experimental_execution_log=
 set is_this_dir_sbt=0
 
 rem users can set SBT_OPTS via .sbtopts
@@ -419,6 +420,21 @@ if defined _color_arg (
   goto args_loop
 )
 
+if "%~0" == "--experimental_execution_log" set _experimental_execution_log_arg=true
+
+if defined _experimental_execution_log_arg (
+  set _experimental_execution_log_arg=
+  if not "%~1" == "" (
+   set sbt_args_experimental_execution_log=%~1
+   shift
+   goto args_loop
+  ) else (
+   echo "%~0" is missing a value
+   goto error
+  )
+  goto args_loop
+)
+
 if "%~0" == "--no-share" set _no_share_arg=true
 if "%~0" == "-no-share" set _no_share_arg=true
 
@@ -722,6 +738,10 @@ if not defined sbt_args_no_hide_jdk_warnings (
   if /I !JAVA_VERSION! EQU 25 (
     set _SBT_OPTS=--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED !_SBT_OPTS!
   )
+)
+
+if defined sbt_args_experimental_execution_log (
+  set _SBT_OPTS=-Dsbt.experimental_execution_log=!sbt_args_experimental_execution_log! !_SBT_OPTS!
 )
 
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
@@ -1141,6 +1161,8 @@ echo   --script-version    print the version of sbt script
 echo   -d ^| --debug        set sbt log level to debug
 echo   -debug-inc ^| --debug-inc
 echo                       enable extra debugging for the incremental compiler
+echo   --experimental_execution_log=true^|^<path^>
+echo                       enable experimental execution log
 rem echo   -J-X                pass option -X directly to the java runtime
 rem echo                       ^(-J is stripped^)
 rem echo   -S-X                add -X to sbt's scalacOptions ^(-S is stripped^)
