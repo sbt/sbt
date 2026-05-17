@@ -135,13 +135,14 @@ private[sbt] class ServerSessionImpl(
    */
   override def close(): Unit = if (closed.compareAndSet(false, true)) {
     running.set(false)
-    try {
+    try
       out.close()
       socket.close()
-    } catch { case _: IOException => }
+    catch case _: IOException => ()
     onClose()
-    if (Thread.currentThread() != readThread)
-      readThread.joinFor(ServerSessionImpl.ReadThreadDestroyTimeout)
+    if Thread.currentThread() != readThread then
+      try readThread.joinFor(ServerSessionImpl.ReadThreadDestroyTimeout)
+      catch case _: TimeoutException => ()
   }
 
   override def nextId(): String = UUID.randomUUID.toString
@@ -351,7 +352,7 @@ private[sbt] class ServerSessionImpl(
 
 private[sbt] object ServerSessionImpl {
   val ReadIoTimeout: Int = 5000 // ms
-  val ReadThreadDestroyTimeout: FiniteDuration = 5.seconds
+  val ReadThreadDestroyTimeout: FiniteDuration = 1.seconds
   val ResponseTimeout: FiniteDuration = 1.minutes
   val GracefulShutdownTimeout: FiniteDuration = 5.seconds
   val DestroyTimeout: FiniteDuration = 10.seconds
