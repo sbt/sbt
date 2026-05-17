@@ -15,7 +15,7 @@ ThisBuild / version := {
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.0.0-RC13"
+ThisBuild / Utils.sbtnVersion := "2.0.0-RC14"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
