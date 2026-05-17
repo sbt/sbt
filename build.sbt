@@ -126,7 +126,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC12",
+    "2.0.0-RC13",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
@@ -383,7 +383,6 @@ lazy val utilCache = project
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[ReversedMissingMethodProblem]("sbt.util.CacheImplicits.sbt$util*")
     ),
     Test / fork := true,
   )
@@ -525,9 +524,6 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem](
-        "sbt.scriptedtest.ScriptedTests.runInParallel$default$10"
-      ),
     ),
   )
   .dependsOn(lmCore)
@@ -1226,21 +1222,6 @@ lazy val lmCore = (project in file("lm-core"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-        "sbt.librarymanagement.EvictionError.apply"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "sbt.librarymanagement.EvictionError.processEvictions*"
-      ),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-        "sbt.librarymanagement.EvictionWarning.buildEvictions"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "sbt.librarymanagement.EvictionError.<init>$*"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "sbt.librarymanagement.EvictionError.configuration"
-      )
     ),
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
