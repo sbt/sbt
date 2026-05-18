@@ -134,6 +134,7 @@ jobs:
           ./sbt -v --client scalafmtCheckAll
           ./sbt -v --client scalafmtSbtCheck
           ./sbt -v --client serverTestProj/scalafmtCheckAll
+          ./sbt -v --client launcherPackageIntegrationTest/scalafmtCheckAll
           # ./sbt -v --client headerCheck
           # ./sbt -v --client "Test/headerCheck"
           ./sbt -v --client "Test/compile"

@@ -382,8 +382,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     )
 
   testOutput("sbt --experimental_execution_log=true")("--experimental_execution_log=true", "-v"):
-    (out: List[String]) =>
-      assert(out.contains[String]("-Dsbt.experimental_execution_log=true"))
+    (out: List[String]) => assert(out.contains[String]("-Dsbt.experimental_execution_log=true"))
 
 end RunnerScriptTest
 
