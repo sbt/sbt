@@ -1,0 +1,11 @@
+# Direct mode: only the immediate dependsOn project is on the filtered
+# classpath. Transitive internal deps (core via libA) are stripped.
+> set ThisBuild / dependencyMode := DependencyMode.Direct
+> libA/checkDirectLibA
+> libB/checkDirectLibB
+
+# PlusOne mode: direct + one more hop. libB sees core (one hop through
+# libA); libC sees libA but not core (two hops).
+> set ThisBuild / dependencyMode := DependencyMode.PlusOne
+> libB/checkPlusOneLibB
+> libC/checkPlusOneLibC

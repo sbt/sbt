@@ -559,4 +559,53 @@ private[sbt] object ClasspathImpl {
       case DependencyMode.Direct     => filterByDirectDeps(directDeps, cp)
       case DependencyMode.PlusOne => filterByPlusOne(directDeps, projectId, config, fullReport, cp)
 
+  /**
+   * Apply dependencyMode filtering to the *internal* classpath using the build's project graph.
+   * `UpdateReport` only contains externally resolved modules, so it cannot answer
+   * "is this internal project a direct dep of `projectRef`"; the `BuildDependencies` graph can.
+   *
+   *   Direct  -- entries from projects directly listed in `projectRef.dependsOn(...)`.
+   *   PlusOne -- direct + one more hop along the project graph.
+   *   Transitive -- unfiltered.
+   */
+  def filterInternalByMode(
+      mode: DependencyMode,
+      projectRef: ProjectRef,
+      data: Def.Settings,
+      deps: BuildDependencies,
+      internalCp: Classpath,
+  ): Classpath =
+    mode match
+      case DependencyMode.Transitive => internalCp
+      case _ =>
+        val allowed = allowedInternalKeys(mode, projectRef, data, deps)
+        internalCp.filter: entry =>
+          entry.get(Keys.moduleIDStr) match
+            case Some(str) =>
+              val mid = Classpaths.moduleIdJsonKeyFormat.read(str)
+              allowed.contains((mid.organization, mid.name))
+            case None => true
+
+  private def allowedInternalKeys(
+      mode: DependencyMode,
+      projectRef: ProjectRef,
+      data: Def.Settings,
+      deps: BuildDependencies,
+  ): Set[(String, String)] =
+    def directRefs(p: ProjectRef): Set[ProjectRef] =
+      deps
+        .classpath(p)
+        .collect:
+          case ClasspathDep.ResolvedClasspathDependency(dep, _) => dep
+        .toSet
+    val refs: Set[ProjectRef] = mode match
+      case DependencyMode.Direct =>
+        directRefs(projectRef)
+      case DependencyMode.PlusOne =>
+        val direct = directRefs(projectRef)
+        direct ++ direct.flatMap(directRefs)
+      case DependencyMode.Transitive => Set.empty
+    refs.flatMap: pr =>
+      (pr / projectID).get(data).map(mid => (mid.organization, mid.name))
+
 }

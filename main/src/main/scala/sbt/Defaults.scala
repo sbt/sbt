@@ -2736,16 +2736,24 @@ object Classpaths {
           dependencyMode.value match
             case DependencyMode.Transitive =>
               Def.task { dependencyClasspath.value }
-            case _ =>
+            case mode =>
               Def.task {
-                ClasspathImpl.filterByDependencyMode(
-                  dependencyMode.value,
+                val internalFiltered = ClasspathImpl.filterInternalByMode(
+                  mode,
+                  thisProjectRef.value,
+                  settingsData.value,
+                  buildDependencies.value,
+                  internalDependencyClasspath.value,
+                )
+                val externalFiltered = ClasspathImpl.filterByDependencyMode(
+                  mode,
                   allDependencies.value,
                   projectID.value,
                   classpathConfiguration.value,
                   updateFull.value,
-                  dependencyClasspath.value,
+                  externalDependencyClasspath.value,
                 )
+                internalFiltered ++ externalFiltered
               }
         })
         .value,
@@ -2808,18 +2816,23 @@ object Classpaths {
       dependencyPicklePath := Def.uncached {
         // This is a conditional task. Do not refactor.
         if (incOptions.value.pipelining) {
-          val cp = concat(
-            internalDependencyPicklePath,
-            externalDependencyClasspath,
-          ).value
-          ClasspathImpl.filterByDependencyMode(
-            dependencyMode.value,
+          val mode = dependencyMode.value
+          val internalFiltered = ClasspathImpl.filterInternalByMode(
+            mode,
+            thisProjectRef.value,
+            settingsData.value,
+            buildDependencies.value,
+            internalDependencyPicklePath.value,
+          )
+          val externalFiltered = ClasspathImpl.filterByDependencyMode(
+            mode,
             allDependencies.value,
             projectID.value,
             classpathConfiguration.value,
             updateFull.value,
-            cp,
+            externalDependencyClasspath.value,
           )
+          internalFiltered ++ externalFiltered
         } else {
           filteredDependencyClasspath.value
         }
