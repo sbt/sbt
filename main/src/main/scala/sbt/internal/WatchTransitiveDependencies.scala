@@ -21,7 +21,7 @@ import sbt.nio.FileStamper
 import sbt.nio.Keys.*
 import sbt.nio.file.Glob
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 
 private[sbt] object WatchTransitiveDependencies {
   extension (source: Source) {
@@ -157,7 +157,7 @@ private[sbt] object WatchTransitiveDependencies {
       data.scopes.toSeq
         .withFilter(s => s == Scope.Global || s.project.toOption.exists(projects.contains))
         .flatMap { s =>
-          data.getDirect(ScopedKey(s, Keys.watchSources.key)).map { task =>
+          data.getDirect(legacyWatchSourcesScopedKey(s)).map { task =>
             task.work match
               case a: Action.Pure[Seq[Watched.WatchSource]] => Right(a.f().map(_.toGlob))
               case _                                        => Left(s)
@@ -167,10 +167,21 @@ private[sbt] object WatchTransitiveDependencies {
       DynamicInput(glob, FileStamper.LastModified, forceTrigger = true)
     scopes.flatMap {
       case Left(scope) =>
-        extracted.runTask(scope / Keys.watchSources, state)._2.map(s => toDynamicInput(s.toGlob))
+        extracted
+          .runTask(legacyWatchSourcesTask(scope), state)
+          ._2
+          .map(s => toDynamicInput(s.toGlob))
       case Right(globs) => globs.map(toDynamicInput)
     }
   }
+
+  private def legacyWatchSourcesScopedKey(
+      scope: Scope
+  ): ScopedKey[Task[Seq[Watched.WatchSource]]] =
+    (ScopedKey(scope, Keys.watchSources.key): @nowarn("cat=deprecation"))
+
+  private def legacyWatchSourcesTask(scope: Scope): TaskKey[Seq[Watched.WatchSource]] =
+    (scope / Keys.watchSources: @nowarn("cat=deprecation"))
 
   @tailrec
   private def collectKeys(

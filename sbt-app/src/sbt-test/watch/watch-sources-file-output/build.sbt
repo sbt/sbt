@@ -1,0 +1,1 @@
+watchSources += file("foo")

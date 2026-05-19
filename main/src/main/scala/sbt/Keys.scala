@@ -138,6 +138,11 @@ object Keys {
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting).withRank(DSetting)
 
   // Deprecated watch apis
+  @transient
+  @deprecated(
+    "watchSources is deprecated; use fileInputs for task inputs or watchTriggers for extra continuous-build triggers.",
+    "2.0.0"
+  )
   val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
 
   // Path Keys

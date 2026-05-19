@@ -333,7 +333,8 @@ object Defaults extends BuildCommon with DefExtra {
         new AppenderSupplier:
           def apply(s: ScopedKey[?]): Seq[Appender] = Nil
       },
-      watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
+      // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
+      ((watchSources :== Nil): @nowarn("cat=deprecation")),
       skip :== false,
       taskTemporaryDirectory := {
         val base = BuildPaths.globalTaskDirectoryStandard(appConfiguration.value.baseDirectory)
