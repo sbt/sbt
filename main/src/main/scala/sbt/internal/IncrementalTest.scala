@@ -160,15 +160,25 @@ end TestStatus
  * ClassStamper provides `transitiveStamp` method to calculate a unique
  * fingerprint, which will be used for runtime invalidation.
  */
-class ClassStamper(
-    classpath: Seq[Attributed[HashedVirtualFileRef]],
+class ClassStamper private[sbt] (
+    analyses0: => Seq[Analysis],
     converter: FileConverter,
 ):
+  def this(
+      classpath: Seq[Attributed[HashedVirtualFileRef]],
+      converter: FileConverter,
+  ) =
+    this(
+      classpath
+        .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
+        .collect { case analysis: Analysis => analysis },
+      converter,
+    )
+
   private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
   private val internalStamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private lazy val analyses = classpath
-    .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
-    .collect { case analysis: Analysis => analysis }
+  // Cached so by-name `analyses0` is only evaluated once
+  private lazy val analyses = analyses0
   private val stampVf: VirtualFileRef => Digest =
     CacheImplicits.virtualFileRefToDigest(_)(converter)
 
