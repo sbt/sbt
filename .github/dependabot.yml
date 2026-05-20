@@ -1,5 +1,10 @@
 version: 2
+enable-beta-ecosystems: true
 updates:
+  - package-ecosystem: "sbt"
+    directory: "/"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
