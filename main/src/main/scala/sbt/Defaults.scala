@@ -1772,10 +1772,18 @@ object Defaults extends BuildCommon with DefExtra {
   def packageBinMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
     Def.task {
       val converter = fileConverter.value
+      val classDirPath = classDirectory.value.toPath.toAbsolutePath.normalize
       val xs = products.value
-      xs
+      val allMappings = xs
         .flatMap(Path.allSubpaths)
-        .withFilter(_._1.isFile())
+        .filter(_._1.isFile())
+      val resourcePaths = allMappings.collect {
+        case (p, path) if !p.toPath.toAbsolutePath.normalize.startsWith(classDirPath) => path
+      }.toSet
+      allMappings
+        .filterNot { (p, path) =>
+          resourcePaths(path) && p.toPath.toAbsolutePath.normalize.startsWith(classDirPath)
+        }
         .map { (p, path) =>
           val vf = converter.toVirtualFile(p.toPath())
           (vf: HashedVirtualFileRef) -> path
