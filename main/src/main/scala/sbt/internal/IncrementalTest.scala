@@ -182,10 +182,17 @@ class ClassStamper(
       extraHashes: Seq[Digest],
       log: Logger,
   ): Option[Digest] =
-    val digests = SortedSet(analyses.flatMap(internalStamp(javaClassName, _, Set.empty, log))*)
-    log.debug(s"test: transitiveStamp($javaClassName, $extraHashes) = $digests")
-    if digests.nonEmpty then Some(Digest.sha256Hash(digests.toSeq ++ extraHashes*))
+    val digests = transitiveStamps(javaClassName, extraHashes, log)
+    if digests.nonEmpty then Some(Digest.sha256Hash(digests*))
     else None
+
+  private def transitiveStamps(
+      javaClassName: String,
+      extraHashes: Seq[Digest],
+      log: Logger,
+  ): Seq[Digest] =
+    val digests = SortedSet(analyses.flatMap(internalStamp(javaClassName, _, Set.empty, log))*)
+    digests.toSeq ++ extraHashes
 
   private def internalStamp(
       javaClassName: String,
@@ -205,7 +212,7 @@ class ClassStamper(
       val internalJarDeps = relations
         .externalDeps(className)
         .flatMap: libClassName =>
-          transitiveStamp(libClassName, Nil, log)
+          transitiveStamps(libClassName, Nil, log)
       val externalDeps = relations
         .externalDeps(className)
         .flatMap: libClassName =>
