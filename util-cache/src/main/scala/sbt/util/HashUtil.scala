@@ -1,11 +1,13 @@
 package sbt.util
 
 import java.nio.file.{ Files, Path }
-import net.openhft.hashing.LongHashFunction
+import scala.util.hashing.MurmurHash3
 
 object HashUtil:
   private[sbt] def farmHash(bytes: Array[Byte]): Long =
-    LongHashFunction.farmNa().hashBytes(bytes)
+    val hi = MurmurHash3.bytesHash(bytes, 0x9747b28c)
+    val lo = MurmurHash3.bytesHash(bytes, 0x85ebca6b)
+    (hi.toLong << 32) | (lo.toLong & 0xffffffffL)
 
   private[sbt] def farmHash(path: Path): Long =
     import sbt.io.Hash

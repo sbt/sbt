@@ -8,9 +8,9 @@ import xsbti.HashedVirtualFileRef
 
 object HasherTest extends BasicTestSuite:
 
-  final val blankContentHash = -7286425919675154353L
-  val blankContentHashStr = "farm64-9ae16a3b2f90404f"
-  final val blankATxtHash = 1166939303L
+  final val blankContentHash = -1461767548567390449L
+  val blankContentHashStr = "farm64-ebb6c228cb72770f"
+  final val blankATxtHash = -1644914753
 
   test("The IntJsonFormat should convert an Int to an int hash") {
     import BasicJsonProtocol.given
