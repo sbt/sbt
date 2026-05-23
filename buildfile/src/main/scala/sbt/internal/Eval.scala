@@ -111,6 +111,7 @@ class Eval(
                |  def $WrapValName${returnType} = {""".stripMargin
         val contents = s"""$header
           |$expression
+          |
           |  }
           |}
           |""".stripMargin
