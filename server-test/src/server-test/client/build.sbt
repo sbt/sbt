@@ -15,3 +15,8 @@ TaskKey[Unit]("runThenFail") := Def.uncached {
   val _ = (Compile / run).toTask("").value
   throw new Exception("failed")
 }
+
+// Exercise the forked interactive code path (connectInput + StdoutOutput).
+run / fork := true
+run / connectInput := true
+run / outputStrategy := Some(StdoutOutput)
