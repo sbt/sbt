@@ -8,12 +8,11 @@
 
 package sbt
 
-import java.io.File
-import java.io.PrintWriter
+import java.io.{ File, IOException, InputStream, OutputStream, PrintWriter }
 import java.lang.ProcessBuilder.Redirect
 import scala.sys.process.Process
 import OutputStrategy._
-import sbt.internal.util.{ RunningProcesses, Util }
+import sbt.internal.util.{ RunningProcesses, Terminal, Util }
 import Util.{ AnyOps, none }
 
 import java.lang.{ ProcessBuilder => JProcessBuilder, Process => JProcess }
@@ -214,14 +213,24 @@ object Fork {
     val environment: List[(String, String)] = env.toList ++ extraEnv
     workingDirectory.foreach(jpb.directory(_))
     environment.foreach { case (k, v) => jpb.environment.put(k, v) }
-    jpb.inheritIO()
+    // Inherit stdin for REPL/raw-mode keystrokes. Stdout/stderr stay PIPE so
+    // `blockJForExitCode` can pump them to the active terminal directly.
+    jpb.redirectInput(Redirect.INHERIT)
     jpb.start()
   }
 
   private[sbt] def blockJForExitCode(p: JProcess): Int = {
     RunningProcesses.add(p)
     try {
+      // Capture the active terminal's streams once on the task thread. The
+      // System.out/err proxy resolves `activeTerminal` at every write, so a
+      // concurrent terminal swap can route mid-pump bytes to the wrong client.
+      val active = Terminal.current
+      val outT = pumpStream(p.getInputStream, active.outputStream, "sbt-fork-stdout")
+      val errT = pumpStream(p.getErrorStream, active.errorStream, "sbt-fork-stderr")
       p.waitFor()
+      outT.join()
+      errT.join()
       p.exitValue()
     } finally {
       if (p.isAlive()) p.destroy()
@@ -236,5 +245,24 @@ object Fork {
       if (p.isAlive()) p.destroy()
       RunningProcesses.remove(p)
     }
+  }
+
+  private[sbt] def pumpStream(in: InputStream, out: OutputStream, name: String): Thread = {
+    val t = new Thread(name) {
+      setDaemon(true)
+      override def run(): Unit = {
+        val buf = new Array[Byte](4096)
+        try {
+          var n = in.read(buf)
+          while (n != -1) {
+            out.write(buf, 0, n)
+            out.flush()
+            n = in.read(buf)
+          }
+        } catch { case _: IOException => () }
+      }
+    }
+    t.start()
+    t
   }
 }

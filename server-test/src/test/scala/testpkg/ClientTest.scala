@@ -157,4 +157,12 @@ object ClientTest extends AbstractServerTest {
   test("quote with semi") { _ =>
     assert(complete("\"compile; fooB") == Vector("compile; fooBar"))
   }
+  test("forked run with connectInput relays stdout to --client") { _ =>
+    val (exit, lines) = clientWithStdoutLines("run")
+    assert(exit == 0, s"non-zero exit; lines=${lines.mkString("\n")}")
+    assert(
+      lines.exists(_.contains("STDOUT_MARKER_9185")),
+      s"missing STDOUT_MARKER_9185 in: ${lines.mkString("\n")}"
+    )
+  }
 }
