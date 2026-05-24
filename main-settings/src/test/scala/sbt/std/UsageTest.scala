@@ -168,4 +168,8 @@ object Assign {
   listTask := List(1)
   listTask += 1
   listTask += ak.value
+
+  trait HigherKind[B[_]]
+  // https://github.com/sbt/sbt/issues/2188
+  val issue2188 = settingKey[HigherKind[Option]]("asdf")
 }
