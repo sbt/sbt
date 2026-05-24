@@ -295,6 +295,11 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
 lazy val utilControl = (project in file("internal") / "util-control").settings(
   utilCommonSettings,
   name := "Util Control",
+  libraryDependencies ++= Seq(
+    scalacheck % Test,
+    scalaVerify % Test,
+    hedgehog % Test,
+  ),
   mimaSettings,
 )
 
