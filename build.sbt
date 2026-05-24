@@ -396,6 +396,17 @@ lazy val utilCache = project
     addSbtCompilerInterface,
   )
 
+lazy val hashBenchmark = (project in file("internal") / "hash-benchmark")
+  .dependsOn(utilControl, utilCache)
+  .enablePlugins(JmhPlugin)
+  .settings(
+    utilCommonSettings,
+    name := "Hash Benchmark",
+    Jmh / run / javaOptions ++= Seq("-Xmx1G", "-Dfile.encoding=UTF8"),
+    mimaSettings,
+    publish / skip := true,
+  )
+
 // Builds on cache to provide caching for filesystem-related operations
 lazy val utilTracking = (project in file("util-tracking"))
   .dependsOn(utilCache)

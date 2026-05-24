@@ -13,5 +13,6 @@ addSbtPlugin("org.scalameta" % "sbt-native-image" % "0.4.0")
 addDependencyTreePlugin
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.5")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
 
 // libraryDependencies += "org.scala-sbt" %% "scripted-plugin" % sbtVersion.value

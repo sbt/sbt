@@ -67,6 +67,9 @@ object Digest:
   def sha256Hash(digests: Digest*): Digest =
     sha256Hash(digests.toSeq.map(_.toBytes).flatten.toArray[Byte])
 
+  private[sbt] def md5Hash(bytes: Array[Byte]): Digest =
+    apply(Md5, hashBytes(Md5, bytes), bytes.length)
+
   // first check the file size, then the hash
   def sameDigest(path: Path, digest: Digest): Boolean =
     if Files.size(path) != digest.sizeBytes then false
