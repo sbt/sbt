@@ -9,10 +9,10 @@
 
 package sbt.internal.util.hashing
 
-object XXHashTest extends AbstractHashTest:
-  override val hash64: HashAlgo = Hashing.xxhash64
+object WyHashTest extends AbstractHashTest:
+  override val hash64: HashAlgo = Hashing.wyhash64
   override def newStreaming(seed: Int): StreamingHashAlgo =
-    Hashing.newStreamingXXHash64(seed)
-  override val emptyHash = -1205034819632174695L
-  override val zeroHash = -1642502924627794072L
-end XXHashTest
+    Hashing.newStreamingWyHash64(seed)
+  override val emptyHash = 290873116282709081L
+  override val zeroHash = -295637713410278011L
+end WyHashTest
