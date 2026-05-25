@@ -2,6 +2,7 @@ package sbt.util
 
 import sjsonnew.IsoString
 import sbt.io.Hash
+import sbt.internal.util.hashing.Hashing
 import xsbti.HashedVirtualFileRef
 import java.io.{ BufferedInputStream, InputStream }
 import java.nio.ByteBuffer
@@ -18,6 +19,10 @@ object Digest:
   private[sbt] val Sha256 = "sha256"
   private[sbt] val Sha384 = "sha384"
   private[sbt] val Sha512 = "sha512"
+  private[sbt] val Imoxx64 = "imoxx64"
+  private[sbt] val Imowy64 = "imowy64"
+  private[sbt] val Xx64 = "xx64"
+  private[sbt] val Wy64 = "wy64"
 
   extension (d: Digest)
     def contentHashStr: String =
@@ -44,9 +49,24 @@ object Digest:
     apply(ref.contentHashStr() + "/" + ref.sizeBytes.toString)
 
   def apply(algo: String, path: Path): Digest =
-    Using.resource(Files.newInputStream(path)) { input =>
-      apply(algo, hashBytes(algo, input), Files.size(path))
-    }
+    algo match
+      case Imoxx64 =>
+        val hash64 = Hashing.samplingFileHashXXHash64(0)
+        val h = hash64.hash(path)
+        apply(algo, longsToBytes(Array(h)), Files.size(path))
+      case Imowy64 =>
+        val hash64 = Hashing.samplingFileHashWyHash64(0)
+        val h = hash64.hash(path)
+        apply(algo, longsToBytes(Array(h)), Files.size(path))
+      case Xx64 | Wy64 =>
+        Using.resource(Files.newInputStream(path)) { input =>
+          val h = hashBytesInternal(algo, input)
+          apply(algo, longsToBytes(Array(h)), Files.size(path))
+        }
+      case _ =>
+        Using.resource(Files.newInputStream(path)) { input =>
+          apply(algo, hashBytes(algo, input), Files.size(path))
+        }
 
   // used to wrap a Long value as a fake Digest, which will
   // later be hashed using sha256 anyway.
@@ -66,6 +86,10 @@ object Digest:
 
   def sha256Hash(digests: Digest*): Digest =
     sha256Hash(digests.toSeq.map(_.toBytes).flatten.toArray[Byte])
+
+  def imoxx64Hash(path: Path): Digest = apply(Imoxx64, path)
+
+  def xx64Hash(path: Path): Digest = apply(Xx64, path)
 
   private[sbt] def md5Hash(bytes: Array[Byte]): Digest =
     apply(Md5, hashBytes(Md5, bytes), bytes.length)
@@ -93,6 +117,24 @@ object Digest:
       digest.digest
     }
 
+  // using our own hashing algorithms
+  private def hashBytesInternal(algo: String, input: InputStream): Long =
+    val BufferSize = 8192
+    Using.resource(BufferedInputStream(input)) { bis =>
+      val digest = algo match
+        case Xx64 => Hashing.newStreamingXXHash64(0)
+        case Wy64 => Hashing.newStreamingWyHash64(0)
+      val buf = new Array[Byte](BufferSize)
+      while
+        val readBytes = input.read(buf)
+        if readBytes >= 0 then digest.update(buf, 0, readBytes)
+        readBytes >= 0
+      do ()
+      val h = digest.getValue
+      digest.close()
+      h
+    }
+
   private def validateString(s: String): Unit =
     parse(s)
     ()
@@ -103,6 +145,14 @@ object Digest:
       case head :: rest :: Nil =>
         val subtokens = head :: rest.split("/").toList
         subtokens match
+          case (a @ Xx64) :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 64))
+          case (a @ Wy64) :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 64))
+          case (a @ Imoxx64) :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 64))
+          case (a @ Imowy64) :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 64))
           case (a @ Murmur3) :: value :: sizeBytes :: Nil =>
             (a, value, sizeBytes.toLong, parseHex(value, 128))
           case (a @ Md5) :: value :: sizeBytes :: Nil =>

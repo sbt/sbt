@@ -292,16 +292,18 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   mimaSettings,
 )
 
-lazy val utilControl = (project in file("internal") / "util-control").settings(
-  utilCommonSettings,
-  name := "Util Control",
-  libraryDependencies ++= Seq(
-    scalacheck % Test,
-    scalaVerify % Test,
-    hedgehog % Test,
-  ),
-  mimaSettings,
-)
+lazy val utilControl = (project in file("internal") / "util-control")
+  .settings(
+    utilCommonSettings,
+    name := "Util Control",
+    libraryDependencies ++= Seq(
+      scalacheck % Test,
+      scalaVerify % Test,
+      hedgehog % Test,
+    ),
+    mimaSettings,
+  )
+  .configure(addSbtIOForTest)
 
 lazy val utilPosition = (project in file("internal") / "util-position")
   .settings(
@@ -374,7 +376,7 @@ lazy val utilCache = project
     // we generate JsonCodec only for actionresult.contra
     JsonCodecPlugin,
   )
-  .dependsOn(utilLogging)
+  .dependsOn(utilLogging, utilControl)
   .settings(
     testedBaseSettings,
     name := "Util Cache",

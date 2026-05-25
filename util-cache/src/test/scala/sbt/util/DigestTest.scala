@@ -42,6 +42,34 @@ object DigestTest extends verify.BasicTestSuite:
     testEmptyFile("sha512", expected)
   }
 
+  test("imoxx64") {
+    val expected = Digest(
+      "imoxx64-ef46db3751d8e999/0"
+    )
+    testEmptyFile("imoxx64", expected)
+  }
+
+  test("imowy64") {
+    val expected = Digest(
+      "imowy64-0409638ee2bde459/0"
+    )
+    testEmptyFile("imowy64", expected)
+  }
+
+  test("xx64") {
+    val expected = Digest(
+      "xx64-ef46db3751d8e999/0"
+    )
+    testEmptyFile("xx64", expected)
+  }
+
+  test("wy64") {
+    val expected = Digest(
+      "wy64-0409638ee2bde459/0"
+    )
+    testEmptyFile("wy64", expected)
+  }
+
   test("digest composition") {
     val dummy1 = Digest.dummy(0L)
     val dummy2 = Digest.dummy(0L)

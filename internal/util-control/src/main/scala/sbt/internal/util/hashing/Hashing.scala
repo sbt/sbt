@@ -17,4 +17,8 @@ object Hashing:
     new StreamingXXHash64VarHandle(seed)
   def newStreamingWyHash64(seed: Long): StreamingHashAlgo =
     new StreamingWyHash64VarHandle(seed)
+  def samplingFileHashXXHash64(seed: Long): FileHash =
+    FileSampleHash(newStreamingXXHash64(seed))
+  def samplingFileHashWyHash64(seed: Long): FileHash =
+    FileSampleHash(newStreamingWyHash64(seed))
 end Hashing
