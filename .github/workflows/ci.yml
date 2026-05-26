@@ -56,6 +56,10 @@ jobs:
             java: 17
             distribution: zulu
             jobtype: 12
+          - os: ubuntu-latest
+            java: 17
+            distribution: temurin
+            jobtype: 13
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -203,3 +207,8 @@ jobs:
         shell: bash
         run: |
           ./sbt -v "scripted cache/*"
+      - name: Hash Benchmark
+        if: ${{ matrix.jobtype == 13 }}
+        shell: bash
+        run: |
+          ./sbt -v "hashBenchmark/Jmh/run -i 5 -wi 3 -f1 -t1"

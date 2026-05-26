@@ -75,6 +75,9 @@ object Digest:
 
   lazy val zero: Digest = dummy(0L)
 
+  private[sbt] def sha1Hash(path: Path): Digest =
+    apply(Sha1, path)
+
   def sha256Hash(path: Path): Digest = apply(Sha256, path)
 
   def sha256Hash(bytes: Array[Byte]): Digest =
