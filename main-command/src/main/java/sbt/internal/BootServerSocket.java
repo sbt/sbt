@@ -28,7 +28,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.openhft.hashing.LongHashFunction;
 import org.scalasbt.ipcsocket.UnixDomainServerSocket;
 import org.scalasbt.ipcsocket.Win32NamedPipeServerSocket;
 import org.scalasbt.ipcsocket.Win32SecurityLevel;
@@ -303,7 +302,9 @@ public class BootServerSocket implements AutoCloseable {
   public static String socketLocation(final Path base)
       throws UnsupportedEncodingException, IOException {
     final Path target = base.resolve("project").resolve("target");
-    long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
+    long hash =
+        ((long) target.toString().hashCode() << 32)
+            | (target.toString().length() * 31 & 0xffffffffL);
     if (isWindows) {
       return "sbt-load" + hash;
     } else {

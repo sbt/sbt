@@ -390,6 +390,9 @@ lazy val utilCache = project
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.util.HashUtil.farmHash"),
+      exclude[DirectMissingMethodProblem]("sbt.util.HashUtil.farmHashStr"),
+      exclude[DirectMissingMethodProblem]("sbt.util.HashUtil.toFarmHashString"),
     ),
     Test / fork := true,
   )

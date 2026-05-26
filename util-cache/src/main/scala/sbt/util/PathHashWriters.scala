@@ -24,11 +24,11 @@ object StringStrings:
     given Conversion[HashedVirtualFileRef, StringString] =
       (x: HashedVirtualFileRef) => StringString(x.id, x.contentHashStr)
     given Conversion[File, StringString] =
-      (x: File) => StringString(x.toString(), HashUtil.farmHashStr(x.toPath()))
+      (x: File) => StringString(x.toString(), HashUtil.imohash64Str(x.toPath()))
     given Conversion[Path, StringString] =
-      (x: Path) => StringString(x.toString(), HashUtil.farmHashStr(x))
+      (x: Path) => StringString(x.toString(), HashUtil.imohash64Str(x))
     given Conversion[VirtualFile, StringString] =
-      (x: VirtualFile) => StringString(x.id, s"farm64-${x.contentHash.toHexString}")
+      (x: VirtualFile) => StringString(x.id, s"xx64-${x.contentHash.toHexString}")
 
     given HashWriter[StringString] = new HashWriter[StringString]:
       def write[J](obj: StringString, builder: Builder[J]): Unit =

@@ -11,6 +11,7 @@ object HasherTest extends BasicTestSuite:
   final val blankContentHash = -7286425919675154353L
   val blankContentHashStr = "farm64-9ae16a3b2f90404f"
   final val blankATxtHash = 1166939303L
+  final val blankATxtXX64 = -541480681L
 
   test("The IntJsonFormat should convert an Int to an int hash") {
     import BasicJsonProtocol.given
@@ -36,7 +37,7 @@ object HasherTest extends BasicTestSuite:
     import PathHashWriters.given
     val x = StringVirtualFile1("a.txt", "")
     val actual = Hasher.hashUnsafe(x)
-    assert(actual == blankATxtHash)
+    assert(actual == blankATxtXX64)
   }
 
   test("tuple") {

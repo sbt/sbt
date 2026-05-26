@@ -7,7 +7,7 @@ import xsbti.{ BasicVirtualFileRef, VirtualFile }
 case class StringVirtualFile1(path: String, content: String)
     extends BasicVirtualFileRef(path)
     with VirtualFile:
-  override def contentHash: Long = HashUtil.farmHash(content.getBytes("UTF-8"))
+  override def contentHash: Long = HashUtil.xxhash64(content.getBytes("UTF-8"))
   override def sizeBytes: Long = content.getBytes("UTF-8").size
   override def contentHashStr: String =
     import Digest.*

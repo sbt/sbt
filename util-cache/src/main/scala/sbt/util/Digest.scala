@@ -89,7 +89,11 @@ object Digest:
 
   def imoxx64Hash(path: Path): Digest = apply(Imoxx64, path)
 
+  def imowy64Hash(path: Path): Digest = apply(Imowy64, path)
+
   def xx64Hash(path: Path): Digest = apply(Xx64, path)
+
+  def wy64Hash(path: Path): Digest = apply(Wy64, path)
 
   private[sbt] def md5Hash(bytes: Array[Byte]): Digest =
     apply(Md5, hashBytes(Md5, bytes), bytes.length)
