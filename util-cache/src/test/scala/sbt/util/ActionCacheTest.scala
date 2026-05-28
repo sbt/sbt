@@ -1,6 +1,7 @@
 package sbt.util
 
 import java.io.{ IOException, InputStream }
+import java.nio.file.NoSuchFileException
 import java.nio.charset.StandardCharsets
 
 import sbt.internal.util.CacheEventLog
@@ -26,6 +27,20 @@ import ActionCache.InternalActionResult
 
 object ActionCacheTest extends BasicTestSuite:
   val tags = CacheLevelTag.all.toList
+
+  test("findMissingFile extracts the path from a wrapped NoSuchFileException"):
+    val chain = new RuntimeException(
+      "error while writing LList",
+      new RuntimeException(
+        "error while writing the field sources",
+        new NoSuchFileException("not-exists.txt")
+      )
+    )
+    assert(ActionCache.findMissingFile(chain) == Some("not-exists.txt"))
+
+  test("findMissingFile returns None when no file is missing"):
+    val chain = new RuntimeException("boom", new IllegalStateException("unrelated"))
+    assert(ActionCache.findMissingFile(chain) == None)
 
   test("Disk cache can hold a blob"):
     withDiskCache(testHoldBlob)

@@ -365,7 +365,7 @@ lazy val utilCache = project
     // we generate JsonCodec only for actionresult.contra
     JsonCodecPlugin,
   )
-  .dependsOn(utilLogging)
+  .dependsOn(utilLogging, utilControl)
   .settings(
     testedBaseSettings,
     name := "Util Cache",
