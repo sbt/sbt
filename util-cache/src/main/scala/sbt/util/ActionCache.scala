@@ -10,10 +10,18 @@ package sbt.util
 
 import java.io.{ File, IOException, PrintWriter }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ AtomicMoveNotSupportedException, Files, Path, Paths, StandardCopyOption }
+import java.nio.file.{
+  AtomicMoveNotSupportedException,
+  Files,
+  NoSuchFileException,
+  Path,
+  Paths,
+  StandardCopyOption
+}
 import sbt.internal.util.{
   ActionCacheEvent,
   CacheEventLog,
+  MessageOnlyException,
   SpawnExec,
   SpawnInput,
   StringVirtualFile1
@@ -295,16 +303,33 @@ object ActionCache:
       extraHash: Digest,
       cacheVersion: Long,
   ): Digest =
+    // Hashing serializes every task input; surface a missing input file directly rather than as an
+    // opaque serialization failure that buries it.
+    val inputHash =
+      try Hasher.hashUnsafe[I](key)
+      catch
+        case NonFatal(t) =>
+          findMissingFile(t) match
+            case Some(path) =>
+              throw MessageOnlyException(s"file referenced by the build does not exist: $path")
+            case None => throw t
     Digest.sha256Hash(
       (Vector(
         codeContentHash,
-        Digest.dummy(Hasher.hashUnsafe[I](key)),
+        Digest.dummy(inputHash),
         extraHash
       ) ++ {
         if cacheVersion == 0 then Vector.empty
         else Vector(Digest.dummy(cacheVersion))
       })*
     )
+
+  /** Walks `t`'s cause chain for a `NoSuchFileException`, returning the missing file's path. */
+  private[sbt] def findMissingFile(t: Throwable): Option[String] =
+    t match
+      case null                   => None
+      case e: NoSuchFileException => Option(e.getFile)
+      case _                      => findMissingFile(t.getCause)
 
   private inline def mkValuePath(inputDigest: Digest): String =
     s"$${OUT}/value/${inputDigest}.json"
