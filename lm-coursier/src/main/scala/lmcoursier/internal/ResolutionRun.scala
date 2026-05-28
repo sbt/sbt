@@ -189,7 +189,10 @@ object ResolutionRun {
     SbtCoursierCache.default.resolutionOpt(params.resolutionKey).map(Right(_)).getOrElse {
       val resOrError =
         Lock.maybeSynchronized(needsLock =
-          params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode
+          Lock.progressBarActive(
+            hasCustomLogger = params.loggerOpt.nonEmpty,
+            fallbackMode = RefreshLogger.defaultFallbackMode
+          )
         ) {
           val map = new mutable.HashMap[Configuration, Resolution]
           val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](

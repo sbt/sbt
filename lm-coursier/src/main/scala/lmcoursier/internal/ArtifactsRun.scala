@@ -41,7 +41,10 @@ object ArtifactsRun {
     }
 
     Lock.maybeSynchronized(needsLock =
-      params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode
+      Lock.progressBarActive(
+        hasCustomLogger = params.loggerOpt.nonEmpty,
+        fallbackMode = RefreshLogger.defaultFallbackMode
+      )
     ) {
       result(params, coursierLogger)
     }
