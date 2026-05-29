@@ -1,0 +1,3 @@
+> checkProjectA
+> set Compile / target := baseDirectory.value / "target-b"
+> checkProjectB

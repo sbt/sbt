@@ -487,6 +487,7 @@ object Keys {
   val bspBuildTargetDependencyModules = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetDependencyModulesItem = taskKey[DependencyModulesItem]("").withRank(DTask)
   val bspBuildTargetOutputPaths = inputKey[Unit]("").withRank(DTask)
+  @transient
   val bspBuildTargetOutputPathsItem = taskKey[OutputPathsItem]("").withRank(DTask)
   val bspBuildTargetCompile = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetCompileItem = taskKey[Int]("").withRank(DTask)
