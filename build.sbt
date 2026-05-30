@@ -408,6 +408,7 @@ lazy val hashBenchmark = (project in file("internal") / "hash-benchmark")
     utilCommonSettings,
     name := "Hash Benchmark",
     Jmh / run / javaOptions ++= Seq("-Xmx1G", "-Dfile.encoding=UTF8"),
+    libraryDependencies += blake3,
     mimaSettings,
     publish / skip := true,
   )

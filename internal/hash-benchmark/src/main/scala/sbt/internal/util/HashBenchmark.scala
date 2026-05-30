@@ -3,6 +3,7 @@ package sbt.internal.util
 import java.util.concurrent.{ ThreadLocalRandom, TimeUnit }
 import net.openhft.hashing.LongHashFunction
 import org.openjdk.jmh.annotations.*
+import pt.kcry.blake3.Blake3
 import sbt.util.Digest
 import sbt.internal.util.hashing.Hashing
 import scala.util.hashing.MurmurHash3
@@ -58,3 +59,7 @@ class Md5HashBenchmark extends AbstractHashBenchmark:
 class Sha256HashBenchmark extends AbstractHashBenchmark:
   override def hash(buf: Array[Byte]): String =
     Digest.sha256Hash(buf).toString
+
+class Blake3HashBenchmark extends AbstractHashBenchmark:
+  override def hash(buf: Array[Byte]): String =
+    Blake3.hex(buf, 64)

@@ -1,12 +1,14 @@
 package sbt.internal.util
 
 import java.util.concurrent.TimeUnit
-import org.openjdk.jmh.annotations.*
-import sbt.util.Digest
 
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.{ Files, Path as NioPath }
 import sbt.io.IO
 import sbt.io.syntax.*
+import sbt.util.Digest
+import scala.util.Using
+import org.openjdk.jmh.annotations.*
+import pt.kcry.blake3.{ Blake3 as Blake3Impl }
 
 @State(Scope.Benchmark)
 abstract class AbstractFileHashBenchmark:
@@ -47,3 +49,12 @@ class Sha1FileHashBenchmark extends AbstractFileHashBenchmark:
 class Sha256FileHashBenchmark extends AbstractFileHashBenchmark:
   override def hash(path: NioPath): String =
     Digest.sha256Hash(path).toString
+
+class Blake3FileHashBenchmark extends AbstractFileHashBenchmark:
+  override def hash(path: NioPath): String =
+    Using.resource(Files.newInputStream(path)) { input =>
+      val digest = Blake3Impl.newHasher()
+      digest.update(input)
+      val h = digest.doneHex(64)
+      s"blake3-$h/${Files.size(path)}"
+    }

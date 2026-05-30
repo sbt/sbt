@@ -108,6 +108,7 @@ object Dependencies {
   val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.14.0"
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
+  val blake3 = "pt.kcry" %% "blake3" % "3.1.2"
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
