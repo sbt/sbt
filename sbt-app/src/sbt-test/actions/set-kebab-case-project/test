@@ -1,0 +1,3 @@
+> checkVersion 0.1.0-SNAPSHOT
+> set version := "0.2.0-SNAPSHOT"
+> checkVersion 0.2.0-SNAPSHOT

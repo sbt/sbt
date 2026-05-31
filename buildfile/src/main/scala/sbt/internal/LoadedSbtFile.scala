@@ -11,6 +11,7 @@ package internal
 
 import Def.Setting
 import java.nio.file.Path
+import scala.reflect.NameTransformer
 
 /**
  * Represents the exported contents of a .sbt file.  Currently, that includes the list of settings,
@@ -61,7 +62,7 @@ private[sbt] final class DefinedSbtValues(val sbtFiles: Seq[EvalDefinitions]) {
     for {
       file <- sbtFiles
       m = file.enclosingModule
-      v <- file.valNames
+      v <- file.valNames.map(NameTransformer.decode)
     } yield s"import ${m}.`${v}`"
   }
   def generated: Seq[Path] =
