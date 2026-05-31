@@ -131,7 +131,7 @@ private[sbt] final class CommandExchange {
             case _ => exec
           }
         case Some(e) => e
-        case None =>
+        case None    =>
           val newDeadline = if (gcDeadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
             None
@@ -412,7 +412,7 @@ private[sbt] final class CommandExchange {
     lastActivityTime.set(System.currentTimeMillis)
     channels.foreach {
       case c if ContinuousCommands.isInWatch(lastState.get, c) =>
-      case c =>
+      case c                                                   =>
         if c.isPaused then ()
         else c.prompt(event)
     }
@@ -579,11 +579,11 @@ private[sbt] final class CommandExchange {
       }
       @tailrec def impl(): Unit = {
         fastTrackChannelQueue.take match {
-          case null =>
+          case null              =>
           case mt: FastTrackTask =>
             mt.task match {
               case `attach` | "" => mt.channel.prompt(ConsolePromptEvent(lastState.get))
-              case `Cancel` =>
+              case `Cancel`      =>
                 Option(currentExecRef.get).foreach(cancel)
                 mt.channel.prompt(ConsolePromptEvent(lastState.get))
               case t if t.startsWith(ContinuousCommands.stopWatch) =>
@@ -593,7 +593,7 @@ private[sbt] final class CommandExchange {
                 }
                 commandQueue.add(Exec(t, None, None))
               case `TerminateAction` => exit(mt)
-              case `Shutdown` =>
+              case `Shutdown`        =>
                 val console = Terminal.console
                 val needNewLine = console.prompt.isInstanceOf[Prompt.AskUser]
                 console.setPrompt(Prompt.Batch)

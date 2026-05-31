@@ -14,7 +14,7 @@ import sjsonnew.JsonFormat
 import sbt.internal.protocol.*
 import sbt.util.Logger
 import sbt.protocol.{ CompletionParams as CP, SettingQuery as Q }
-import sbt.internal.langserver.{ CancelRequestParams as CRP }
+import sbt.internal.langserver.CancelRequestParams as CRP
 
 /**
  * ServerHandler allows plugins to extend sbt server.

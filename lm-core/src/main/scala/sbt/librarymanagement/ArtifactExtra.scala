@@ -106,7 +106,7 @@ private[librarymanagement] abstract class ArtifactFunctions {
     val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
     val withPlatform = module.crossVersion match {
       case _: Disabled => artifact.name
-      case _ =>
+      case _           =>
         module.platformOpt match {
           case Some(p) if p.nonEmpty && p != Platform.jvm => s"${artifact.name}_$p"
           case _                                          => artifact.name

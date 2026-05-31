@@ -19,7 +19,7 @@ import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
 import sbt.internal.util.Terminal.hasConsole
 import sbt.internal.util.*
-import sbt.internal.util.complete.{ Parser }
+import sbt.internal.util.complete.Parser
 
 import scala.annotation.tailrec
 
@@ -109,7 +109,7 @@ private[sbt] object UITask {
       case Some(NoShellPrompt) | None =>
         s.get(colorShellPrompt) match {
           case Some(pf) => pf(terminal.isColorEnabled, s)
-          case None =>
+          case None     =>
             def color(s: String): String = if (terminal.isColorEnabled) s"$s" else ""
             s"${color(DeleteLine)}> ${color(ClearScreenAfterCursor)}"
         }

@@ -24,7 +24,7 @@ import lmcoursier.*
 import lmcoursier.syntax.*
 import lmcoursier.credentials.Credentials
 import Keys.*
-import sbt.librarymanagement.{ Credentials as IvyCredentials }
+import sbt.librarymanagement.Credentials as IvyCredentials
 import sbt.internal.util.Util
 import sbt.librarymanagement.*
 import sbt.util.Logger
@@ -60,7 +60,7 @@ object LMCoursier {
       .orElse(sys.env.get("COURSIER_CACHE").map(absoluteFile))
       .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match {
       case Some(dir) => dir
-      case _ =>
+      case _         =>
         if Util.isWindows then windowsCacheDirectory
         else CoursierDependencyResolution.defaultCacheLocation
     }
@@ -281,7 +281,7 @@ object LMCoursier {
           sbt.librarymanagement.CredentialUtils.loadCredentials(fc.path)
       }) match {
         case Left(err) => st.log.warn(err)
-        case Right(d) =>
+        case Right(d)  =>
           credentialRegistry.put((d.host, d.realm), d)
           ()
       }

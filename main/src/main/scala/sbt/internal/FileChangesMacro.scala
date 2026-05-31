@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 
 import sbt.ScopeAxis.Select
 import sbt.nio.Keys.*

@@ -72,7 +72,7 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
   ) =
     Option(stampCache.get().getIfPresent(ref.id())) match
       case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
-      case _ =>
+      case _                                                          =>
         val v = value
         stampCache.get().put(ref.id(), (v, lastModified, sizeBytes))
         v
@@ -82,7 +82,7 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
   ) =
     Option(digestCache.get().getIfPresent(ref.id())) match
       case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
-      case _ =>
+      case _                                                          =>
         val v = value
         digestCache.get().put(ref.id(), (v, lastModified, sizeBytes))
         v

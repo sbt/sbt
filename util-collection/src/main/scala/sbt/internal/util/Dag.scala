@@ -124,7 +124,7 @@ object Dag {
     val visited = new mutable.HashSet[Node]
 
     def visit(edges: List[Arrow], stack: List[Arrow]): List[Arrow] = edges match {
-      case Nil => Nil
+      case Nil          => Nil
       case edge :: tail =>
         val node = head(edge)
         if (!visited(node)) {

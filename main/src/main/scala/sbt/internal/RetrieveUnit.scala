@@ -20,7 +20,7 @@ object RetrieveUnit {
       case Some(RemoteVcs.Svn(_)) => Resolvers.subversion(info)
       case Some(RemoteVcs.Hg(_))  => Resolvers.mercurial(info)
       case Some(RemoteVcs.Git(_)) => Resolvers.git(info)
-      case _ =>
+      case _                      =>
         info.uri match {
           case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)
           case Scheme("file")                                   => Resolvers.local(info)

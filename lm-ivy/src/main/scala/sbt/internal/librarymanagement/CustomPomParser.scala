@@ -139,8 +139,7 @@ object CustomPomParser {
     (Option(extraInfo.get(TransformedHashKey))
       .orElse(Option(extraInfo.get(oldTransformedHashKey))) match
       case Some(MyHash) => true
-      case _            => false
-    )
+      case _            => false)
   }
 
   private def defaultTransformImpl(
@@ -315,8 +314,7 @@ object CustomPomParser {
       addExtra(dd, dependencyExtra)
     }
     val withVersionRangeMod: Seq[DependencyDescriptor] =
-      if (LMSysProp.modifyVersionRange) withExtra map { stripVersionRange }
-      else withExtra
+      if (LMSysProp.modifyVersionRange) withExtra map { stripVersionRange } else withExtra
     val unique = IvySbt.mergeDuplicateDefinitions(withVersionRangeMod)
     unique foreach dmd.addDependency
 

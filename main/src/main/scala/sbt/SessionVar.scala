@@ -80,7 +80,7 @@ object SessionVar {
   ): (State, Option[T]) =
     get(key, state) match {
       case s: Some[T] => (state, s)
-      case None =>
+      case None       =>
         read(key, state)(using f) match {
           case s @ Some(t) =>
             val newState =

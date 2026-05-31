@@ -66,7 +66,7 @@ object Compiler:
       val managed = Keys.managedScalaInstance.value
       val configs = Keys.ivyConfigurations.value
       (sh, extraToolConf) match
-        case (Some(h), _) => scalaInstanceConfigFromHome(h)
+        case (Some(h), _)  => scalaInstanceConfigFromHome(h)
         case _ if !managed =>
           val extra = extraToolConf.getOrElse(Configurations.ScalaTool)
           if configs.contains(extra) then scalaInstanceConfigFromUpdate(extraToolConf)
@@ -143,7 +143,7 @@ object Compiler:
       val replModule = ModuleID(scalaOrg, s"${ScalaArtifacts.Scala3ReplID}_3", scalaVersion)
         .withCrossVersion(CrossVersion.disabled)
       dr.retrieve(replModule, scalaModuleInfo = None, retrieveDir, log) match
-        case Right(resolved) => resolved.toSeq
+        case Right(resolved)  => resolved.toSeq
         case Left(unresolved) =>
           log.warn(
             s"Could not resolve $replModule for consoleProject; REPL may fail to start: ${unresolved.resolveException.getMessage}"
@@ -174,7 +174,7 @@ object Compiler:
       val bridgeModule = ModuleID(scalaOrg, "scala3-sbt-bridge", scalaVersion)
         .withCrossVersion(CrossVersion.disabled)
       dr.retrieve(bridgeModule, scalaModuleInfo = None, retrieveDir, log) match
-        case Right(resolved) => resolved.find(_.getName.startsWith("scala3-sbt-bridge"))
+        case Right(resolved)  => resolved.find(_.getName.startsWith("scala3-sbt-bridge"))
         case Left(unresolved) =>
           log.warn(
             s"Could not resolve $bridgeModule for consoleProject: ${unresolved.resolveException.getMessage}"
@@ -243,7 +243,8 @@ object Compiler:
           """Upgrade the `scalaVersion` to fix the build. If upgrading the Scala compiler version is
             |not possible (for example due to a regression in the compiler or a missing dependency),
             |this error can be demoted by setting `allowUnsafeScalaLibUpgrade := true`.""".stripMargin
-        else s"""Note that the dependency classpath and the runtime classpath of your project
+        else
+          s"""Note that the dependency classpath and the runtime classpath of your project
              |contain the newer $libName $libVer, even if the scalaVersion is $sv.
              |Compilation (macro expansion) or using the Scala REPL in sbt may fail with a LinkageError.""".stripMargin
       val msg =

@@ -69,7 +69,7 @@ private[sbt] object CrossJava {
       }
     splitDash(version) match {
       case xs if xs.size < 2 => sys.error(s"Invalid SDKMAN Java version: $version")
-      case xs =>
+      case xs                =>
         val first = xs.init.head
         val ds =
           if (!first.contains(".") && first.contains("u")) splitDot(first.replaceFirst("u", ".0."))
@@ -221,7 +221,7 @@ private[sbt] object CrossJava {
       if (switch.target.force) projectJavaVersions
       else
         switch.target.version match {
-          case None => projectJavaVersions
+          case None    => projectJavaVersions
           case Some(v) =>
             projectJavaVersions flatMap { (proj, versions) =>
               if (versions.isEmpty || versions.contains[String](v.toString))
@@ -467,7 +467,7 @@ private[sbt] object CrossJava {
           }
           .flatMap {
             case x if vendors.isEmpty => Vector(x)
-            case (version, home) =>
+            case (version, home)      =>
               val jv = JavaVersion(version)
               vendors.map(jv.withVendor(_).toString -> home)
           }

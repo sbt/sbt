@@ -417,7 +417,7 @@ private[librarymanagement] abstract class ResolverFunctions {
         // Occurs inside File constructor when property or environment variable does not exist
         case _: NullPointerException => None
         // Occurs when File does not exist
-        case _: IOException => None
+        case _: IOException       => None
         case e: SAXParseException =>
           System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}");
           None

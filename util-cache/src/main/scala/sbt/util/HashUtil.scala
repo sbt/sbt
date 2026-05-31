@@ -1,6 +1,6 @@
 package sbt.util
 
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 import sbt.internal.util.hashing.Hashing
 
 object HashUtil:

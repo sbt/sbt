@@ -117,8 +117,7 @@ object Resolvers {
       case r: URLRepository if patternMatchGuard(r.patterns) =>
         parseMavenCompatResolver(log, ivyProperties, authentication, r.patterns, classLoaders)
 
-      case raw: RawRepository
-          if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
+      case raw: RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
         None
 
       // Pattern Match resolver-type-specific RawRepositories

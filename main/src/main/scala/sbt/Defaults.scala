@@ -13,7 +13,7 @@ import java.nio.file.{ Files, Path as NioPath }
 import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
 import lmcoursier.CoursierDependencyResolution
-import lmcoursier.definitions.{ Configuration as CConfiguration }
+import lmcoursier.definitions.Configuration as CConfiguration
 import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition, parsed }
 import sbt.Keys.*
@@ -2013,7 +2013,7 @@ object Defaults extends BuildCommon with DefExtra {
             try
               ITerminal.get.inputStream.read match {
                 case -1 | -2 => None
-                case b =>
+                case b       =>
                   val res = b.toChar.toString
                   println(res)
                   Some(res)
@@ -2632,7 +2632,7 @@ object Defaults extends BuildCommon with DefExtra {
         val uri = thisProjectRef.value.build
         val log = streams.value.log
         RetrieveUnit(uri) match {
-          case None => ()
+          case None      => ()
           case Some(vcs) =>
             val strategy = repositoryUpdateStrategy.value
             val lb = Project.extract(state.value).get(Keys.loadedBuild)
@@ -3161,7 +3161,7 @@ object Classpaths {
       ) match {
         case (Some(delegated), Seq(), _) => delegated
         case (_, rs, Some(ars))          => ars ++ rs
-        case (_, rs, _) =>
+        case (_, rs, _)                  =>
           Resolver.combineDefaultResolvers(rs.toVector, mavenCentral = true)
       }
     ),
@@ -3192,7 +3192,7 @@ object Classpaths {
           else Vector.empty
         bootResolvers.value match {
           case Some(repos) if overrideBuildResolvers.value => proj +: repos
-          case _ =>
+          case _                                           =>
             val base = if (sbtPlugin.value) sbtResolvers.value ++ rs ++ pr else rs ++ pr
             (proj +: base).distinct
         }
@@ -3948,7 +3948,7 @@ object Classpaths {
       val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
       DependencyLockManager.validate(lockFile, currentBuildClock, log) match
         case Some(_) => ()
-        case None =>
+        case None    =>
           throw new MessageOnlyException(
             s"Dependency lock file is stale: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to update it."
           )
@@ -4068,7 +4068,7 @@ object Classpaths {
         val isRoot = er.contains(rs)
         val shouldForce = isRoot || {
           fup match
-            case None => false
+            case None         => false
             case Some(period) =>
               val fullUpdateOutput = cacheDirectory / "output"
               val now = System.currentTimeMillis
@@ -4727,7 +4727,7 @@ object Classpaths {
           case Predefined.ScalaToolsSnapshots  => Resolver.ScalaToolsSnapshots
           case Predefined.SonatypeOSSReleases  => Resolver.sonatypeRepo("releases")
           case Predefined.SonatypeOSSSnapshots => Resolver.sonatypeRepo("snapshots")
-          case unknown =>
+          case unknown                         =>
             sys.error(
               "Unknown predefined resolver '" + unknown + "'.  This resolver may only be supported in newer sbt versions."
             )

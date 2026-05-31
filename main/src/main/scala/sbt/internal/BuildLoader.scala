@@ -32,7 +32,7 @@ final class MultiHandler[S, T](
   def applyFun: S => Option[T] = apply
   def apply(info: S): Option[T] =
     (baseLoader(info), applyNonRoots(info)) match {
-      case (None, Nil) => None
+      case (None, Nil)                     => None
       case (None, xs @ (_, nr) :: ignored) =>
         if (ignored.nonEmpty)
           warn(

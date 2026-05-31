@@ -21,7 +21,7 @@ object Main:
     val allArgs = fileArgs ++ args
 
     ArgParser.parse(allArgs.toArray) match
-      case None => System.exit(1)
+      case None       => System.exit(1)
       case Some(opts) =>
         val exitCode = run(cwd, sbtHome, sbtBinDir, opts)
         System.exit(if exitCode == 0 then 0 else 1)

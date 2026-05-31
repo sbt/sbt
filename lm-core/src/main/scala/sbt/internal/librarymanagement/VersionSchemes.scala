@@ -23,7 +23,7 @@ private[sbt] object VersionSchemes {
   def validateScheme(value: String): Unit =
     value match {
       case EarlySemVer | SemVerSpec | PackVer | Strict | Always => ()
-      case "semver" =>
+      case "semver"                                             =>
         sys.error(
           s"""'semver' is ambiguous.
              |Based on the Semantic Versioning 2.0.0, 0.y.z updates are all initial development and thus

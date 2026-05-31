@@ -7,7 +7,7 @@ import sbt.Def.*
 import sbt.Keys.*
 import sbt.ScopeAxis.This
 import sbt.SlashSyntax0.*
-import sbt.internal.util.{ Terminal as ITerminal }
+import sbt.internal.util.Terminal as ITerminal
 import sbt.internal.worker.{ ClientJobParams, FilePath, JvmRunInfo, RunInfo }
 import sbt.io.IO
 import sbt.protocol.Serialization

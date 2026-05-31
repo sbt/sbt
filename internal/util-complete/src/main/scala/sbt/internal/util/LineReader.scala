@@ -9,7 +9,7 @@
 package sbt.internal.util
 
 import java.io.*
-import java.util.{ List as JList }
+import java.util.List as JList
 
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
@@ -215,7 +215,7 @@ abstract class JLine extends LineReader {
     val lines0 = """\r?\n""".r.split(prompt)
     lines0.length match {
       case 0 | 1 => handleProgress(prompt)
-      case _ =>
+      case _     =>
         val lines = lines0.toList map handleProgress
         // Workaround for regression jline/jline2#205
         reader.getOutput.write(lines.init.mkString("\n") + "\n")

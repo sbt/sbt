@@ -1,7 +1,7 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import org.apache.ivy.core.module.descriptor.{ Artifact as IvyArtifact }
+import org.apache.ivy.core.module.descriptor.Artifact as IvyArtifact
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.resolve.ResolveOptions
 import sbt.internal.librarymanagement.ivy.InlineIvyConfiguration

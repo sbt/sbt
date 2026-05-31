@@ -12,7 +12,7 @@ import sbt.internal.inc.ReflectUtilities
 import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
-import sbt.internal.util.Util.{ nilSeq }
+import sbt.internal.util.Util.nilSeq
 
 /**
  * An operation that can be executed from the sbt console.
@@ -185,7 +185,7 @@ object Command {
   def process(command: String, state: State, onParseError: String => Unit): State = {
     (if (command.contains(";")) parse(command, state.combinedParser)
      else parse(command, state.nonMultiParser)) match {
-      case Right(s) => s() // apply command.  command side effects happen here
+      case Right(s)     => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log.error(errMsg)
         onParseError(errMsg)
@@ -279,7 +279,7 @@ object Help {
   def message(h: Help, arg: Option[String]): String =
     arg match {
       case Some(x) => detail(x, h.detail)
-      case None =>
+      case None    =>
         val brief = aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
         val more = h.more
         if (more.isEmpty)

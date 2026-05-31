@@ -267,7 +267,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         if isCompleteBlob(casFile, Digest(r)) then
           r match
             case p: PathBasedFile => Some(p)
-            case _ =>
+            case _                =>
               val content = IO.read(casFile.toFile())
               Some(StringVirtualFile1(r.id, content))
         else None
@@ -380,7 +380,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         currentItem match
           case p if !Files.exists(p)        => doSync(ref, tempPath)
           case p if Digest.sameDigest(p, d) => ()
-          case p =>
+          case p                            =>
             IO.delete(p.toFile())
             doSync(ref, tempPath)
     // sync deleted files

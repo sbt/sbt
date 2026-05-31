@@ -26,7 +26,7 @@ object Test extends std.TaskExtra:
 
   val f: Values => Any = {
     case (Result.Value(aa), Result.Value(bb), Result.Value(cc)) => s"$aa $bb $cc"
-    case x =>
+    case x                                                      =>
       val cs = x.productIterator.toList.collect { case Result.Inc(x) =>
         x
       } // workaround for double definition bug

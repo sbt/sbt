@@ -235,7 +235,7 @@ private[sbt] object MainLoop:
         def getOrSet[T](state: State, key: AttributeKey[T], value: Extracted => T): State = {
           state.get(key) match {
             case Some(_) => state
-            case _ =>
+            case _       =>
               if (state.get(Keys.stateBuildStructure).isDefined) {
                 val extracted = Project.extract(state)
                 state.put(key, value(extracted))
@@ -376,12 +376,12 @@ private[sbt] object MainLoop:
       case State.Continue       => ExitCode.Success
       case State.ClearGlobalLog => ExitCode.Success
       case State.KeepLastLog    => ExitCode.Success
-      case ret: State.Return =>
+      case ret: State.Return    =>
         ret.result match
           case exit: xsbti.Exit  => ExitCode(exit.code().toLong)
           case _: xsbti.Continue => ExitCode.Success
           case _: xsbti.Reboot   => ExitCode.Success
-          case x =>
+          case x                 =>
             val clazz = if (x eq null) "" else " (class: " + x.getClass + ")"
             state.log.debug(s"Unknown main result: $x$clazz")
             ExitCode.Unknown

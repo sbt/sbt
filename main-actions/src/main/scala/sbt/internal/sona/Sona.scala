@@ -114,7 +114,7 @@ class SonaClient(reqTransform: Request => Request, uploadRequestTimeout: FiniteD
         waitForDeploy(deploymentId, deploymentName, publishingType, attempt + 1, log)
       case DeploymentState.PUBLISHED if publishingType == PublishingType.Automatic   => ()
       case DeploymentState.VALIDATED if publishingType == PublishingType.UserManaged => ()
-      case DeploymentState.VALIDATED =>
+      case DeploymentState.VALIDATED                                                 =>
         Thread.sleep(sleepSec * 1000L)
         waitForDeploy(deploymentId, deploymentName, publishingType, attempt + 1, log)
       case _ =>

@@ -9,7 +9,7 @@
 package sbt.internal.util
 package complete
 
-import java.lang.Character.{ toLowerCase as lower }
+import java.lang.Character.toLowerCase as lower
 
 /** @author Paul Phillips */
 object EditDistance {

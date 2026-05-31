@@ -67,7 +67,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
     val module = depRes.moduleDescriptor(desc)
 
     depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
-      case Left(x) => throw x.resolveException
+      case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
@@ -87,7 +87,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
     val module = depRes.moduleDescriptor(desc)
 
     depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
-      case Left(x) => throw x.resolveException
+      case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
@@ -108,7 +108,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
     val module = depRes.moduleDescriptor(desc)
 
     depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
-      case Left(x) => throw x.resolveException
+      case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
@@ -130,7 +130,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
     val module = depRes.moduleDescriptor(desc)
 
     depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
-      case Left(x) => throw x.resolveException
+      case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
@@ -154,7 +154,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
     val module = depRes.moduleDescriptor(desc)
 
     depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
-      case Left(x) => throw x.resolveException
+      case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>

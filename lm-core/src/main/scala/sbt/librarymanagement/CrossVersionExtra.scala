@@ -122,11 +122,11 @@ private[librarymanagement] abstract class CrossVersionFunctions {
       binaryVersion: String
   ): Option[String => String] =
     cross match {
-      case _: Disabled => None
-      case b: Binary   => append(b.prefix + binaryVersion + b.suffix)
-      case c: Constant => append(c.value)
-      case _: Patch    => append(patchFun(fullVersion))
-      case f: Full     => append(f.prefix + fullVersion + f.suffix)
+      case _: Disabled    => None
+      case b: Binary      => append(b.prefix + binaryVersion + b.suffix)
+      case c: Constant    => append(c.value)
+      case _: Patch       => append(patchFun(fullVersion))
+      case f: Full        => append(f.prefix + fullVersion + f.suffix)
       case c: For3Use2_13 =>
         val compat =
           if (binaryVersion == "3" || binaryVersion.startsWith("3.0.0")) "2.13"

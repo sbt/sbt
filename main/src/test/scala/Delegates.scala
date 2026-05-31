@@ -86,7 +86,7 @@ object Delegates extends Properties {
         keysGen.forAll.map { keys =>
           allDelegates(keys) { (key, ds) =>
             key.project match {
-              case Zero => success // filtering out of testing
+              case Zero                          => success // filtering out of testing
               case Select(rr: ResolvedReference) =>
                 rr match {
                   case BuildRef(_) =>
@@ -114,7 +114,7 @@ object Delegates extends Properties {
         keysGen.forAll.map { keys =>
           allDelegates(keys) { (key, ds) =>
             key.config match {
-              case Zero => success
+              case Zero           => success
               case Select(config) =>
                 key.project match {
                   case Select(p @ ProjectRef(_, _)) =>
@@ -168,7 +168,7 @@ object Delegates extends Properties {
 
     def loop(cur: Scope, acc: List[Scope], rem: List[Seq[Scope => Scope]]): Seq[Scope] =
       rem match {
-        case Nil => acc
+        case Nil     => acc
         case x :: xs =>
           x flatMap { mod =>
             val s = mod(cur)

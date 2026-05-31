@@ -924,7 +924,7 @@ object BuildServerProtocol {
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
     Keys.compile.result.value match {
-      case Result.Value(_) => StatusCode.Success
+      case Result.Value(_)   => StatusCode.Success
       case Result.Inc(cause) =>
         cause.getCause match {
           case _: InterruptedException => StatusCode.Cancelled
@@ -1003,7 +1003,7 @@ object BuildServerProtocol {
           val testTasks: Seq[Def.Initialize[Task[Unit]]] = items.map { item =>
             val scope = workspace.scopes(item.target)
             item.classes.toList match {
-              case Nil => Def.task(())
+              case Nil     => Def.task(())
               case classes =>
                 (scope / testOnly)
                   .toTask(" " + classes.mkString(" "))
@@ -1103,7 +1103,7 @@ object BuildServerProtocol {
 
   private def scalaTestClassesTask: Initialize[Task[Seq[ScalaTestClassesItem]]] = Def.task {
     Keys.definedTests.?.value match {
-      case None => Vector.empty
+      case None              => Vector.empty
       case Some(definitions) =>
         val frameworks: Seq[Framework] = Keys.loadedTestFrameworks.?.value
           .map(_.values.toSeq)

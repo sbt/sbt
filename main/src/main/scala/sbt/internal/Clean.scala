@@ -23,7 +23,7 @@ import sbt.io.IO
 import sbt.nio.Keys.*
 import sbt.nio.file.*
 import sbt.nio.file.syntax.pathToPathOps
-import sbt.nio.file.Glob.{ GlobOps }
+import sbt.nio.file.Glob.GlobOps
 import sbt.util.{ DiskActionCacheStore, Level }
 import sbt.internal.util.complete.SizeParser
 import sjsonnew.JsonFormat

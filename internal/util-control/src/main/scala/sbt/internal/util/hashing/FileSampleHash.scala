@@ -11,7 +11,7 @@ package sbt.internal.util.hashing
 
 import java.io.{ File, RandomAccessFile }
 import java.nio.ByteBuffer
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 import scala.util.Using
 
 object FileSampleHash:

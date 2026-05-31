@@ -165,7 +165,7 @@ object Pkg:
     for option <- conf.options do
       option match
         case PackageOption.JarManifest(mergeManifest) => mergeManifests(manifest, mergeManifest)
-        case PackageOption.MainClass(mainClassName) =>
+        case PackageOption.MainClass(mainClassName)   =>
           main.put(Attributes.Name.MAIN_CLASS, mainClassName)
         case PackageOption.ManifestAttributes(attributes*) => main.asScala ++= attributes
         case PackageOption.FixedTimestamp(value)           => ()

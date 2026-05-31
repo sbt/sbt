@@ -144,7 +144,7 @@ private[sbt] final class Execute(
 
     results.get(target) match {
       case Some(result) => retire(node, result)
-      case None =>
+      case None         =>
         state(node) = Calling
         addChecked(target)
         addCaller(node, target)

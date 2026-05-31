@@ -10,7 +10,7 @@ package sbt
 
 import java.io.File
 import java.nio.file.Path
-import sbt.internal.inc.classpath.{ ClassLoaderCache as IncClassLoaderCache }
+import sbt.internal.inc.classpath.ClassLoaderCache as IncClassLoaderCache
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.AttributeKey

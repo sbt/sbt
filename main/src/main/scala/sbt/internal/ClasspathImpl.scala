@@ -420,7 +420,7 @@ private[sbt] object ClasspathImpl {
   )(confString: String): String => Seq[String] = {
     val ms: Seq[(String, Seq[String])] =
       trim(confString.split("->", 2)) match {
-        case x :: Nil => for (a <- parseList(x, masterConfs)) yield (a, default(a))
+        case x :: Nil      => for (a <- parseList(x, masterConfs)) yield (a, default(a))
         case x :: y :: Nil =>
           val target = parseList(y, depConfs);
           for (a <- parseList(x, masterConfs)) yield (a, target)
@@ -491,7 +491,7 @@ private[sbt] object ClasspathImpl {
       index: Map[String, Set[String]],
   ): Boolean =
     index.get(mid.organization) match
-      case None => false
+      case None        => false
       case Some(names) =>
         names.exists(n => mid.name == n || mid.name.startsWith(n + "_"))
 
@@ -517,7 +517,7 @@ private[sbt] object ClasspathImpl {
     val index = directDepIndex(directDeps)
     val rootKey = (projectId.organization, projectId.name)
     fullReport.configuration(ConfigRef(config.name)) match
-      case None => jars
+      case None               => jars
       case Some(configReport) =>
         val modules = configReport.modules
         // Callers use resolved names (e.g., cats-core_3).
@@ -577,7 +577,7 @@ private[sbt] object ClasspathImpl {
   ): Classpath =
     mode match
       case DependencyMode.Transitive => internalCp
-      case _ =>
+      case _                         =>
         val allowed = allowedInternalKeys(mode, projectRef, data, deps)
         internalCp.filter: entry =>
           entry.get(Keys.moduleIDStr) match

@@ -185,8 +185,8 @@ object Resolvers {
 
   private[sbt] def shouldUpdate(dir: File, strategy: RepositoryUpdateStrategy): Boolean =
     strategy match {
-      case RepositoryUpdateStrategy.Manual => false
-      case RepositoryUpdateStrategy.Always => true
+      case RepositoryUpdateStrategy.Manual          => false
+      case RepositoryUpdateStrategy.Always          => true
       case RepositoryUpdateStrategy.Every(interval) =>
         val marker = new File(dir, LastUpdatedFileName)
         if (!marker.exists()) true
@@ -253,7 +253,7 @@ object Resolvers {
         result: Set[URI]
     ): Set[URI] =
       queue match {
-        case Nil => result
+        case Nil         => result
         case ref :: rest =>
           if (visited.contains(ref)) go(rest, visited, result)
           else {

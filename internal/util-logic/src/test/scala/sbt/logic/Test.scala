@@ -35,7 +35,7 @@ object LogicTest extends Properties("Logic") {
    */
 
   def expect(result: Either[LogicException, Matched], expected: Set[Atom]) = result match {
-    case Left(_) => false
+    case Left(_)    => false
     case Right(res) =>
       val actual = res.provenSet
       if (actual != expected)

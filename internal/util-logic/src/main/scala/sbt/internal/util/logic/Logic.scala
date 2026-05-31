@@ -245,7 +245,7 @@ object Logic {
       state: Matched
   ): Matched =
     applyAll(clauses, factsToProcess) match {
-      case None => state // all of the remaining clauses failed on the new facts
+      case None          => state // all of the remaining clauses failed on the new facts
       case Some(applied) =>
         val (proven, unprovenClauses) = findProven(applied)
         val processedFacts = state.add(keepPositive(factsToProcess))
@@ -397,7 +397,7 @@ object Logic {
           else (And(newLits): Formula)
         Some(newF) // 1.
       }
-    case True => Some(True)
+    case True         => Some(True)
     case lit: Literal => // define in terms of And
       substitute(And(Set(lit)), facts)
   }

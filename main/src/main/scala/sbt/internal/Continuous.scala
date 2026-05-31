@@ -176,7 +176,7 @@ private[sbt] object Continuous {
     // Extract all of the globs that we will monitor during the continuous build.
     val inputs = {
       val configs = scopedKey.get(internalDependencyConfigurations).getOrElse(Nil)
-      import WatchTransitiveDependencies.{ Arguments as DArguments }
+      import WatchTransitiveDependencies.Arguments as DArguments
       val args = new DArguments(scopedKey, extracted, compiledMap, logger, configs, state)
       WatchTransitiveDependencies.transitiveDynamicInputs(args)
     }
@@ -204,7 +204,7 @@ private[sbt] object Continuous {
   private[sbt] def validateCommands(state: State, commands: Seq[String]): Unit = {
     commands.filter(cmd => Parser.parse(cmd, state.combinedParser).isLeft) match {
       case invalid if invalid.isEmpty =>
-      case invalid =>
+      case invalid                    =>
         val msg = s"Invalid commands: ${invalid.mkString("'", "', '", ",")}"
         throw new IllegalArgumentException(msg)
     }
@@ -222,14 +222,14 @@ private[sbt] object Continuous {
     @tailrec def impl(current: String): Seq[ScopedKey[?]] = {
       Parser.parse(current, scopedKeyParser) match {
         case Right(scopedKeys: Seq[ScopedKey[?]]) => scopedKeys
-        case Left(e) =>
+        case Left(e)                              =>
           val aliases = BasicCommands.allAliases(state)
           aliases.collectFirst { case (`command`, aliased) => aliased } match {
             case Some(aliased) => impl(aliased)
-            case None =>
+            case None          =>
               Parser.parse(command, state.combinedParser) match {
                 case Right(_) => globalWatchSettingKey.scopedKey :: Nil
-                case _ =>
+                case _        =>
                   val msg = s"Error attempting to extract scope from $command: $e."
                   throw new IllegalStateException(msg)
               }
@@ -409,7 +409,7 @@ private[sbt] object Continuous {
           if (configs.size == 1) { // Only allow custom start messages for single tasks
             ws.startMessage match
               case Some(sm) => sm(count, project, commands).foreach(logger.info(_))
-              case None =>
+              case None     =>
                 Watch.defaultStartWatch(count, project, commands).foreach(logger.info(_))
           }
           Watch.Ignore
@@ -543,8 +543,8 @@ private[sbt] object Continuous {
           }
         } else {
           fileStampCache.update(path, FileStamper.Hash) match {
-            case (None, Some(_)) => Some(Creation(event))
-            case (Some(_), None) => Some(Deletion(event))
+            case (None, Some(_))    => Some(Creation(event))
+            case (Some(_), None)    => Some(Deletion(event))
             case (Some(p), Some(c)) =>
               if (forceTrigger) {
                 val msg =
@@ -1216,7 +1216,7 @@ private[sbt] object ContinuousCommands {
           val extracted = Project.extract(state)
           val repo = state.get(globalFileTreeRepository) match {
             case Some(r) => localRepo(r)
-            case _ =>
+            case _       =>
               throw new IllegalStateException(s"No file tree repository was found for $state")
           }
           val cache = new FileStamp.Cache
@@ -1252,7 +1252,7 @@ private[sbt] object ContinuousCommands {
             },
             afterCommand = state => {
               val newWatchState = state.get(watchStates) match {
-                case None => state
+                case None     => state
                 case Some(ws) =>
                   ws.get(channelName) match {
                     case None     => state
@@ -1297,7 +1297,7 @@ private[sbt] object ContinuousCommands {
     } { case (_, newState) => newState() }
   private[sbt] val runWatchCommand = watchCommand(runWatch) { (channel, state) =>
     state.get(watchStates).flatMap(_.get(channel)) match {
-      case None => state
+      case None     => state
       case Some(cs) =>
         val pre = StashOnFailure :: s"$preWatch $channel" :: Nil
         val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: Nil
@@ -1328,7 +1328,7 @@ private[sbt] object ContinuousCommands {
         )
       }
       val ws = state.get(watchStates) match {
-        case None => throw new IllegalStateException("no watch states")
+        case None     => throw new IllegalStateException("no watch states")
         case Some(ws) =>
           ws.get(channel.name)
             .getOrElse(throw new IllegalStateException(s"no watch state for ${channel.name}"))
@@ -1337,7 +1337,7 @@ private[sbt] object ContinuousCommands {
         // Use a Left so that the client can immediately exit watch via <enter>
         case Watch.CancelWatch => Left(s"$stopWatch ${channel.name}")
         case Watch.Trigger     => Right(s"$runWatch ${channel.name}")
-        case Watch.Reload =>
+        case Watch.Reload      =>
           val rewatch = s"$ContinuousExecutePrefix ${ws.count} ${cs.commands mkString "; "}"
           cs.terminationAction = Some(Watch.Reload)
           stop.map(_ :: "reload" :: rewatch :: Nil mkString "; ")

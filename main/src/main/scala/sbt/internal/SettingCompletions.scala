@@ -13,7 +13,7 @@ import sbt.internal.util.{ AttributeKey, complete, Relation, Util }
 import sbt.util.Show
 import sbt.librarymanagement.Configuration
 
-import ProjectExtra.{ relation }
+import ProjectExtra.relation
 import Def.{ ScopedKey, Setting }
 import Scope.Global
 import sbt.ScopeAxis.{ Select, This, Zero }

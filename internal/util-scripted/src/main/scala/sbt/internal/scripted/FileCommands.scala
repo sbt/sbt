@@ -70,7 +70,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       val combined = globs(exprs1) match
         case Nil      => sys.error("unexpected Nil")
         case g :: Nil => g
-        case g :: gs =>
+        case g :: gs  =>
           gs.foldLeft(g) { (acc, g) =>
             acc || g
           }
@@ -164,7 +164,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       commandName -> {
         case Nil         => scriptError("No paths specified for " + commandName + " command.")
         case path :: Nil => scriptError("No destination specified for " + commandName + " command.")
-        case paths =>
+        case paths       =>
           val mapped = fromStrings(paths)
           val map = mapper(mapped.last)
           IO.copy(mapped.init.pair(map))

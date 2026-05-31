@@ -170,13 +170,13 @@ object ScopeFilter {
 
   private def referenceOrderingKey(reference: Reference): String =
     reference match
-      case ThisBuild          => "0"
-      case ThisProject        => "1"
-      case LocalAggregate     => "2"
-      case LocalRootProject   => "3"
-      case LocalProject(id)   => s"4:$id"
-      case BuildRef(build)    => s"5:${uriOrderingKey(build)}"
-      case RootProject(build) => s"6:${uriOrderingKey(build)}"
+      case ThisBuild                  => "0"
+      case ThisProject                => "1"
+      case LocalAggregate             => "2"
+      case LocalRootProject           => "3"
+      case LocalProject(id)           => s"4:$id"
+      case BuildRef(build)            => s"5:${uriOrderingKey(build)}"
+      case RootProject(build)         => s"6:${uriOrderingKey(build)}"
       case ProjectRef(build, project) =>
         s"7:${uriOrderingKey(build)}:$project"
 
@@ -197,7 +197,7 @@ object ScopeFilter {
 
   private def attributeValueOrderingKey(value: Any): String =
     value match
-      case null => "null"
+      case null                    => "null"
       case m: collection.Map[?, ?] =>
         m.iterator
           .map((k, v) => s"${attributeValueOrderingKey(k)}->${attributeValueOrderingKey(v)}")

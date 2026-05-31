@@ -228,7 +228,7 @@ OPTIONS
         val modules =
           versionFilter match {
             case Some(version) => GraphModuleId(org, name, version) :: Nil
-            case None =>
+            case None          =>
               graph.nodes.withFilter(m => m.id.organization == org && m.id.name == name).map(_.id)
           }
         val graphWidth = asciiGraphWidth.value
@@ -401,7 +401,7 @@ OPTIONS
   def crossName(module: Any) =
     module match {
       case ic: ModuleDescriptorConfiguration => ic.module.name
-      case _ =>
+      case _                                 =>
         throw new IllegalStateException(
           "sbt-dependency-graph plugin currently only supports ModuleDescriptorConfiguration of ivy settings (the default in sbt)"
         )

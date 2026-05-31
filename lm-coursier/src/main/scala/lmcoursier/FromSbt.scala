@@ -1,6 +1,6 @@
 package lmcoursier
 
-import coursier.ivy.IvyXml.{ mappings as ivyXmlMappings }
+import coursier.ivy.IvyXml.mappings as ivyXmlMappings
 import lmcoursier.definitions.{
   Classifier,
   Configuration,

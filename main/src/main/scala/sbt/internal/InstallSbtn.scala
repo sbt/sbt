@@ -41,7 +41,7 @@ private[sbt] object InstallSbtn {
     val shell = if (hasConsole) getShell(term) else "none"
     shell match {
       case "none" =>
-      case s =>
+      case s      =>
         val completion = shellCompletions(s)
         val completionLocation = baseDirectory.resolve("completions").resolve(completion)
         downloadCompletion(completion, version, completionLocation)
@@ -157,7 +157,7 @@ private[sbt] object InstallSbtn {
       term.printStream.flush()
       term.inputStream.read() match {
         case 110 => term.printStream.println()
-        case c =>
+        case c   =>
           term.printStream.println(c.toChar)
           // put the export at the bottom so that the ~/.sbt/1.0/bin/sbtn is least preferred
           // but still on the path
@@ -172,7 +172,7 @@ private[sbt] object InstallSbtn {
       term.printStream.flush()
       term.inputStream.read() match {
         case 110 =>
-        case c =>
+        case c   =>
           term.printStream.println(c.toChar)
           if (shell == "zsh") {
             // delete the .zcompdump file because it can prevent the new completions from

@@ -371,7 +371,7 @@ class CoursierDependencyResolution(
         case Some(lockData) =>
           LockedArtifactsRun.fetchFromLockFile(lockData, cache0, verbosityLevel, log) match {
             case Right(arts) => Right(arts)
-            case Left(err) =>
+            case Left(err)   =>
               if (verbosityLevel >= 1) {
                 log.warn(s"Failed to fetch from lock file: $err, falling back to normal fetch")
               }

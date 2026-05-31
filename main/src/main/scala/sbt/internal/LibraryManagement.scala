@@ -13,7 +13,7 @@ import java.io.{ File, IOException }
 import java.net.{ URI, URL }
 import java.util.concurrent.Callable
 
-import gigahorse.{ AuthScheme }
+import gigahorse.AuthScheme
 import gigahorse.support.apachehttp.Gigahorse
 import sbt.Def.ScopedKey
 import sbt.internal.librarymanagement.*
@@ -66,7 +66,7 @@ private[sbt] object LibraryManagement {
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
         lm.update(module, updateConfig, uwConfig, log)
       val report = reportOrUnresolved match {
-        case Right(report0) => report0
+        case Right(report0)          => report0
         case Left(unresolvedWarning) =>
           unresolvedWarning.lines.foreach(log.warn(_))
           throw unresolvedWarning.resolveException
@@ -230,7 +230,7 @@ private[sbt] object LibraryManagement {
     val mod = lm.moduleDescriptor(base, dependencies, scalaModuleInfo)
     val report = lm.update(mod, updateConfiguration, uwconfig, log) match {
       case Right(r) => r
-      case Left(w) =>
+      case Left(w)  =>
         throw w.resolveException
     }
     val key = (m: ModuleID) => (m.organization, m.name, m.revision)
@@ -361,7 +361,7 @@ private[sbt] object LibraryManagement {
         // following copied from https://github.com/coursier/sbt-coursier/blob/9173406bb399879508aa481fed16efda72f55820/modules/sbt-lm-coursier/src/main/scala/sbt/hack/Foo.scala
         val shouldForce = isRoot || {
           fup match
-            case None => false
+            case None         => false
             case Some(period) =>
               val fullUpdateOutput = cacheDirectory / "output"
               val now = System.currentTimeMillis
@@ -585,7 +585,7 @@ private[sbt] object LibraryManagement {
         val digestAlgo = algo.toLowerCase match
           case "md5"  => sbt.util.Digest.Md5
           case "sha1" => sbt.util.Digest.Sha1
-          case other =>
+          case other  =>
             throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
         val digest = sbt.util.Digest(digestAlgo, file.toPath)
         val checksumFile = new File(file.getPath + "." + algo.toLowerCase)
@@ -732,7 +732,7 @@ private[sbt] object LibraryManagement {
         val digestAlgo = algo.toLowerCase match
           case "md5"  => sbt.util.Digest.Md5
           case "sha1" => sbt.util.Digest.Sha1
-          case other =>
+          case other  =>
             throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
         val digest = sbt.util.Digest(digestAlgo, file.toPath)
         val content = digest.hashHexString
@@ -814,7 +814,7 @@ private[sbt] object LibraryManagement {
       val digestAlgo = algo.toLowerCase match
         case "md5"  => sbt.util.Digest.Md5
         case "sha1" => sbt.util.Digest.Sha1
-        case other =>
+        case other  =>
           throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
       val digest = sbt.util.Digest(digestAlgo, targetFile.toPath)
       val checksumFile = new File(targetFile.getPath + "." + algo.toLowerCase)
@@ -920,7 +920,7 @@ private[sbt] object LibraryManagement {
           val digestAlgo = algo.toLowerCase match
             case "md5"  => sbt.util.Digest.Md5
             case "sha1" => sbt.util.Digest.Sha1
-            case other =>
+            case other  =>
               throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
           val digest = sbt.util.Digest(digestAlgo, file.toPath)
           val content = digest.hashHexString

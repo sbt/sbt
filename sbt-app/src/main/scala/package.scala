@@ -8,7 +8,7 @@
 
 import sbt.nio.FileStamp
 import sjsonnew.JsonFormat
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 
 import sbt.librarymanagement.{ Configuration, ConfigurationMacro }
 

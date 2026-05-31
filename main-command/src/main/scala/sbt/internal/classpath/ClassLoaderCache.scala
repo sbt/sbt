@@ -200,7 +200,7 @@ private[sbt] class ClassLoaderCache(
   private def get(key: Key, f: () => ClassLoader): ClassLoader = {
     scalaProviderKey match {
       case Some(k) if k == key => k.toClassLoader
-      case _ =>
+      case _                   =>
         def addLoader(): ClassLoader = {
           val ref = mkReference(key, f())
           val loader = ref.get
@@ -211,7 +211,7 @@ private[sbt] class ClassLoaderCache(
         lock.synchronized {
           delegate.get(key) match {
             case null => addLoader()
-            case ref =>
+            case ref  =>
               ref.get match {
                 case null => addLoader()
                 case l    => l
@@ -223,7 +223,7 @@ private[sbt] class ClassLoaderCache(
   private def clear(lock: Object): Unit = {
     delegate.asScala.foreach {
       case (_, ClassLoaderReference(_, classLoader)) => close(classLoader)
-      case (_, r: Reference[ClassLoader]) =>
+      case (_, r: Reference[ClassLoader])            =>
         r.get match {
           case null        =>
           case classLoader => close(classLoader)

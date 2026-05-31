@@ -68,7 +68,7 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
   ): List[(StatementHandler, Statement)] = {
     parseAll(statements(stripQuotes), script) match {
       case Success(result, next) => result
-      case err: NoSuccess => {
+      case err: NoSuccess        => {
         val labelString = label.map("'" + _ + "' ").getOrElse("")
         sys.error("Could not parse test script, " + labelString + err.toString)
       }

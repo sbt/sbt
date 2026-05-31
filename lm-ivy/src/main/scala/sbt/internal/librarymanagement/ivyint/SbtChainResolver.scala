@@ -11,7 +11,7 @@ import org.apache.ivy.core.{ IvyContext, LogOptions }
 import org.apache.ivy.core.module.descriptor.DefaultModuleDescriptor
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
-import org.apache.ivy.core.module.descriptor.{ Artifact as IArtifact }
+import org.apache.ivy.core.module.descriptor.Artifact as IArtifact
 import org.apache.ivy.core.resolve.{ ResolveData, ResolvedModuleRevision }
 import org.apache.ivy.plugins.latest.LatestStrategy
 import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository as IFileRepository }
@@ -202,7 +202,7 @@ private[sbt] case class SbtChainResolver(
         val chosenPublicationDate = Option(publicationDate).orElse(Option(descriptorDate))
         chosenPublicationDate match {
           case Some(date) => date.getTime
-          case None =>
+          case None       =>
             val id = rmr.getId
             val resolvedResource = (resolver.findIvyFileRef(descriptor, data), rmr.getDescriptor)
             resolvedResource match {

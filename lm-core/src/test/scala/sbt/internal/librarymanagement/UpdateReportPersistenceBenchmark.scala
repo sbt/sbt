@@ -154,7 +154,7 @@ object UpdateReportPersistenceBenchmark:
     val iterations = args.headOption.flatMap(s => Try(s.toInt).toOption).getOrElse(500)
     run(iterations = iterations) match
       case Right(result) => println(formatResult(result))
-      case Left(error) =>
+      case Left(error)   =>
         System.err.println(error)
         sys.exit(1)
 

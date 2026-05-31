@@ -47,7 +47,7 @@ class ZincComponentManager(
 
     def createAndCache = {
       ifMissing match {
-        case IfMissing.Fail => notFound
+        case IfMissing.Fail      => notFound
         case d: IfMissing.Define =>
           d.run() // this is expected to have called define.
           if (d.useSecondaryCache) {
@@ -73,7 +73,7 @@ class ZincComponentManager(
    */
   def file(id: String)(ifMissing: IfMissing): File = {
     files(id)(ifMissing).toList match {
-      case x :: Nil => x
+      case x :: Nil          => x
       case xs if xs.size > 1 =>
         val canonical = xs.find(_.getName == s"$id.jar").getOrElse(xs.head)
         val toRemove = xs.filterNot(_ == canonical)

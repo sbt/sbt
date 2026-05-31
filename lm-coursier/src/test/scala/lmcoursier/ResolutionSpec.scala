@@ -53,7 +53,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
 
   private def unresolvedWarningLines(module: ModuleDescriptor): Seq[String] =
     lmEngine.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), log) match {
-      case Left(uw) => uw.lines
+      case Left(uw)      => uw.lines
       case Right(report) =>
         fail(s"Expected resolution to fail, but it succeeded with report: $report")
     }

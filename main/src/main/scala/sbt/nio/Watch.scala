@@ -77,8 +77,8 @@ object Watch {
       override def toString: String = s"$name($path)"
     }
     def fromIO(fileEvent: FileEvent[FileAttributes]): Watch.Event = fileEvent match {
-      case c @ FileEvent.Creation(p, _) => new Watch.Creation(p, c.occurredAt.value.finite)
-      case d @ FileEvent.Deletion(p, _) => new Watch.Deletion(p, d.occurredAt.value.finite)
+      case c @ FileEvent.Creation(p, _)  => new Watch.Creation(p, c.occurredAt.value.finite)
+      case d @ FileEvent.Deletion(p, _)  => new Watch.Deletion(p, d.occurredAt.value.finite)
       case u @ FileEvent.Update(p, _, _) =>
         new Watch.Update(p, u.occurredAt.value.finite)
     }
@@ -555,7 +555,7 @@ object Watch {
       .filterNot(c => watchPrefixes.exists(c.commandLine.trim.startsWith))
     action match {
       case Run(commands) => state.copy(remainingCommands = commands ++ rc)
-      case Reload =>
+      case Reload        =>
         state.copy(remainingCommands = "reload".toExec :: s"$prefix $count $command".toExec :: rc)
       case _: HandleError => state.copy(remainingCommands = rc).fail
       case _              => state.copy(remainingCommands = rc)

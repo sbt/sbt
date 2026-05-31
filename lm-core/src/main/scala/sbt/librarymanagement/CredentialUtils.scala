@@ -23,7 +23,7 @@ object CredentialUtils:
 
   def toDirect(c: Credentials): Credentials.DirectCredentials = c match
     case dc: Credentials.DirectCredentials => dc
-    case fc: Credentials.FileCredentials =>
+    case fc: Credentials.FileCredentials   =>
       loadCredentials(fc.path) match
         case Left(err) => sys.error(err)
         case Right(dc) => dc

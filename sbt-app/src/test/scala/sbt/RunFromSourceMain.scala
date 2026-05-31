@@ -98,7 +98,7 @@ object RunFromSourceMain {
         context
       ) map exit
     catch {
-      case r: xsbti.FullReload => Some((baseDir, r.arguments.toSeq))
+      case r: xsbti.FullReload            => Some((baseDir, r.arguments.toSeq))
       case scala.util.control.NonFatal(e) =>
         e.printStackTrace(); errorAndExit(e.toString)
     }
@@ -158,7 +158,7 @@ object RunFromSourceMain {
         val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
         val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
-          case Left(w) => throw w.resolveException
+          case Left(w)  => throw w.resolveException
           case Right(_) =>
             val jars = (scalaHome1Temp ** "*.jar").get()
             assert(jars.nonEmpty, s"no jars for scala $scalaVersion")

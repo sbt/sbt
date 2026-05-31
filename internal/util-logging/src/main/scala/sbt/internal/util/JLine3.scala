@@ -50,7 +50,7 @@ private[sbt] object JLine3 {
     var res = -2
     while (i < 4 && res == -2) {
       inputStream.read() match {
-        case -1 => res = -1
+        case -1   => res = -1
         case byte =>
           bytes(i) = byte.toByte
           i += 1
@@ -154,7 +154,7 @@ private[sbt] object JLine3 {
           if (buffer.isEmpty) fillBuffer()
           buffer.take match {
             case i if i == -1 => -1
-            case i =>
+            case i            =>
               buf(0) = i.toChar
               1
           }

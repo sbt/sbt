@@ -230,7 +230,7 @@ object Parser extends ParserMain:
     a.ifValid {
       a.result match {
         case Some(av) => success(f(av))
-        case None =>
+        case None     =>
           a match {
             case m: MapParser[?, ?] => m.map(f)
             case _                  => new MapParser(a, f)
@@ -311,7 +311,7 @@ object Parser extends ParserMain:
       repeated match {
         case _: Invalid if min == 0 => invalidButOptional
         case i: Invalid             => i
-        case _ =>
+        case _                      =>
           repeated.result match {
             case Some(value) =>
               success(revAcc reverse_::: value :: Nil) // revAcc should be Nil here
@@ -517,7 +517,7 @@ trait ParserMain {
     def loop(i: Int, a: Parser[T]): Either[() => (Seq[String], Int), T] =
       a match {
         case Invalid(f) => Left(() => (f.errors, i))
-        case _ =>
+        case _          =>
           val ci = i + 1
           if (ci >= s.length)
             a.resultEmpty.toEither.left.map { msgs0 => () =>
@@ -578,7 +578,7 @@ trait ParserMain {
     if (a.valid) {
       a.result match {
         case Some(av) => success(av)
-        case None =>
+        case None     =>
           new ParserWithExamples(a, completions, maxNumberOfExamples, removeInvalidExamples)
       }
     } else a
@@ -590,7 +590,7 @@ trait ParserMain {
   ): Parser[String] =
     t match {
       case i: Invalid => if (partial && seen.nonEmpty) success(seen.mkString) else i
-      case _ =>
+      case _          =>
         if (t.result.isEmpty)
           new MatchedString(t, seen, partial)
         else
@@ -1029,7 +1029,7 @@ private final class Repeat[T](
   lazy val resultEmpty: Result[Seq[T]] = {
     val partialAccumulatedOption =
       partial match {
-        case None => (Value(accumulatedReverse): Result[List[T]])
+        case None                 => (Value(accumulatedReverse): Result[List[T]])
         case Some(partialPattern) =>
           partialPattern.resultEmpty.map(_ :: accumulatedReverse)
       }

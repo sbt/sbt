@@ -28,7 +28,7 @@ object IvyCredentials {
   def allDirect(sc: Seq[Credentials]): Seq[Credentials.DirectCredentials] = sc map toDirect
   def toDirect(c: Credentials): Credentials.DirectCredentials = c match {
     case dc: Credentials.DirectCredentials => dc
-    case fc: Credentials.FileCredentials =>
+    case fc: Credentials.FileCredentials   =>
       loadCredentials(fc.path) match {
         case Left(err) => sys.error(err)
         case Right(dc) => dc

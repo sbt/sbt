@@ -597,7 +597,7 @@ private[sbt] object Load {
 
   def addResolvers(unit: BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
     unit.definitions.builds.flatMap(_.buildLoaders).toList match {
-      case Nil => loaders
+      case Nil     => loaders
       case x :: xs =>
         val resolver = xs.foldLeft(x) { _ | _ }
         if (isRoot) loaders.setRoot(resolver) else loaders.addNonRoot(unit.uri, resolver)
@@ -693,7 +693,7 @@ private[sbt] object Load {
       ref match
         case LocalAggregate => ()
         case ThisProject    => ()
-        case _ =>
+        case _              =>
           val ProjectRef(refURI, refID) = Scope.resolveProjectRef(uri, rootProject, ref)
           val loadedUnit = builds(refURI)
           if (!loadedUnit.defined.contains(refID)) {
@@ -1249,7 +1249,7 @@ private[sbt] object Load {
         def expandPluginSettings(auto: AddSettings): Seq[Setting[?]] =
           auto match
             case p: AutoPlugins => autoPluginSettings(p)
-            case q: Sequence =>
+            case q: Sequence    =>
               q.sequence.foldLeft(Seq.empty[Setting[?]]) { (b, add) =>
                 b ++ expandPluginSettings(add)
               }
@@ -1262,7 +1262,7 @@ private[sbt] object Load {
           auto match
             case User => machineWideUserSettings.cachedProjectLoaded(loadedPlugins.loader)
             case BuildScalaFiles => p.settings
-            case q: Sequence =>
+            case q: Sequence     =>
               q.sequence.foldLeft(Seq.empty[Setting[?]]) { (b, add) =>
                 b ++ expandSettings(add)
               }
@@ -1300,7 +1300,7 @@ private[sbt] object Load {
     def expandCommonSettings(auto: AddSettings): Vector[Setting[?]] =
       auto match
         case sf: DefaultSbtFiles => settings(sbtFiles.filter(sf.include))
-        case q: Sequence =>
+        case q: Sequence         =>
           q.sequence.foldLeft(Vector.empty[Setting[?]]) { (b, add) =>
             b ++ expandCommonSettings(add)
           }

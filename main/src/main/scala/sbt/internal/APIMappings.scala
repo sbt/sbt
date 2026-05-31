@@ -30,7 +30,7 @@ private[sbt] object APIMappings {
   ): Option[(HashedVirtualFileRef, URI)] =
     entry.get(Keys.entryApiURL) match
       case Some(u) => Some((entry.data, URI(u)))
-      case None =>
+      case None    =>
         entry.get(Keys.moduleIDStr).flatMap { str =>
           val mid = Classpaths.moduleIdJsonKeyFormat.read(str)
           extractFromID(entry.data, mid, log)

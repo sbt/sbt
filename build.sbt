@@ -205,10 +205,10 @@ lazy val sbtRoot: Project = (project in file("."))
       val dir = nativeInstallDirectory.?.value
       val target = Def.spaceDelimited("").parsed.headOption match {
         case Some(p) => file(p).toPath
-        case _ =>
+        case _       =>
           dir match {
             case Some(d) => d / "sbtn"
-            case _ =>
+            case _       =>
               val msg = "Expected input parameter <path>: installNativeExecutable /usr/local/bin"
               throw new IllegalStateException(msg)
           }

@@ -69,7 +69,7 @@ private[sbt] object InMemoryCacheStore {
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
       store.get[T](path) match {
         case Some((v, `lastModified`)) if v == value => // nothing has changed
-        case _ =>
+        case _                                       =>
           store.remove(path)
           cacheStore.write(value)
           val newLastModified = System.currentTimeMillis

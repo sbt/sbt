@@ -63,8 +63,7 @@ object WorkerExchange:
     ) ++
       (socketOpt match
         case Some(s) => Seq("--tcp", s.getLocalPort().toString())
-        case _       => Nil
-      )
+        case _       => Nil)
     val onStdoutLine: String => Unit = connectionType match
       case WorkerConnection.Stdio => notifyListeners
       case _                      => (line) => scala.Console.out.println(line)

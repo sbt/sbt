@@ -13,8 +13,7 @@ object ConfigLoader:
         Using.resource(Source.fromFile(file))(_.getLines().toList.flatMap: line =>
           val trimmed = line.trim
           if trimmed.isEmpty || trimmed.startsWith("#") then Nil
-          else Seq(trimmed)
-        )
+          else Seq(trimmed))
       catch { case _: Exception => Nil }
 
   def loadSbtOpts(cwd: File, sbtHome: File): Seq[String] =

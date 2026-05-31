@@ -9,7 +9,7 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ isPrivate, isPublic, isStatic }
 import sbt.internal.inc.ScalaInstance

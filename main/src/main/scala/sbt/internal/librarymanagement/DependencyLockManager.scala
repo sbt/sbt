@@ -18,7 +18,7 @@ object DependencyLockManager:
   def read(lockFile: File, log: Logger): Option[LockFileData] =
     LockFile.read(lockFile) match
       case Right(data) => Some(data)
-      case Left(err) =>
+      case Left(err)   =>
         if lockFile.exists() then log.warn(s"Failed to read lock file: $err")
         None
 

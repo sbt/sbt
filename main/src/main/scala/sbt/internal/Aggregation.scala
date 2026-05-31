@@ -55,7 +55,7 @@ object Aggregation {
     xs match {
       case Seq(KeyValue(_, x: Seq[?])) => print(x.mkString("* ", "\n* ", ""))
       case Seq(KeyValue(_, x))         => print(x.toString)
-      case _ =>
+      case _                           =>
         xs foreach { kv =>
           print(display.show(kv.key))
           kv.value match {

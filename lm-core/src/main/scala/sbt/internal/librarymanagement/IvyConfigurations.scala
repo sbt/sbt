@@ -10,7 +10,7 @@ private[librarymanagement] abstract class InlineConfigurationFunctions {
   ) =
     if (explicitConfigurations.isEmpty) {
       defaultConfiguration match {
-        case Some(Configurations.DefaultIvyConfiguration) => Configurations.Default :: Nil
+        case Some(Configurations.DefaultIvyConfiguration)   => Configurations.Default :: Nil
         case Some(Configurations.DefaultMavenConfiguration) =>
           Configurations.defaultMavenConfigurations
         case _ => Nil

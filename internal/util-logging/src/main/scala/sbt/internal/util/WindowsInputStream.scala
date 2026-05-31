@@ -62,7 +62,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
    */
   private def readConsoleInput(): Array[Byte] = {
     WindowsSupport.readConsoleInput(1) match {
-      case null => Array.empty
+      case null   => Array.empty
       case events =>
         val sb = new StringBuilder();
         events.foreach { event =>

@@ -8,7 +8,7 @@
 
 package sbt
 
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 import java.io.File
 import java.net.URI
 import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }

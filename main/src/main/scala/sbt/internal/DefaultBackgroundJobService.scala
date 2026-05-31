@@ -210,7 +210,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match {
     case handle: ThreadJobHandle @unchecked => f(handle)
     case _: DeadHandle @unchecked           => () // nothing to stop or wait for
-    case other =>
+    case other                              =>
       sys.error(
         s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"
       )
@@ -570,7 +570,7 @@ private[sbt] object DefaultBackgroundJobService {
       val newService = new DefaultBackgroundJobService(path)
       backgroundJobServices.putIfAbsent(path, newService) match {
         case null => newService
-        case s =>
+        case s    =>
           newService.shutdown()
           s
       }

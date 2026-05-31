@@ -514,7 +514,7 @@ trait Appender extends AutoCloseable {
       contentType match {
         case "sbt.internal.util.TraceEvent" => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
         case "sbt.internal.util.ProgressEvent" =>
-        case _ =>
+        case _                                 =>
           LogExchange.stringCodec[AnyRef](contentType) match {
             case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
               codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }

@@ -84,7 +84,7 @@ object CrossVersionUtil {
   private[sbt] def binaryScala3Version(full: String): String = full match {
     case ReleaseV(maj, _, _, _)                                                  => maj
     case NonReleaseV_n(maj, min, patch, _) if min.toLong > 0 || patch.toLong > 0 => maj
-    case BinCompatV(maj, min, patch, stageOrNull, _) =>
+    case BinCompatV(maj, min, patch, stageOrNull, _)                             =>
       val stage = if (stageOrNull != null) stageOrNull else ""
       binaryScala3Version(s"$maj.$min.$patch$stage")
     case _ => full
@@ -118,7 +118,7 @@ object CrossVersionUtil {
   def binaryScalaVersion(full: String): String =
     full match {
       // Handle dynamic Scala 3 version patterns like "3-latest.candidate"
-      case DynamicScala3V(maj) => maj
+      case DynamicScala3V(maj)        => maj
       case _ if full.startsWith("2.") =>
         binaryVersionWithApi(full, TransitionScalaVersion)(
           scalaApiVersion
@@ -135,7 +135,7 @@ object CrossVersionUtil {
   def earlyScalaVersion(full: String): String =
     full match {
       // Handle dynamic Scala 3 version patterns like "3-latest.candidate"
-      case DynamicScala3V(maj) => maj
+      case DynamicScala3V(maj)        => maj
       case _ if full.startsWith("2.") =>
         partialVersion(full) match
           case Some((major, minor)) => s"$major.$minor"

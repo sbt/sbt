@@ -777,7 +777,7 @@ object BuiltinCommands {
 
   def last: Command = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
     case (s, Some(sks)) => lastImpl(s, sks, None)
-    case (s, None) =>
+    case (s, None)      =>
       for (logFile <- lastLogFile(s)) yield Output.last(logFile, printLast)
       keepLastLog(s)
   }
@@ -1292,7 +1292,9 @@ object BuiltinCommands {
         if (!suppress) {
           Banner(version).foreach(banner => state.log.info(banner))
         }
-      } catch { case _: IOException => /* Don't let errors in this command prevent startup */ }
+      } catch {
+        case _: IOException => /* Don't let errors in this command prevent startup */
+      }
       state.put(bannerHasBeenShown, true)
     } else state
   }

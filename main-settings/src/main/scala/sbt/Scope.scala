@@ -370,13 +370,13 @@ object Scope:
     }
 
     scope.project match {
-      case Zero | This => globalProjectDelegates(scope)
+      case Zero | This  => globalProjectDelegates(scope)
       case Select(proj) =>
         val resolvedProj = resolve(proj)
         val projAxes: Seq[ScopeAxis[ResolvedReference]] =
           resolvedProj match {
             case pr: ProjectRef => index.project(pr)
-            case br: BuildRef =>
+            case br: BuildRef   =>
               List(Select(br): ScopeAxis[ResolvedReference], Zero: ScopeAxis[ResolvedReference])
           }
         expandDelegateScopes(resolvedProj)(projAxes)

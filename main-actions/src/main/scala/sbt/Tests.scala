@@ -262,7 +262,7 @@ object Tests {
 
     for (option <- config.options) {
       option match {
-        case Filter(include) => testFilters += include; ()
+        case Filter(include)   => testFilters += include; ()
         case Filters(includes) =>
           if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.")
           else orderedFilters = includes
@@ -502,7 +502,7 @@ object Tests {
     } else {
       def sequence(tasks: List[Task[Output]], acc: List[Output]): Task[List[Output]] =
         tasks match {
-          case Nil => task(acc.reverse)
+          case Nil      => task(acc.reverse)
           case hd :: tl =>
             hd flatMap { out =>
               sequence(tl, out :: acc)

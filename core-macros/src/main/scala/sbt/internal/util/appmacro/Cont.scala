@@ -4,7 +4,7 @@ package util
 package appmacro
 
 import java.io.File
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import scala.quoted.*
@@ -203,7 +203,7 @@ trait Cont:
             $applicativeExpr.pure[A1] { () => $body }
           }
         eitherTree match
-          case Left(_) => pure0[Effect[A]](inner(body).asExprOf[Effect[A]])
+          case Left(_)  => pure0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
             flatten(pure0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
@@ -296,7 +296,7 @@ trait Cont:
                             s"qual (${qual}) not found in ${inputs.map(_.qual)}"
                           )
                         applyTuple(p0, br.inputTupleTypeRepr, idx)
-                    }
+                      }
                   val modifiedBody =
                     transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
                   cacheConfigExprOpt match
@@ -467,7 +467,7 @@ trait Cont:
                 // todo cache opt-out attribute
                 inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
                 oldTree
-        }
+          }
       val exprWithConfig =
         cacheConfigExprOpt.map(config => '{ $config; $expr }).getOrElse(expr)
       val body = transformWrappers(exprWithConfig.asTerm, record, Symbol.spliceOwner)

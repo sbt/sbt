@@ -88,7 +88,7 @@ object IncrementalTest:
     (includeFilters, excludeArgs) match
       case (Nil, Nil) => Seq(const(true))
       case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
-      case _ =>
+      case _          =>
         includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
 
   private[sbt] def cacheInput(

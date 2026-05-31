@@ -43,7 +43,7 @@ object DagSpecification extends Properties("Dag") {
     val seen = new HashSet[TestDag]
     def iterate(remaining: List[TestDag]): Boolean = {
       remaining match {
-        case Nil => true
+        case Nil          => true
         case node :: tail =>
           if (node.dependencies.forall(seen.contains) && !seen.contains(node)) {
             seen += node

@@ -100,7 +100,7 @@ private[sbt] class TaskProgress(
           val loop = schedule(sleepDuration, recurring = true)(doReport())
           reportLoop.getAndSet(loop) match {
             case null =>
-            case l =>
+            case l    =>
               reportLoop.set(l)
               loop.close()
           }
@@ -129,7 +129,7 @@ private[sbt] class TaskProgress(
   override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit =
     active.remove(task) match {
       case null =>
-      case a =>
+      case a    =>
         a.close()
         if (exceededThreshold(task, threshold)) report()
     }
@@ -200,7 +200,7 @@ private[sbt] class TaskProgress(
     val name = taskName(task)
     name.lastIndexOf('/') match {
       case -1 => name
-      case i =>
+      case i  =>
         var j = i + 1
         while (name(j) == ' ') j += 1
         name.substring(j)

@@ -10,7 +10,7 @@
 package sbt.internal.util.hashing
 
 import java.io.File
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 
 trait FileHash:
   def hash(file: File): Long

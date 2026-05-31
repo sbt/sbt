@@ -568,9 +568,8 @@ class BuildServerTest extends AbstractServerTest {
     svr.session
       .waitForParamsInNotificationMsg[PublishDiagnosticsParams](10.seconds) { p =>
         p.textDocument.uri.toString.contains("main.scala.html") &&
-        p.diagnostics.exists(d =>
-          d.severity.contains(1L) && d.message.contains("not found: value title_")
-        )
+        p.diagnostics
+          .exists(d => d.severity.contains(1L) && d.message.contains("not found: value title_"))
       }
       .get
     IO.write(

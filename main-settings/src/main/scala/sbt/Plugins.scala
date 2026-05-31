@@ -215,7 +215,7 @@ object Plugins extends PluginsFunctions {
             clauses,
             (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet
           ) match {
-            case Left(problem) => throw AutoPluginException(problem)
+            case Left(problem)  => throw AutoPluginException(problem)
             case Right(results) =>
               log.debug(s"  :: deduced result: ${results}")
               val selectedAtoms: List[Atom] = results.ordered
@@ -346,7 +346,7 @@ ${listConflicts(conflicting)}""")
 
   private[sbt] def overrideWith(current: Plugins, update: Plugins): Plugins = {
     val opposite: Set[Basic] = flatten(update).map {
-      case Exclude(p) => p: Basic
+      case Exclude(p)    => p: Basic
       case p: AutoPlugin =>
         Exclude(p): Basic
     }.toSet
@@ -356,7 +356,7 @@ ${listConflicts(conflicting)}""")
   private[sbt] def remove(a: Plugins, del: Set[Basic]): Plugins = a match {
     case b: Basic => if (del(b)) Empty else b
     case Empty    => Empty
-    case And(ns) =>
+    case And(ns)  =>
       val removed = ns.filterNot(del)
       if (removed.isEmpty) Empty else And(removed)
   }

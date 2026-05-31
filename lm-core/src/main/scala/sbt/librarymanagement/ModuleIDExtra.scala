@@ -88,7 +88,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
    */
   def cross(v: CrossVersion): ModuleID =
     withCrossVersion(CrossVersion.getPrefixSuffix(this.crossVersion) match {
-      case ("", "") => v
+      case ("", "")         => v
       case (prefix, suffix) =>
         CrossVersion.getPrefixSuffix(v) match {
           case ("", "") => CrossVersion.setPrefixSuffix(v, prefix, suffix)

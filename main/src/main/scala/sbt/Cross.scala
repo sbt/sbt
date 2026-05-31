@@ -51,7 +51,7 @@ object Cross {
         versionArg.split("=", 2) match {
           case Array(home) if new File(home).exists() =>
             ScalaHomeVersion(new File(home), None, force)
-          case Array(v) => NamedScalaVersion(v, force)
+          case Array(v)       => NamedScalaVersion(v, force)
           case Array(v, home) =>
             ScalaHomeVersion(new File(home), Some(v).filterNot(_.isEmpty), force)
         }
@@ -216,8 +216,8 @@ object Cross {
           .sortBy(_._1)
         commandsByVersion.flatMap { (v, commands) =>
           commands match {
-            case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
-            case Seq()  => Nil // should be unreachable
+            case Seq(c)                    => Seq(s"$SwitchCommand $verbose $v $c")
+            case Seq()                     => Nil // should be unreachable
             case multi if fullArgs.isEmpty =>
               Seq(s"$SwitchCommand $verbose $v all ${multi.mkString(" ")}")
             case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
@@ -353,7 +353,7 @@ object Cross {
           scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
             case Nil          => (project, None, scalaVersions)
             case Seq(version) => (project, Some(version), scalaVersions)
-            case multiple =>
+            case multiple     =>
               sys.error(
                 s"Multiple crossScalaVersions matched query '$version': ${multiple.mkString(", ")}"
               )

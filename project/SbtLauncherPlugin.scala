@@ -19,7 +19,7 @@ object SbtLauncherPlugin extends AutoPlugin {
     rawSbtLaunchJar := {
       Classpaths.managedJars(SbtLaunchConfiguration, Set("jar"), update.value).headOption match {
         case Some(jar) => jar.data
-        case None =>
+        case None      =>
           sys.error(
             s"Could not resolve sbt launcher!, dependencies := ${libraryDependencies.value}"
           )

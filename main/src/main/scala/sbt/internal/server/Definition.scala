@@ -186,7 +186,7 @@ private[sbt] object Definition {
   )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean): Any = {
     cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent) -> None)) match {
       case null => new AnyRef
-      case set =>
+      case set  =>
         val newSet = set
           .filterNot { case ((file, _, _), _) => file == cacheFile }
           .+((cacheFile, useBinary, useConsistent) -> None)
@@ -227,7 +227,7 @@ private[sbt] object Definition {
       override def run(): Unit =
         try {
           AnalysesAccess.cache.getIfPresent(AnalysesKey) match {
-            case null => result.success(Nil)
+            case null   => result.success(Nil)
             case caches =>
               val (working, uninitialized) = caches.partition {
                 case (_, Some(_)) => true

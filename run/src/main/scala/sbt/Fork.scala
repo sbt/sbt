@@ -148,7 +148,7 @@ object Fork {
   private def booleanOpt(name: String): Option[Boolean] =
     sys.props.get(name) match {
       case Some(x) => parseBoolean(x)
-      case _ =>
+      case _       =>
         sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
           case Some(x) => parseBoolean(x)
           case _       => None
@@ -202,7 +202,7 @@ object Fork {
     }
     val process = Process(jpb)
     outputStrategy.getOrElse(StdoutOutput: OutputStrategy) match
-      case StdoutOutput => process.run(connectInput = false)
+      case StdoutOutput        => process.run(connectInput = false)
       case out: BufferedOutput =>
         out.logger.buffer { process.run(out.logger, connectInput = false) }
       case out: LoggedOutput      => process.run(out.logger, connectInput = false)

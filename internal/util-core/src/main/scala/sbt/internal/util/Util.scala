@@ -93,7 +93,7 @@ object Util:
   lazy val javaHome: Path =
     sys.env.get("JAVA_HOME") match
       case Some(home) => Paths.get(home)
-      case None =>
+      case None       =>
         if sys.props("java.home").endsWith("jre") then Paths.get(sys.props("java.home")).getParent()
         else Paths.get(sys.props("java.home"))
 

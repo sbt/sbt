@@ -362,7 +362,7 @@ final class NetworkChannel(
 
   def notifyEvent(event: EventMessage): Unit = {
     event match {
-      case entry: LogEvent => logMessage(entry.level, entry.message)
+      case entry: LogEvent        => logMessage(entry.level, entry.message)
       case entry: ExecStatusEvent =>
         getPendingRequest(entry.execId) match {
           case Some(request) =>

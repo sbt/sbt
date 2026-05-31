@@ -17,7 +17,7 @@ import sbt.io.IO
 import sbt.nio.file.FileAttributes
 import sbt.util.Digest
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
-import xsbti.compile.analysis.{ Stamp as XStamp }
+import xsbti.compile.analysis.Stamp as XStamp
 import xsbti.VirtualFileRef
 import scala.jdk.OptionConverters.*
 

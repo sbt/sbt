@@ -716,7 +716,7 @@ object Terminal {
     override def read(b: Array[Byte]): Int = read(b, 0, b.length)
     override def read(b: Array[Byte], off: Int, len: Int): Int = {
       read() match {
-        case -1 => -1
+        case -1   => -1
         case byte =>
           b(off) = byte.toByte
           1
@@ -743,12 +743,12 @@ object Terminal {
       override def run(): Unit = while (running.get) {
         bootInputStreamHolder.get match {
           case null =>
-          case is =>
+          case is   =>
             def readFrom(inputStream: InputStream) =
               try {
                 if (running.get) {
                   inputStream.read match {
-                    case -1 =>
+                    case -1                          =>
                     case `NO_BOOT_CLIENTS_CONNECTED` =>
                       if (!Terminal.hasConsole) {
                         result.put(-1)

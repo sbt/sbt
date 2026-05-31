@@ -13,7 +13,7 @@ import java.net.{ URL, URLClassLoader }
 import java.util.concurrent.Callable
 
 import sbt.internal.classpath.ClassLoaderCache
-import sbt.internal.inc.classpath.{ ClassLoaderCache as IncClassLoaderCache }
+import sbt.internal.inc.classpath.ClassLoaderCache as IncClassLoaderCache
 import sbt.internal.util.complete.{ HistoryCommands, Parser }
 import sbt.internal.util.*
 import sbt.util.Logger
@@ -270,7 +270,7 @@ object State {
         f(cmd, s1)
       }
       s.remainingCommands match {
-        case Nil => exit(true)
+        case Nil     => exit(true)
         case x :: xs =>
           (x.execId, x.source) match {
             /*
@@ -394,14 +394,14 @@ object State {
       s.get(BasicKeys.extendedClassLoaderCache).foreach(_.close())
       val cache = newClassLoaderCache
       s.configuration.provider.scalaProvider.loader match {
-        case null => // This can happen in scripted
+        case null            => // This can happen in scripted
         case fullScalaLoader =>
           val jars = s.configuration.provider.scalaProvider.jars
           val (library, rest) = jars.partition(_.getName == "scala-library.jar")
           library.toList match {
             case l @ lj :: Nil =>
               fullScalaLoader.getParent match {
-                case null => // This can happen for old launchers.
+                case null          => // This can happen for old launchers.
                 case libraryLoader =>
                   cache.cachedCustomClassloader(l, () => new UncloseableURLLoader(l, libraryLoader))
                   fullScalaLoader match {

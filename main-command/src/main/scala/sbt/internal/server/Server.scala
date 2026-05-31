@@ -90,7 +90,7 @@ private[sbt] object Server {
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
             }
           } match {
-            case Failure(e) => p.failure(e)
+            case Failure(e)            => p.failure(e)
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
               serverSocketHolder.getAndSet(serverSocket) match {
@@ -132,7 +132,7 @@ private[sbt] object Server {
       def tryClient(f: => Socket): Unit = {
         if (portfile.exists) {
           Try { f } match {
-            case Failure(_) => ()
+            case Failure(_)      => ()
             case Success(socket) =>
               socket.close()
               throw new AlreadyRunningException()

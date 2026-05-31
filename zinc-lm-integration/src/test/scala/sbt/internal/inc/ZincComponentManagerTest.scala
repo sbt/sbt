@@ -103,7 +103,7 @@ object ZincComponentManagerTest extends Properties:
       Result.failure.log("expected InvalidComponent to be thrown")
     catch
       case _: InvalidComponent => Result.success
-      case e: Throwable =>
+      case e: Throwable        =>
         Result.failure.log(s"unexpected exception: ${e.getClass.getName}: ${e.getMessage}")
 
   def testFileSingle: Result = withTempDir: tmpDir =>

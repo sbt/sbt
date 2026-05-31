@@ -89,8 +89,7 @@ object Assign {
 
   val dyn: Def.Initialize[Task[Int]] = Def.taskDyn {
     val a = ak.value
-    if a < 1 then Def.task { 1 }
-    else Def.task { 0 }
+    if a < 1 then Def.task { 1 } else Def.task { 0 }
   }
 
   import DefaultParsers.*

@@ -11,7 +11,7 @@ package sbt
 import scala.collection.mutable.ListBuffer
 
 import sbt.internal.util.IDSet
-import Incomplete.{ Value as IValue }
+import Incomplete.Value as IValue
 import scala.jdk.CollectionConverters.*
 
 /**

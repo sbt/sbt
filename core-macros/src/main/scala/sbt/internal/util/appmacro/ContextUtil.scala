@@ -101,7 +101,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
           case Some(annot) =>
             annot.asExprOf[cacheLevel] match
               case '{ cacheLevel(include = Array.empty[CacheLevelTag](using $_)) } => Nil
-              case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) } =>
+              case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) }      =>
                 include.value.get.toList
               case _ => sys.error(Printer.TreeStructure.show(annot) + " does not match")
           case _ =>
@@ -119,14 +119,14 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       case Apply(TypeApply(_, _), List(t @ Ident(_))) =>
         t.symbol.getAnnotation(cacheLevelSym) match
           case Some(_) => cacheLevelsForSym(t.symbol)
-          case None =>
+          case None    =>
             t.symbol.getAnnotation(transientSym) match
               case Some(_) => Nil
               case _       => CacheLevelTag.all.toList
       case u =>
         u.symbol.getAnnotation(cacheLevelSym) match
           case Some(_) => cacheLevelsForSym(u.symbol)
-          case None =>
+          case None    =>
             u.symbol.getAnnotation(transientSym) match
               case Some(_) => Nil
               case _       => CacheLevelTag.all.toList
@@ -136,7 +136,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       case Some(annot) if annot.symbol.owner.name == "cacheLevel" =>
         annot.asExprOf[cacheLevel] match
           case '{ cacheLevel(include = Array.empty[CacheLevelTag](using $_)) } => Nil
-          case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) } =>
+          case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) }      =>
             include.value.get
           case _ => report.errorAndAbort(Printer.TreeStructure.show(annot) + " does not match")
       case _ => CacheLevelTag.all.toList

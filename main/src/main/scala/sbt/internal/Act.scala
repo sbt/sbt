@@ -178,15 +178,16 @@ object Act {
   ): Seq[Parser[ParsedKey]] =
     for {
       conf <- configs(confAmb, defaultConfigs, proj, index)
-    } yield for {
-      taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
-      task = resolveTask(taskAmb)
-      key <- key(index, proj, conf, task, keyMap)
-      extra <- extraAxis(keyMap, IMap.empty)
-    } yield {
-      val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
-      ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
-    }
+    } yield
+      for {
+        taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
+        task = resolveTask(taskAmb)
+        key <- key(index, proj, conf, task, keyMap)
+        extra <- extraAxis(keyMap, IMap.empty)
+      } yield {
+        val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
+        ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
+      }
 
   def makeScopedKey(
       proj: Option[ResolvedReference],
@@ -246,7 +247,7 @@ object Act {
   private def keys(ss: Seq[ParsedKey]): Seq[ScopedKey[?]] = ss.map(_.key)
   def selectByConfig(ss: Seq[ParsedKey]): Seq[ParsedKey] =
     ss match {
-      case Seq() => Nil
+      case Seq()         => Nil
       case Seq(x, tail*) => // select the first configuration containing a valid key
         tail.takeWhile(_.key.scope.config == x.key.scope.config) match {
           case Seq() => x :: Nil
@@ -531,7 +532,7 @@ object Act {
       for
         keys <-
           action match
-            case SingleAction => akp
+            case SingleAction                           => akp
             case ShowAction | PrintAction | MultiAction =>
               for pairs <- rep1sep(akp, token(Space))
               yield pairs.flatten
@@ -547,7 +548,7 @@ object Act {
       structure: BuildStructure,
   ): Seq[(ScopedKey[?], Option[ProjectQuery])] =
     pairs.filter {
-      case (_, None) => true
+      case (_, None)           => true
       case (keys, Some(query)) =>
         val f = query.buildQuery(structure)
         keys.scope.project.toOption match

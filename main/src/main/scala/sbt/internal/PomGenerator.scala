@@ -143,7 +143,8 @@ private[sbt] object PomGenerator:
             <name>{dev.name}</name>
             <url>{dev.url}</url>
             {
-            if dev.email != null && dev.email.nonEmpty then <email>{dev.email}</email>
+            if dev.email != null && dev.email.nonEmpty then
+              <email>{dev.email}</email>
             else NodeSeq.Empty
           }
           </developer>
@@ -240,7 +241,7 @@ private[sbt] object PomGenerator:
 
   private def getScopeAndOptional(configurations: Option[String]): (Option[String], Boolean) =
     configurations match
-      case None => (None, false)
+      case None          => (None, false)
       case Some(confStr) =>
         val confs =
           confStr.split(';').flatMap(_.split("->").head.trim.split(',')).map(_.trim).toSet
@@ -279,7 +280,7 @@ private[sbt] object PomGenerator:
 
   private def typeAndClassifierElems(dep: ModuleID): NodeSeq =
     dep.explicitArtifacts.headOption match
-      case None => NodeSeq.Empty
+      case None      => NodeSeq.Empty
       case Some(art) =>
         val classifier = art.classifier
         val baseType = Option(art.`type`).filter(_ != Artifact.DefaultType)

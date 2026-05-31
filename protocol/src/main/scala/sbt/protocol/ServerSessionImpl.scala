@@ -256,7 +256,7 @@ private[sbt] class ServerSessionImpl(
         case Some(msg) =>
           f(msg) match {
             case Some(result) => result
-            case None =>
+            case None         =>
               if (deadline.isOverdue())
                 throw new TimeoutException(s"Timeout waiting for response after $duration")
               else impl()

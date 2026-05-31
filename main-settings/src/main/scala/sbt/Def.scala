@@ -172,7 +172,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       project: Reference,
       trailingSlash: Boolean
   ): String = {
-    import Reference.{ display as displayRef }
+    import Reference.display as displayRef
     @tailrec def loop(ref: Reference): String = ref match {
       case ProjectRef(b, p) => if (b == current.build) loop(LocalProject(p)) else displayRef(ref)
       case BuildRef(b)      => if (b == current.build) loop(ThisBuild) else displayRef(ref)
@@ -256,10 +256,9 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   def toIParser[A1](p: Initialize[InputTask[A1]]): Initialize[State => Parser[Task[A1]]] =
     p(_.parser)
 
-  import std.SettingMacro.{
-    // settingDynMacroImpl,
-    settingMacroImpl
-  }
+  import std.SettingMacro.
+  // settingDynMacroImpl,
+  settingMacroImpl
   import std.*
 
   import language.experimental.macros
@@ -442,7 +441,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
         Def.stateKey.zipWith(in)((sTask, it) =>
           sTask map { s =>
             Parser.parse(arg, it.parser(s)) match
-              case Right(a) => Def.value[Task[A1]](a)
+              case Right(a)  => Def.value[Task[A1]](a)
               case Left(msg) =>
                 val indented = msg.linesIterator.map("   " + _).mkString("\n")
                 sys.error(s"Invalid programmatic input:\n$indented")
