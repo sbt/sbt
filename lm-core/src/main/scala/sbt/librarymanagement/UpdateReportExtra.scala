@@ -4,7 +4,7 @@
 package sbt.librarymanagement
 
 import java.io.File
-import java.{ util as ju }
+import java.util as ju
 
 private[librarymanagement] abstract class ConfigurationReportExtra {
   def configuration: ConfigRef

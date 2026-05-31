@@ -9,7 +9,7 @@
 package sbt
 package internal.testing
 
-import testing.{ Logger as TLogger }
+import testing.Logger as TLogger
 import sbt.internal.util.{ BufferedAppender, ManagedLogger, Terminal }
 import sbt.util.{ Level, ShowLines }
 import sbt.protocol.testing.*

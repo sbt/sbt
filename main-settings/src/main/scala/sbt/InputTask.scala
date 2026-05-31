@@ -26,7 +26,7 @@ final class InputTask[A1] private (val parser: State => Parser[Task[A1]]):
   def fullInput(in: String): InputTask[A1] =
     InputTask[A1](s =>
       Parser.parse(in, parser(s)) match {
-        case Right(v) => Parser.success(v)
+        case Right(v)  => Parser.success(v)
         case Left(msg) =>
           val indented = msg.linesIterator.map("   " + _).mkString("\n")
           Parser.failure(s"Invalid programmatic input:\n$indented")

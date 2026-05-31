@@ -130,10 +130,11 @@ object ParseKeySpec extends Properties {
       structure <- arbStructure
       // NOTE: Generating this after the structure improves shrinking
       mask <- maskGen
-      key <- for {
-        scope <- TestBuild.scope(structure.env)
-        key <- oneOf(structure.allAttributeKeys.toSeq)
-      } yield ScopedKey(scope, key)
+      key <-
+        for {
+          scope <- TestBuild.scope(structure.env)
+          key <- oneOf(structure.allAttributeKeys.toSeq)
+        } yield ScopedKey(scope, key)
       skm = StructureKeyMask(structure, key, mask)
     } yield skm)
       .filter(configExistsInIndex)

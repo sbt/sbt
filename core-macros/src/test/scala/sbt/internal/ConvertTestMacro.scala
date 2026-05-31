@@ -23,7 +23,7 @@ object ConvertTestMacro:
       (name: String, tpe: Type[a], qual: Term, replace: Term) =>
         convert1.convert[Boolean](name, qual) transform { (tree: Term) =>
           addTypeCon(tpe, tree, replace)
-      }
+        }
     convert1.transformWrappers(expr.asTerm, substitute, Symbol.spliceOwner).asExprOf[Boolean]
 
   class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)

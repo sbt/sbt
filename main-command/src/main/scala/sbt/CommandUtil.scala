@@ -60,7 +60,7 @@ object CommandUtil {
   def detail(selected: String, detailMap: Map[String, String]): String =
     detailMap.get(selected) match {
       case Some(exactDetail) => exactDetail
-      case None =>
+      case None              =>
         try {
           val details = searchHelp(selected, detailMap)
           if (details.isEmpty)

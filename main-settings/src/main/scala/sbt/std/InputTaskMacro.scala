@@ -140,7 +140,7 @@ object InputTaskMacro:
           .transform { (replacement: Term) =>
             inputBuf.append((name, TypeRepr.of[a](using tpe), qual, replacement))
             oldTree
-        }
+          }
     def genCreateFree(body: Term) =
       val init = expandTask[A1](true, body)
       '{
@@ -177,7 +177,7 @@ object InputTaskMacro:
       }
     val body = convert1.transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
     inputBuf.toList match
-      case Nil => genCreateFree(body)
+      case Nil                           => genCreateFree(body)
       case (_, tpe, _, paramTree) :: Nil =>
         tpe.asType match
           case '[a] => genCreateDyn[a](paramTree, body)

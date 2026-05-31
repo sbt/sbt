@@ -107,7 +107,7 @@ private[sbt] object BuildDef:
   ): Option[AnalysisContents] =
     Option(inMemoryAnalysisCache.getIfPresent(ref.id())) match
       case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
-      case _ =>
+      case _                                                          =>
         val v = value
         inMemoryAnalysisCache.put(ref.id(), (v, lastModified, sizeBytes))
         v

@@ -58,7 +58,7 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
   }
 
   def finish(state: State) = state match {
-    case None =>
+    case None                               =>
     case Some(SbtInstance(process, server)) =>
       try {
         send("exit", server)

@@ -229,7 +229,7 @@ object CoursierInputsTasks {
     val creds = sbt.Keys.allCredentials.value
       .flatMap {
         case dc: IvyCredentials.DirectCredentials => List(dc)
-        case fc: IvyCredentials.FileCredentials =>
+        case fc: IvyCredentials.FileCredentials   =>
           sbt.internal.librarymanagement.ivy.IvyCredentials.loadCredentials(fc.path) match {
             case Left(err) =>
               log.warn(s"$err, ignoring it")

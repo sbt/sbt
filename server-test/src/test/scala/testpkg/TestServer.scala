@@ -211,7 +211,7 @@ case class TestServer(
       catch { case _: IOException if attempt < 10 => None }
     res match {
       case Some(s) => s
-      case _ =>
+      case _       =>
         Thread.sleep(100)
         connect(attempt + 1)
     }

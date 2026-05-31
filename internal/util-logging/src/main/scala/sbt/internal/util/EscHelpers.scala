@@ -102,12 +102,12 @@ object EscHelpers {
     var leftDigit = -1
     while (i < bytes.length) {
       bytes(i) match {
-        case 27 => state = esc
+        case 27                                                       => state = esc
         case b if (state == esc || state == csi) && b >= 48 && b < 58 =>
           state = csi
           digit += b
         case '[' if state == esc => state = csi
-        case 8 =>
+        case 8                   =>
           state = 0
           index = index - 1
         case b if state == csi =>
@@ -165,7 +165,7 @@ object EscHelpers {
           state = csi
           digit += b
         case '[' if state == esc => state = csi
-        case 8 =>
+        case 8                   =>
           state = 0
           index = math.max(index - 1, 0)
         case b if state == csi =>
@@ -208,21 +208,21 @@ object EscHelpers {
     val digit = new ArrayBuffer[Byte]
     var leftDigit = -1
     bytes.foreach {
-      case 27 => state = esc
+      case 27                                                       => state = esc
       case b if (state == esc || state == csi) && b >= 48 && b < 58 =>
         state = csi
         digit += b
       case '[' if state == esc => state = csi
-      case 8 =>
+      case 8                   =>
         state = 0
         index = math.max(index - 1, 0)
       case b if state == csi =>
         leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
         state = 0
         b.toChar match {
-          case 'h' => index = math.max(index - 1, 0)
-          case 'D' => index = math.max(index - leftDigit, 0)
-          case 'C' => index = math.min(limit, math.min(index + leftDigit, res.length - 1))
+          case 'h'       => index = math.max(index - 1, 0)
+          case 'D'       => index = math.max(index - leftDigit, 0)
+          case 'C'       => index = math.min(limit, math.min(index + leftDigit, res.length - 1))
           case 'K' | 'J' =>
             if (leftDigit > 0) (0 until index).foreach(res(_) = 32)
             else res(index) = 32
@@ -232,7 +232,7 @@ object EscHelpers {
         }
         digit.clear()
       case b if state == esc => state = 0
-      case b =>
+      case b                 =>
         res(index) = b
         index += 1
         limit = math.max(limit, index)

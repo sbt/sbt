@@ -43,7 +43,7 @@ class ComponentManager(
     def notFound = invalid("Could not find required component '" + id + "'")
     def createAndCache =
       ifMissing match {
-        case IfMissing.Fail => notFound
+        case IfMissing.Fail      => notFound
         case d: IfMissing.Define =>
           d()
           if (d.cache) cache(id)
@@ -65,7 +65,7 @@ class ComponentManager(
   def file(id: String)(ifMissing: IfMissing): File =
     files(id)(ifMissing).toList match {
       case x :: Nil => x
-      case xs =>
+      case xs       =>
         invalid("Expected single file for component '" + id + "', found: " + xs.mkString(", "))
     }
   private def invalid(msg: String) = throw new InvalidComponent(msg)

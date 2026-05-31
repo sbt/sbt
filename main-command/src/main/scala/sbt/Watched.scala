@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.file.FileSystems
 
 import sbt.internal.LabeledFunctions.*
-import sbt.internal.io.{ Source }
+import sbt.internal.io.Source
 import sbt.io.*
 
 import scala.concurrent.duration.*
@@ -64,7 +64,7 @@ object Watched:
         FileSystems.getDefault.newWatchService()
       case Some("closewatch")    => closeWatch
       case _ if Properties.isMac => closeWatch
-      case _ =>
+      case _                     =>
         FileSystems.getDefault.newWatchService()
     }
   }

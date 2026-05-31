@@ -10,7 +10,7 @@ package sbt.internal.server
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.reporting.{ Diagnostic as ScalaDiagnostic }
+import dotty.tools.dotc.reporting.Diagnostic as ScalaDiagnostic
 import dotty.tools.dotc.util.SourcePosition
 import sbt.StandardMain.exchange
 import sbt.internal.EvalReporter

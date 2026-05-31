@@ -64,7 +64,7 @@ object Compiler:
       val managed = Keys.managedScalaInstance.value
       val configs = Keys.ivyConfigurations.value
       (sh, extraToolConf) match
-        case (Some(h), _) => scalaInstanceConfigFromHome(h)
+        case (Some(h), _)  => scalaInstanceConfigFromHome(h)
         case _ if !managed =>
           val extra = extraToolConf.getOrElse(Configurations.ScalaTool)
           if configs.contains(extra) then scalaInstanceConfigFromUpdate(extraToolConf)
@@ -191,7 +191,8 @@ object Compiler:
               """Upgrade the `scalaVersion` to fix the build. If upgrading the Scala compiler version is
                 |not possible (for example due to a regression in the compiler or a missing dependency),
                 |this error can be demoted by setting `allowUnsafeScalaLibUpgrade := true`.""".stripMargin
-            else s"""Note that the dependency classpath and the runtime classpath of your project
+            else
+              s"""Note that the dependency classpath and the runtime classpath of your project
                  |contain the newer $libName $libVer, even if the scalaVersion is $sv.
                  |Compilation (macro expansion) or using the Scala REPL in sbt may fail with a LinkageError.""".stripMargin
           val msg =

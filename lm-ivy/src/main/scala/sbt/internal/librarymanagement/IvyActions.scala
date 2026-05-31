@@ -18,7 +18,7 @@ import org.apache.ivy.core.module.descriptor.{
 }
 import org.apache.ivy.core.resolve.ResolveOptions
 import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver }
-import org.apache.ivy.util.filter.{ Filter as IvyFilter }
+import org.apache.ivy.util.filter.Filter as IvyFilter
 import sbt.io.{ IO, PathFinder }
 import sbt.util.Logger
 import sbt.librarymanagement.{ ModuleDescriptorConfiguration as InlineConfiguration, * }
@@ -149,7 +149,7 @@ object IvyActions {
             case Some(overrideRev) =>
               def updateAttrs(metadata: scala.xml.MetaData): scala.xml.MetaData = {
                 metadata match {
-                  case scala.xml.Null => scala.xml.Null
+                  case scala.xml.Null            => scala.xml.Null
                   case attr if attr.key == "rev" =>
                     new scala.xml.UnprefixedAttribute(
                       "rev",

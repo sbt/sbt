@@ -38,7 +38,7 @@ object PomExtraDependencyAttributes {
   ): Map[ModuleRevisionId, Map[String, String]] = {
     import scala.jdk.CollectionConverters.*
     (props.asScala get ExtraAttributesKey) match {
-      case None => Map.empty
+      case None      => Map.empty
       case Some(str) =>
         def processDep(m: ModuleRevisionId) = (simplify(m), filterCustomExtra(m, include = true))
         (for {
@@ -68,7 +68,7 @@ object PomExtraDependencyAttributes {
    */
   def getDependencyExtra(m: Map[String, String]): Map[ModuleRevisionId, Map[String, String]] =
     (m get ExtraAttributesKey) match {
-      case None => Map.empty
+      case None      => Map.empty
       case Some(str) =>
         def processDep(m: ModuleRevisionId) = (simplify(m), filterCustomExtra(m, include = true))
         readDependencyExtra(str).map(processDep).toMap

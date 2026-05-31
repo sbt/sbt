@@ -12,7 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 import testing.{ Task as TestTask, * }
-import org.scalatools.testing.{ Framework as OldFramework }
+import org.scalatools.testing.Framework as OldFramework
 import scala.annotation.tailrec
 import sbt.internal.util.ManagedLogger
 import sbt.protocol.testing.TestResult
@@ -69,7 +69,7 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
       case head :: tail =>
         try {
           Some(Class.forName(head, true, loader).getDeclaredConstructor().newInstance() match {
-            case newFramework: Framework => newFramework
+            case newFramework: Framework    => newFramework
             case oldFramework: OldFramework =>
               new sbt.internal.worker1.FrameworkWrapper(oldFramework)
           })

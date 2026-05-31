@@ -10,7 +10,7 @@ package sbt
 package internal
 package scripted
 
-import java.{ util as ju }
+import java.util as ju
 import java.net.URL
 
 final class FilteredLoader(parent: ClassLoader) extends ClassLoader(parent) {

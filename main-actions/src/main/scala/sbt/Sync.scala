@@ -200,8 +200,8 @@ object Sync {
     try {
       readUncaught[F](store)(using infoFormat)
     } catch {
-      case _: IOException  => (Relation.empty[File, File], Map.empty[File, F])
-      case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
+      case _: IOException         => (Relation.empty[File, File], Map.empty[File, F])
+      case _: ZipException        => (Relation.empty[File, File], Map.empty[File, F])
       case e: TranslatedException =>
         e.getCause match {
           case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])

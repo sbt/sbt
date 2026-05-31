@@ -91,7 +91,7 @@ abstract class CommandChannel {
       case "debug" => setLevel(Level.Debug, "debug")
       case "info"  => setLevel(Level.Info, "info")
       case "warn"  => setLevel(Level.Warn, "warn")
-      case cmd =>
+      case cmd     =>
         if (cmd.nonEmpty) appendExec(cmd, None)
         else false
     }

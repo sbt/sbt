@@ -99,7 +99,7 @@ object ErrorMessageAuthenticator {
     def doInstallIfIvy(original: Option[Authenticator]): Unit =
       original match {
         case Some(_: ErrorMessageAuthenticator) => // Ignore, we're already installed
-        case Some(ivy: IvyAuthenticator) =>
+        case Some(ivy: IvyAuthenticator)        =>
           installIntoIvy(ivy); ()
         case original => doInstall(original)
       }

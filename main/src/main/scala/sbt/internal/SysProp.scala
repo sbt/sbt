@@ -29,7 +29,7 @@ object SysProp:
   def booleanOpt(name: String): Option[Boolean] =
     sys.props.get(name) match {
       case Some(x) => parseBoolean(x)
-      case _ =>
+      case _       =>
         sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
           case Some(x) => parseBoolean(x)
           case _       => None
@@ -168,7 +168,7 @@ object SysProp:
       case "us" => ("µs", 3)
       case "ms" => ("ms", 6)
       case "s"  => ("sec", 9)
-      case x =>
+      case x    =>
         System.err.println(s"Unknown sbt.task.timings.unit: $x.\nUsing milliseconds.")
         ("ms", 6)
     }
@@ -181,7 +181,7 @@ object SysProp:
   def genBuildProps: Boolean =
     booleanOpt("sbt.genbuildprops") match {
       case Some(x) => x
-      case None =>
+      case None    =>
         booleanOpt("sbt.skip.version.write") match {
           case Some(skip) => !skip
           case None       => true
@@ -194,7 +194,7 @@ object SysProp:
       case "reload" => ReloadOnSourceChanges
       case "warn"   => WarnOnSourceChanges
       case "ignore" => IgnoreSourceChanges
-      case unknown =>
+      case unknown  =>
         System.err.println(s"Unknown $sysPropKey: $unknown.\nUsing warn.")
         sbt.nio.Keys.WarnOnSourceChanges
 

@@ -128,7 +128,7 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
       log
     ) match {
       case Left(unresolvedWarning) => Left(unresolvedWarning)
-      case Right(updateReport) =>
+      case Right(updateReport)     =>
         val allFiles =
           for {
             conf <- updateReport.configurations

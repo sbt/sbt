@@ -286,7 +286,7 @@ object Tracked {
     def save(store: CacheStore, value: I): Unit = {
       Hasher.hash(value) match {
         case USuccess(keyHash) => store.write[Long](keyHash.toLong)
-        case Failure(e) =>
+        case Failure(e)        =>
           if (isStrictMode) throw e
           else ()
       }
@@ -297,12 +297,12 @@ object Tracked {
         case USuccess(prev: Long) =>
           Hasher.hash(value) match {
             case USuccess(keyHash: Int) => keyHash.toLong != prev
-            case Failure(e) =>
+            case Failure(e)             =>
               if (isStrictMode) throw e
               else true
           }
         case Failure(_: EmptyCacheError) => true
-        case Failure(e) =>
+        case Failure(e)                  =>
           if (isStrictMode) throw e
           else true
       }

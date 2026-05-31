@@ -4,7 +4,7 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.{ util as ju }
+import java.util as ju
 import collection.mutable
 import collection.immutable.ArraySeq
 import org.apache.ivy.core.{ module, report, resolve }
@@ -12,7 +12,7 @@ import module.descriptor.{ Artifact as IvyArtifact, License as IvyLicense }
 import module.id.{ ModuleRevisionId, ModuleId as IvyModuleId }
 import report.{ ArtifactDownloadReport, ConfigurationResolveReport, ResolveReport }
 import resolve.{ IvyNode, IvyNodeCallers }
-import IvyNodeCallers.{ Caller as IvyCaller }
+import IvyNodeCallers.Caller as IvyCaller
 import ivyint.SbtDefaultDependencyDescriptor
 import sbt.librarymanagement.*, syntax.*
 

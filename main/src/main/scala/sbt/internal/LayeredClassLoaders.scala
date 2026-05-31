@@ -121,7 +121,7 @@ private[internal] class NativeLookup extends NativeLoader {
       case null =>
         findLibrary0(name) match {
           case null => null
-          case n =>
+          case n    =>
             mapped.put(name, n)
             NativeLibs.addNativeLib(n)
             n

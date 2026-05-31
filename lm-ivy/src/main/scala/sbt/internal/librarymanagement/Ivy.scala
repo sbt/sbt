@@ -674,7 +674,7 @@ private[sbt] object IvySbt {
     settings.setDefaultRepositoryCacheManager(manager)
   }
   def toIvyConfiguration(configuration: Configuration) = {
-    import org.apache.ivy.core.module.descriptor.{ Configuration as IvyConfig }
+    import org.apache.ivy.core.module.descriptor.Configuration as IvyConfig
     import IvyConfig.Visibility.*
     import configuration.*
     new IvyConfig(
@@ -758,7 +758,7 @@ private[sbt] object IvySbt {
     (m: ModuleID) =>
       m.crossVersion match
         case _: Disabled => m
-        case _ =>
+        case _           =>
           (platform, m.platformOpt) match
             case (Some(p), None) => addSuffix(m, p)
             case (_, Some(p))    => addSuffix(m, p)
@@ -812,8 +812,7 @@ private[sbt] object IvySbt {
   }
   private[sbt] def javaMap(m: Map[String, String], unqualify: Boolean = false) = {
     import scala.jdk.CollectionConverters.*
-    val map = if (unqualify) m map { (k, v) => (k.stripPrefix("e:"), v) }
-    else m
+    val map = if (unqualify) m map { (k, v) => (k.stripPrefix("e:"), v) } else m
     if (map.isEmpty) null else map.asJava
   }
 

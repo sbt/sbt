@@ -63,7 +63,7 @@ private[sbt] object ReadJsonFromInputStream {
                     consecutiveLineEndings += 1
                   case `carriageReturn` => onCarriageReturn = true
                   case -1               => running.set(false)
-                  case c =>
+                  case c                =>
                     if (c == newline) getLine()
                     else {
                       if (index >= headerBuffer.length) expandHeaderBuffer()
@@ -94,7 +94,7 @@ private[sbt] object ReadJsonFromInputStream {
           running.set(false)
           throw new ClosedChannelException
         case `carriageReturn` => onCarriageReturn = true
-        case c =>
+        case c                =>
           onCarriageReturn = false
           if (index >= headerBuffer.length) expandHeaderBuffer()
           headerBuffer(index) = c.toByte

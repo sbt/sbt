@@ -24,12 +24,12 @@ import org.apache.ivy.plugins.resolver.{
   SshResolver,
   URLResolver
 }
-import org.apache.ivy.plugins.repository.url.{ URLRepository as URLRepo }
+import org.apache.ivy.plugins.repository.url.URLRepository as URLRepo
 import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository as FileRepo }
 import java.io.{ File, IOException }
 import java.util.Date
 
-import org.apache.ivy.core.module.descriptor.{ Artifact as IArtifact }
+import org.apache.ivy.core.module.descriptor.Artifact as IArtifact
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DefaultArtifact
 import org.apache.ivy.core.report.DownloadReport

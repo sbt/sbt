@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ Path as NioPath }
+import java.nio.file.Path as NioPath
 import java.net.URI
 // import Project._
 import Keys.{
@@ -638,7 +638,8 @@ trait ProjectExtra extends Scoped.Syntax:
         case LoadAction.Current =>
           val base = s.configuration.baseDirectory
           projectReturn(s) match
-            case Nil => (setProjectReturn(s, base :: Nil), base); case x :: _ => (s, x)
+            case Nil    => (setProjectReturn(s, base :: Nil), base);
+            case x :: _ => (s, x)
 
         case LoadAction.Plugins =>
           val (newBase, oldStack) =

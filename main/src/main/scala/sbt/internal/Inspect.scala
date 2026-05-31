@@ -87,7 +87,7 @@ object Inspect {
     val extracted = Project.extract(s)
     import extracted.{ *, given }
     option match {
-      case Details(actual) => Project.details(extracted.structure, actual, sk)
+      case Details(actual)    => Project.details(extracted.structure, actual, sk)
       case DependencyTreeMode =>
         val basedir = new File(Project.session(s).current.build)
         Project

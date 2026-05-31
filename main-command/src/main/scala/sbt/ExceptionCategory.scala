@@ -20,7 +20,7 @@ private[sbt] object ExceptionCategory {
 
   @tailrec def apply(t: Throwable): ExceptionCategory = t match {
     case _: AlreadyHandledException | _: UnprintableException => AlreadyHandled
-    case ite: InvocationTargetException =>
+    case ite: InvocationTargetException                       =>
       val cause = ite.getCause
       if (cause == null || cause == ite) new Full(ite) else apply(cause)
     case _: MessageOnlyException => new MessageOnly(t.toString)

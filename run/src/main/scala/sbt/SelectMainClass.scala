@@ -21,7 +21,7 @@ object SelectMainClass {
     mainClasses.toList match {
       case Nil         => None
       case head :: Nil => Some(head)
-      case multiple =>
+      case multiple    =>
         promptIfMultipleChoices.flatMap { prompt =>
           @tailrec def loop(): Option[String] = {
             val header = "\nMultiple main classes detected. Select one to run:\n"

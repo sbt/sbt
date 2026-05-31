@@ -199,7 +199,7 @@ object VirtualTerminal {
             Converter.fromJson[TerminalCapabilitiesResponse](_).toOption
           )
         pendingTerminalCapabilities.remove((callback.name, r.id)) match {
-          case null =>
+          case null   =>
           case buffer =>
             buffer.put(response.getOrElse(TerminalCapabilitiesResponse(None, None, None)))
         }
@@ -207,7 +207,7 @@ object VirtualTerminal {
         val response =
           r.result.flatMap(Converter.fromJson[TerminalAttributesResponse](_).toOption)
         pendingTerminalAttributes.remove((callback.name, r.id)) match {
-          case null =>
+          case null   =>
           case buffer =>
             buffer.put(response.getOrElse(TerminalAttributesResponse("", "", "", "", "")))
         }

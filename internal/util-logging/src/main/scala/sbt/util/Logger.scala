@@ -8,7 +8,7 @@
 
 package sbt.util
 
-import xsbti.{ Logger as xLogger }
+import xsbti.Logger as xLogger
 
 import sys.process.ProcessLogger
 import sbt.internal.util.{ BufferedLogger, FullLogger }

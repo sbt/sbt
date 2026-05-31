@@ -109,7 +109,7 @@ object Streams {
       synchronized {
         streams.get(key) match {
           case Some(s) if !s.isClosed => s
-          case _ =>
+          case _                      =>
             val newS = delegate(key)
             streams.put(key, newS)
             newS

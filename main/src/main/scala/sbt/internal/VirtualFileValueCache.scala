@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 import sbt.internal.inc.Stamper
 import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
 import xsbti.compile.DefinesClass
-import xsbti.compile.analysis.{ Stamp as XStamp }
+import xsbti.compile.analysis.Stamp as XStamp
 import sbt.internal.inc.Locate
 
 /**

@@ -8,7 +8,7 @@
 
 package sbt
 
-import scala.concurrent.{ Promise as XPromise }
+import scala.concurrent.Promise as XPromise
 
 final class PromiseWrap[A]:
   private[sbt] val underlying: XPromise[A] = XPromise()

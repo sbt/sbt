@@ -58,7 +58,7 @@ private[sbt] object TemplateCommandUtil {
       terminate
     } else {
       fortifyArgs(templateDescriptions.toList) match {
-        case Nil => terminate
+        case Nil                                  => terminate
         case arg :: Nil if arg.endsWith(".local") =>
           extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
           reload
@@ -87,7 +87,7 @@ private[sbt] object TemplateCommandUtil {
       hit
     } match {
       case Some(_) => // do nothing
-      case None =>
+      case None    =>
         val error = "Template not found for: " + arguments.mkString(" ")
         throw new IllegalArgumentException(error)
     }
@@ -224,8 +224,8 @@ private[sbt] object TemplateCommandUtil {
         ans
       }
       ans0 match {
-        case '\r' | '\n'    => printThenReturn(focusValue)
-        case 'q' | 'Q' | -1 => printThenReturn("")
+        case '\r' | '\n'                   => printThenReturn(focusValue)
+        case 'q' | 'Q' | -1                => printThenReturn("")
         case 'j' | 'J' | ITerminal.VK_DOWN =>
           clearMenu(mappingList)
           askTemplate(mappingList, math.min(focus + 1, mappingList.size - 1))
@@ -281,7 +281,7 @@ private[sbt] object TemplateCommandUtil {
       case ScalaToolkitSlug :: Nil     => scalaToolkitTemplate()
       case TypelevelToolkitSlug :: Nil => typelevelToolkitTemplate()
       case SbtCrossPlatformSlug :: Nil => sbtCrossPlatformTemplate()
-      case _ =>
+      case _                           =>
         val error = "Local template not found for: " + arguments.mkString(" ")
         throw new IllegalArgumentException(error)
     }

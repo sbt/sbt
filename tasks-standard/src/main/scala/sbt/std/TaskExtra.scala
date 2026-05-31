@@ -263,7 +263,7 @@ object TaskExtra extends TaskExtra {
       case Seq()     => sys.error("Cannot reduce empty sequence")
       case Seq(x)    => x
       case Seq(x, y) => reducePair(x, y, f)
-      case _ =>
+      case _         =>
         val (a, b) = i.splitAt(i.size / 2)
         reducePair(reduced(a, f), reduced(b, f), f)
     }

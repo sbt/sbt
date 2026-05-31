@@ -393,7 +393,7 @@ object BuildStreams {
       case Zero => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
       case Select(br @ BuildRef(uri)) => refTarget(br, units(uri).localBase, data) / BuildUnitPath
       case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
-      case Select(pr) =>
+      case Select(pr)                       =>
         sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
       case This => sys.error("Unresolved project reference (This) in " + displayFull(scoped))
     }

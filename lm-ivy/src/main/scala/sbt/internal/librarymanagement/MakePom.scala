@@ -238,7 +238,7 @@ class MakePom(val log: Logger) {
     module.getAllArtifacts match {
       case Array()  => "pom"
       case Array(x) => x.getType
-      case xs =>
+      case xs       =>
         val types = xs.map(_.getType).toList.filterNot(IgnoreTypes)
         types match {
           case Nil                                     => Artifact.PomType

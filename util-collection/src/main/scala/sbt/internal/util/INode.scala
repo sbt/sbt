@@ -42,13 +42,13 @@ class EvaluateSettings[I <: Init](
           // TODO create a Single node with no transform?
           single(getStatic(k.scopedKey), identity)
         case u: Uniform[s, A] => UniformNode(u.inputs.map(transform[s]), u.f)
-        case a: Apply[k, A] =>
+        case a: Apply[k, A]   =>
           MixedNode[k, A](TupleMapExtension.transform(a.inputs)(transform), a.f)
         case b: Bind[s, A]           => BindNode[s, A](transform(b.in), x => transform(b.f(x)))
         case v: Value[A]             => constant(v.value)
         case v: ValidationCapture[a] => strictConstant(v.key: A)
         case t: TransformCapture     => strictConstant(t.f: A)
-        case o: Optional[s, A] =>
+        case o: Optional[s, A]       =>
           o.a match
             case None    => constant(() => o.f(None))
             case Some(i) => single[s, A](transform(i), x => o.f(Some(x)))
@@ -193,7 +193,7 @@ class EvaluateSettings[I <: Init](
       registerIfNew()
       state match {
         case Evaluated => submitCallComplete(by, value)
-        case _ =>
+        case _         =>
           calledBy += by
           ()
       }

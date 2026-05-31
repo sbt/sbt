@@ -47,7 +47,7 @@ class ZincComponentManager(
 
     def createAndCache = {
       ifMissing match {
-        case IfMissing.Fail => notFound
+        case IfMissing.Fail      => notFound
         case d: IfMissing.Define =>
           d.run() // this is expected to have called define.
           if (d.useSecondaryCache) {

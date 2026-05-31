@@ -14,7 +14,7 @@ import sbt.ProjectExtra.*
 import sbt.ScopeAxis.{ Select, Zero }
 import sbt.SessionVar
 import sbt.internal.util.complete.Parser
-import sbt.librarymanagement.Configurations.{ Test as TestConfig }
+import sbt.librarymanagement.Configurations.Test as TestConfig
 
 /**
  * Provides commands for running tests with aggregation-aware failure semantics.

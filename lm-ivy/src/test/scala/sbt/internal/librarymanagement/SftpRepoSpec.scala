@@ -32,7 +32,7 @@ object SftpRepoSpec extends BaseIvySpecification {
         //    log.setLevel(Level.Debug)
         lmEngine().retrieve(module(org(repo)), scalaModuleInfo = None, currentTarget, log) match {
           case Right(v) => log.debug(v.toString())
-          case Left(e) =>
+          case Left(e)  =>
             log.log(Level.Error, e.failedPaths.toString())
             throw e.resolveException
         }

@@ -125,9 +125,9 @@ private[librarymanagement] abstract class SemComparatorExtra {
         // Identifiers consisting of only digits are compared numerically.
         // Numeric identifiers always have lower precedence than non-numeric identifiers.
         // Identifiers with letters are compared case-insensitive lexical order.
-        case (true, true)  => implicitly[Ordering[Long]].compare(ts1head.toLong, ts2head.toLong)
-        case (false, true) => 1
-        case (true, false) => -1
+        case (true, true)   => implicitly[Ordering[Long]].compare(ts1head.toLong, ts2head.toLong)
+        case (false, true)  => 1
+        case (true, false)  => -1
         case (false, false) =>
           ts1head.toLowerCase(Locale.ENGLISH).compareTo(ts2head.toLowerCase(Locale.ENGLISH))
       }
@@ -195,7 +195,7 @@ private[librarymanagement] abstract class SemComparatorFunctions {
             case Some(">=") => Gte
             case Some("=")  => Eq
             case None       => Eq
-            case Some(_) =>
+            case Some(_)    =>
               throw new IllegalArgumentException(s"Invalid operator: $opStr")
           }
           SemComparator(

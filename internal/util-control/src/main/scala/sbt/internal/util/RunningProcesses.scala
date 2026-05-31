@@ -8,7 +8,7 @@
 
 package sbt.internal.util
 
-import java.lang.{ Process as JProcess }
+import java.lang.Process as JProcess
 import java.util.concurrent.ConcurrentHashMap
 import scala.sys.process.Process
 

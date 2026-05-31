@@ -45,7 +45,7 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
             }
         }
         uiThread.getAndSet((task, thread)) match {
-          case null => thread.start()
+          case null                                                         => thread.start()
           case (prevTask, prevThread) if prevTask.getClass != task.getClass =>
             prevTask.close()
             prevThread.joinFor(1.second)
@@ -56,7 +56,7 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
       uiThread.get match {
         case null                                                => submit()
         case (prevTask, _) if prevTask.getClass == task.getClass =>
-        case (t, thread) =>
+        case (t, thread)                                         =>
           stopThreadImpl()
           submit()
       }
@@ -66,7 +66,7 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
 
   private[sbt] def stopThreadImpl(): Unit = uiThread.synchronized {
     uiThread.getAndSet(null) match {
-      case null =>
+      case null        =>
       case (t, thread) =>
         t.close()
         thread.joinFor(1.second)

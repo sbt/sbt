@@ -281,7 +281,7 @@ trait Parsers {
     def impl(): Parser[String] = {
       (open ~ (notDelim ~ close).?).flatMap {
         case (l, Some((content, r))) => Parser.success(s"$l$content$r")
-        case (l, None) =>
+        case (l, None)               =>
           ((notDelim ~ impl()).map { (leftPrefix, nestedBraces) =>
             leftPrefix + nestedBraces
           }.+ ~ notDelim ~ close).map { case ((nested, suffix), r) =>

@@ -65,7 +65,7 @@ object TaskMacro:
     val cached = ContextUtil.isTaskCacheByDefault && !isUncacheApplied && cl.nonEmpty
     t match
       case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
-      case _ =>
+      case _                                       =>
         val convert1 = new FullConvert(qctx, 0)
         if cached then
           convert1.contMapN[A1, F, Id](
@@ -84,7 +84,7 @@ object TaskMacro:
   ): Expr[Initialize[Task[A1]]] =
     t match
       case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
-      case _ =>
+      case _                                       =>
         val convert1 = new FullConvert(qctx, 0)
         if cached then
           convert1.contMapN[A1, F, Id](

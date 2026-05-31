@@ -231,7 +231,7 @@ private[sbt] object ClassLoaders {
           case cl =>
             cl.getParent match {
               case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
-              case _ =>
+              case _                                  =>
                 new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, close, allowZombies, logger)
             }
         }
@@ -245,7 +245,7 @@ private[sbt] object ClassLoaders {
 
   private def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
     case (p, LastModified(lm)) => p.toFile -> lm
-    case (p, _) =>
+    case (p, _)                =>
       val f = p.toFile
       f -> IO.getModifiedTimeOrZero(f)
   }

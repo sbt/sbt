@@ -53,7 +53,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     val now = System.nanoTime
     tasks.forEach { t =>
       timings.get(t) match {
-        case null =>
+        case null   =>
         case timing =>
           if (timing.isActive) {
             val elapsed = (now - timing.startNanos) / 1000

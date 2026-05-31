@@ -372,7 +372,7 @@ abstract class TestBuild {
       acc: Vector[Gen[(T, Vector[T])]]
   ): Gen[Vector[(T, Vector[T])]] =
     names match {
-      case Vector() => sequence(acc.toList).map(_.toVector)
+      case Vector()       => sequence(acc.toList).map(_.toVector)
       case Vector(x, xs*) =>
         val next =
           for (depCount <- Gen.int(maxDeps); d <- pick(depCount, xs))

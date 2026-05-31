@@ -203,7 +203,7 @@ class NetworkClient(
           else {
             startInputThread()
             stdinBytes.poll(5, TimeUnit.SECONDS) match {
-              case null => System.exit(0)
+              case null        => System.exit(0)
               case i if i == 9 =>
                 errorStream.println("\nStarting server...")
                 waitForServer(portfile, !promptCompleteUsers, startServer = true)
@@ -299,7 +299,7 @@ class NetworkClient(
               Option(inputThread.get).foreach(_.close())
               Option(interactiveThread.get).foreach(_.interrupt)
             }
-          case `readSystemIn` => startInputThread()
+          case `readSystemIn`       => startInputThread()
           case `cancelReadSystemIn` =>
             inputThread.get match {
               case null =>
@@ -458,14 +458,14 @@ class NetworkClient(
               try {
                 s.getInputStream.read match {
                   case -1 | 0 => readThreadAlive.set(false)
-                  case 2 => // STX: start of text
+                  case 2      => // STX: start of text
                     gotInputBack = true
                   case 5 => // ENQ: enquiry
                     term.enterRawMode(); startInputThread()
                   case 3 if gotInputBack => // ETX: end of text
                     readThreadAlive.set(false)
                   case i if gotInputBack => stdinBytes.offer(i)
-                  case 10 => // CR
+                  case 10                => // CR
                     buffer.append(10.toByte)
                     printStream.write(buffer.toArray[Byte])
                     buffer.clear()
@@ -609,7 +609,7 @@ class NetworkClient(
   }
   def completeExec(execId: String, exitCode: Int) = {
     pendingResults.remove(execId) match {
-      case null => ()
+      case null                 => ()
       case (q, startTime, name) =>
         val now = System.currentTimeMillis
         val message = NetworkClient.elapsedString(startTime, now)
@@ -634,7 +634,7 @@ class NetworkClient(
   private val onCompletionResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
     case msg if pendingCompletions.containsKey(msg.id) =>
       pendingCompletions.remove(msg.id) match {
-        case null => ()
+        case null        => ()
         case completions =>
           completions(msg.result match {
             case Some(o: JObject) =>
@@ -729,7 +729,7 @@ class NetworkClient(
           }
         case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
-        case ("sbt/exec", Some(json)) =>
+        case ("sbt/exec", Some(json))             =>
           import sbt.protocol.codec.JsonProtocol.given
           Converter.fromJson[ExecStatusEvent](json) match {
             case Success(event) if event.status == "Queued" =>
@@ -795,7 +795,7 @@ class NetworkClient(
   private def clientSideRun(runInfo: RunInfo): Try[Unit] = {
     runInfo.windowTitle.foreach(setWindowTitle)
     def nativeRun(info: NativeRunInfo): Try[Unit] = {
-      import java.lang.{ ProcessBuilder as JProcessBuilder }
+      import java.lang.ProcessBuilder as JProcessBuilder
       val option = ForkOptions(
         javaHome = None,
         outputStrategy = None, // TODO: Handle buffered output etc
@@ -982,7 +982,7 @@ class NetworkClient(
     val (rawPrefix, prefix, rawSuffix, suffix) = if (quoteCount > 0) {
       query.lastIndexOf('"') match {
         case -1 => (query, query, None, None) // shouldn't happen
-        case i =>
+        case i  =>
           val rawPrefix = query.substring(0, i)
           val prefix = rawPrefix.replace("\"", "").replace("\\;", ";")
           val rawSuffix = query.substring(i).replace("\\;", ";")
@@ -1079,7 +1079,7 @@ class NetworkClient(
       }
     } catch {
       case e: SocketException if command.toString.contains("exit") => running.set(false)
-      case e: IOException =>
+      case e: IOException                                          =>
         errorStream.println(s"Caught exception writing command to server: $e")
         running.set(false)
     }
@@ -1117,7 +1117,7 @@ class NetworkClient(
       if (mainThread != null && mainThread != Thread.currentThread) mainThread.interrupt
       connectionHolder.get match {
         case null =>
-        case c =>
+        case c    =>
           try sendExecCommand("exit")
           finally c.shutdown()
       }
@@ -1317,7 +1317,7 @@ object NetworkClient {
         case "--sbt-launch-jar" if i + 1 < sanitized.length =>
           i += 1
           launchJar = Option(sanitized(i).replace("%20", " "))
-        case "-bsp" | "--bsp" | "bsp" => bsp = true
+        case "-bsp" | "--bsp" | "bsp"     => bsp = true
         case "-no-server" | "--no-server" =>
           System.setProperty("sbt.server.autostart", "false")
         case a if a.startsWith("--autostart=") =>
@@ -1330,7 +1330,7 @@ object NetworkClient {
         case a if launcherEqPrefixes.exists(p => a.startsWith(p)) => ()
         case a if a.startsWith("-J")                              => ()
         case a if !a.startsWith("-")                              => commandArgs += a
-        case a @ SysProp(key, value) =>
+        case a @ SysProp(key, value)                              =>
           System.setProperty(key, value)
           sbtArguments += a
         case a => sbtArguments += a

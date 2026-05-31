@@ -16,7 +16,7 @@ import sbt.internal.util.{ BufferedLogger, FullLogger }
 import sbt.io.IO
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
-import sbt.util.InterfaceUtil.{ toSupplier as f0 }
+import sbt.util.InterfaceUtil.toSupplier as f0
 import xsbti.ArtifactInfo.*
 import xsbti.compile.{
   ClasspathOptionsUtil,
