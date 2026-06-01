@@ -304,6 +304,12 @@ trait Cont:
                       val modifiedCacheConfigExpr =
                         transformWrappers(cacheConfigExpr.asTerm.changeOwner(sym), substitute, sym)
                           .asExprOf[BuildWideCacheConfiguration]
+                      inputs.foreach: input =>
+                        if !input.isCacheInput then
+                          if !Cont.transientAllowSet(input.sym.name) then
+                            report.warning(
+                              s"transient key ${input.sym.name} is excluded from the cache input"
+                            )
                       if inputs.exists(_.isCacheInput) then
                         val tags = inputs
                           .withFilter(_.isCacheInput)
@@ -479,4 +485,24 @@ trait Cont:
         if hasPrintTreeMacroSetting then Console.err.println(Printer.TreeStructure.show(r.asTerm))
         else Console.err.println(r.show)
       r
+end Cont
+
+private[sbt] object Cont:
+  val transientAllowSet: Set[String] = Set(
+    "bspTargetIdentifier",
+    "bspCompileTask",
+    "cacheConfiguration",
+    "compileAnalysisFile",
+    "compileIncSetup",
+    "compileInputs",
+    "classDirectory",
+    "configuration",
+    "definedTests",
+    "earlyOutputPing",
+    "fileConverter",
+    "managedResources",
+    "managedSources",
+    "streams",
+    "unmanagedSources",
+  )
 end Cont

@@ -85,19 +85,20 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
     override def toString: String =
       s"Input($tpe, $qual, $term, $name, $tags)"
     def isCacheInput: Boolean = tags.nonEmpty
-    lazy val tags = extractTags(qual)
+    lazy val (tags, sym) = extractTags(qual)
     @tailrec
-    private def extractTags(tree: Term): List[CacheLevelTag] =
-      def getCacheLevelAnnotation(tree: Term): Option[Term] =
+    private def extractTags(tree: Term): (List[CacheLevelTag], Symbol) =
+      def getSymbol(tree: Term): Symbol =
         Option(tree.tpe.termSymbol) match
-          case Some(x) => x.getAnnotation(cacheLevelSym)
-          case None    => tree.symbol.getAnnotation(cacheLevelSym)
-      def getTransientAnnotation(tree: Term): Option[Term] =
-        Option(tree.tpe.termSymbol) match
-          case Some(x) => x.getAnnotation(transientSym)
-          case None    => tree.symbol.getAnnotation(transientSym)
+          case Some(x) => x
+          case None    => tree.symbol
+      def getCacheLevelAnnotation(sym: Symbol): Option[Term] =
+        sym.getAnnotation(cacheLevelSym)
+      def getTransientAnnotation(sym: Symbol): Option[Term] =
+        sym.getAnnotation(transientSym)
       def extractTags0(tree: Term) =
-        getCacheLevelAnnotation(tree) match
+        val sym = getSymbol(tree)
+        val ann = getCacheLevelAnnotation(sym) match
           case Some(annot) =>
             annot.asExprOf[cacheLevel] match
               case '{ cacheLevel(include = Array.empty[CacheLevelTag](using $_)) } => Nil
@@ -105,9 +106,10 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
                 include.value.get.toList
               case _ => sys.error(Printer.TreeStructure.show(annot) + " does not match")
           case _ =>
-            getTransientAnnotation(tree) match
+            getTransientAnnotation(sym) match
               case Some(annot) => Nil
               case _           => CacheLevelTag.all.toList
+        (ann, sym)
       tree match
         case Inlined(_, _, tree) => extractTags(tree)
         case Apply(_, List(arg)) => extractTags(arg)
