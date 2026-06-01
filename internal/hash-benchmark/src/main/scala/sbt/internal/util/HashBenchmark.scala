@@ -39,7 +39,7 @@ class FarmHashHashBenchmark extends AbstractHashBenchmark:
     val hash = LongHashFunction.farmNa().hashBytes(buf)
     java.lang.Long.toHexString(hash)
 
-class FarmHash64VarHandleHashBenchmark extends AbstractHashBenchmark:
+class FarmHash64HashSbtBenchmark extends AbstractHashBenchmark:
   override def hash(buf: Array[Byte]): String =
     val h = Hashing.farmNaHash64
     val hash = h.hash(buf, 0, buf.size)
