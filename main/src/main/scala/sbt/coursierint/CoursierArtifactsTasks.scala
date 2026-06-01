@@ -31,6 +31,7 @@ object CoursierArtifactsTasks {
       val projId = sbt.Keys.projectID.value
       val sv = sbt.Keys.scalaVersion.value
       val sbv = sbt.Keys.scalaBinaryVersion.value
+      val projectPlatform = sbt.Keys.scalaModuleInfo.value.flatMap(_.platform)
       val ivyConfs = sbt.Keys.ivyConfigurations.value
       val extracted = Project.extract(s)
       import extracted.*
@@ -97,8 +98,13 @@ object CoursierArtifactsTasks {
 
       def artifactPublication(artifact: Artifact) = {
 
+        // Platform suffix before cross suffix, matching the coordinate
+        val base = projId.crossVersion match
+          case _: Disabled => artifact.name
+          case _           =>
+            CrossVersion.addPlatformSuffix(artifact.name, projId.platformOpt, projectPlatform)
         val name = CrossVersion(projId.crossVersion, sv, sbv)
-          .fold(artifact.name)(_(artifact.name))
+          .fold(base)(_(base))
 
         CPublication(
           name,

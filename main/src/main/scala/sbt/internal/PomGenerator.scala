@@ -61,9 +61,14 @@ private[sbt] object PomGenerator:
     </project>
 
   private def crossVersionDep(dep: ModuleID, scalaInfo: Option[ScalaModuleInfo]): ModuleID =
+    // Platform suffix before cross suffix, matching the coordinate (sbt/sbt#9117).
+    val base = dep.crossVersion match
+      case _: Disabled => dep.name
+      case _           =>
+        CrossVersion.addPlatformSuffix(dep.name, dep.platformOpt, scalaInfo.flatMap(_.platform))
     val crossFn = CrossVersion(dep, scalaInfo)
     val crossDep = crossFn match
-      case Some(fn) => dep.withName(fn(dep.name)).withCrossVersion(CrossVersion.disabled)
+      case Some(fn) => dep.withName(fn(base)).withCrossVersion(CrossVersion.disabled)
       case None     => dep
     if crossDep.exclusions.isEmpty || scalaInfo.isEmpty then crossDep
     else
