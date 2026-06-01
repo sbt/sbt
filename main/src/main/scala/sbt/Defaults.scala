@@ -2744,17 +2744,31 @@ object Classpaths {
           dependencyMode.value match
             case DependencyMode.Transitive =>
               Def.task { dependencyClasspath.value }
-            case mode =>
+            case DependencyMode.Direct =>
               Def.task {
                 val internalFiltered = ClasspathImpl.filterInternalByMode(
-                  mode,
+                  DependencyMode.Direct,
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
                   internalDependencyClasspath.value,
                 )
-                val externalFiltered = ClasspathImpl.filterByDependencyMode(
-                  mode,
+                val externalFiltered = ClasspathImpl.filterByDirectDeps(
+                  allDependencies.value,
+                  externalDependencyClasspath.value,
+                )
+                internalFiltered ++ externalFiltered
+              }
+            case DependencyMode.PlusOne =>
+              Def.task {
+                val internalFiltered = ClasspathImpl.filterInternalByMode(
+                  DependencyMode.PlusOne,
+                  thisProjectRef.value,
+                  settingsData.value,
+                  buildDependencies.value,
+                  internalDependencyClasspath.value,
+                )
+                val externalFiltered = ClasspathImpl.filterByPlusOne(
                   allDependencies.value,
                   projectID.value,
                   classpathConfiguration.value,
@@ -2822,28 +2836,46 @@ object Classpaths {
       // Note: invoking this task from shell would block indefinitely because it will
       // wait for the upstream compilation to start.
       dependencyPicklePath := Def.uncached {
-        // This is a conditional task. Do not refactor.
-        if (incOptions.value.pipelining) {
-          val mode = dependencyMode.value
-          val internalFiltered = ClasspathImpl.filterInternalByMode(
-            mode,
-            thisProjectRef.value,
-            settingsData.value,
-            buildDependencies.value,
-            internalDependencyPicklePath.value,
-          )
-          val externalFiltered = ClasspathImpl.filterByDependencyMode(
-            mode,
-            allDependencies.value,
-            projectID.value,
-            classpathConfiguration.value,
-            updateFull.value,
-            externalDependencyClasspath.value,
-          )
-          internalFiltered ++ externalFiltered
-        } else {
-          filteredDependencyClasspath.value
-        }
+        Def.taskDyn {
+          (incOptions.value.pipelining, dependencyMode.value) match
+            case (false, _) =>
+              Def.task { filteredDependencyClasspath.value }
+            case (true, DependencyMode.Transitive) =>
+              Def.task { dependencyClasspath.value }
+            case (true, DependencyMode.Direct) =>
+              Def.task {
+                val internalFiltered = ClasspathImpl.filterInternalByMode(
+                  DependencyMode.Direct,
+                  thisProjectRef.value,
+                  settingsData.value,
+                  buildDependencies.value,
+                  internalDependencyClasspath.value,
+                )
+                val externalFiltered = ClasspathImpl.filterByDirectDeps(
+                  allDependencies.value,
+                  externalDependencyClasspath.value,
+                )
+                internalFiltered ++ externalFiltered
+              }
+            case (true, DependencyMode.PlusOne) =>
+              Def.task {
+                val internalFiltered = ClasspathImpl.filterInternalByMode(
+                  DependencyMode.PlusOne,
+                  thisProjectRef.value,
+                  settingsData.value,
+                  buildDependencies.value,
+                  internalDependencyClasspath.value,
+                )
+                val externalFiltered = ClasspathImpl.filterByPlusOne(
+                  allDependencies.value,
+                  projectID.value,
+                  classpathConfiguration.value,
+                  updateFull.value,
+                  externalDependencyClasspath.value,
+                )
+                internalFiltered ++ externalFiltered
+              }
+        }.value
       },
       internalDependencyPicklePath := ClasspathImpl.internalDependencyPicklePathTask.value,
       exportedPickles := ClasspathImpl.exportedPicklesTask.value,
