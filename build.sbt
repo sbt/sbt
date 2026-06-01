@@ -126,7 +126,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC13",
+    "2.0.0-RC14",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
@@ -391,9 +391,6 @@ lazy val utilCache = project
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.util.HashUtil.farmHash"),
-      exclude[DirectMissingMethodProblem]("sbt.util.HashUtil.farmHashStr"),
-      exclude[DirectMissingMethodProblem]("sbt.util.HashUtil.toFarmHashString"),
     ),
     Test / fork := true,
   )
