@@ -1,51 +1,52 @@
-// sbt/sbt#9117: published artifact filenames must carry the platform suffix
-// (e.g. _native0.5), matching the module coordinate / directory.
+// sbt/sbt#9117: published artifact names must carry the platform suffix, matching the
+// coordinate, on both publish backends. `platform` is set directly, as sbt-scala-native does.
 
 ThisBuild / organization := "com.example"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1.0"
 ThisBuild / scalaVersion := "3.8.3"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
-ThisBuild / platform := "native0.5"
-ThisBuild / crossVersion := CrossVersion.binary
-// expected cross+platform base name, identical to the coordinate directory
+lazy val mavenRepo = settingKey[File]("shared local Maven repo for the consume round-trip")
+ThisBuild / mavenRepo := (ThisBuild / baseDirectory).value / "maven-repo"
+
 def expected(name: String) = s"${name}_native0.5_3"
 
-// ivyless backend: the published filenames come from the coursier publication names,
-// and the POM artifactId from PomGenerator.
-lazy val ivyless = (project in file("ivyless"))
-  .settings(
-    useIvy := false,
-    ivyPaths := IvyPaths(baseDirectory.value.toString, Some((target.value / "ivy2").toString)),
-    TaskKey[Unit]("check") := {
-      val nm = expected(moduleName.value)
-      val dir = target.value / "ivy2" / "local" / organization.value / nm / version.value
-      def req(f: File): Unit = assert(f.exists, s"expected $f to exist")
-      req(dir / "jars" / s"$nm.jar")
-      req(dir / "srcs" / s"$nm-sources.jar")
-      val pom = dir / "poms" / s"$nm.pom"
-      req(pom)
-      assert(IO.read(pom).contains(s"<artifactId>$nm</artifactId>"), s"POM artifactId must be $nm: ${IO.read(pom)}")
-    }
-  )
+def producer(useIvyFlag: Boolean): Seq[Setting[?]] = Seq(
+  platform := "native0.5",
+  crossVersion := CrossVersion.binary,
+  useIvy := useIvyFlag,
+  publishMavenStyle := true,
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some((target.value / "ivy2").toString)),
+  publishTo := Some(MavenCache("platform-publish-local", (ThisBuild / mavenRepo).value))
+)
 
-// Ivy backend (sbt-ivy): the published filenames come from CrossVersion.substituteCross.
+// checkPomArtifactId only for ivyless: there the artifactId comes from PomGenerator (and
+// resolution does not validate POM content); the Ivy backend's is correct regardless.
+def ivyLayoutCheck(base: String, checkPomArtifactId: Boolean): Setting[?] =
+  TaskKey[Unit]("check") := {
+    val nm = expected(base)
+    val dir = target.value / "ivy2" / "local" / organization.value / nm / version.value
+    def req(f: File): Unit = assert(f.exists, s"expected $f to exist")
+    req(dir / "jars" / s"$nm.jar")
+    req(dir / "srcs" / s"$nm-sources.jar")
+    val pom = dir / "poms" / s"$nm.pom"
+    req(pom)
+    if (checkPomArtifactId)
+      assert(IO.read(pom).contains(s"<artifactId>$nm</artifactId>"), s"POM artifactId must be $nm: ${IO.read(pom)}")
+  }
+
+lazy val ivyless = (project in file("ivyless"))
+  .settings(name := "libivyless", producer(false), ivyLayoutCheck("libivyless", checkPomArtifactId = true))
+
 lazy val ivyfull = (project in file("ivyfull"))
+  .settings(name := "libivyfull", producer(true), ivyLayoutCheck("libivyfull", checkPomArtifactId = false))
+
+// Must not dependsOn the producers, so the coordinates resolve from the Maven repo rather
+// than inter-project - otherwise a suffix-dropped published name would not be caught.
+lazy val consumer = (project in file("consumer"))
   .settings(
-    useIvy := true,
-    publishMavenStyle := true,
-    ivyPaths := IvyPaths(baseDirectory.value.toString, Some((target.value / "ivy2").toString)),
-    publishTo := Some(MavenCache("test-maven", target.value / "maven-repo")),
-    TaskKey[Unit]("check") := {
-      val nm = expected(moduleName.value)
-      val ver = version.value
-      def req(f: File): Unit = assert(f.exists, s"expected $f to exist")
-      val ivyDir = target.value / "ivy2" / "local" / organization.value / nm / ver
-      req(ivyDir / "jars" / s"$nm.jar")
-      req(ivyDir / "srcs" / s"$nm-sources.jar")
-      req(ivyDir / "poms" / s"$nm.pom")
-      val mvnDir = target.value / "maven-repo" / organization.value.replace('.', '/') / nm / ver
-      req(mvnDir / s"$nm-$ver.jar")
-      req(mvnDir / s"$nm-$ver.pom")
-    }
+    publish / skip := true,
+    resolvers += MavenCache("platform-publish-local", (ThisBuild / mavenRepo).value),
+    libraryDependencies += organization.value % expected("libivyless") % version.value,
+    libraryDependencies += organization.value % expected("libivyfull") % version.value
   )
