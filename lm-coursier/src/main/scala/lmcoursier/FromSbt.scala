@@ -32,7 +32,7 @@ object FromSbt {
     val name1 =
       crossVersion match
         case _: Disabled => name0
-        case _           => CrossVersion.addPlatformSuffix(name0, platformOpt, projectPlatform)
+        case _           => addPlatformSuffix(name0, platformOpt, projectPlatform)
     val updatedName = CrossVersion(crossVersion, scalaVersion, scalaBinaryVersion)
       .fold(name1)(_(name1))
     if (!optionalCrossVer || updatedName.length <= name0.length)
@@ -43,6 +43,27 @@ object FromSbt {
         name0
       else
         updatedName
+    }
+  }
+
+  // Duplicate of sbt.librarymanagement.CrossVersion.addPlatformSuffix. Keep the two in sync
+  // until lm-coursier moves under sbt
+  private def addPlatformSuffix(
+      name: String,
+      platformOpt: Option[String],
+      projectPlatform: Option[String]
+  ): String = {
+    def addSuffix(platformName: String): String =
+      platformName match {
+        case "" | "jvm" => name
+        case _          => s"${name}_$platformName"
+      }
+    (platformOpt, projectPlatform) match {
+      case (Some(p), _) =>
+        addSuffix(p) // Use explicit platform if set (don't override with project platform)
+      case (None, Some(p)) =>
+        addSuffix(p) // Only use project platform if dependency has no explicit platform
+      case _ => name
     }
   }
 

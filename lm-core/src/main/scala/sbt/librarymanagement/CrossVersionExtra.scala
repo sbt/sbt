@@ -168,17 +168,17 @@ private[librarymanagement] abstract class CrossVersionFunctions {
 
   /**
    * Appends the platform suffix (e.g. `native0.5`, `sjs1`) to `name`, preferring an explicit
-   * `platformOpt` over the `projectPlatform`. `""` and `jvm` add no suffix.
+   * `platformOpt` over the `projectPlatform`. `""` and `jvm` add no suffix. Keep in sync with
+   * `lmcoursier.FromSbt.addPlatformSuffix` (until lm-coursier moves under sbt).
    */
-  def addPlatformSuffix(
+  private[sbt] def addPlatformSuffix(
       name: String,
       platformOpt: Option[String],
       projectPlatform: Option[String]
   ): String =
-    (platformOpt orElse projectPlatform) match {
+    platformOpt.orElse(projectPlatform) match
       case Some(p) if p.nonEmpty && p != Platform.jvm => crossName(name, p)
       case _                                          => name
-    }
 
   /** Cross-versions `exclude` according to its `crossVersion`. */
   private[sbt] def substituteCross(
