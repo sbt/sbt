@@ -255,7 +255,17 @@ object LMCoursier {
   def coursierLoggerTask: Def.Initialize[Task[Option[CacheLogger]]] = Def.task {
     val st = Keys.streams.value
     val progress = (ThisBuild / useSuperShell).value
-    if (progress) None
+    // Always supply a logger: this suppresses coursier's own per-module progress bar and lets
+    // resolution run in parallel across modules. Under the super shell we feed the per-command
+    // resolution-progress sink (rendered as one task-level line by TaskProgress); otherwise the
+    // quiet debug logger.
+    if (progress)
+      Some(
+        Keys.state.value
+          .get(Keys.resolutionProgress)
+          .map(new ResolutionProgressLogger(_))
+          .getOrElse(CacheLogger.nop)
+      )
     else Some(new CoursierLogger(st.log))
   }
 

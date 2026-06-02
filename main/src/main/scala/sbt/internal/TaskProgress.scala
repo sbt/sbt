@@ -18,6 +18,7 @@ import scala.jdk.CollectionConverters.*
 import scala.concurrent.duration.*
 import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeoutException }
 import sbt.util.Logger
+import sbt.coursierint.ResolutionProgress
 
 /**
  * implements task progress display on the shell.
@@ -26,6 +27,7 @@ private[sbt] class TaskProgress(
     sleepDuration: FiniteDuration,
     threshold: FiniteDuration,
     logger: Logger,
+    resolutionProgress: ResolutionProgress,
     configNameToIdent: String => String = Scope.guessConfigIdent
 ) extends AbstractTaskExecuteProgress(configNameToIdent)
     with ExecuteProgress
@@ -180,6 +182,11 @@ private[sbt] class TaskProgress(
         toWrite.foreach { (task, elapsed) =>
           val name = taskName(task)
           distinct.put(name, ProgressItem(name, elapsed))
+        }
+        // Append one aggregate dependency-resolution line while `update` resolves in parallel,
+        // since coursier no longer renders its own per-module progress bars.
+        resolutionProgress.snapshot().foreach { line =>
+          distinct.put(line, ProgressItem(line, 0L))
         }
         ProgressEvent(
           "Info",

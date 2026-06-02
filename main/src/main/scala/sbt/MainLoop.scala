@@ -168,11 +168,13 @@ private[sbt] object MainLoop:
       state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
     val superShellThreshold =
       state.get(Keys.superShellThreshold.key).getOrElse(SysProp.supershellThreshold)
+    val resolutionProgress = new sbt.coursierint.ResolutionProgress
     val taskProgress =
       new TaskProgress(
         superShellSleep,
         superShellThreshold,
         state.log,
+        resolutionProgress,
         Project.configNameToIdent(state)
       )
     val gcMonitor = if (SysProp.gcMonitor) Some(new sbt.internal.GCMonitor(state.log)) else None
@@ -181,6 +183,7 @@ private[sbt] object MainLoop:
         state
           .put(Keys.loggerContext, context)
           .put(Keys.taskProgress, taskProgress)
+          .put(Keys.resolutionProgress, resolutionProgress)
           .process(processCommand)
       } match {
         case Right(s)                  => s.remove(Keys.loggerContext)
