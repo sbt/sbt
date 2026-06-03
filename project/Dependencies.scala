@@ -96,7 +96,7 @@ object Dependencies {
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
   val remoteapis =
-    "com.eed3si9n.remoteapis.shaded" % "shaded-remoteapis-java" % "2.3.0-M1-52317e00d8d4c37fa778c628485d220fb68a8d08"
+    "com.eed3si9n.remoteapis.shaded" % "shaded-remoteapis-java" % "2.3.0-M1-4ee33449fff18243c019f799b636cdb8c8a18f6c"
   val gson = "org.scala-sbt.gson" % "shaded-gson" % "2.13.1"
 
   val scalaCompiler = "org.scala-lang" %% "scala3-compiler" % scala3
