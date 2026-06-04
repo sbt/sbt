@@ -106,11 +106,7 @@ private[librarymanagement] abstract class ArtifactFunctions {
     val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
     val withPlatform = module.crossVersion match {
       case _: Disabled => artifact.name
-      case _           =>
-        module.platformOpt match {
-          case Some(p) if p.nonEmpty && p != Platform.jvm => s"${artifact.name}_$p"
-          case _                                          => artifact.name
-        }
+      case _           => CrossVersion.addPlatformSuffix(artifact.name, module.platformOpt, None)
     }
     val base = CrossVersion.applyCross(withPlatform, cross)
     base + "-" + module.revision + classifierStr + "." + artifact.extension

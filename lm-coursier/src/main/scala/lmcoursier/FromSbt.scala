@@ -44,6 +44,8 @@ object FromSbt {
     }
   }
 
+  // Duplicate of sbt.librarymanagement.CrossVersion.addPlatformSuffix. Keep the two in sync
+  // until lm-coursier moves under sbt
   private def addPlatformSuffix(
       name: String,
       platformOpt: Option[String],

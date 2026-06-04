@@ -234,8 +234,18 @@ object IvyActions {
   }
   private def crossVersionMap(moduleSettings: ModuleSettings): Option[String => String] =
     moduleSettings match {
-      case i: InlineConfiguration => CrossVersion(i.module, i.scalaModuleInfo)
-      case _                      => None
+      case i: InlineConfiguration =>
+        // Platform suffix before cross suffix, matching the coordinate (sbt/sbt#9117).
+        CrossVersion(i.module, i.scalaModuleInfo).map { fn => (name: String) =>
+          fn(
+            CrossVersion.addPlatformSuffix(
+              name,
+              i.module.platformOpt,
+              i.scalaModuleInfo.flatMap(_.platform)
+            )
+          )
+        }
+      case _ => None
     }
   def mapArtifacts(
       module: ModuleDescriptor,
