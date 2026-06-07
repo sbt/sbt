@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.8.3"
+ThisBuild / scalaVersion := "3.8.4"
 
 lazy val markerFile = settingKey[java.io.File]("marker file written by consoleProject REPL when bindings resolve")
 

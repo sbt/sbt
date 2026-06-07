@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 name := "lib1"
 organization := "com.example"
 version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 
 // Publish to a file repo (tests ivyless publish without HTTP server)
 val publishRepoBase = settingKey[File]("Base directory for publish repo")

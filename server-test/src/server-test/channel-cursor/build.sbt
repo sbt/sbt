@@ -1,4 +1,4 @@
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 
 val printCurrentProject = inputKey[Unit]("Prints current project name")
 

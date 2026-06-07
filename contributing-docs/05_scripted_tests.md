@@ -28,7 +28,7 @@ Create an initial build in `something`. Like a real build using sbt. I'm sure yo
 
 ```scala
 name := "foo"
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 ```
 
 I also have `Hello.scala`:
@@ -107,7 +107,7 @@ import scala.sys.process.Process
 lazy val check = taskKey[Unit]("check")
 
 name := "foo"
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 check := {
   val pkg = (Compile / packageBin).value
   val conv = fileConverter.value

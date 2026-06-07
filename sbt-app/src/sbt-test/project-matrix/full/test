@@ -1,4 +1,4 @@
 > packageBin
 $ exists target/**/app_3.3.5-0.1.0-SNAPSHOT.jar
-$ exists target/**/app_3.8.3-0.1.0-SNAPSHOT.jar
-> core3_8_3/check
+$ exists target/**/app_3.8.4-0.1.0-SNAPSHOT.jar
+> core3_8_4/check

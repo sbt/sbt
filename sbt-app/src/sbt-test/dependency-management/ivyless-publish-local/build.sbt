@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 name := "lib1"
 organization := "com.example"
 version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 
 // Use a fixed path for local ivy repo to avoid sbt 2.x output sharding
 val ivyLocalBase = settingKey[File]("Local Ivy repository base")
