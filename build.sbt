@@ -11,7 +11,7 @@ import com.eed3si9n.jarjarabrams.ModuleCoordinate
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-RC14-bin-SNAPSHOT"
+  val v = "2.0.0-RC15-bin-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
@@ -567,7 +567,7 @@ lazy val remoteCacheProj = (project in file("sbt-remote-cache"))
     pluginCrossBuild / sbtVersion := version.value,
     publishMavenStyle := true,
     mimaSettings,
-    libraryDependencies += remoteapis,
+    libraryDependencies ++= Seq(remoteapis, scalaVerify % Test),
   )
 
 // Implementation and support code for defining actions.
