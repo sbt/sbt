@@ -2267,7 +2267,9 @@ object Defaults extends BuildCommon {
         val dir = c.toPath(backendOutput.value).toFile
         result match
           case Result.Value(res) =>
-            val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+            val af = compileAnalysisFile.value
+            val store = analysisStore(af.toPath(), c)
+            if !af.exists then sys.error(s"${af} is missing")
             val analysis = store.unsafeGet().getAnalysis()
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
@@ -2454,6 +2456,7 @@ object Defaults extends BuildCommon {
           c.toVirtualFile(inputs.options.classesDirectory),
           c.toVirtualFile(inputs.setup.cacheFile.toPath),
           incrementalOptions,
+          scalaVersion.value,
         )
       },
       bspCompileTask :=
