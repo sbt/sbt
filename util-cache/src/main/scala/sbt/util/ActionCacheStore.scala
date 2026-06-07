@@ -239,6 +239,14 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       putBlob(in, digest)
     }
 
+  /** Move blob directly to CAS. Internal use only. */
+  private[sbt] def putBlobInternal(blob: Path, digest: Digest): Path =
+    val casFile = toCasFile(digest)
+    if isCompleteBlob(casFile, digest) then casFile
+    else
+      IO.move(blob.toFile(), casFile.toFile())
+      casFile
+
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)
     if isCompleteBlob(casFile, digest) then casFile
