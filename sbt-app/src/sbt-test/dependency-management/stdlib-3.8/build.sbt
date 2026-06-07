@@ -1,6 +1,6 @@
 lazy val a = project
   .settings(
-    scalaVersion := "3.8.3"
+    scalaVersion := "3.8.4"
   )
 
 // (b / update) sbt.librarymanagement.ResolveException: Error downloading org.scala-lang:scala-reflect:3.8.3

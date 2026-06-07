@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 name := "lib1"
 organization := "com.example"
 version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 
 val publishRepoBase = settingKey[File]("Base directory for publish repo (HTTP server writes here)")
 publishRepoBase := baseDirectory.value / "repo"

@@ -1,9 +1,9 @@
 > createSymlinkedDirectory
 
-$ exists target/out/jvm/scala-3.8.3/clean-symlinks-test/foo/bar
+$ exists target/**/clean-symlinks-test/foo/bar
 $ exists foo/bar
 
 > clean
 
-$ absent target/out/jvm/scala-3.8.3/clean-symlinks-test/foo
+$ absent target/**/clean-symlinks-test/foo
 $ exists foo/bar

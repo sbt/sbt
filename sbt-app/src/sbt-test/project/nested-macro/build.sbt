@@ -1,6 +1,6 @@
 lazy val a1 = settingKey[Boolean]("")
 
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 a1 := true
 
 Compile / sourceGenerators += {

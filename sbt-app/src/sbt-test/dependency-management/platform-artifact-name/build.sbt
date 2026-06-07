@@ -1,7 +1,7 @@
 ThisBuild / organization := "com.example"
 name := "testproj"
 version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 
 platform := "native0.5"
 crossVersion := CrossVersion.binary

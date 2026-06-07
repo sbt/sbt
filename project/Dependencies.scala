@@ -4,7 +4,7 @@ import Keys.*
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala213 = "2.13.16"
-  val scala3 = "3.8.3"
+  val scala3 = "3.8.4"
   val scala212 = "2.12.21"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3
@@ -12,7 +12,7 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  val ioVersion = nightlyVersion.getOrElse("1.12.0")
+  val ioVersion = nightlyVersion.getOrElse("1.12.1")
   val zincVersion = nightlyVersion.getOrElse("2.0.0-M19")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion

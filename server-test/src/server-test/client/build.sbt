@@ -1,4 +1,4 @@
-scalaVersion := "3.8.3"
+scalaVersion := "3.8.4"
 
 TaskKey[Unit]("willSucceed") := println("success")
 

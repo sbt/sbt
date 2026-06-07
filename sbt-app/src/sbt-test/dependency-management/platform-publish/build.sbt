@@ -3,7 +3,7 @@
 
 ThisBuild / organization := "com.example"
 ThisBuild / version := "0.1.0"
-ThisBuild / scalaVersion := "3.8.3"
+ThisBuild / scalaVersion := "3.8.4"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 lazy val mavenRepo = settingKey[File]("shared local Maven repo for the consume round-trip")
