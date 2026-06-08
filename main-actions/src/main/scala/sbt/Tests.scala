@@ -202,11 +202,11 @@ object Tests {
 
     override def hashCode(): Int = (name, tests, runPolicy, tags).##
 
-    override def equals(x$1: Any): Boolean = {
-      this.eq(x$1.asInstanceOf[Object]) || (x$1.isInstanceOf[Group] && ({
-        val Group$1: Group = x$1.asInstanceOf[Group]
-        name == Group$1.name && tests == Group$1.tests &&
-        runPolicy == Group$1.runPolicy && tags == Group$1.tags
+    override def equals(x1: Any): Boolean = {
+      this.eq(x1.asInstanceOf[Object]) || (x1.isInstanceOf[Group] && ({
+        val Group1: Group = x1.asInstanceOf[Group]
+        name == Group1.name && tests == Group1.tests &&
+        runPolicy == Group1.runPolicy && tags == Group1.tags
       }))
     }
   }
