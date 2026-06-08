@@ -326,10 +326,8 @@ private[sbt] object Continuous {
     val nextInputEvent: WatchExecutor => Option[Watch.Action] = {
       parseInputEvents(parser, altParser, state, channel.terminal, logger)
     }
-    val (nextFileEvent, cleanupFileMonitor): (
-        Int => Option[(Watch.Event, Watch.Action)],
-        () => Unit
-    ) = getFileEvents(configs, logger, state, commands, fileStampCache, channel.name)
+    val (nextFileEvent, cleanupFileMonitor) =
+      getFileEvents(configs, logger, state, commands, fileStampCache, channel.name)
     val executor = new WatchExecutor(channel.name)
     val nextEvent: Int => Watch.Action =
       combineInputAndFileEvents(
