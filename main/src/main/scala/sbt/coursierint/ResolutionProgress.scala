@@ -18,21 +18,31 @@ import lmcoursier.definitions.CacheLogger
  *
  * One instance is created per command in `MainLoop.next` (held under `Keys.resolutionProgress`, the
  * same lifecycle as `Keys.taskProgress`). It is fed by [[ResolutionProgressLogger]] from coursier's
- * download-pool threads and read by `TaskProgress` to render a single super-shell line. Because
- * those callbacks run in parallel across modules, every field is atomic and byte accounting uses a
- * monotonic per-url delta and so can never go backwards. There is no cross-command reset: the
- * instance is born empty and discarded with the command.
+ * download-pool threads and read by `TaskProgress` to render a single super-shell line.
+ *
+ * The counting model matches how coursier actually drives a `CacheLogger`:
+ *   - `init`/`stop` arrive once per logger session — one per configuration resolution and one per
+ *     artifacts run, plus network retries — NOT once per module, so no module count is reported;
+ *     `inFlight` only controls when the line is visible.
+ *   - `foundLocally`/`downloadedArtifact` fire on every cache check, repeating the same url across
+ *     sessions and including checksum companions, so files are counted as distinct urls with
+ *     checksum/signature companions excluded.
+ *   - `downloadProgress` carries a cumulative per-url byte count; byte accounting takes a monotonic
+ *     per-url delta and so can never double-count or go backwards.
+ *
+ * There is no cross-command reset: the instance is born empty and discarded with the command.
  */
 private[sbt] final class ResolutionProgress {
   private val inFlight = new AtomicInteger(0)
-  private val modules = new AtomicInteger(0)
-  private val artifacts = new AtomicLong(0L)
+  private val burstStartNanos = new AtomicLong(System.nanoTime())
+  private val files = ConcurrentHashMap.newKeySet[String]
   private val bytes = new AtomicLong(0L)
   private val seen = new ConcurrentHashMap[String, java.lang.Long]
 
   def onInit(): Unit = {
-    inFlight.incrementAndGet()
-    modules.incrementAndGet()
+    val now = System.nanoTime()
+    // 0 -> 1 starts a new burst (e.g. the artifacts phase after an idle gap): restart the clock.
+    if (inFlight.getAndIncrement() == 0) burstStartNanos.set(now)
     ()
   }
 
@@ -41,8 +51,8 @@ private[sbt] final class ResolutionProgress {
     ()
   }
 
-  def onArtifact(): Unit = {
-    artifacts.incrementAndGet()
+  def onFile(url: String): Unit = {
+    if (!ResolutionProgress.isChecksumLike(url)) files.add(url)
     ()
   }
 
@@ -60,17 +70,30 @@ private[sbt] final class ResolutionProgress {
     ()
   }
 
-  /** A render string while at least one resolution is in flight, else None (the line disappears). */
-  def snapshot(): Option[String] =
+  /**
+   * While at least one resolution is in flight: the render line plus the elapsed micros of the
+   * current burst (the super shell appends elapsed to every item, so this renders as a live
+   * counter). Else None (the line disappears).
+   */
+  def snapshot(): Option[(String, Long)] =
     if (inFlight.get() <= 0) None
     else {
-      val m = modules.get()
-      val a = artifacts.get()
+      val n = files.size()
       val mib = bytes.get().toDouble / (1024.0 * 1024.0)
-      val mLabel = if (m == 1) "module" else "modules"
-      val aLabel = if (a == 1) "artifact" else "artifacts"
-      Some(f"Updating $m $mLabel, $a $aLabel, $mib%.1f MiB")
+      val label = if (n == 1) "file" else "files"
+      val elapsedMicros = math.max(0L, (System.nanoTime() - burstStartNanos.get()) / 1000L)
+      Some((f"Updating $n $label, $mib%.1f MiB", elapsedMicros))
     }
+}
+
+private[sbt] object ResolutionProgress {
+  // Checksum/signature companions go through the same cache callbacks as real files; counting
+  // them would roughly double the file count.
+  private val checksumLikeSuffixes = Seq(".sha1", ".sha256", ".sha512", ".md5", ".asc", ".sig")
+  private[coursierint] def isChecksumLike(url: String): Boolean = {
+    val lower = url.toLowerCase(java.util.Locale.ROOT)
+    checksumLikeSuffixes.exists(s => lower.endsWith(s))
+  }
 }
 
 /**
@@ -81,9 +104,9 @@ private[sbt] final class ResolutionProgress {
 private[sbt] final class ResolutionProgressLogger(sink: ResolutionProgress) extends CacheLogger {
   override def init(sizeHint: Option[Int]): Unit = sink.onInit()
   override def stop(): Unit = sink.onStop()
-  override def foundLocally(url: String): Unit = sink.onArtifact()
+  override def foundLocally(url: String): Unit = sink.onFile(url)
   override def downloadedArtifact(url: String, success: Boolean): Unit =
-    if (success) sink.onArtifact()
+    if (success) sink.onFile(url)
   override def downloadProgress(url: String, downloaded: Long): Unit =
     sink.onProgress(url, downloaded)
 }

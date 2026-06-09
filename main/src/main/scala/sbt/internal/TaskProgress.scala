@@ -184,9 +184,10 @@ private[sbt] class TaskProgress(
           distinct.put(name, ProgressItem(name, elapsed))
         }
         // Append one aggregate dependency-resolution line while `update` resolves in parallel,
-        // since coursier no longer renders its own per-module progress bars.
-        resolutionProgress.snapshot().foreach { line =>
-          distinct.put(line, ProgressItem(line, 0L))
+        // since coursier no longer renders its own per-module progress bars. The burst elapsed
+        // renders as a live counter like any task's.
+        resolutionProgress.snapshot().foreach { (line, elapsed) =>
+          distinct.put(line, ProgressItem(line, elapsed))
         }
         ProgressEvent(
           "Info",
