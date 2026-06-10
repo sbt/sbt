@@ -616,12 +616,13 @@ object Compiler:
     }
 
   def consoleForkOptions: Def.Initialize[Task[ForkOptions]] = Def.task {
+    val jo = (Keys.console / Keys.javaOptions).value.toVector
     // Build environment variables for proper terminal handling
     val termEnv = sys.env.get("TERM").getOrElse("xterm-256color")
     ForkOptions()
       .withConnectInput(true)
       .withRunJVMOptions(
-        Vector(
+        jo ++ Vector(
           s"-Dorg.jline.terminal.type=$termEnv",
           "-Djline.terminal=auto",
         )
