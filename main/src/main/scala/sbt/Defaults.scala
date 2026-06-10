@@ -1109,6 +1109,8 @@ object Defaults extends BuildCommon {
         Compiler.toConsoleScalacOptions(scalacOptions.value)
       },
       console / forkOptions := Def.uncached(Compiler.consoleForkOptions.value),
+      // fork when sbt is launched with --server
+      console / fork := true,
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
       consoleQuick / scalacOptions := Def.uncached {
