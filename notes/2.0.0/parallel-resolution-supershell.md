@@ -8,7 +8,7 @@ renders a single aggregate progress line at the task level instead, counting dis
 (metadata and artifacts) and bytes downloaded, e.g.:
 
 ```
-Updating 240 files, 31.0 MiB 12s
+downloading 240 files, 31.0 MiB 12s
 ```
 
 so resolution can run concurrently across modules. Setting `csrLogger := Some(...)` opts out: your

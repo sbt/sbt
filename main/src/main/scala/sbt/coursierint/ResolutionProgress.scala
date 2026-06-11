@@ -82,7 +82,7 @@ private[sbt] final class ResolutionProgress {
       val mib = bytes.get().toDouble / (1024.0 * 1024.0)
       val label = if (n == 1) "file" else "files"
       val elapsedMicros = math.max(0L, (System.nanoTime() - burstStartNanos.get()) / 1000L)
-      Some((f"Updating $n $label, $mib%.1f MiB", elapsedMicros))
+      Some((f"downloading $n $label, $mib%.1f MiB", elapsedMicros))
     }
 }
 
