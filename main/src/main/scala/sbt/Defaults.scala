@@ -2185,6 +2185,28 @@ object Defaults extends BuildCommon {
 
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
+
+  // The ScalaInstance loader chain bottoms out at the launcher's loader, which does not
+  // delegate to the JDK platform classloader. None on JDK 8 (no platform loader).
+  private[this] lazy val platformLoader: Option[ClassLoader] =
+    try {
+      Option(
+        classOf[ClassLoader]
+          .getMethod("getPlatformClassLoader")
+          .invoke(null)
+          .asInstanceOf[ClassLoader]
+      )
+    } catch { case NonFatal(_) => None }
+
+  private[this] def platformFallbackLoader(parent: ClassLoader): ClassLoader =
+    platformLoader match {
+      case Some(platform) =>
+        new ClassLoader(parent) {
+          override def findClass(name: String): Class[_] = platform.loadClass(name)
+        }
+      case None => parent
+    }
+
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
     Def.task {
       val si = (task / scalaInstance).value
@@ -2192,7 +2214,8 @@ object Defaults extends BuildCommon {
       val cpFiles = data((task / classpath).value)
       val fullcp = (cpFiles ++ si.allJars).distinct
       val tempDir = IO.createUniqueDirectory((task / taskTemporaryDirectory).value).toPath
-      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
+      val loader =
+        platformFallbackLoader(ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir))
       val compiler =
         (task / compilers).value.scalac match {
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
