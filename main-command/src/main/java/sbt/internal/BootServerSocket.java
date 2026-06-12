@@ -123,12 +123,17 @@ public class BootServerSocket implements AutoCloseable {
                             bytes.put(b);
                             clientSocketReads.put(ClientSocket.this);
                           } else {
+                            // close() deregisters from clientSockets like the write
+                            // methods do; a dead entry left behind would block the
+                            // NO_BOOT_CLIENTS_CONNECTED signal in inputStream.read.
                             alive.set(false);
+                            close();
                           }
                         }
 
                       } catch (IOException e) {
                         alive.set(false);
+                        close();
                       }
                     }
                   } catch (final Exception ex) {

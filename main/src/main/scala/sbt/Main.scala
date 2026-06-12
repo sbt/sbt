@@ -152,29 +152,38 @@ private[sbt] object xMain:
   private def getSocketOrExit(
       configuration: xsbti.AppConfiguration
   ): (Option[BootServerSocket], Option[Exit]) = {
-    def printThrowable(e: Throwable): Unit = {
-      println("sbt thinks that server is already booting because of this exception:")
-      e.printStackTrace()
-    }
-
-    val target =
-      configuration.baseDirectory().toPath().toRealPath().resolve("project").resolve("target")
-    val hash = HashUtil.farmHash(target.toString().getBytes("UTF-8"));
+    val base = configuration.baseDirectory().toPath().toRealPath()
+    val target = base.resolve("project").resolve("target")
+    val hash = HashUtil.farmHash(target.toString().getBytes("UTF-8"))
+    // sbt runs fine without a boot socket (see the UnsatisfiedLinkError case below), so a
+    // creation failure only means "another sbt is booting" if something answers on it.
+    def liveServerDetected: Boolean =
+      BootServerSocketProbe.liveServerDetected(
+        BootServerSocket.socketLocation(base, hash),
+        BootServerSocket.requiresJNI() || SysProp.serverUseJni,
+      )
     try Some(new BootServerSocket(configuration, hash)) -> None
     catch {
-      case e: ServerAlreadyBootingException if hasConsole && !ITerminal.startedByRemoteClient =>
-        printThrowable(e)
+      // No live server and nothing the user can do about a socket failure, so proceed
+      // silently without the boot socket, as for UnsatisfiedLinkError below.
+      case _: ServerAlreadyBootingException if !liveServerDetected => (None, None)
+      case _: ServerAlreadyBootingException if hasConsole && !ITerminal.startedByRemoteClient =>
+        println("another sbt appears to be booting in this build.")
         println("Create a new server? y/n (default y)")
         val exit =
           if (ITerminal.get.withRawInput(System.in.read) == 'n'.toInt) Some(Exit(1))
           else None
         (None, exit)
-      case e: ServerAlreadyBootingException =>
+      case _: ServerAlreadyBootingException =>
         if (SysProp.forceServerStart) (None, None)
         else {
-          printThrowable(e)
+          println("another sbt appears to be booting in this build; exiting.")
+          println(
+            "wait for it to finish, attach to it with --client, or pass -Dsbt.server.forcestart=true to start anyway."
+          )
           (None, Some(Exit(2)))
         }
+      case _: IOException          => (None, None)
       case _: UnsatisfiedLinkError => (None, None)
     }
   }
