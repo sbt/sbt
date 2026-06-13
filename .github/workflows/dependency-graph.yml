@@ -15,3 +15,5 @@ jobs:
       - uses: actions/checkout@v6
       - uses: sbt/setup-sbt@v1
       - uses: scalacenter/sbt-dependency-submission@v3
+        with:
+          modules-ignore: actions_2.13 command_2.13 main-settings_2.13 main_2.13 run_2.13 sbtroot_2.13 scripted-plugin_2.13 task-system_2.13 tasks_2.13 testing_2.13 zinc-lm-integration_2.13
