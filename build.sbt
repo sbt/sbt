@@ -1,5 +1,5 @@
 import Dependencies._
-import Util._
+import Utils._
 import com.typesafe.tools.mima.core.ProblemFilters._
 import com.typesafe.tools.mima.core._
 import local.Scripted
@@ -15,7 +15,7 @@ ThisBuild / version := {
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
-ThisBuild / Util.sbtnVersion := "2.0.0-RC14"
+ThisBuild / Utils.sbtnVersion := "2.0.0-f0d2fae4"
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
@@ -79,7 +79,7 @@ def commonBaseSettings: Seq[Setting[?]] = Def.settings(
   resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
-  Global / concurrentRestrictions += Util.testExclusiveRestriction,
+  Global / concurrentRestrictions += testExclusiveRestriction,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
@@ -212,10 +212,10 @@ lazy val sbtRoot: Project = (project in file("."))
                |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
          else "")
     },
-    Util.baseScalacOptions,
+    Utils.baseScalacOptions,
     Docs.settings,
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
-    Util.publishPomSettings,
+    Utils.publishPomSettings,
     otherRootSettings,
     publish := {},
     publishLocal := {},
@@ -272,7 +272,7 @@ val collectionProj = (project in file("internal") / "util-collection")
   .settings(
     testedBaseSettings,
     utilCommonSettings,
-    Util.keywordsSettings,
+    keywordsSettings,
     name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
