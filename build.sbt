@@ -11,7 +11,7 @@ import com.eed3si9n.jarjarabrams.ModuleCoordinate
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-RC15-bin-SNAPSHOT"
+  val v = "2.0.1-bin-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
