@@ -117,13 +117,10 @@ object ScopeFilter {
      * static inspections will not show them.
      */
     def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] = Def.flatMap(getData) { data =>
-      import std.TaskExtra.*
       val filter = sfilter
       orderedScopes(filter(data), filter.scopeOrdering(data))
         .map(s => Project.inScope(s, i))
-        .join(
-          _.join
-        )
+        .join
     }
 
   private type ScopeAxisOrderingKey = (Int, String)

@@ -495,4 +495,15 @@ sealed trait InitializeImplicits { self: Def.type =>
 
   implicit def initTaskOps[T](x: Def.Initialize[Task[T]]): Def.InitTaskOps[T] =
     new Def.InitTaskOps(x)
+
+  /**
+   * Flattens a sequence of task initializations into one task producing the sequence of results.
+   *
+   * This is an extension method rather than an implicit conversion so that it is selected ahead of
+   * the generic `Initialize.joinInitialize` conversion (which would otherwise yield
+   * `Initialize[Seq[Task[A]]]`) regardless of whether `sbt.Scoped` is in scope, and without becoming
+   * a second, ambiguous conversion candidate for `TaskKey`/`SettingKey` seqs. See issue #899.
+   */
+  extension [A](in: Seq[Def.Initialize[Task[A]]])
+    def join: Def.Initialize[Task[Seq[A]]] = Scoped.richTaskSeq(in).join
 }
