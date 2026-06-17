@@ -104,6 +104,12 @@ $ sbt
 > publishLocalBin
 ```
 
+After this you can set the sbt version within your own project in `project/build.properties` to use the locally-published snapshot version:
+
+```properties
+sbt.version=2.x.y-bin-SNAPSHOT
+```
+
 See also [Development environment][02] and [Coding style and best practices][03].
 
 
