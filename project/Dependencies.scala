@@ -13,7 +13,7 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.12.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.12.2")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.12.2")
   val zincVersion = nightlyVersion.getOrElse("1.12.0")
