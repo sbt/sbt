@@ -96,8 +96,8 @@ object BackgroundJobService {
   private[sbt] def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] = {
     import DefaultParsers.*
     (state, handles) => {
-      val idParser: Parser[Seq[Int]] = Space ~> token(
-        NatBasic.examples(handles.map(_.id.toString).toSet),
+      val idParser: Parser[Seq[Long]] = Space ~> token(
+        LongBasic.examples(handles.map(_.id.toString).toSet),
         description = "<job id>"
       ).+
       idParser.map { ids =>

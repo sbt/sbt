@@ -110,6 +110,12 @@ After this you can set the sbt version within your own project in `project/build
 sbt.version=2.x.y-bin-SNAPSHOT
 ```
 
+If you are iterating on changes, you will need to wipe the local sbt cache between runs:
+
+```bash
+$ rm -fr ~/.sbt/boot/scala-3.*/org.scala-sbt/sbt/2.x.y-bin-SNAPSHOT/
+```
+
 See also [Development environment][02] and [Coding style and best practices][03].
 
 
