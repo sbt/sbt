@@ -4,6 +4,10 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
+/** @param isMavenCompatible When false (the default), the [organisation]/[organization] token is substituted literally,
+so an organization such as `org.example` stays `org.example` in resolved paths, matching the
+Apache Ivy specification. When true, the Ivy engine rewrites the [organisation] token to the
+slash-separated form (`org/example`), as in a Maven m2-compatible repository layout. */
 final class Patterns private (
   val ivyPatterns: Vector[String],
   val artifactPatterns: Vector[String],
@@ -11,7 +15,7 @@ final class Patterns private (
   val descriptorOptional: Boolean,
   val skipConsistencyCheck: Boolean) extends Serializable {
   
-  private def this() = this(Vector.empty, Vector.empty, true, false, false)
+  private def this() = this(Vector.empty, Vector.empty, false, false, false)
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Patterns => (this.ivyPatterns == x.ivyPatterns) && (this.artifactPatterns == x.artifactPatterns) && (this.isMavenCompatible == x.isMavenCompatible) && (this.descriptorOptional == x.descriptorOptional) && (this.skipConsistencyCheck == x.skipConsistencyCheck)

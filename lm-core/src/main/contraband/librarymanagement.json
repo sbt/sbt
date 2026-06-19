@@ -532,7 +532,18 @@
       "fields": [
         { "name": "ivyPatterns",          "type": "String*", "default": "Vector.empty", "since": "0.0.1" },
         { "name": "artifactPatterns",     "type": "String*", "default": "Vector.empty", "since": "0.0.1" },
-        { "name": "isMavenCompatible",    "type": "boolean", "default": "true",         "since": "0.0.1" },
+        {
+          "name": "isMavenCompatible",
+          "doc": [
+            "When false (the default), the [organisation]/[organization] token is substituted literally,",
+            "so an organization such as `org.example` stays `org.example` in resolved paths, matching the",
+            "Apache Ivy specification. When true, the Ivy engine rewrites the [organisation] token to the",
+            "slash-separated form (`org/example`), as in a Maven m2-compatible repository layout."
+          ],
+          "type": "boolean",
+          "default": "false",
+          "since": "0.0.1"
+        },
         { "name": "descriptorOptional",   "type": "boolean", "default": "false",        "since": "0.0.1" },
         { "name": "skipConsistencyCheck", "type": "boolean", "default": "false",        "since": "0.0.1" }
       ],

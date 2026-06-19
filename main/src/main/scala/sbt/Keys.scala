@@ -727,6 +727,8 @@ object Keys {
   }
   private[sbt] val currentCommandProgress = AttributeKey[ExecuteProgress2]("current-command-progress")
   private[sbt] val taskProgress = AttributeKey[sbt.internal.TaskProgress]("active-task-progress")
+  private[sbt] val resolutionProgress =
+    AttributeKey[sbt.coursierint.ResolutionProgress]("resolution-progress", Invisible)
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
   val superShellMaxTasks = settingKey[Int]("The max number of tasks to display in the supershell progress report")
   val superShellSleep = settingKey[FiniteDuration]("The minimum duration to sleep between progress reports")

@@ -36,7 +36,7 @@ private[librarymanagement] abstract class MavenRepositoryFunctions {
 private[librarymanagement] abstract class PatternsFunctions {
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
-  def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns*)
+  def apply(artifactPatterns: String*): Patterns = Patterns(false, artifactPatterns*)
   def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = {
     val patterns = artifactPatterns.toVector
     Patterns()
@@ -293,13 +293,27 @@ private[librarymanagement] abstract class ResolverFunctions {
       construct(name, SshConnection(None, hostname, port), resolvePatterns(basePath, basePatterns))
   }
 
-  /** A factory to construct an interface to an Ivy SSH resolver. */
+  /**
+   * A factory to construct an interface to an Ivy SSH resolver.
+   *
+   * The implicit `basePatterns` default to [[mavenStylePatterns]] (`isMavenCompatible = true`), under
+   * which the `[organisation]` token is rendered in slash-separated form. To keep the organization
+   * literal (e.g. `org.example`), supply Ivy-style patterns such as a [[Patterns]] built with
+   * `isMavenCompatible = false` (the [[Patterns]] default). See issue #535.
+   */
   object ssh extends Define[SshRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SshRepository(name, connection, patterns, None)
   }
 
-  /** A factory to construct an interface to an Ivy SFTP resolver. */
+  /**
+   * A factory to construct an interface to an Ivy SFTP resolver.
+   *
+   * The implicit `basePatterns` default to [[mavenStylePatterns]] (`isMavenCompatible = true`), under
+   * which the `[organisation]` token is rendered in slash-separated form. To keep the organization
+   * literal (e.g. `org.example`), supply Ivy-style patterns such as a [[Patterns]] built with
+   * `isMavenCompatible = false` (the [[Patterns]] default). See issue #535.
+   */
   object sftp extends Define[SftpRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SftpRepository(name, connection, patterns)
@@ -369,7 +383,18 @@ private[librarymanagement] abstract class ResolverFunctions {
     else normBase + "/" + pattern
   }
   def defaultFileConfiguration = FileConfiguration(true, None)
-  def mavenStylePatterns = Patterns().withArtifactPatterns(Vector(mavenStyleBasePattern))
+
+  /**
+   * Maven-compatible layout (`isMavenCompatible = true`). The `[organisation]`/`[organization]` token
+   * is rendered in slash-separated form (`org.example` becomes `org/example`) by the Ivy engine.
+   */
+  def mavenStylePatterns =
+    Patterns().withArtifactPatterns(Vector(mavenStyleBasePattern)).withIsMavenCompatible(true)
+
+  /**
+   * Ivy-style layout (`isMavenCompatible = false`). The `[organisation]`/`[organization]` token is
+   * substituted literally, keeping the dots (`org.example` stays `org.example`).
+   */
   def ivyStylePatterns = defaultIvyPatterns // Patterns(Nil, Nil, false)
 
   def defaultPatterns = mavenStylePatterns
