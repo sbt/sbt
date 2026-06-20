@@ -190,8 +190,11 @@ class ClassStamper private[sbt] (
       a.relations.productClassName._2s.foreach: bin =>
         acc.getOrElseUpdate(bin, mutable.ListBuffer.empty) += a
     acc.iterator.map((k, v) => k -> v.toSeq).toMap
-  private val stampVf: VirtualFileRef => Digest =
-    CacheImplicits.virtualFileRefToDigest(_)(converter)
+  // Memoized: virtualFileRefToDigest does a filesystem stat per call, and the same
+  // library ref is referenced by many classes.
+  private val vfDigests = mutable.Map.empty[VirtualFileRef, Digest]
+  private def stampVf(vf: VirtualFileRef): Digest =
+    vfDigests.getOrElseUpdate(vf, CacheImplicits.virtualFileRefToDigest(vf)(converter))
 
   /**
    * Given a classpath and a class name, this tries to create a SHA-256 digest.
