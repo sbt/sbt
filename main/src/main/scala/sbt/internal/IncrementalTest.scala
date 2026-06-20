@@ -175,8 +175,10 @@ class ClassStamper private[sbt] (
     )
 
   private val stamps = mutable.Map.empty[String, Set[Digest]]
-  // Memoizes the full transitive digest set per class name (excluding extraHashes),
-  // so the re-entrant external-dep walk isn't recomputed for every reference.
+  // Memoizes the full transitive digest set per class name (unsorted, excluding
+  // extraHashes), so the re-entrant external-dep walk isn't recomputed for every
+  // reference. Sorting is deferred to the root (`transitiveStamp`) since intermediate
+  // results are only ever folded into a Set, where order is irrelevant.
   private val transitiveCache = mutable.Map.empty[String, Seq[Digest]]
   // Cached so by-name `analyses0` is only evaluated once
   private lazy val analyses = analyses0
@@ -193,23 +195,21 @@ class ClassStamper private[sbt] (
       extraHashes: Seq[Digest],
       log: Logger,
   ): Option[Digest] =
-    val digests = transitiveStamps(javaClassName, extraHashes, log)
+    val digests = transitiveStamps(javaClassName, log).sorted ++ extraHashes
     if digests.nonEmpty then Some(Digest.sha256Hash(digests*))
     else None
 
   private def transitiveStamps(
       javaClassName: String,
-      extraHashes: Seq[Digest],
       log: Logger,
   ): Seq[Digest] =
-    val base = transitiveCache.getOrElseUpdate(
+    transitiveCache.getOrElseUpdate(
       javaClassName, {
         val builder = Set.newBuilder[Digest]
         analyses.foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
-        builder.result().toSeq.sorted
+        builder.result().toSeq
       }
     )
-    base ++ extraHashes
 
   private def internalStamp(
       builder: mutable.Builder[Digest, Set[Digest]],
@@ -234,7 +234,7 @@ class ClassStamper private[sbt] (
       relations
         .externalDeps(className)
         .foreach: libClassName =>
-          newBuilder ++= transitiveStamps(libClassName, Nil, log)
+          newBuilder ++= transitiveStamps(libClassName, log)
       relations
         .externalDeps(className)
         .foreach: libClassName =>
