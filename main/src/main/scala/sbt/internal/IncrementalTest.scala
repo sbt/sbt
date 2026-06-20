@@ -254,7 +254,6 @@ class ClassStamper private[sbt] (
               newBuilder += stampVf(vf)
       analysis.apis.internal
         .get(className)
-        .toSet
         .foreach: analyzed =>
           newBuilder += Digest.dummy(
             37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash
