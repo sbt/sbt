@@ -248,9 +248,6 @@ class ClassStamper private[sbt] (
         .externalDeps(className)
         .foreach: libClassName =>
           newBuilder ++= transitiveStamps(libClassName, log)
-      relations
-        .externalDeps(className)
-        .foreach: libClassName =>
           relations.libraryClassName
             .reverse(libClassName)
             .foreach: vf =>
