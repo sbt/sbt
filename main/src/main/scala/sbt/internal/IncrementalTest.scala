@@ -182,6 +182,14 @@ class ClassStamper private[sbt] (
   private val transitiveCache = mutable.Map.empty[String, Seq[Digest]]
   // Cached so by-name `analyses0` is only evaluated once
   private lazy val analyses = analyses0
+  // Index of binary class name -> analyses that produce it, so a stamp can dispatch
+  // straight to its owning analyses instead of scanning every analysis on the classpath.
+  private lazy val analysesByProduct: Map[String, Seq[Analysis]] =
+    val acc = mutable.HashMap.empty[String, mutable.ListBuffer[Analysis]]
+    analyses.foreach: a =>
+      a.relations.productClassName._2s.foreach: bin =>
+        acc.getOrElseUpdate(bin, mutable.ListBuffer.empty) += a
+    acc.iterator.map((k, v) => k -> v.toSeq).toMap
   private val stampVf: VirtualFileRef => Digest =
     CacheImplicits.virtualFileRefToDigest(_)(converter)
 
@@ -206,7 +214,9 @@ class ClassStamper private[sbt] (
     transitiveCache.getOrElseUpdate(
       javaClassName, {
         val builder = Set.newBuilder[Digest]
-        analyses.foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
+        analysesByProduct
+          .getOrElse(javaClassName, Nil)
+          .foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
         builder.result().toSeq
       }
     )
