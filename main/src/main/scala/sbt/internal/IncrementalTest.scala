@@ -175,6 +175,9 @@ class ClassStamper private[sbt] (
     )
 
   private val stamps = mutable.Map.empty[String, Set[Digest]]
+  // Memoizes the full transitive digest set per class name (excluding extraHashes),
+  // so the re-entrant external-dep walk isn't recomputed for every reference.
+  private val transitiveCache = mutable.Map.empty[String, Seq[Digest]]
   // Cached so by-name `analyses0` is only evaluated once
   private lazy val analyses = analyses0
   private val stampVf: VirtualFileRef => Digest =
@@ -199,10 +202,14 @@ class ClassStamper private[sbt] (
       extraHashes: Seq[Digest],
       log: Logger,
   ): Seq[Digest] =
-    val builder = Set.newBuilder[Digest]
-    analyses.foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
-    val digests = builder.result().toSeq.sorted
-    digests ++ extraHashes
+    val base = transitiveCache.getOrElseUpdate(
+      javaClassName, {
+        val builder = Set.newBuilder[Digest]
+        analyses.foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
+        builder.result().toSeq.sorted
+      }
+    )
+    base ++ extraHashes
 
   private def internalStamp(
       builder: mutable.Builder[Digest, Set[Digest]],
