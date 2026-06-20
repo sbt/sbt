@@ -59,9 +59,10 @@ object IncrementalTest:
     val rds = Keys.resourceDigests.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
+    val testDigestExtra = extra ++ rds ++ opts
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
-      stamper.transitiveStamp(name, extra ++ rds ++ opts, s.log) match
+      stamper.transitiveStamp(name, testDigestExtra, s.log) match
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     )*)
