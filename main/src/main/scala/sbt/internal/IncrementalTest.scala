@@ -175,12 +175,19 @@ class ClassStamper private[sbt] (
       converter,
     )
 
-  private val stamps = mutable.Map.empty[String, Set[Digest]]
-  // Memoizes the full transitive digest set per class name (unsorted, excluding
-  // extraHashes), so the re-entrant external-dep walk isn't recomputed for every
-  // reference. Sorting is deferred to the root (`transitiveStamp`) since intermediate
-  // results are only ever folded into a Set, where order is irrelevant.
-  private val transitiveCache = mutable.Map.empty[String, Seq[Digest]]
+  // Leaf digests (class bytecode hashes + library file digests) are interned to dense
+  // ints so transitive digest sets can be held as bit sets: union is a word-parallel OR
+  // and each member costs one bit instead of a 32-byte Digest.
+  private val digestList = mutable.ArrayBuffer.empty[Digest]
+  private def idOf(d: Digest): Int =
+    digestIds.getOrElseUpdate(d, { val i = digestList.size; digestList += d; i })
+
+  private val stamps = mutable.Map.empty[String, mutable.BitSet]
+  // Memoizes the full transitive digest set per class name (excluding extraHashes), so the
+  // re-entrant external-dep walk isn't recomputed for every reference. Mapping bits back to
+  // digests and sorting is deferred to the root (`transitiveStamp`); intermediate results
+  // are only ever OR-ed into another bit set, where order and identity are irrelevant.
+  private val transitiveCache = mutable.Map.empty[String, mutable.BitSet]
   // Cached so by-name `analyses0` is only evaluated once
   private lazy val analyses = analyses0
   // Index of binary class name -> analyses that produce it, so a stamp can dispatch
@@ -207,26 +214,33 @@ class ClassStamper private[sbt] (
       extraHashes: Seq[Digest],
       log: Logger,
   ): Option[Digest] =
-    val digests = transitiveStamps(javaClassName, log).sorted ++ extraHashes
+    val digests = sortedDigests(transitiveStamps(javaClassName, log)) ++ extraHashes
     if digests.nonEmpty then Some(Digest.sha256Hash(digests*))
     else None
+
+  // Map a bit set back to its digests
+  private def sortedDigests(bits: mutable.BitSet): Seq[Digest] =
+    val buf = mutable.ArrayBuffer.empty[Digest]
+    bits.foreach(i => buf += digestList(i))
+    buf.sortInPlace()
+    buf.toSeq
 
   private def transitiveStamps(
       javaClassName: String,
       log: Logger,
-  ): Seq[Digest] =
+  ): mutable.BitSet =
     transitiveCache.getOrElseUpdate(
       javaClassName, {
-        val builder = Set.newBuilder[Digest]
+        val builder = mutable.BitSet.empty
         analysesByProduct
           .getOrElse(javaClassName, Nil)
           .foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
-        builder.result().toSeq
+        builder
       }
     )
 
   private def internalStamp(
-      builder: mutable.Builder[Digest, Set[Digest]],
+      builder: mutable.BitSet,
       javaClassName: String,
       analysis: Analysis,
       alreadySeen: mutable.Set[String],
@@ -236,8 +250,8 @@ class ClassStamper private[sbt] (
 
     // log.debug(s"test: internalStamp($javaClassName)")
     def internalStamp0(className: String): Unit =
-      // Use a new builder so we can cache the result in `stamps`
-      val newBuilder = Set.newBuilder[Digest]
+      // Use a new bit set so we can cache the result in `stamps`
+      val newBuilder = mutable.BitSet.empty
 
       // Zinc doesn't fully track the transitive dependencies
       relations
@@ -248,28 +262,27 @@ class ClassStamper private[sbt] (
       relations
         .externalDeps(className)
         .foreach: libClassName =>
-          newBuilder ++= transitiveStamps(libClassName, log)
+          newBuilder |= transitiveStamps(libClassName, log)
           relations.libraryClassName
             .reverse(libClassName)
             .foreach: vf =>
-              newBuilder += stampVf(vf)
+              newBuilder += idOf(stampVf(vf))
       analysis.apis.internal
         .get(className)
         .foreach: analyzed =>
-          newBuilder += Digest.dummy(
-            37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash
+          newBuilder += idOf(
+            Digest.dummy(37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash)
           )
 
-      val xs = newBuilder.result()
-      if xs.nonEmpty then stamps(className) = xs
+      if newBuilder.nonEmpty then stamps(className) = newBuilder
       else ()
 
-      builder ++= xs
+      builder |= newBuilder
 
     if alreadySeen.contains(javaClassName) then ()
     else
       stamps.get(javaClassName) match
-        case Some(xs) => builder ++= xs
+        case Some(xs) => builder |= xs
         case _        =>
           alreadySeen += javaClassName
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
