@@ -178,6 +178,7 @@ class ClassStamper private[sbt] (
   // Leaf digests (class bytecode hashes + library file digests) are interned to dense
   // ints so transitive digest sets can be held as bit sets: union is a word-parallel OR
   // and each member costs one bit instead of a 32-byte Digest.
+  private val digestIds = mutable.HashMap.empty[Digest, Int]
   private val digestList = mutable.ArrayBuffer.empty[Digest]
   private def idOf(d: Digest): Int =
     digestIds.getOrElseUpdate(d, { val i = digestList.size; digestList += d; i })
