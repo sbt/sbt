@@ -78,18 +78,18 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
       - name: Checkout sbt/sbt
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: true
       - name: Checkout sbt/io
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: sbt/io
           ref: develop
           path: io
       - name: Checkout sbt/zinc
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: sbt/zinc
           ref: develop
