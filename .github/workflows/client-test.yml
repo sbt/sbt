@@ -28,7 +28,7 @@ jobs:
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
       TEST_SBT_VER: 1.11.4
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup JDK
       uses: actions/setup-java@v5
       with:
