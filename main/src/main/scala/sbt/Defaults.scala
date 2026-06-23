@@ -1140,19 +1140,20 @@ object Defaults extends BuildCommon with DefExtra {
       selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
       run / mainClass := (run / selectMainClass).value,
       mainClass := Def.uncached {
-        // Suppress warning for run commands (user is actively running, warning is noise)
-        def isRunCommand(s: String): Boolean = s match
+        // Suppress warning for run/test commands (user is actively running, warning is noise)
+        def isRunOrTestCommand(s: String): Boolean = s match
           case "run" | "runMain" | "bgRun" | "bgRunMain" | "fgRun" | "fgRunMain" => true
+          case t if t.startsWith("test")                                         => true
           case _                                                                 => false
         val logWarning = state.value.currentCommand.forall(!_.commandLine.split(" ").exists {
-          case s if isRunCommand(s) => true
-          case r                    =>
+          case s if isRunOrTestCommand(s) => true
+          case r                          =>
             // Handle both "/" (new syntax like Test/run) and ":" (old syntax like test:run)
             r.split("[/:]") match {
               case Array(parts*) =>
                 parts.lastOption match {
-                  case Some(s) if isRunCommand(s) => true
-                  case _                          => false
+                  case Some(s) if isRunOrTestCommand(s) => true
+                  case _                                => false
                 }
             }
         })
