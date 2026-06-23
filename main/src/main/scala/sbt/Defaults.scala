@@ -1143,7 +1143,7 @@ object Defaults extends BuildCommon with DefExtra {
         // Suppress warning for run/test commands (user is actively running, warning is noise)
         def isRunOrTestCommand(s: String): Boolean = s match
           case "run" | "runMain" | "bgRun" | "bgRunMain" | "fgRun" | "fgRunMain" => true
-          case t if t.startsWith("test")                                         => true
+          case "test" | "testFull" | "testOnly" | "testQuick" | "testSelected"   => true
           case _                                                                 => false
         val logWarning = state.value.currentCommand.forall(!_.commandLine.split(" ").exists {
           case s if isRunOrTestCommand(s) => true
