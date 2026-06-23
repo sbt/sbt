@@ -322,4 +322,38 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val compress = componentConfig.modules.find(_.module.name == "commons-compress").get
     compress.licenses should have size 1
   }
+
+  property(
+    "transitive caller lookup is not broken by inherited management overrides (sbt/sbt#9348)"
+  ) {
+    val dependencies =
+      Vector("org.apache.tika" % "tika-core" % "3.3.1" % "compile")
+    val coursierModule = module(lmEngine, stubModule, dependencies, Some("2.12.4"))
+    val resolution =
+      lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
+
+    assert(resolution.isRight)
+    val compileConfig =
+      resolution.toOption.get.configurations.find(_.configuration == Compile.toConfigRef).get
+    val tikaCaller = "org.apache.tika:tika-core:3.3.1"
+
+    def callerOf(name: String): ModuleReport = {
+      val reports = compileConfig.modules.filter(_.module.name == name)
+      withClue(s"$name not found in: ${compileConfig.modules.map(_.module.name).mkString(", ")}") {
+        reports should have size 1
+      }
+      reports.head
+    }
+
+    def coord(m: sbt.librarymanagement.ModuleID): String =
+      s"${m.organization}:${m.name}:${m.revision}"
+
+    for (transitive <- Seq("commons-io", "slf4j-api")) {
+      val report = callerOf(transitive)
+      val callerCoords = report.callers.map(c => coord(c.caller)).toSet
+      withClue(s"$transitive callers: $callerCoords") {
+        callerCoords should contain(tikaCaller)
+      }
+    }
+  }
 }
