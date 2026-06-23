@@ -104,18 +104,6 @@ $ sbt
 > publishLocalBin
 ```
 
-After this you can set the sbt version within your own project in `project/build.properties` to use the locally-published snapshot version:
-
-```properties
-sbt.version=2.x.y-bin-SNAPSHOT
-```
-
-If you are iterating on changes, you will need to wipe the local sbt cache between runs:
-
-```bash
-$ rm -fr ~/.sbt/boot/scala-3.*/org.scala-sbt/sbt/2.x.y-bin-SNAPSHOT/
-```
-
 See also [Development environment][02] and [Coding style and best practices][03].
 
 
@@ -124,8 +112,8 @@ See also [Development environment][02] and [Coding style and best practices][03]
 sbt features a testing infrastructure encompassing multiple testing methodologies designed to ensure reliability and functionality across different integrations. The testing framework includes:
 
 - [Unit tests][04]
-- [scripted tests][05]
-- [Manual tests][06], using the locally baked sbt
+- [Scripted tests][05]
+- [Manual tests][06], which details how to run the locally baked sbt in your own project
 
 ### Tech stack
 
