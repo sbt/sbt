@@ -278,6 +278,80 @@ class BuildServerTest extends AbstractServerTest {
     }
   }
 
+  test("buildTarget/scalaMainClasses does not clear compile diagnostics (#9345)") {
+    val buildTarget = buildTargetUri("diagnostics", "Compile")
+    val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
+    val original = IO.read(mainFile)
+    try {
+      IO.write(
+        mainFile,
+        """|object Diagnostics {
+           |  private val a: Int = ""
+           |}""".stripMargin
+      )
+
+      val compileId = compile(buildTarget)
+      val res = svr.session.waitForResultInResponseMsg[BspCompileResult](30.seconds, compileId).get
+      assert(
+        res.statusCode == StatusCode.Error,
+        s"expected StatusCode.Error, got ${res.statusCode}"
+      )
+
+      svr.session
+        .waitForParamsInNotificationMsg[PublishDiagnosticsParams](30.seconds) { p =>
+          p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+          p.diagnostics.exists(d =>
+            d.severity.contains(DiagnosticSeverity.Error) &&
+              (d.message.contains("type mismatch") ||
+                d.message.contains("Found:") ||
+                d.message.contains("Required:"))
+          )
+        }
+        .get
+
+      svr.session
+        .waitForParamsInNotificationMsg[TaskFinishParams](30.seconds) { p =>
+          p.message.contains("Compiled diagnostics")
+        }
+        .get
+
+      val targets = Vector(BuildTargetIdentifier(buildTarget))
+      val mainClassesId =
+        sendRequest("buildTarget/scalaMainClasses", ScalaMainClassesParams(targets, None))
+
+      svr.session
+        .waitForNotificationMsg(30.seconds) { n =>
+          n.method match {
+            case "build/publishDiagnostics" =>
+              n.params
+                .flatMap(Converter.fromJson[PublishDiagnosticsParams](_).toOption)
+                .foreach { p =>
+                  if (
+                    p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+                    p.reset &&
+                    p.diagnostics.isEmpty
+                  )
+                    throw new Exception(
+                      "buildTarget/scalaMainClasses must not publish empty reset=true " +
+                        "diagnostics for Diagnostics.scala after a failed compile (#9345)"
+                    )
+                }
+              false
+            case "build/taskFinish" =>
+              n.params
+                .flatMap(Converter.fromJson[TaskFinishParams](_).toOption)
+                .exists(_.message.contains("Compiled diagnostics"))
+            case _ => false
+          }
+        }
+        .get
+
+      svr.session.waitForResponseMsg(30.seconds, mainClassesId).get
+    } finally {
+      IO.write(mainFile, original)
+    }
+  }
+
   test("buildTarget/compile: Java diagnostics") {
     val buildTarget = buildTargetUri("javaProj", "Compile")
 
