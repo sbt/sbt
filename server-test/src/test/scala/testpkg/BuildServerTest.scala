@@ -11,6 +11,7 @@ import sbt.internal.bsp.*
 import sbt.internal.bsp.codec.JsonProtocol.given
 import sbt.internal.langserver.{ ErrorCodes, LogMessageParams }
 import sbt.internal.langserver.codec.JsonProtocol.given
+import sbt.internal.protocol.JsonRpcNotificationMessage
 import sbt.IO
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
@@ -18,7 +19,9 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import java.io.File
 import java.net.URI
 import java.nio.file.{ Files, Paths }
+import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
+import scala.util.{ Failure, Success }
 
 // starts svr using server-test/buildserver and perform custom server tests
 class BuildServerTest extends AbstractServerTest {
@@ -279,6 +282,29 @@ class BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/scalaMainClasses does not clear compile diagnostics (#9345)") {
+    def isForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Boolean =
+      n.method == "build/publishDiagnostics" &&
+        n.params
+          .flatMap(Converter.fromJson[PublishDiagnosticsParams](_).toOption)
+          .exists(p =>
+            p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+              p.reset &&
+              p.diagnostics.isEmpty
+          )
+
+    def drainQueuedNotificationsAndFailOnForbiddenReset(): Unit =
+      svr.session.waitForNotificationMsg(Duration.Zero)(_ => true) match {
+        case Success(n) =>
+          if (isForbiddenDiagnosticReset(n))
+            throw new Exception(
+              "buildTarget/scalaMainClasses must not publish empty reset=true " +
+                "diagnostics for Diagnostics.scala after a failed compile (#9345)"
+            )
+          drainQueuedNotificationsAndFailOnForbiddenReset()
+        case Failure(_: TimeoutException) => ()
+        case Failure(e)                   => throw e
+      }
+
     val buildTarget = buildTargetUri("diagnostics", "Compile")
     val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
     val original = IO.read(mainFile)
@@ -347,6 +373,8 @@ class BuildServerTest extends AbstractServerTest {
         .get
 
       svr.session.waitForResponseMsg(30.seconds, mainClassesId).get
+
+      drainQueuedNotificationsAndFailOnForbiddenReset()
     } finally {
       IO.write(mainFile, original)
     }
