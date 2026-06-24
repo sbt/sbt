@@ -29,6 +29,30 @@ object UseTask:
   }
 end UseTask
 
+// https://github.com/sbt/sbt/issues/9375
+object UseHktTypeArgument:
+  final class IO[A]
+
+  object Builder:
+    def apply[F[_]](value: String): String = value
+
+  val settingWithHktTypeArgument: Def.Initialize[String] = Def.setting {
+    Builder[IO]("setting")
+  }
+
+  val taskWithHktTypeArgument: Def.Initialize[Task[String]] = Def.task {
+    Builder[IO]("task")
+  }
+
+  val name = Def.settingKey[String]("name")
+  val key = Def.taskKey[String]("key")
+  val settings = Seq(
+    key := Def.uncached {
+      Builder[IO](name.value)
+    }
+  )
+end UseHktTypeArgument
+
 object Assign {
   import java.io.File
 
