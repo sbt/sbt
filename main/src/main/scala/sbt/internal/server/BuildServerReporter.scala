@@ -14,6 +14,7 @@ import sbt.internal.util.ManagedLogger
 import sbt.internal.server.BuildServerProtocol.BspCompileState
 import xsbti.compile.CompileAnalysis
 import xsbti.{
+  CompileFailed,
   FileConverter,
   Problem,
   Reporter,
@@ -46,6 +47,9 @@ sealed trait BuildServerReporter extends Reporter {
   def sendSuccessReport(analysis: CompileAnalysis): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
+
+  def sendFailureReport(sources: Array[VirtualFile], failure: Option[CompileFailed]): Unit =
+    sendFailureReport(sources)
 
   override def reset(): Unit = underlying.reset()
 
@@ -116,6 +120,32 @@ final class BuildServerReporterImpl(
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
     for (source <- sources) {
       val problems = problemsByFile.getOrElse(converter.toPath(source), Vector.empty)
+      sendReport(source, problems)
+    }
+    notifyFirstReport()
+  }
+
+  override def sendFailureReport(
+      sources: Array[VirtualFile],
+      failure: Option[CompileFailed]
+  ): Unit = {
+    val fallbackByFile: Map[Path, Vector[Problem]] = failure match
+      case Some(failed) =>
+        failed
+          .problems()
+          .toVector
+          .flatMap { problem =>
+            problem.position.sourcePath.toScala.map { id =>
+              converter.toPath(VirtualFileRef.of(id)) -> problem
+            }
+          }
+          .groupMap(_._1)(_._2)
+      case None =>
+        Map.empty
+
+    for (source <- sources) {
+      val path = converter.toPath(source)
+      val problems = problemsByFile.getOrElse(path, fallbackByFile.getOrElse(path, Vector.empty))
       sendReport(source, problems)
     }
     notifyFirstReport()
