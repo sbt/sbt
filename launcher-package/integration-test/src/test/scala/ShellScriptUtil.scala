@@ -39,6 +39,7 @@ trait ShellScriptUtil extends BasicTestSuite {
       distSbtoptsContents: String = "",
       machineSbtoptsContents: String = "",
       jvmoptsFileContents: String = "",
+      buildPropsContents: String = "",
       windowsSupport: Boolean = true,
       citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
@@ -104,6 +105,12 @@ trait ShellScriptUtil extends BasicTestSuite {
             } finally {
               jvmoptsWriter.close()
             }
+          }
+
+          if (buildPropsContents.nonEmpty) {
+            val projectDir = new File(workingDirectory, "project")
+            projectDir.mkdirs()
+            IO.write(new File(projectDir, "build.properties"), buildPropsContents)
           }
 
           val envVars = scala.collection.mutable.Map[String, String]()
