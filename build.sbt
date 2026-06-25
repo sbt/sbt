@@ -802,10 +802,18 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
       // Consolidated sendFailureReport to single Optional-CompileFailure API (sbt#9345)
-      exclude[DirectMissingMethodProblem]("sbt.internal.server.BuildServerReporter.sendFailureReport"),
-      exclude[ReversedMissingMethodProblem]("sbt.internal.server.BuildServerReporter.sendFailureReport"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.server.BuildServerReporterImpl.sendFailureReport"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.server.BuildServerForwarder.sendFailureReport"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.server.BuildServerReporter.sendFailureReport"
+      ),
+      exclude[ReversedMissingMethodProblem](
+        "sbt.internal.server.BuildServerReporter.sendFailureReport"
+      ),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.server.BuildServerReporterImpl.sendFailureReport"
+      ),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.server.BuildServerForwarder.sendFailureReport"
+      ),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
