@@ -172,8 +172,8 @@ jobs:
         if: ${{ matrix.jobtype == 5 }}
         shell: bash
         run: |
+          ./sbt -v "scripted global-plugin/*"
           ./sbt -v "scripted project/*"
-          ./sbt -v "scripted project1/*"
       # - name: Build and test (6)
       #  if: ${{ matrix.jobtype == 6 }}
       #  shell: bash

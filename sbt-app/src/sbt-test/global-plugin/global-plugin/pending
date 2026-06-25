@@ -1,6 +1,3 @@
-$ copy-file changes/build.sbt build.sbt
-> reload
-
 # ensure that a new global dependency gets picked up
 $ copy-file changes/global-plugins.sbt global/plugins/plugins.sbt
 > reload
