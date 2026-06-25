@@ -116,14 +116,20 @@ trait ShellScriptUtil extends BasicTestSuite {
 
           val envVars = scala.collection.mutable.Map[String, String]()
 
+          // Set up dist sbtopts if provided
+          // Note: sbt script derives sbt_home from script location, not SBT_HOME env var
+          // Copy the sbt staging directory to a temp location to avoid modifying the staging directory
           if (distSbtoptsContents.nonEmpty || stagedRunnerVersionOverride.nonEmpty) {
             val originalSbtHome = sbtScript.getParentFile.getParentFile
             val tempSbtHomeDir = Files.createTempDirectory("sbt-home-test").toFile
             tempSbtHome = Some(tempSbtHomeDir)
+            // Copy the entire sbt home directory structure
             retry(() => IO.copyDirectory(originalSbtHome, tempSbtHomeDir))
+            // Get the script from the copied directory
             val binDir = new File(tempSbtHomeDir, "bin")
             testSbtScript = new File(binDir, sbtScript.getName)
             if (distSbtoptsContents.nonEmpty) {
+              // Create dist sbtopts in the copied directory
               val distSbtoptsDir = new File(tempSbtHomeDir, "conf")
               distSbtoptsDir.mkdirs()
               IO.write(new File(distSbtoptsDir, "sbtopts"), distSbtoptsContents)
@@ -148,6 +154,7 @@ trait ShellScriptUtil extends BasicTestSuite {
               IO.write(testSbtScript, updated)
               if (!isBat) testSbtScript.setExecutable(true)
             }
+            // Store reference for cleanup
             sbtHome = Some(tempSbtHomeDir)
           }
 
