@@ -46,10 +46,10 @@ sealed trait BuildServerReporter extends Reporter {
 
   def sendSuccessReport(analysis: CompileAnalysis): Unit
 
-  def sendFailureReport(sources: Array[VirtualFile]): Unit
-
-  def sendFailureReport(sources: Array[VirtualFile], failure: Option[CompileFailed]): Unit =
-    sendFailureReport(sources)
+  def sendFailureReport(
+      sources: Array[VirtualFile],
+      failure: Option[CompileFailed] = None
+  ): Unit
 
   override def reset(): Unit = underlying.reset()
 
@@ -112,14 +112,6 @@ final class BuildServerReporterImpl(
   override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
     for ((source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala) {
       val problems = infos.getReportedProblems.toVector
-      sendReport(source, problems)
-    }
-    notifyFirstReport()
-  }
-
-  override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
-    for (source <- sources) {
-      val problems = problemsByFile.getOrElse(converter.toPath(source), Vector.empty)
       sendReport(source, problems)
     }
     notifyFirstReport()
@@ -275,7 +267,10 @@ final class BuildServerForwarder(
       analysis: CompileAnalysis,
   ): Unit = ()
 
-  override def sendFailureReport(sources: Array[VirtualFile]): Unit = ()
+  override def sendFailureReport(
+      sources: Array[VirtualFile],
+      failure: Option[CompileFailed]
+  ): Unit = ()
 
   protected override def publishDiagnostic(problem: Problem): Unit = ()
 }
