@@ -169,8 +169,10 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     "sbt -v '++ 3' ci does not run native client for spaced sbt 1.x project",
     citestVariant = "citest",
     buildPropsContents = "sbt.version = 1.12.11\n",
+    stagedRunnerVersionOverride = "2.0.0",
   )("-v", "++ 3", "ci"): (out: List[String]) =>
     assert(!out.exists(_.contains("running native client")))
+    assert(out.exists(_.contains("sbt-launch.jar")))
     ()
 
   // Test for issue #4189: Improve -help and help commands
