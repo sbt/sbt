@@ -281,6 +281,10 @@ class BuildServerTest extends AbstractServerTest {
     }
   }
 
+  // 1. Cause a real compile error and observe non-empty diagnostics.
+  // 2. Request buildTarget/scalaMainClasses.
+  // 3. Watch any notifications emitted while that request is processed.
+  // 4. Fail if one of them is the forbidden empty diagnostic reset.
   test("buildTarget/scalaMainClasses does not clear compile diagnostics (#9345)") {
     def isForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Boolean =
       n.method == "build/publishDiagnostics" &&
