@@ -296,14 +296,17 @@ class BuildServerTest extends AbstractServerTest {
               p.diagnostics.isEmpty
           )
 
+    def failIfForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Unit =
+      if (isForbiddenDiagnosticReset(n))
+        fail(
+          "buildTarget/scalaMainClasses must not publish empty reset=true " +
+            "diagnostics for Diagnostics.scala after a failed compile (#9345)"
+        )
+
     def drainQueuedNotificationsAndFailOnForbiddenReset(): Unit =
       svr.session.waitForNotificationMsg(Duration.Zero)(_ => true) match {
         case Success(n) =>
-          if (isForbiddenDiagnosticReset(n))
-            throw new Exception(
-              "buildTarget/scalaMainClasses must not publish empty reset=true " +
-                "diagnostics for Diagnostics.scala after a failed compile (#9345)"
-            )
+          failIfForbiddenDiagnosticReset(n)
           drainQueuedNotificationsAndFailOnForbiddenReset()
         case Failure(_: TimeoutException) => ()
         case Failure(e)                   => throw e
@@ -351,28 +354,11 @@ class BuildServerTest extends AbstractServerTest {
 
       svr.session
         .waitForNotificationMsg(30.seconds) { n =>
-          n.method match {
-            case "build/publishDiagnostics" =>
-              n.params
-                .flatMap(Converter.fromJson[PublishDiagnosticsParams](_).toOption)
-                .foreach { p =>
-                  if (
-                    p.textDocument.uri.toString.contains("Diagnostics.scala") &&
-                    p.reset &&
-                    p.diagnostics.isEmpty
-                  )
-                    throw new Exception(
-                      "buildTarget/scalaMainClasses must not publish empty reset=true " +
-                        "diagnostics for Diagnostics.scala after a failed compile (#9345)"
-                    )
-                }
-              false
-            case "build/taskFinish" =>
-              n.params
-                .flatMap(Converter.fromJson[TaskFinishParams](_).toOption)
-                .exists(_.message.contains("Compiled diagnostics"))
-            case _ => false
-          }
+          failIfForbiddenDiagnosticReset(n)
+          n.method == "build/taskFinish" &&
+          n.params
+            .flatMap(Converter.fromJson[TaskFinishParams](_).toOption)
+            .exists(_.message.contains("Compiled diagnostics"))
         }
         .get
 
