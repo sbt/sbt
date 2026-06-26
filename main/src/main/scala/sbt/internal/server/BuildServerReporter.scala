@@ -46,9 +46,11 @@ sealed trait BuildServerReporter extends Reporter {
 
   def sendSuccessReport(analysis: CompileAnalysis): Unit
 
+  def sendFailureReport(sources: Array[VirtualFile]): Unit
+
   def sendFailureReport(
       sources: Array[VirtualFile],
-      failure: Option[CompileFailed] = None
+      failure: Option[CompileFailed]
   ): Unit
 
   override def reset(): Unit = underlying.reset()
@@ -116,6 +118,9 @@ final class BuildServerReporterImpl(
     }
     notifyFirstReport()
   }
+
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit =
+    sendFailureReport(sources, None)
 
   override def sendFailureReport(
       sources: Array[VirtualFile],
@@ -266,6 +271,9 @@ final class BuildServerForwarder(
   override def sendSuccessReport(
       analysis: CompileAnalysis,
   ): Unit = ()
+
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit =
+    sendFailureReport(sources, None)
 
   override def sendFailureReport(
       sources: Array[VirtualFile],
