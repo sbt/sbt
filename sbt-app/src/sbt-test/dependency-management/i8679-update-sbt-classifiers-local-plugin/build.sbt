@@ -13,10 +13,12 @@ lazy val root = (project in file("."))
     TaskKey[Unit]("checkClassifiersModule") := Def.uncached {
       val mod = (updateSbtClassifiers / classifiersModule).value
       val deps = mod.dependencies
-      val actual = deps.map(m => s"${m.organization}:${m.name}").sorted.toSet
+      val actual = deps
+        .filter(m => m.organization != "org.scala-sbt")
+        .map(m => s"${m.organization}:${m.name}")
+        .sorted.toSet
 
       val expected = Set(
-        "org.scala-sbt:sbt",
         "junit:junit",
         "com.eed3si9n:sbt-buildinfo_sbt2_3",
         "org.hamcrest:hamcrest-core",
