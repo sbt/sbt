@@ -805,6 +805,8 @@ lazy val mainProj = (project in file("main"))
       exclude[ReversedMissingMethodProblem](
         "sbt.internal.server.BuildServerReporter.sendFailureReport"
       ),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.GlobalPluginData.*"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.*"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
