@@ -23,7 +23,6 @@ import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
-import scala.collection.SortedSet
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 
 object IncrementalTest:
@@ -160,15 +159,24 @@ end TestStatus
  * ClassStamper provides `transitiveStamp` method to calculate a unique
  * fingerprint, which will be used for runtime invalidation.
  */
-class ClassStamper(
-    classpath: Seq[Attributed[HashedVirtualFileRef]],
+class ClassStamper private[sbt] (
+    analyses0: => Seq[Analysis],
     converter: FileConverter,
 ):
-  private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private val internalStamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private lazy val analyses = classpath
-    .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
-    .collect { case analysis: Analysis => analysis }
+  def this(
+      classpath: Seq[Attributed[HashedVirtualFileRef]],
+      converter: FileConverter,
+  ) =
+    this(
+      classpath
+        .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
+        .collect { case analysis: Analysis => analysis },
+      converter,
+    )
+
+  private val stamps = mutable.Map.empty[String, Set[Digest]]
+  // Cached so by-name `analyses0` is only evaluated once
+  private lazy val analyses = analyses0
   private val stampVf: VirtualFileRef => Digest =
     CacheImplicits.virtualFileRefToDigest(_)(converter)
 
@@ -191,51 +199,63 @@ class ClassStamper(
       extraHashes: Seq[Digest],
       log: Logger,
   ): Seq[Digest] =
-    val digests = SortedSet(analyses.flatMap(internalStamp(javaClassName, _, Set.empty, log))*)
-    digests.toSeq ++ extraHashes
+    val builder = Set.newBuilder[Digest]
+    analyses.foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
+    val digests = builder.result().toSeq.sorted
+    digests ++ extraHashes
 
   private def internalStamp(
+      builder: mutable.Builder[Digest, Set[Digest]],
       javaClassName: String,
       analysis: Analysis,
-      alreadySeen: Set[String],
+      alreadySeen: mutable.Set[String],
       log: Logger,
-  ): SortedSet[Digest] =
+  ): Unit =
     import analysis.relations
+
     // log.debug(s"test: internalStamp($javaClassName)")
-    def internalStamp0(className: String): SortedSet[Digest] =
+    def internalStamp0(className: String): Unit =
+      // Use a new builder so we can cache the result in `stamps`
+      val newBuilder = Set.newBuilder[Digest]
+
       // Zinc doesn't fully track the transitive dependencies
-      val internalDeps = relations
+      relations
         .internalClassDeps(className)
-        .flatMap: otherCN =>
-          internalStamp(otherCN, analysis, alreadySeen + javaClassName, log)
+        .foreach: otherCN =>
+          internalStamp(newBuilder, otherCN, analysis, alreadySeen, log)
       // log.debug(s"  internalStamp: internalDeps: $className = $internalDeps")
-      val internalJarDeps = relations
+      relations
         .externalDeps(className)
-        .flatMap: libClassName =>
-          transitiveStamps(libClassName, Nil, log)
-      val externalDeps = relations
+        .foreach: libClassName =>
+          newBuilder ++= transitiveStamps(libClassName, Nil, log)
+      relations
         .externalDeps(className)
-        .flatMap: libClassName =>
+        .foreach: libClassName =>
           relations.libraryClassName
             .reverse(libClassName)
-            .map(stampVf)
-      val classDigests = analysis.apis.internal
+            .foreach: vf =>
+              newBuilder += stampVf(vf)
+      analysis.apis.internal
         .get(className)
         .toSet
-        .map: analyzed =>
-          Digest.dummy(37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash)
-      val xs =
-        (internalDeps union internalJarDeps union externalDeps union classDigests)
-          .to(SortedSet)
+        .foreach: analyzed =>
+          newBuilder += Digest.dummy(
+            37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash
+          )
+
+      val xs = newBuilder.result()
       if xs.nonEmpty then stamps(className) = xs
       else ()
-      xs
-    if alreadySeen.contains(javaClassName) then SortedSet.empty
+
+      builder ++= xs
+
+    if alreadySeen.contains(javaClassName) then ()
     else
       stamps.get(javaClassName) match
-        case Some(xs) => xs
+        case Some(xs) => builder ++= xs
         case _        =>
+          alreadySeen += javaClassName
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
           val classNames = relations.productClassName.reverse(javaClassName)
-          SortedSet(classNames.toSeq*).flatMap(internalStamp0)
+          classNames.foreach(internalStamp0)
 end ClassStamper
