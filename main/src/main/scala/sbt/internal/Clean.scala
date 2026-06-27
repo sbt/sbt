@@ -226,6 +226,9 @@ private[sbt] object Clean {
           case d: DiskActionCacheStore => d.clear()
           case _                       => ()
         IO.delete(outputDirectory.toFile())
+        val extracted = Project.extract(s)
+        IO.delete(extracted.get(Keys.stagingDirectory))
+        IO.delete(extracted.get(Keys.sonaBundleDirectory))
         IO.delete(
           s.configuration
             .provider()

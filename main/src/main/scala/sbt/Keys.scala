@@ -673,6 +673,8 @@ object Keys {
   @transient
   val stagingDirectory = settingKey[File]("Local staging directory for Sonatype publishing").withRank(CSetting)
   @transient
+  private[sbt] val sonaBundleDirectory = settingKey[File]("Local bundle directory for Sonatype publishing").withRank(DSetting)
+  @transient
   val sonaBundle = taskKey[File]("Local bundle for Sonatype publishing").withRank(DTask)
   val localStaging = settingKey[Option[Resolver]]("Local staging resolver for Sonatype publishing").withRank(CSetting)
   val sonaDeploymentName = settingKey[String]("The name used for deployment").withRank(DSetting)

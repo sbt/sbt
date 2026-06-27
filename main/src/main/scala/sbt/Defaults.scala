@@ -286,11 +286,12 @@ object Defaults extends BuildCommon with DefExtra {
       csrCacheDirectory := LMCoursier.defaultCacheLocation,
       csrSameVersions :== Nil,
       stagingDirectory := (ThisBuild / baseDirectory).value / "target" / "sona-staging",
+      sonaBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sona-bundle",
       localStaging := Some(Resolver.file("local-staging", stagingDirectory.value)),
       sonaBundle := Publishing
         .makeBundle(
           stagingDirectory.value.toPath(),
-          ((ThisBuild / baseDirectory).value / "target" / "sona-bundle" / "bundle.zip").toPath()
+          (sonaBundleDirectory.value / "bundle.zip").toPath()
         )
         .toFile(),
       sonaBundle / aggregate :== false,
