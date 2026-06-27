@@ -31,6 +31,14 @@ object ExtendedRunnerTest extends BasicTestSuite:
       "JAVA_OPTS" -> "",
       "SBT_OPTS" -> ""
     )
+  def sbtProcessLikeBsd(args: String*) =
+    Process(
+      launcherCmd ++ args,
+      IntegrationTestPaths.citestDir("citest"),
+      "JAVA_OPTS" -> "",
+      "SBT_OPTS" -> "",
+      "OSTYPE" -> "openbsd7.9"
+    )
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -142,6 +150,15 @@ object ExtendedRunnerTest extends BasicTestSuite:
         assert(out2.exists { _.contains("disconnected") })
       }
     }
+    ()
+  }
+
+  test("sbt falls back to JVM client on unsupported platform") {
+    if isWindows || isMac then ()
+    else
+      val out = sbtProcessLikeBsd("--client", "--no-colors", "compile").!!.linesIterator.toList
+      assert(out.exists { _.contains("server was not detected") })
+      sbtProcessLikeBsd("--client", "--no-colors", "shutdown").!
     ()
   }
 

@@ -203,8 +203,7 @@ acquire_sbtn () {
       archive_target="$p/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"
       url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"
     else
-      echoerr_error "sbtn is not supported on $arch"
-      exit 2
+      return 1
     fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     arch="universal"
@@ -215,8 +214,7 @@ acquire_sbtn () {
     archive_target="$p/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
     url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
   else
-    echoerr_error "sbtn is not supported on $OSTYPE"
-    exit 2
+    return 1
   fi
 
   if [[ -f "$target" ]]; then
@@ -808,7 +806,7 @@ process_args () {
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
            -client|--client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;
-               --jvm-client) use_sbtn=0 && use_jvm_client=1 && addSbt "--client" && shift ;;
+               --jvm-client) use_sbtn=0 && use_jvm_client=1 && shift ;;
      --no-hide-jdk-warnings) hide_jdk_warnings=0 && shift ;;
 
                  -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
@@ -906,11 +904,15 @@ detectNativeClient() {
   fi
 }
 
-# Run native client if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
-isRunNativeClient() {
+# Run client (sbtn or jvm verion) if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
+isRunClient() {
   # sbt new/init should not use native client as it needs to run outside a project
   if [[ "$sbt_new" == "true" ]]; then
     echo "false"
+    return
+  fi
+  if [[ "$use_jvm_client" == "1" ]]; then
+    echo "true"
     return
   fi
   sbtV="$build_props_sbt_version"
@@ -936,25 +938,40 @@ isRunNativeClient() {
   fi
 }
 
-runNativeClient() {
-  vlog "[debug] running native client"
-  detectNativeClient
-  [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
-    exit 1
-  }
-  for i in "${!original_args[@]}"; do
-    if [[ "${original_args[i]}" = "--client" ]]; then
-      unset 'original_args[i]'
-    fi
-  done
-
-  if [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-    sbt_script="$0.bat"
-  else
-    sbt_script="$0"
+runClient() {
+  if [[ "$use_jvm_client" != "1" ]]; then
+    detectNativeClient
+    [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
+      use_jvm_client="1"
+    }
   fi
-  sbt_script=${sbt_script/ /%20}
-  execRunner "$sbtn_command" "--sbt-script=$sbt_script" "${original_args[@]}"
+  if [[ "$use_jvm_client" == "1" ]]; then
+    vlog "[debug] running jvm client"
+    addSbt "--client"
+    addDefaultMemory
+    addSbtScriptProperty
+    addJdkWorkaround
+    set -- "${residual_args[@]}"
+    argumentCount=$#
+    run
+  else
+    vlog "[debug] running native client"
+    set -- "${residual_args[@]}"
+    argumentCount=$#
+    for i in "${!original_args[@]}"; do
+      if [[ "${original_args[i]}" = "--client" ]]; then
+        unset 'original_args[i]'
+      fi
+    done
+
+    if [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+      sbt_script="$0.bat"
+    else
+      sbt_script="$0"
+    fi
+    sbt_script=${sbt_script/ /%20}
+    execRunner "$sbtn_command" "--sbt-script=$sbt_script" "${original_args[@]}"
+  fi
 }
 
 original_args=("$@")
@@ -1025,10 +1042,8 @@ java_version="$(jdk_version)"
 vlog "[process_args] java_version = '$java_version'"
 checkJava17ForSbt2
 
-if [[ "$(isRunNativeClient)" == "true" ]] && [[ -z "$print_version" ]]; then
-  set -- "${residual_args[@]}"
-  argumentCount=$#
-  runNativeClient
+if [[ "$(isRunClient)" == "true" ]] && [[ -z "$print_version" ]]; then
+  runClient
 else
   addDefaultMemory
   addSbtScriptProperty
