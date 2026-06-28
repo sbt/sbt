@@ -77,10 +77,34 @@ object NetworkClientParseArgsTest extends BasicTestSuite:
     assert(!result.sbtArguments.contains("-batch"))
     assert(result.commandArguments.contains("compile"))
 
-  test("-allow-empty is dropped"):
+  test("-allow-empty remains in sbtArguments and is not a sbt command"):
     val result = parse("-allow-empty", "compile")
-    assert(!result.sbtArguments.contains("-allow-empty"))
+    assert(result.sbtArguments.contains("-allow-empty"))
     assert(!result.commandArguments.contains("-allow-empty"))
+    assert(result.commandArguments.contains("compile"))
+
+  test("--allow-empty remains in sbtArguments and is not a sbt command"):
+    val result = parse("--allow-empty", "compile")
+    assert(result.sbtArguments.contains("--allow-empty"))
+    assert(!result.commandArguments.contains("--allow-empty"))
+    assert(result.commandArguments.contains("compile"))
+
+  test("-sbt-create remains in sbtArguments and is not a sbt command"):
+    val result = parse("-sbt-create", "compile")
+    assert(result.sbtArguments.contains("-sbt-create"))
+    assert(!result.commandArguments.contains("-sbt-create"))
+    assert(result.commandArguments.contains("compile"))
+
+  test("--sbt-create remains in sbtArguments and is not a sbt command"):
+    val result = parse("--sbt-create", "compile")
+    assert(result.sbtArguments.contains("--sbt-create"))
+    assert(!result.commandArguments.contains("--sbt-create"))
+    assert(result.commandArguments.contains("compile"))
+
+  test("compile --allow-empty keeps --allow-empty in sbtArguments"):
+    val result = parse("compile", "--allow-empty")
+    assert(result.sbtArguments.contains("--allow-empty"))
+    assert(!result.commandArguments.contains("--allow-empty"))
     assert(result.commandArguments.contains("compile"))
 
   // -- Eq-syntax flags and -J* --

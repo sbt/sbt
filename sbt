@@ -26,7 +26,7 @@ declare use_sbtn=
 declare use_jvm_client=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="2.0.0-f0d2fae4"
+declare sbtn_version="2.0.0-2932685e"
 declare use_colors=1
 declare is_this_dir_sbt=""
 declare hide_jdk_warnings=1
@@ -869,10 +869,10 @@ appendSbtoptsFromFile() {
 }
 
 loadPropFile() {
-  # trim key and value so as to be more forgiving with spaces around the '=':
-  k=$(trimString $k)
-  v=$(trimString $v)
   while IFS='=' read -r k v; do
+    # trim key and value so as to be more forgiving with spaces around the '=':
+    k=$(trimString "$k")
+    v=$(trimString "$v")
     if [[ "$k" == "sbt.version" ]]; then
       build_props_sbt_version="$v"
     fi

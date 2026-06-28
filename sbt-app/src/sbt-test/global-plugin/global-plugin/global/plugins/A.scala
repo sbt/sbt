@@ -1,15 +1,10 @@
-package test
+package example
 
 import sbt.*, Keys.*
 
-object Global {
+object G:
   val x = 3
-}
 
-object GlobalAutoPlugin extends AutoPlugin {
-
-  object autoImport {
+object GlobalAutoPlugin extends AutoPlugin:
+  object autoImport:
     lazy val globalAutoPluginSetting = settingKey[String]("A top level setting declared in a plugin.")
-  }
-
-}

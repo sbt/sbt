@@ -11,6 +11,7 @@ import sbt.internal.bsp.*
 import sbt.internal.bsp.codec.JsonProtocol.given
 import sbt.internal.langserver.{ ErrorCodes, LogMessageParams }
 import sbt.internal.langserver.codec.JsonProtocol.given
+import sbt.internal.protocol.JsonRpcNotificationMessage
 import sbt.IO
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
@@ -18,7 +19,9 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import java.io.File
 import java.net.URI
 import java.nio.file.{ Files, Paths }
+import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
+import scala.util.{ Failure, Success }
 
 // starts svr using server-test/buildserver and perform custom server tests
 class BuildServerTest extends AbstractServerTest {
@@ -273,6 +276,95 @@ class BuildServerTest extends AbstractServerTest {
         res.statusCode == StatusCode.Error,
         s"expected StatusCode.Error, got ${res.statusCode}"
       )
+    } finally {
+      IO.write(mainFile, original)
+    }
+  }
+
+  // 1. Cause a real compile error and observe non-empty diagnostics.
+  // 2. Request buildTarget/scalaMainClasses.
+  // 3. Watch any notifications emitted while that request is processed.
+  // 4. Fail if one of them is the forbidden empty diagnostic reset.
+  test("buildTarget/scalaMainClasses does not clear compile diagnostics (#9345)") {
+    def isForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Boolean =
+      n.method == "build/publishDiagnostics" &&
+        n.params
+          .flatMap(Converter.fromJson[PublishDiagnosticsParams](_).toOption)
+          .exists(p =>
+            p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+              p.reset &&
+              p.diagnostics.isEmpty
+          )
+
+    def failIfForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Unit =
+      if (isForbiddenDiagnosticReset(n))
+        fail(
+          "buildTarget/scalaMainClasses must not publish empty reset=true " +
+            "diagnostics for Diagnostics.scala after a failed compile (#9345)"
+        )
+
+    def drainQueuedNotificationsAndFailOnForbiddenReset(): Unit =
+      svr.session.waitForNotificationMsg(Duration.Zero)(_ => true) match {
+        case Success(n) =>
+          failIfForbiddenDiagnosticReset(n)
+          drainQueuedNotificationsAndFailOnForbiddenReset()
+        case Failure(_: TimeoutException) => ()
+        case Failure(e)                   => throw e
+      }
+
+    val buildTarget = buildTargetUri("diagnostics", "Compile")
+    val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
+    val original = IO.read(mainFile)
+    try {
+      IO.write(
+        mainFile,
+        """|object Diagnostics {
+           |  private val a: Int = ""
+           |}""".stripMargin
+      )
+
+      val compileId = compile(buildTarget)
+      val res = svr.session.waitForResultInResponseMsg[BspCompileResult](30.seconds, compileId).get
+      assert(
+        res.statusCode == StatusCode.Error,
+        s"expected StatusCode.Error, got ${res.statusCode}"
+      )
+
+      svr.session
+        .waitForParamsInNotificationMsg[PublishDiagnosticsParams](30.seconds) { p =>
+          p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+          p.diagnostics.exists(d =>
+            d.severity.contains(DiagnosticSeverity.Error) &&
+              (d.message.contains("type mismatch") ||
+                d.message.contains("Found:") ||
+                d.message.contains("Required:"))
+          )
+        }
+        .get
+
+      svr.session
+        .waitForParamsInNotificationMsg[TaskFinishParams](30.seconds) { p =>
+          p.message.contains("Compiled diagnostics")
+        }
+        .get
+
+      val targets = Vector(BuildTargetIdentifier(buildTarget))
+      val mainClassesId =
+        sendRequest("buildTarget/scalaMainClasses", ScalaMainClassesParams(targets, None))
+
+      svr.session
+        .waitForNotificationMsg(30.seconds) { n =>
+          failIfForbiddenDiagnosticReset(n)
+          n.method == "build/taskFinish" &&
+          n.params
+            .flatMap(Converter.fromJson[TaskFinishParams](_).toOption)
+            .exists(_.message.contains("Compiled diagnostics"))
+        }
+        .get
+
+      svr.session.waitForResponseMsg(30.seconds, mainClassesId).get
+
+      drainQueuedNotificationsAndFailOnForbiddenReset()
     } finally {
       IO.write(mainFile, original)
     }

@@ -15,7 +15,7 @@ ThisBuild / version := {
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.0.0-f0d2fae4"
+ThisBuild / Utils.sbtnVersion := "2.0.0-2932685e"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -801,6 +801,10 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf"),
       exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
+      // Added optional CompileFailed context for BSP failure diagnostics (sbt#9345)
+      exclude[ReversedMissingMethodProblem](
+        "sbt.internal.server.BuildServerReporter.sendFailureReport"
+      ),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)

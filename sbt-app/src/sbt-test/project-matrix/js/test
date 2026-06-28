@@ -1,0 +1,5 @@
+> fastOptJS
+
+$ exists target/out/sjs1/scala-2.12.21/core/core-fastopt.js
+$ exists target/out/sjs1/scala-2.12.21/app/app-fastopt.js
+$ exists target/out/sjs1/scala-2.13.18/core/core-fastopt.js

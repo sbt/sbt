@@ -252,6 +252,7 @@ private[internal] object SbtUpdateReport {
         .withConfiguration(Configuration.empty)
         .withMinimizedExclusions(MinimizedExclusions.zero)
         .withOptional(false)
+        .clearOverrides
 
     def lookupProject(mv: coursier.core.Resolution.ModuleVersion): Option[Project] =
       res.projectCache.get(mv) match {

@@ -14,6 +14,7 @@ import sbt.internal.util.ManagedLogger
 import sbt.internal.server.BuildServerProtocol.BspCompileState
 import xsbti.compile.CompileAnalysis
 import xsbti.{
+  CompileFailed,
   FileConverter,
   Problem,
   Reporter,
@@ -46,6 +47,11 @@ sealed trait BuildServerReporter extends Reporter {
   def sendSuccessReport(analysis: CompileAnalysis): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
+
+  def sendFailureReport(
+      sources: Array[VirtualFile],
+      failure: Option[CompileFailed]
+  ): Unit
 
   override def reset(): Unit = underlying.reset()
 
@@ -113,9 +119,30 @@ final class BuildServerReporterImpl(
     notifyFirstReport()
   }
 
-  override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit =
+    sendFailureReport(sources, None)
+
+  override def sendFailureReport(
+      sources: Array[VirtualFile],
+      failure: Option[CompileFailed]
+  ): Unit = {
+    val fallbackByFile: Map[Path, Vector[Problem]] = failure match
+      case Some(failed) =>
+        failed
+          .problems()
+          .toVector
+          .flatMap { problem =>
+            problem.position.sourcePath.toScala.map { id =>
+              converter.toPath(VirtualFileRef.of(id)) -> problem
+            }
+          }
+          .groupMap(_._1)(_._2)
+      case None =>
+        Map.empty
+
     for (source <- sources) {
-      val problems = problemsByFile.getOrElse(converter.toPath(source), Vector.empty)
+      val path = converter.toPath(source)
+      val problems = problemsByFile.getOrElse(path, fallbackByFile.getOrElse(path, Vector.empty))
       sendReport(source, problems)
     }
     notifyFirstReport()
@@ -245,7 +272,13 @@ final class BuildServerForwarder(
       analysis: CompileAnalysis,
   ): Unit = ()
 
-  override def sendFailureReport(sources: Array[VirtualFile]): Unit = ()
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit =
+    sendFailureReport(sources, None)
+
+  override def sendFailureReport(
+      sources: Array[VirtualFile],
+      failure: Option[CompileFailed]
+  ): Unit = ()
 
   protected override def publishDiagnostic(problem: Problem): Unit = ()
 }

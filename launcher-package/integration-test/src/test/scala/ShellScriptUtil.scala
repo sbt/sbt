@@ -39,6 +39,8 @@ trait ShellScriptUtil extends BasicTestSuite {
       distSbtoptsContents: String = "",
       machineSbtoptsContents: String = "",
       jvmoptsFileContents: String = "",
+      buildPropsContents: String = "",
+      stagedRunnerVersionOverride: String = "",
       windowsSupport: Boolean = true,
       citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
@@ -106,12 +108,18 @@ trait ShellScriptUtil extends BasicTestSuite {
             }
           }
 
+          if (buildPropsContents.nonEmpty) {
+            val projectDir = new File(workingDirectory, "project")
+            projectDir.mkdirs()
+            IO.write(new File(projectDir, "build.properties"), buildPropsContents)
+          }
+
           val envVars = scala.collection.mutable.Map[String, String]()
 
           // Set up dist sbtopts if provided
           // Note: sbt script derives sbt_home from script location, not SBT_HOME env var
           // Copy the sbt staging directory to a temp location to avoid modifying the staging directory
-          if (distSbtoptsContents.nonEmpty) {
+          if (distSbtoptsContents.nonEmpty || stagedRunnerVersionOverride.nonEmpty) {
             val originalSbtHome = sbtScript.getParentFile.getParentFile
             val tempSbtHomeDir = Files.createTempDirectory("sbt-home-test").toFile
             tempSbtHome = Some(tempSbtHomeDir)
@@ -120,11 +128,32 @@ trait ShellScriptUtil extends BasicTestSuite {
             // Get the script from the copied directory
             val binDir = new File(tempSbtHomeDir, "bin")
             testSbtScript = new File(binDir, sbtScript.getName)
-            // Create dist sbtopts in the copied directory
-            val distSbtoptsDir = new File(tempSbtHomeDir, "conf")
-            distSbtoptsDir.mkdirs()
-            val distSbtoptsFile = new File(distSbtoptsDir, "sbtopts")
-            IO.write(distSbtoptsFile, distSbtoptsContents)
+            if (distSbtoptsContents.nonEmpty) {
+              // Create dist sbtopts in the copied directory
+              val distSbtoptsDir = new File(tempSbtHomeDir, "conf")
+              distSbtoptsDir.mkdirs()
+              IO.write(new File(distSbtoptsDir, "sbtopts"), distSbtoptsContents)
+            }
+            if (stagedRunnerVersionOverride.nonEmpty) {
+              val isBat = testSbtScript.getName.endsWith(".bat")
+              val prefix =
+                if (isBat) "set init_sbt_version=" else "declare init_sbt_version="
+              val pattern =
+                if (isBat) "(?m)^set init_sbt_version=.*$"
+                else "(?m)^declare init_sbt_version=.*$"
+              val original = IO.read(testSbtScript)
+              val regex = pattern.r
+              assert(
+                regex.findFirstIn(original).nonEmpty,
+                s"init_sbt_version line not found in $testSbtScript"
+              )
+              val replacement =
+                java.util.regex.Matcher.quoteReplacement(prefix + stagedRunnerVersionOverride)
+              val updated = regex.replaceAllIn(original, replacement)
+              assert(updated.contains(prefix + stagedRunnerVersionOverride))
+              IO.write(testSbtScript, updated)
+              if (!isBat) testSbtScript.setExecutable(true)
+            }
             // Store reference for cleanup
             sbtHome = Some(tempSbtHomeDir)
           }

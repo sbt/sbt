@@ -112,8 +112,8 @@ See also [Development environment][02] and [Coding style and best practices][03]
 sbt features a testing infrastructure encompassing multiple testing methodologies designed to ensure reliability and functionality across different integrations. The testing framework includes:
 
 - [Unit tests][04]
-- [scripted tests][05]
-- [Manual tests][06], using the locally baked sbt
+- [Scripted tests][05]
+- [Manual tests][06], which details how to run the locally baked sbt in your own project
 
 ### Tech stack
 

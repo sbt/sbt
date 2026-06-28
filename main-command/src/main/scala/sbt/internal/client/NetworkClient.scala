@@ -389,7 +389,9 @@ class NetworkClient(
                 s"$javaHome/bin/java"
               }
               .getOrElse("java")
-            List(java) ++ arguments.sbtArguments ++
+            List(java) ++ arguments.sbtArguments.filterNot(
+              NetworkClient.emptyBuildFlags.contains
+            ) ++
               List("-jar", lj, DashDashDetachStdio, DashDashServer)
           case _ =>
             List(arguments.sbtScript) ++ arguments.sbtArguments ++
@@ -1270,11 +1272,13 @@ object NetworkClient {
     "--no-share",
     "-no-global",
     "--no-global",
+    "shutdownall"
+  )
+  private[client] val emptyBuildFlags: Set[String] = Set(
     "-allow-empty",
     "--allow-empty",
     "-sbt-create",
     "--sbt-create",
-    "shutdownall",
   )
   // Prefixes for launcher flags using = syntax
   private[client] val launcherEqPrefixes: Seq[String] = Seq(
@@ -1301,8 +1305,10 @@ object NetworkClient {
     var i = 0
     while (i < sanitized.length) {
       sanitized(i) match {
-        case a if completionArguments.nonEmpty => completionArguments += a
-        case a if commandArgs.nonEmpty         => commandArgs += a
+        case a if completionArguments.nonEmpty                        => completionArguments += a
+        case a if commandArgs.nonEmpty && emptyBuildFlags.contains(a) =>
+          sbtArguments += a
+        case a if commandArgs.nonEmpty                                     => commandArgs += a
         case a if a == noStdErr || a == noTab || a.startsWith(completions) =>
           completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
