@@ -1006,7 +1006,7 @@ private[sbt] object LibraryManagement {
           val resolver = sbt.Classpaths.getPublishTo(publishTo.value)
           val project = csrProject.value.withPublications(csrPublications.value)
           val config = publishConfiguration.value
-          val artifacts = config.artifacts.map { case (a, f) => (a, f) }
+          val artifacts = config.artifacts
           resolver match {
             case urlRepo: sbt.librarymanagement.URLRepository =>
               val creds = allCredentials.value
@@ -1134,7 +1134,7 @@ private[sbt] object LibraryManagement {
           val log = streams.value.log
           val project = csrProject.value.withPublications(csrPublications.value)
           val config = publishLocalConfiguration.value
-          val artifacts = config.artifacts.map { case (a, f) => (a, f) }
+          val artifacts = config.artifacts
           val checksumAlgos = config.checksums
           val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
             val userHome = new File(System.getProperty("user.home"))
@@ -1177,7 +1177,7 @@ private[sbt] object LibraryManagement {
           val log = streams.value.log
           val project = csrProject.value.withPublications(csrPublications.value)
           val config = publishM2Configuration.value
-          val artifacts = config.artifacts.map { case (a, f) => (a, f) }
+          val artifacts = config.artifacts
           val m2Repo = Resolver.publishMavenLocal
           ivylessPublishMavenToFile(
             project,
