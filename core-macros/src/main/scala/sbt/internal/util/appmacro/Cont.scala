@@ -492,6 +492,7 @@ private[sbt] object Cont:
     "bspTargetIdentifier",
     "bspCompileTask",
     "cacheConfiguration",
+    "csrLogger",
     "compileAnalysisFile",
     "compileIncSetup",
     "compileInputs",
@@ -502,7 +503,10 @@ private[sbt] object Cont:
     "fileConverter",
     "managedResources",
     "managedSources",
+    "logManager",
+    "sLog",
     "streams",
+    "testResultLogger",
     "unmanagedSources",
   )
 end Cont
