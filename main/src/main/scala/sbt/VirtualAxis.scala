@@ -33,7 +33,7 @@ object VirtualAxis {
       case v: WeakAxis =>
         stack.contains(v) || !stack.exists {
           case wa: WeakAxis => wa.axisId == v.axisId
-          case _ => false
+          case _            => false
         }
       case v: StrongAxis =>
         stack.contains(v)
