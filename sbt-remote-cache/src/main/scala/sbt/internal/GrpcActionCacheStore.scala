@@ -151,12 +151,16 @@ class GrpcActionCacheStore(
     case _       => casStub0
   lazy val byteStreamStub0 = ByteStreamGrpc.newStub(channel)
   lazy val byteStreamStub = remoteHeaders match
-    case x :: xs =>
-      byteStreamStub0
-        .withCallCredentials(creds)
-        .withDeadlineAfter(remoteTimeoutInSec, TimeUnit.SECONDS)
-    case _ =>
-      byteStreamStub0.withDeadlineAfter(remoteTimeoutInSec, TimeUnit.SECONDS)
+    case x :: xs => byteStreamStub0.withCallCredentials(creds)
+    case _       => byteStreamStub0
+
+  // The deadline must be attached per call, not on the memoized stub above.
+  // withDeadlineAfter computes an absolute deadline at the moment it is called, so a stub
+  // stored in a (session-lived) lazy val would expire remoteTimeoutInSec after first use and
+  // then reject every later call with DEADLINE_EXCEEDED. Deriving a fresh stub per RPC gives
+  // each call its own relative timeout.
+  private[internal] def byteStreamStubWithDeadline =
+    byteStreamStub.withDeadlineAfter(remoteTimeoutInSec, TimeUnit.SECONDS)
 
   override def storeName: String = "remote"
 
@@ -279,7 +283,7 @@ class GrpcActionCacheStore(
   def uploadBlob(blob: VirtualFile): Future[HashedVirtualFileRef] =
     val d = Digest(blob)
     withSingleResponse[ByteStreamProto.WriteResponse, HashedVirtualFileRef]: (p, resObs) =>
-      val reqObs = byteStreamStub.write(resObs)
+      val reqObs = byteStreamStubWithDeadline.write(resObs)
       val un = uploadName(d, UUID.randomUUID())
       var off: Long = 0L
       try
@@ -327,7 +331,7 @@ class GrpcActionCacheStore(
     b.setResourceName(dn)
     b.setReadOffset(0L)
     val req = b.build()
-    byteStreamStub.read(req, resObs)
+    byteStreamStubWithDeadline.read(req, resObs)
     p.future
 
   // helper function for many-to-one gRPC streaming
