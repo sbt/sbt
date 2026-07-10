@@ -1,0 +1,7 @@
+# Test ivyless publishLocal for an sbt 1 plugin (issue #9383)
+# When useIvy is false, publishLocal must write artifacts under the
+# scala_2.12/sbt_1.0 cross-suffix path, matching the Ivy PluginPattern.
+
+> cleanLocalIvy
+> publishLocal
+> checkPublished
