@@ -117,7 +117,7 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-77cc781d727b367d3761f097d89f5a4762771d41"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-939a7ea82f140cdb1f51dc404bb43e00a8c43b83"
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
