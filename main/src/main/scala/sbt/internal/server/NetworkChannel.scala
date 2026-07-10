@@ -12,13 +12,7 @@ package server
 
 import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
-import java.util.concurrent.{
-  ConcurrentHashMap,
-  Executors,
-  LinkedBlockingQueue,
-  RejectedExecutionException,
-  TimeUnit
-}
+import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
@@ -586,6 +580,7 @@ final class NetworkChannel(
       remainingCommands: Option[(String, String)]
   ): Unit = {
     doFlush()
+    flusher.close()
     terminal.close()
     StandardMain.exchange.removeChannel(this)
     super.shutdown(logShutdown)
@@ -680,15 +675,18 @@ final class NetworkChannel(
 
   import scala.jdk.CollectionConverters.*
   private val outputBuffer = new LinkedBlockingQueue[Byte]
-  private val flushExecutor = Executors.newSingleThreadScheduledExecutor(r =>
-    new Thread(r, s"$name-output-buffer-timer-thread")
-  )
+  // Batches writes to the client at most once per 20ms to cut terminal flicker (see
+  // CoalescingFlusher). forceFlush drains now while leaving the timer live.
+  private val flusher =
+    new CoalescingFlusher(s"$name-output-buffer-timer-thread", 20L, () => doFlush())
 
-  private def forceFlush(): Unit =
-    Util.ignoreResult(flushExecutor.shutdownNow())
-    doFlush()
+  private def forceFlush(): Unit = flusher.forceFlush()
 
-  private def doFlush() = {
+  // Serializes an inline forceFlush drain against the timer's drain across BOTH the drain and the
+  // publish, so two stdout batches can't reach the client out of order (publishBytes is a queue
+  // put, so it can't deadlock under this lock).
+  private val flushLock = new AnyRef
+  private def doFlush(): Unit = flushLock.synchronized {
     val list = new java.util.ArrayList[Byte]
     outputBuffer.synchronized(outputBuffer.drainTo(list))
     if (!list.isEmpty) jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
@@ -696,42 +694,13 @@ final class NetworkChannel(
 
   private lazy val outputStream: OutputStream & AutoCloseable = new OutputStream
     with AutoCloseable {
-    /*
-     * We buffer calls to flush to the remote client so that it is called at most
-     * once every 20 milliseconds. This is done because many terminals seem to flicker
-     * and display ghost characters if we flush to the remote client too often. The
-     * json protocol is a bit bulky so this will also reduce the total number of
-     * bytes that are written to the named pipe or unix domain socket. The buffer
-     * period of 20 milliseconds was arbitrarily chosen and could be tuned in the future.
-     * The thinking is that writes tend to be bursty so a twenty millisecond window is
-     * probably long enough to catch each burst but short enough to not introduce
-     * noticeable latency.
-     */
-    private val flushFuture = new AtomicReference[java.util.concurrent.Future[?]]
     override def close(): Unit = {
       forceFlush()
     }
     override def write(b: Int): Unit = outputBuffer.synchronized {
       outputBuffer.put(b.toByte)
     }
-    override def flush(): Unit = {
-      flushFuture.get match {
-        case null =>
-          try {
-            flushFuture.set(
-              flushExecutor.schedule(
-                (() => {
-                  flushFuture.set(null)
-                  doFlush()
-                }): Runnable,
-                20,
-                TimeUnit.MILLISECONDS
-              )
-            )
-          } catch { case _: RejectedExecutionException => doFlush() }
-        case f =>
-      }
-    }
+    override def flush(): Unit = flusher.flush()
     override def write(b: Array[Byte]): Unit = outputBuffer.synchronized {
       b.foreach(outputBuffer.put)
     }
