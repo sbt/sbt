@@ -97,7 +97,7 @@ private[sbt] object Server {
                 case null =>
                 case s    => s.close()
               }
-              log.info(s"sbt server started at ${connection.shortName}")
+              log.debug(s"sbt server started at ${connection.shortName}")
               writePortfile()
               if (connection.bspEnabled) {
                 log.debug("Writing bsp connection file")
