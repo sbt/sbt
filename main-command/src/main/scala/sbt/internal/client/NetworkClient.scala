@@ -182,6 +182,11 @@ class NetworkClient(
     def log(level: Level.Value, message: => String): Unit = console.appendLog(level, message)
   }
   private val interactive = arguments.commandArguments.isEmpty
+  private val startupMessages: List[String] =
+    "entering thin client - BEEP WHIRR" ::
+      "starting sbt server in the background" ::
+      "use 'sbt shutdown' to shutdown the server" ::
+      " " :: Nil
 
   private[sbt] def connectOrStartServerAndConnect(
       promptCompleteUsers: Boolean,
@@ -358,8 +363,9 @@ class NetworkClient(
     var serverStderrFile: Option[File] = None
     val process = socket match {
       case None if startServer =>
-        if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
-
+        if log then
+          startupMessages.foreach: msg =>
+            console.appendLog(Level.Info, msg)
         val props =
           Seq(
             term.getWidth,
@@ -960,10 +966,8 @@ class NetworkClient(
           catch { case _: InterruptedException => }
           if (exitClean.get) 0 else 1
         }
-        if (interactive) {
-          console.appendLog(Level.Info, "terminate the server with `shutdown`")
-          block()
-        } else if (exit) 0
+        if interactive then block()
+        else if exit then 0
         else {
           batchMode.set(true)
           val res = batchExecute(userCommands.toList)

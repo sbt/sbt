@@ -254,7 +254,7 @@ private[sbt] final class CommandExchange {
         case Some(Success(())) =>
           // remember to shutdown only when the server comes up
           server = Some(serverInstance)
-          s.log.info("started sbt server")
+          s.log.debug("started sbt server")
           // register this server in the shared proc directory
           try {
             val procDir = SysProp.globalLocalCache / "proc"
