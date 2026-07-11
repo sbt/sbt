@@ -3624,7 +3624,8 @@ object Classpaths {
         o %% "librarymanagement-ivy",
         o %% "util-logging",
         o %% "util-position",
-        o %% "io"
+        o %% "io",
+        "com.eed3si9n" %% "sjson-new-core"
       )
       if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes
