@@ -337,6 +337,13 @@ class NetworkClient(
     conn
   }
 
+  private def bootSocketOpt(bootSocketName: String): Option[Socket] =
+    Try(ClientSocket.bootSocket(bootSocketName)).toOption match
+      case Some(x)                => Some(x)
+      case None if Util.isWindows =>
+        Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+      case _ => None
+
   /**
    * Forks another instance of sbt in the background.
    * This instance must be shutdown explicitly via `sbt -client shutdown`
@@ -351,9 +358,7 @@ class NetworkClient(
      * For unknown reasons, linux sometimes struggles to connect to the socket in some
      * scenarios.
      */
-    var socket: Option[Socket] =
-      if (!Properties.isLinux) Try(ClientSocket.bootSocket(bootSocketName, useJNI)).toOption
-      else None
+    var socket: Option[Socket] = bootSocketOpt(bootSocketName)
     val term = Terminal.console
     term.exitRawMode()
     var serverStderrFile: Option[File] = None
@@ -436,7 +441,7 @@ class NetworkClient(
     if (!startServer) {
       val deadline = 5.seconds.fromNow
       while (socket.isEmpty && !deadline.isOverdue()) {
-        socket = Try(ClientSocket.bootSocket(bootSocketName, useJNI)).toOption
+        socket = bootSocketOpt(bootSocketName)
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
@@ -457,7 +462,7 @@ class NetworkClient(
           val buffer = mutable.ArrayBuffer.empty[Byte]
           while (readThreadAlive.get) {
             if (socket.isEmpty) {
-              socket = Try(ClientSocket.bootSocket(bootSocketName, useJNI)).toOption
+              socket = bootSocketOpt(bootSocketName)
             }
             socket.foreach { s =>
               try {
