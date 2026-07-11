@@ -352,7 +352,7 @@ class NetworkClient(
      * scenarios.
      */
     var socket: Option[Socket] =
-      if (!Properties.isLinux) Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+      if (!Properties.isLinux) Try(ClientSocket.bootSocket(bootSocketName, useJNI)).toOption
       else None
     val term = Terminal.console
     term.exitRawMode()
@@ -436,7 +436,7 @@ class NetworkClient(
     if (!startServer) {
       val deadline = 5.seconds.fromNow
       while (socket.isEmpty && !deadline.isOverdue()) {
-        socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+        socket = Try(ClientSocket.bootSocket(bootSocketName, useJNI)).toOption
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
@@ -457,7 +457,7 @@ class NetworkClient(
           val buffer = mutable.ArrayBuffer.empty[Byte]
           while (readThreadAlive.get) {
             if (socket.isEmpty) {
-              socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+              socket = Try(ClientSocket.bootSocket(bootSocketName, useJNI)).toOption
             }
             socket.foreach { s =>
               try {
@@ -1551,7 +1551,8 @@ object NetworkClient {
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
     val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
     val useJNI =
-      BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+      (Util.isMac && sys.props.getOrElse("os.arch", "") != "x86_64") ||
+        System.getProperty("sbt.ipcsocket.jni", "false") == "true"
     val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   }

@@ -45,4 +45,7 @@ object ClientSocket {
   def localSocket(name: String, useJNI: Boolean): Socket =
     if (isWindows) new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
     else new UnixDomainSocket(name, useJNI)
+
+  /** Connects to a Unix domain socket at the given path on all platforms (including Windows 10+). */
+  def bootSocket(path: String, useJNI: Boolean): Socket = new UnixDomainSocket(path, useJNI)
 }

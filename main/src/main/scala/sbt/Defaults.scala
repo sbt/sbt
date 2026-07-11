@@ -402,7 +402,7 @@ object Defaults extends BuildCommon with DefExtra {
       },
       serverHandlers :== Nil,
       windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
-      serverUseJni := BootServerSocket.requiresJNI || SysProp.serverUseJni,
+      serverUseJni := SysProp.serverUseJni,
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,

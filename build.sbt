@@ -634,14 +634,18 @@ lazy val commandProj = (project in file("main-command"))
       exclude[MissingClassProblem]("sbt.internal.client.ServerConnection"),
       exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.connection"),
       exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.init"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.this"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.socketLocation"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.*"),
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
       old filterNot { x =>
         x.getName.startsWith("NG") || (x.getName == "ReferenceCountedFileDescriptor.java")
       }
+    },
+    // BootServerSocket.java uses JDK 16+ Unix domain socket APIs (StandardProtocolFamily.UNIX,
+    // UnixDomainSocketAddress, ServerSocketChannel); override the build-wide -source/-target 1.8.
+    compile / javacOptions ~= { opts =>
+      opts.filterNot(v => v == "-source" || v == "-target" || v == "1.8") ++ Seq("--release", "17")
     },
   )
   .dependsOn(lmCore)

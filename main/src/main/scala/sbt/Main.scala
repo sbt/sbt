@@ -160,7 +160,7 @@ private[sbt] object xMain:
     def liveServerDetected: Boolean =
       BootServerSocketProbe.liveServerDetected(
         BootServerSocket.socketLocation(base, hash),
-        BootServerSocket.requiresJNI() || SysProp.serverUseJni,
+        SysProp.serverUseJni,
       )
     try Some(new BootServerSocket(configuration, hash)) -> None
     catch {

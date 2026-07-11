@@ -22,11 +22,8 @@ object BootServerSocketSpec extends BasicTestSuite:
       override def provider(): xsbti.AppProvider = null
     }
 
-  private def useJni: Boolean =
-    BootServerSocket.requiresJNI() || sys.props.getOrElse("sbt.ipcsocket.jni", "false") == "true"
-
   private def probe(location: String): Boolean =
-    BootServerSocketProbe.liveServerDetected(location, useJni)
+    BootServerSocketProbe.liveServerDetected(location, false)
 
   private def freshBase(prefix: String): (java.io.File, Long) =
     val base = Files.createTempDirectory(prefix).toRealPath().toFile
