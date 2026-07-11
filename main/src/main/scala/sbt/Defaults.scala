@@ -2847,7 +2847,7 @@ object Classpaths {
             case (false, _) =>
               Def.task { filteredDependencyClasspath.value }
             case (true, DependencyMode.Transitive) =>
-              Def.task { dependencyClasspath.value }
+              Def.task { internalDependencyPicklePath.value ++ externalDependencyClasspath.value }
             case (true, DependencyMode.Direct) =>
               Def.task {
                 val internalFiltered = ClasspathImpl.filterInternalByMode(
@@ -2855,7 +2855,7 @@ object Classpaths {
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
-                  internalDependencyClasspath.value,
+                  internalDependencyPicklePath.value,
                 )
                 val externalFiltered = ClasspathImpl.filterByDirectDeps(
                   allDependencies.value,
@@ -2870,7 +2870,7 @@ object Classpaths {
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
-                  internalDependencyClasspath.value,
+                  internalDependencyPicklePath.value,
                 )
                 val externalFiltered = ClasspathImpl.filterByPlusOne(
                   allDependencies.value,
