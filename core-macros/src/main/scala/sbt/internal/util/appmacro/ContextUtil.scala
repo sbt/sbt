@@ -76,11 +76,13 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
 
   private val cacheLevelSym = Symbol.requiredClass("sbt.util.cacheLevel")
   private val transientSym = Symbol.requiredClass("scala.transient")
+  private val nowarnAnnotSym = Symbol.requiredClass("scala.annotation.nowarn")
   final class Input(
       val tpe: TypeRepr,
       val qual: Term,
       val term: Term,
       val name: String,
+      val isWarnSuppressed: Boolean,
   ):
     override def toString: String =
       s"Input($tpe, $qual, $term, $name, $tags)"
@@ -193,6 +195,28 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   end TermTransform
 
   def idTransform[F[_]]: TermTransform[F] = in => in
+
+  /** Collects `qual.show` for each `.value` call wrapped in `@nowarn`, e.g. `(state.value: @nowarn)`. */
+  def collectNowarnQuals(tree: Term): Set[String] =
+    val result = mutable.HashSet[String]()
+    @tailrec def extractQual(t: Term): Unit = t match
+      case Inlined(_, _, inner)                                  => extractQual(inner)
+      case Typed(inner, _)                                       => extractQual(inner)
+      case Apply(TypeApply(Select(_, _), _ :: Nil), qual :: Nil) => result += qual.show
+      case Apply(TypeApply(Ident(_), _ :: Nil), qual :: Nil)     => result += qual.show
+      case _                                                     => ()
+    object scanner extends TreeTraverser:
+      override def traverseTree(t: Tree)(owner: Symbol): Unit = t match
+        case Typed(inner, tpt) =>
+          tpt.tpe match
+            case AnnotatedType(_, annot) if annot.tpe.typeSymbol == nowarnAnnotSym =>
+              extractQual(inner)
+            case _ =>
+              super.traverseTree(t)(owner)
+        case _ => super.traverseTree(t)(owner)
+    end scanner
+    scanner.traverseTree(tree)(Symbol.spliceOwner)
+    result.toSet
 
   def collectDefs(tree: Term, isWrapper: (String, TypeRepr, Term) => Boolean): Set[Symbol] =
     val defs = mutable.HashSet[Symbol]()
