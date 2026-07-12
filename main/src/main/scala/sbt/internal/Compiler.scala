@@ -621,6 +621,7 @@ object Compiler:
     val termEnv = sys.env.get("TERM").getOrElse("xterm-256color")
     ForkOptions()
       .withConnectInput(true)
+      .withWorkingDirectory((Keys.console / Keys.forkWorkingDirectory).value)
       .withRunJVMOptions(
         jo ++ Vector(
           s"-Dorg.jline.terminal.type=$termEnv",

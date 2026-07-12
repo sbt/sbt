@@ -472,8 +472,12 @@ class BuildServerTest extends AbstractServerTest {
     val id = sendRequest("buildTarget/scalaMainClasses", ScalaMainClassesParams(targets, None))
     val res =
       svr.session.waitForResultInResponseMsg[ScalaMainClassesResult](30.seconds, id).get
-    val classes = res.items.flatMap(_.classes.map(_.`class`))
-    assert(classes.contains("main.Main"))
+    val mainClasses = res.items.flatMap(_.classes)
+    assert(mainClasses.map(_.`class`).contains("main.Main"))
+    // JVM options and environment are derived from run / forkOptions
+    val main = mainClasses.find(_.`class` == "main.Main").get
+    assert(main.jvmOptions.contains("Xmx256M"))
+    assert(main.environmentVariables.contains("KEY=VALUE"))
   }
 
   test("buildTarget/run") {
@@ -509,7 +513,8 @@ class BuildServerTest extends AbstractServerTest {
     )
     assert(item.jvmOptions.contains("Xmx256M"))
     assert(item.environmentVariables == Map("KEY" -> "VALUE"))
-    assert(item.workingDirectory.contains("/buildserver/run-and-test"))
+    // run / forkWorkingDirectory is honored for the run environment
+    assert(item.workingDirectory.endsWith("/run-and-test"))
   }
 
   test("buildTarget/jvmTestEnvironment") {
@@ -529,6 +534,9 @@ class BuildServerTest extends AbstractServerTest {
     )
     assert(item.jvmOptions.contains("Xmx512M"))
     assert(item.environmentVariables == Map("KEY_TEST" -> "VALUE_TEST"))
+    // with no Test / forkWorkingDirectory, the test environment inherits sbt's working directory
+    assert(item.workingDirectory.endsWith("/buildserver"))
+    assert(!item.workingDirectory.contains("run-and-test"))
   }
 
   test("buildTarget/scalaTestClasses") {

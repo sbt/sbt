@@ -191,6 +191,7 @@ object Defaults extends BuildCommon with DefExtra {
       apiURL := None,
       releaseNotesURL := None,
       javaHome :== None,
+      forkWorkingDirectory :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
@@ -1405,6 +1406,8 @@ object Defaults extends BuildCommon with DefExtra {
       )
     )
   }
+
+  /** The forked process inherits sbt's working directory unless `forkWorkingDirectory` is set. */
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
     Def.task {
       val canUseArgumentsFile = sys.props
@@ -1415,7 +1418,7 @@ object Defaults extends BuildCommon with DefExtra {
         outputStrategy = outputStrategy.value,
         // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
         bootJars = Vector(),
-        workingDirectory = Some(baseDirectory.value),
+        workingDirectory = forkWorkingDirectory.value,
         runJVMOptions = javaOptions.value.toVector,
         connectInput = connectInput.value,
         envVars = envVars.value,
