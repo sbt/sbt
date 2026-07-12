@@ -3,7 +3,7 @@ import Keys.*
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala3 = "3.8.4"
+  val scala3 = "3.9.0"
   val scala212 = "2.12.21"
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =

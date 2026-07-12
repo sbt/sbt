@@ -436,6 +436,13 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
     name := "Util Scripted",
     libraryDependencies += scalaParsers,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.scripted.BasicStatementHandler.initialState"
+      ),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.scripted.CommentHandler.initialState"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.scripted.FileCommands.initialState"),
+    ),
   )
   .configure(addSbtIO)
 /* **** Intermediate-level Modules **** */

@@ -87,7 +87,7 @@ object WorkerExchange:
       inputRef.success(out)
       val scanner = Scanner(in, "UTF-8")
       while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
-    val (connArgs, closer): (Seq[String], Option[AutoCloseable]) = connectionType match
+    val (connArgs, closer) = connectionType match
       case WorkerConnection.Tcp =>
         val serverSocket = Retry(ServerSocket(0, 1, loopback))
         val accepter = Thread(() => {
