@@ -22,7 +22,7 @@ import scala.jdk.CollectionConverters.*
 import xsbti.PathBasedFile
 import xsbti.VirtualFile
 import xsbti.VirtualFileRef
-import dotty.tools.dotc.ast.untpd.{ Annotated, ValOrDefDef, Tree }
+import dotty.tools.dotc.ast.untpd.{ Annotated, ExtMethods, ModuleDef, ValOrDefDef, Tree, TypeDef }
 
 /**
  *  This file is responsible for compiling the .sbt files used to configure sbt builds.
@@ -312,6 +312,9 @@ private[sbt] object EvaluateConfigurations {
     tree match {
       case Annotated(arg, annot) => isDefinition(arg)
       case _: ValOrDefDef        => true
+      case _: ExtMethods         => true
+      case _: TypeDef            => true
+      case _: ModuleDef          => true
       case _                     => false
     }
   }
