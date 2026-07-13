@@ -376,33 +376,19 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
-        val cmd = arguments.sbtLaunchJar match {
-          case Some(lj) =>
-            if (log) {
-              val sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
-              console.appendLog(Level.Warn, s"server is started using sbt-launch jar directly")
-              console.appendLog(
-                Level.Warn,
-                "this is not the recommended way: .sbtopts and .jvmopts files are not loaded and SBT_OPTS is ignored"
-              )
-              console.appendLog(
-                Level.Warn,
-                s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
-              )
-            }
-            val java = Option(Properties.javaHome)
-              .map { javaHome =>
-                s"$javaHome/bin/java"
-              }
-              .getOrElse("java")
-            List(java) ++ arguments.sbtArguments.filterNot(
-              NetworkClient.emptyBuildFlags.contains
-            ) ++
-              List("-jar", lj, DashDashDetachStdio, DashDashServer)
-          case _ =>
-            List(arguments.sbtScript) ++ arguments.sbtArguments ++
-              List(DashDashDetachStdio, DashDashServer)
+        if (log && arguments.sbtLaunchJar.isDefined) {
+          val sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+          console.appendLog(Level.Warn, s"server is started using sbt-launch jar directly")
+          console.appendLog(
+            Level.Warn,
+            "this is not the recommended way: .sbtopts and .jvmopts files are not loaded and SBT_OPTS is ignored"
+          )
+          console.appendLog(
+            Level.Warn,
+            s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
+          )
         }
+        val cmd = NetworkClient.serverCommand(arguments)
 
         // https://github.com/sbt/sbt/issues/6271
         val nohup =
@@ -1204,6 +1190,7 @@ object NetworkClient {
       val sbtScript: String,
       val bsp: Boolean,
       val sbtLaunchJar: Option[String],
+      val launcherValueArgs: Seq[String] = Nil,
   ) {
     def withBaseDirectory(file: File): Arguments =
       new Arguments(
@@ -1214,8 +1201,20 @@ object NetworkClient {
         sbtScript,
         bsp,
         sbtLaunchJar,
+        launcherValueArgs,
       )
   }
+  private[client] def serverCommand(arguments: Arguments): List[String] =
+    arguments.sbtLaunchJar match {
+      case Some(lj) =>
+        val java =
+          Option(Properties.javaHome).map(javaHome => s"$javaHome/bin/java").getOrElse("java")
+        List(java) ++ arguments.sbtArguments.filterNot(emptyBuildFlags.contains) ++
+          List("-jar", lj, DashDashDetachStdio, DashDashServer)
+      case _ =>
+        List(arguments.sbtScript) ++ arguments.launcherValueArgs ++ arguments.sbtArguments ++
+          List(DashDashDetachStdio, DashDashServer)
+    }
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"
   private[client] val noStdErr = "--no-stderr"
@@ -1293,6 +1292,8 @@ object NetworkClient {
     "--autostart=",
     "-autostart=",
   )
+  private[client] val launcherValueEqPrefixes: Seq[String] =
+    launcherValueFlags.toSeq.map(_ + "=")
   private[client] def parseArgs(args: Array[String]): Arguments = {
     val defaultSbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
     var sbtScript = Properties.propOrNone("sbt.script")
@@ -1301,10 +1302,32 @@ object NetworkClient {
     val commandArgs = new mutable.ArrayBuffer[String]
     val sbtArguments = new mutable.ArrayBuffer[String]
     val completionArguments = new mutable.ArrayBuffer[String]
+    val launcherValueArgs = new mutable.ArrayBuffer[String]
     val SysProp = "-D([^=]+)=(.*)".r
-    val sanitized = args.flatMap {
-      case a if a.startsWith("\"") => Array(a)
-      case a                       => a.split(" ")
+    val sanitized = new mutable.ArrayBuffer[String]
+    val splitFromPrev = new mutable.ArrayBuffer[Boolean]
+    args.foreach {
+      case a if a.startsWith("\"") =>
+        sanitized += a
+        splitFromPrev += false
+      case a =>
+        var first = true
+        a.split(" ").foreach { part =>
+          if (part.nonEmpty) {
+            sanitized += part
+            splitFromPrev += !first
+            first = false
+          }
+        }
+    }
+    def valueFrom(start: Int): (String, Int) = {
+      var last = start
+      val sb = new StringBuilder(sanitized(start))
+      while (last + 1 < sanitized.length && splitFromPrev(last + 1)) {
+        last += 1
+        sb.append(" ").append(sanitized(last))
+      }
+      (sb.toString, last)
     }
     var i = 0
     while (i < sanitized.length) {
@@ -1339,7 +1362,20 @@ object NetworkClient {
         case a if a.startsWith("-autostart=") =>
           System.setProperty("sbt.server.autostart", a.stripPrefix("-autostart="))
         case a if launcherValueFlags.contains(a) =>
-          if (i + 1 < sanitized.length) i += 1
+          if (i + 1 < sanitized.length) {
+            launcherValueArgs += a
+            val (value, last) = valueFrom(i + 1)
+            launcherValueArgs += value
+            i = last
+          }
+        case a if launcherValueEqPrefixes.exists(p => a.startsWith(p)) =>
+          val (full, last) = valueFrom(i)
+          i = last
+          val eq = full.indexOf('=')
+          if (eq < full.length - 1) {
+            launcherValueArgs += full.substring(0, eq)
+            launcherValueArgs += full.substring(eq + 1)
+          }
         case a if launcherNoValueFlags.contains(a)                => ()
         case a if launcherEqPrefixes.exists(p => a.startsWith(p)) => ()
         case a if a.startsWith("-J")                              => ()
@@ -1366,6 +1402,7 @@ object NetworkClient {
       sbtScript.getOrElse(defaultSbtScript).replace("%20", " "),
       bsp,
       launchJar,
+      launcherValueArgs.toSeq,
     )
   }
 

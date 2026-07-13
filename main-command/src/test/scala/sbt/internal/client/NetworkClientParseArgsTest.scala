@@ -184,6 +184,7 @@ object NetworkClientParseArgsTest extends BasicTestSuite:
     assert(!result.sbtArguments.contains("-mem"))
     assert(!result.sbtArguments.contains("10000"))
     assert(result.sbtArguments.exists(_.contains("-Dfoo=bar")))
+    assert(result.launcherValueArgs == Seq("-mem", "10000"))
     assert(result.commandArguments.contains("compile"))
     assert(result.commandArguments.contains("test"))
 
@@ -196,7 +197,71 @@ object NetworkClientParseArgsTest extends BasicTestSuite:
     assert(!result.sbtArguments.contains("/jdk"))
     assert(!result.sbtArguments.exists(_.contains("color=never")))
     assert(result.sbtArguments.exists(_.contains("-Dfoo=bar")))
+    assert(result.launcherValueArgs == Seq("-java-home", "/jdk"))
     assert(result.commandArguments.contains("compile"))
     assert(result.commandArguments.size == 1)
+
+  // -- Launcher value flags are captured for a forked server (#9418) --
+
+  test("-java-home /path is captured in launcherValueArgs for propagation"):
+    val result = parse("-java-home", "/path/to/jdk", "compile")
+    assert(result.launcherValueArgs == Seq("-java-home", "/path/to/jdk"))
+
+  test("--java-home=/path is consumed, not forwarded, and captured as flag + value"):
+    val result = parse("--java-home=/path/to/jdk", "compile")
+    assert(!result.sbtArguments.exists(_.contains("java-home")))
+    assert(!result.commandArguments.exists(_.contains("java-home")))
+    assert(result.launcherValueArgs == Seq("--java-home", "/path/to/jdk"))
+    assert(result.commandArguments.contains("compile"))
+
+  test("--java-home=/path does not leak a bare -- into forwarded args"):
+    val result = parse("--java-home=/usr/lib/jvm/java-17", "scalafmtCheckAll")
+    assert(!result.sbtArguments.exists(_.startsWith("--java-home")))
+    assert(result.commandArguments == Seq("scalafmtCheckAll"))
+
+  test("-mem=10000 eq-form is consumed and captured as flag + value"):
+    val result = parse("-mem=10000", "compile")
+    assert(!result.sbtArguments.exists(_.contains("mem")))
+    assert(result.launcherValueArgs == Seq("-mem", "10000"))
+    assert(result.commandArguments.contains("compile"))
+
+  test("--java-home= with an empty value is consumed but not propagated"):
+    val result = parse("--java-home=", "compile")
+    assert(!result.sbtArguments.exists(_.contains("java-home")))
+    assert(result.launcherValueArgs.isEmpty)
+    assert(result.commandArguments == Seq("compile"))
+
+  test("-java-home with a spaced path keeps the path intact"):
+    val result = parse("-java-home", "C:\\Program Files\\Java\\jdk-17", "compile")
+    assert(result.launcherValueArgs == Seq("-java-home", "C:\\Program Files\\Java\\jdk-17"))
+    assert(result.commandArguments == Seq("compile"))
+
+  test("--java-home= with a spaced path keeps the path intact"):
+    val result = parse("--java-home=C:\\Program Files\\Java\\jdk-17", "compile")
+    assert(result.launcherValueArgs == Seq("--java-home", "C:\\Program Files\\Java\\jdk-17"))
+    assert(result.commandArguments == Seq("compile"))
+
+  test("a single arg joining a flag and its value is still split and captured"):
+    val result = parse("-mem 10000", "compile")
+    assert(result.launcherValueArgs == Seq("-mem", "10000"))
+    assert(result.commandArguments == Seq("compile"))
+
+  test("serverCommand propagates -java-home to the forked server before --server"):
+    val args = parse("-java-home", "/opt/jdk17", "compile")
+    val cmd = NetworkClient.serverCommand(args)
+    val jh = cmd.indexOf("-java-home")
+    assert(jh >= 0, cmd.toString)
+    assert(cmd(jh + 1) == "/opt/jdk17", cmd.toString)
+    assert(jh < cmd.indexOf("--server"), cmd.toString)
+
+  test("a value flag with no value is dropped, not propagated as a dangling flag"):
+    val result = parse("-java-home")
+    assert(result.launcherValueArgs.isEmpty)
+    assert(result.commandArguments.isEmpty)
+
+  test("extra whitespace in a value does not leave a stray leading space"):
+    val result = parse("-mem", " 10000", "compile")
+    assert(result.launcherValueArgs == Seq("-mem", "10000"))
+    assert(result.commandArguments == Seq("compile"))
 
 end NetworkClientParseArgsTest
