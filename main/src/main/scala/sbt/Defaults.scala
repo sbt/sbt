@@ -3625,7 +3625,12 @@ object Classpaths {
         o %% "util-logging",
         o %% "util-position",
         o %% "io",
-        "com.eed3si9n" %% "sjson-new-core"
+        "com.eed3si9n" %% "sjson-new-core",
+        "com.eed3si9n" %% "gigahorse-core",
+        "com.typesafe" %% "ssl-config-core",
+        "org.reactivestreams" % "reactive-streams",
+        "org.slf4j" % "slf4j-api",
+        "com.typesafe" % "config",
       )
       if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes

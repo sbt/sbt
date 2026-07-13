@@ -5,3 +5,6 @@
 # classpath, project load fails with a missing given. A successful
 # load is the regression assertion.
 > projects
+> checkMetabuildClasspath
+> checkProjectClasspath
+> githubGenerateSnapshot {}
