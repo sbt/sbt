@@ -162,6 +162,29 @@ object ExtendedRunnerTest extends BasicTestSuite:
     ()
   }
 
+  test("sbt --client reports server startup errors") {
+    if isWindows then ()
+    else
+      IO.withTemporaryDirectory: tmp =>
+        val projectDir = new File(tmp, "project")
+        IO.createDirectory(projectDir)
+        IO.write(new File(projectDir, "build.properties"), "sbt.version=2.0.0\n")
+        IO.write(new File(tmp, "build.sbt"), "name := \"startup-error\"\n")
+        IO.write(new File(tmp, "target"), "")
+
+        val output = new StringBuffer
+        def append(line: String): Unit =
+          output.append(line).append(System.lineSeparator())
+          ()
+        val exitCode = sbtProcessInDir(tmp)("--client", "--no-colors", "about")
+          .!(ProcessLogger(append, append))
+        val diagnostics = output.toString
+        assert(exitCode == 1, diagnostics)
+        assert(diagnostics.contains("Could not create directory"), diagnostics)
+        assert(diagnostics.contains("target/global-logging"), diagnostics)
+    ()
+  }
+
   // Test for issue #6485: Test `sbt --client` startup
   // https://github.com/sbt/sbt/issues/6485
   test("sbt --client startup time") {
