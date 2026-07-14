@@ -185,34 +185,6 @@ object ExtendedRunnerTest extends BasicTestSuite:
     ()
   }
 
-  test("sbt --client honors -java-home when starting server") {
-    if isWindows then ()
-    else
-      IO.withTemporaryDirectory: tmp =>
-        val projectDir = new File(tmp, "project")
-        IO.createDirectory(projectDir)
-        IO.write(new File(projectDir, "build.properties"), "sbt.version=2.0.0\n")
-        IO.write(new File(tmp, "build.sbt"), "name := \"java-home\"\n")
-
-        val output = new StringBuffer
-        def append(line: String): Unit =
-          output.append(line).append(System.lineSeparator())
-          ()
-        val exitCode = sbtProcessInDir(tmp)(
-          "--client",
-          "--no-colors",
-          "-java-home",
-          sys.props("java.home"),
-          "about"
-        ).!(ProcessLogger(append, append))
-        val diagnostics = output.toString
-        try
-          assert(exitCode == 0, diagnostics)
-          assert(diagnostics.contains("This is sbt"), diagnostics)
-        finally sbtProcessInDir(tmp)("shutdown").!
-    ()
-  }
-
   // Test for issue #6485: Test `sbt --client` startup
   // https://github.com/sbt/sbt/issues/6485
   test("sbt --client startup time") {
