@@ -23,9 +23,9 @@ private[sbt] object InternalDependencies {
       projectDependencies.flatMap {
         case ResolvedClasspathDependency(p, rawConfigs) =>
           val configs = rawConfigs.getOrElse("*->compile").split(";").flatMap { config =>
-            config.split("->") match {
-              case Array(n, c) if applicableConfigs.contains(n) => Some(c)
-              case Array(n) if applicableConfigs.contains(n)    =>
+            config.split("->", 2).map(_.trim) match {
+              case Array(n, c) if c.nonEmpty && applicableConfigs.contains(n) => Some(c)
+              case Array(n) if applicableConfigs.contains(n)                  =>
                 // "test" is equivalent to "compile->test"
                 Some("compile")
               case _ => None
