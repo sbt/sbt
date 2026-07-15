@@ -7,7 +7,7 @@ lazy val root = (project in file(".")) settings(
   useIvy := true,
   name := "ivy-xml-test",
   description := descriptionValue,
-  homepage := Some(url(homepageValue)),
+  homepage := Some(uri(homepageValue)),
 
   TaskKey[Unit]("checkIvyXml") := {
     val ivyXml = XML.loadFile(makeIvyXml.value)
