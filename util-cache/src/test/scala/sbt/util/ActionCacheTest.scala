@@ -222,6 +222,108 @@ object ActionCacheTest extends BasicTestSuite:
       assert(caught2.problems()(0).message() == "Test error message")
       assert(caught2.getMessage() == "Compilation failed")
 
+  test("Disk cache does not cache an environmental (position-less) CompileFailed"):
+    withDiskCache(testEnvironmentalCompileFailureNotCached)
+
+  def testEnvironmentalCompileFailureNotCached(cache: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    // An I/O write failure surfaced by zinc as a compiler problem: an error with no source position.
+    val ioProblem = new Problem:
+      override def category(): String = "Test"
+      override def severity(): Severity = Severity.Error
+      override def message(): String = "error writing Meta$.class: AccessDeniedException"
+      override def position(): Position = new Position:
+        override def line(): Optional[Integer] = Optional.empty()
+        override def lineContent(): String = ""
+        override def offset(): Optional[Integer] = Optional.empty()
+        override def pointer(): Optional[Integer] = Optional.empty()
+        override def pointerSpace(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.empty()
+        override def sourceFile(): Optional[java.io.File] = Optional.empty()
+
+    val ioException = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(ioProblem)
+      override def getMessage(): String = "Compilation failed"
+
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (_, _) =>
+      called += 1
+      throw ioException
+    }
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+
+      try
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(false, "Expected CompileFailed to be thrown")
+      catch case _: CompileFailed => ()
+      assert(called == 1)
+
+      // The environment may have healed, so the second call must re-run the action rather than
+      // replay a stale cached failure.
+      try
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(false, "Expected CompileFailed to be thrown")
+      catch case _: CompileFailed => ()
+      assert(
+        called == 2,
+        s"environmental failure must not be cached; action should re-run (called=$called)"
+      )
+
+  test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
+    withDiskCache(testLegacyPoisonedFailureCured)
+
+  def testLegacyPoisonedFailureCured(cache: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+    var called = 0
+    val ioProblem = new Problem:
+      override def category(): String = "Test"
+      override def severity(): Severity = Severity.Error
+      override def message(): String = "error writing Meta$.class: AccessDeniedException"
+      override def position(): Position = new Position:
+        override def line(): Optional[Integer] = Optional.empty()
+        override def lineContent(): String = ""
+        override def offset(): Optional[Integer] = Optional.empty()
+        override def pointer(): Optional[Integer] = Optional.empty()
+        override def pointerSpace(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.empty()
+        override def sourceFile(): Optional[java.io.File] = Optional.empty()
+    val ioException = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(ioProblem)
+      override def getMessage(): String = "Compilation failed"
+
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+      called += 1
+      InternalActionResult(a + b, Nil)
+    }
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+
+      // Write the poisoned entry exactly the way sbt cached failures before the gate existed.
+      val digest = ActionCache.mkInput((1, 1), Digest.zero, Digest.zero, config.cacheVersion)
+      val json = Converter.toJsonUnsafe(CachedCompileFailure.fromException(ioException))
+      val failureFile = StringVirtualFile1(ActionCache.mkValuePath(digest), CompactPrinter(json))
+      cache.put(
+        UpdateActionResultRequest(
+          digest,
+          Vector(failureFile),
+          exitCode = ActionCache.failureExitCode
+        )
+      )
+
+      // The poison must not replay: the action runs and succeeds.
+      val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v1 == 2)
+      assert(called == 1, s"poisoned failure must not replay; action should run (called=$called)")
+
+      // The success overwrites the poison: the next call is a cache hit.
+      val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v2 == 2)
+      assert(called == 1, s"expected a success cache hit after the cure (called=$called)")
+
   test("Cache falls back to recompute when syncBlobs throws FileNotFoundException"):
     withDiskCache(testSyncBlobsThrowsFallback)
 

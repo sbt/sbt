@@ -1,0 +1,8 @@
+# sbt/sbt#9455: an environmental I/O compile failure must not be cached and replayed forever.
+# Make the compile output dir read-only so compile fails with an "error writing" I/O error.
+> denyClassDir
+-> compile
+# Heal the environment. The sources are unchanged, so without the fix the cached environmental
+# failure is replayed and this compile fails; with the fix the compile actually runs and succeeds.
+> allowClassDir
+> compile

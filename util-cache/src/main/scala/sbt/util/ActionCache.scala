@@ -99,7 +99,10 @@ object ActionCache:
         try action(key): @unchecked
         catch
           case e: CompileFailed =>
-            cacheFailure(e)
+            if CachedCompileFailure.hasSufficientInfo(e) then cacheFailure(e)
+            else
+              cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+              throw e
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             logExec(
@@ -171,7 +174,7 @@ object ActionCache:
           )
         )
         value
-      case Left(Some(failure)) =>
+      case Left(Some(failure)) if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
         config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
         // Replay problems to the logger so users see the cached errors/warnings
         failure.replay(config.logger)
@@ -179,7 +182,7 @@ object ActionCache:
           SpawnExec(input = spawnInput, cacheHit = true, exitCode = 1)
         )
         throw failure.toException
-      case Left(None) => organicTask
+      case Left(_) => organicTask
   end cache
 
   /**
@@ -297,7 +300,7 @@ object ActionCache:
       )
     config.store.get(getRequest)
 
-  private inline def mkInput[I: HashWriter](
+  private[sbt] inline def mkInput[I: HashWriter](
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
@@ -331,7 +334,7 @@ object ActionCache:
       case e: NoSuchFileException => Option(e.getFile)
       case _                      => findMissingFile(t.getCause)
 
-  private inline def mkValuePath(inputDigest: Digest): String =
+  private[sbt] inline def mkValuePath(inputDigest: Digest): String =
     s"$${OUT}/value/${inputDigest}.json"
 
   def manifestFromFile(manifest: Path): Manifest =
