@@ -300,6 +300,10 @@ public class BootServerSocket implements AutoCloseable {
     return locationForSocket.resolve("sbt-load.sock").toString();
   }
 
+  public static String namedPipeLocation(final long farmHash) {
+    return "\\\\.\\pipe\\sbt-load" + farmHash;
+  }
+
   @SuppressWarnings("EmptyCatchBlock")
   @Override
   public void close() {
