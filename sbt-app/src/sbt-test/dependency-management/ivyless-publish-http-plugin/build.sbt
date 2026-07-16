@@ -38,11 +38,7 @@ stopPublishServer := {
 }
 
 val publishToHttp = taskKey[Unit]("Publish to HTTP server (start server, publish, stop server)")
-publishToHttp := {
-  startPublishServer.value
-  try publish.value
-  finally stopPublishServer.value
-}
+publishToHttp := Def.sequential(startPublishServer, publish, stopPublishServer).value
 
 val checkPublished = taskKey[Unit]("Check ivyless publish wrote the plugin cross-suffix PUT path")
 checkPublished := {

@@ -35,11 +35,7 @@ stopPublishServer := {
 }
 
 val publishToHttp = taskKey[Unit]("Publish to HTTP server (start server, publish, stop server)")
-publishToHttp := {
-  startPublishServer.value
-  try publish.value
-  finally stopPublishServer.value
-}
+publishToHttp := Def.sequential(startPublishServer, publish, stopPublishServer).value
 
 val checkIvylessPublish = taskKey[Unit]("Check that ivyless publish produced the expected files")
 checkIvylessPublish := {
