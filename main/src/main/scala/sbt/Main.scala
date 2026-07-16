@@ -183,8 +183,9 @@ private[sbt] object xMain:
           )
           (None, Some(Exit(2)))
         }
-      case _: IOException          => (None, None)
-      case _: UnsatisfiedLinkError => (None, None)
+      case _: IOException                   => (None, None)
+      case _: UnsatisfiedLinkError          => (None, None)
+      case _: UnsupportedOperationException => (None, None)
     }
   }
 end xMain
