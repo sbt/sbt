@@ -66,16 +66,20 @@ end ActionCacheStore
 
 trait AbstractActionCacheStore extends ActionCacheStore:
   def putBlobsIfNeeded(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+    // Read each blob's hash and size once, up front, and return only these plain value refs:
+    // serializing the ActionResult afterwards does no file I/O, and nothing re-stats a blob
+    // after its CAS entry is written.
+    val materialized: Seq[(VirtualFile, HashedVirtualFileRef)] = blobs.map: blob =>
+      blob -> HashedVirtualFileRef.of(blob.id, blob.contentHashStr, blob.sizeBytes)
     val found = findBlobs(blobs).toSet
     val missing = blobs.flatMap: blob =>
       val ref: HashedVirtualFileRef = blob
       if found.contains(ref) then None
       else Some(blob)
     val combined = putBlobs(missing).toSet ++ found
-    blobs.flatMap: blob =>
+    materialized.flatMap: (blob, plain) =>
       val ref: HashedVirtualFileRef = blob
-      if combined.contains(ref) then Some(ref)
-      else None
+      if combined.contains(ref) then Some(plain) else None
 
   def notFound: Throwable =
     new RuntimeException("not found")

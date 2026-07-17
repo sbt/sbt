@@ -25,6 +25,8 @@ import xsbti.{
 import ActionCache.InternalActionResult
 
 object ActionCacheTest extends BasicTestSuite:
+  final case class Unserializable(n: Int)
+
   val tags = CacheLevelTag.all.toList
 
   test("findMissingFile extracts the path from a wrapped NoSuchFileException"):
@@ -347,6 +349,108 @@ object ActionCacheTest extends BasicTestSuite:
       val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v2 == 2)
       assert(called == 1, s"expected a success cache hit after the cure (called=$called)")
+
+  test("A file vanishing after its blob is stored no longer breaks the cache write"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      var called = 0
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val goodHash = Digest.sha256Hash("hello".getBytes(StandardCharsets.UTF_8)).contentHashStr
+        val casFile = cache.toCasFile(Digest(s"$goodHash/5"))
+        // Models the reported race: the backing file vanishes the moment its blob reaches the
+        // CAS (the concurrent winner's syncFile swap), so any later stat throws.
+        val vanishing = new xsbti.BasicVirtualFileRef(s"$tempDir/out.jar") with VirtualFile:
+          private def maybeThrow[A](a: A): A =
+            if Files.exists(casFile) then throw new NoSuchFileException(id) else a
+          override def contentHash: Long = 0L
+          override def sizeBytes: Long = maybeThrow(5L)
+          override def contentHashStr: String = maybeThrow(goodHash)
+          override def input: java.io.InputStream =
+            new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(vanishing))
+        }
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 1, s"expected a cache hit: the write must have succeeded (called=$called)")
+
+  test("A file already missing at the cache write degrades to an uncached task"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      var called = 0
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val gone = new xsbti.BasicVirtualFileRef(s"$tempDir/out.jar") with VirtualFile:
+          override def contentHash: Long = throw new NoSuchFileException(id)
+          override def sizeBytes: Long = throw new NoSuchFileException(id)
+          override def contentHashStr: String = throw new NoSuchFileException(id)
+          override def input: java.io.InputStream = throw new NoSuchFileException(id)
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(gone))
+        }
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "a degraded cache write must mean a cache miss on the next run")
+
+  test("put materializes output refs so serialization does no file I/O"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        @volatile var vanished = false
+        val goodHash = Digest.sha256Hash("hello".getBytes(StandardCharsets.UTF_8)).contentHashStr
+        val ref = new xsbti.BasicVirtualFileRef(s"$tempDir/out.jar") with VirtualFile:
+          private def maybeThrow[A](a: A): A =
+            if vanished then throw new NoSuchFileException(id) else a
+          override def contentHash: Long = 0L
+          override def sizeBytes: Long = maybeThrow(5L)
+          override def contentHashStr: String = maybeThrow(goodHash)
+          override def input: java.io.InputStream =
+            new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        val stored =
+          cache.put(UpdateActionResultRequest(Digest.dummy(42L), Vector(ref), exitCode = 0)) match
+            case Right(r) => r.outputFiles.head
+            case Left(e)  => throw new AssertionError(s"put failed: $e", e)
+        vanished = true
+        assert(stored.id == ref.id)
+        assert(
+          stored.contentHashStr == goodHash && stored.sizeBytes == 5L,
+          "stored ref must not re-stat the file"
+        )
+
+  test("A successful task whose value fails to serialize returns it uncached"):
+    withDiskCache: cache =>
+      var called = 0
+      // Pins the value-serialization leg of the NonFatal recovery introduced in #9488, which
+      // had no test: a codec that always throws, standing in for any serialization failure
+      // during the cache write of a succeeded task.
+      given sjsonnew.JsonFormat[Unserializable] = new sjsonnew.JsonFormat[Unserializable]:
+        override def write[J](obj: Unserializable, builder: sjsonnew.Builder[J]): Unit =
+          sjsonnew.serializationError("Unserializable is unserializable")
+        override def read[J](
+            jsOpt: Option[J],
+            unbuilder: sjsonnew.Unbuilder[J]
+        ): Unserializable = Unserializable(0)
+      import sjsonnew.BasicJsonProtocol.*
+      val action: ((Int, Int)) => InternalActionResult[Unserializable] = { (a, b) =>
+        called += 1
+        InternalActionResult(Unserializable(a + b), Nil)
+      }
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == Unserializable(2))
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == Unserializable(2))
+        assert(called == 2, "a degraded cache write must mean a cache miss on the next run")
 
   test("Cache falls back to recompute when syncBlobs throws FileNotFoundException"):
     withDiskCache(testSyncBlobsThrowsFallback)
