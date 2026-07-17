@@ -339,7 +339,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         try
           // `!symlinkSupported` prevents unnecessary deletion of files and then copying them again
           // in #writeFileAndNotify on machines that don't support symlinks.
-          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then p
+          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then
+            afterFileUpToDate(ref, p, outputDirectory)
+            p
           else
             // println(s"- syncFile: $p has different digest")
             IO.delete(p.toFile())
@@ -356,6 +358,16 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
   def afterFileWrite(ref: HashedVirtualFileRef, path: Path, outputDirectory: Path): Unit =
     if path.toString().endsWith(ActionCache.dirZipExt) then unpackageDirZip(path, outputDirectory)
     else ()
+
+  /** Re-extract a dirzip whose extracted directory is missing: one stat on the warm path. */
+  private def afterFileUpToDate(
+      ref: HashedVirtualFileRef,
+      path: Path,
+      outputDirectory: Path
+  ): Unit =
+    if path.toString().endsWith(ActionCache.dirZipExt) then
+      val dirPath = Paths.get(path.toString.dropRight(ActionCache.dirZipExt.size))
+      if !Files.isDirectory(dirPath) then Util.ignoreResult(unpackageDirZip(path, outputDirectory))
 
   /**
    * Given a dirzip, unzip it in a temp directory, and sync each items to the outputDirectory.

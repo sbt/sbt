@@ -1,6 +1,6 @@
 package sbt.util
 
-import java.io.{ IOException, InputStream }
+import java.io.{ ByteArrayInputStream, IOException, InputStream }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
 import java.util.Optional
@@ -87,6 +87,30 @@ object ActionCacheTest extends BasicTestSuite:
         val b = bytes(index) & 0xff
         index += 1
         b
+
+  test("Disk cache re-extracts a dirzip whose directory was deleted"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        IO.write(dir / "b.txt", "contents B")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+        assert(refs.size == 1)
+
+        cache.syncBlobs(refs, outputDirectory)
+        assert((dir / "a.txt").exists && (dir / "b.txt").exists)
+
+        IO.delete(dir)
+        assert(!dir.exists)
+        cache.syncBlobs(refs, outputDirectory)
+        assert((dir / "a.txt").exists, "a.txt not re-extracted after the directory was deleted")
+        assert((dir / "b.txt").exists, "b.txt not re-extracted after the directory was deleted")
 
   test("In-memory cache can hold action value"):
     withInMemoryCache(testActionCacheBasic)
@@ -506,6 +530,18 @@ object ActionCacheTest extends BasicTestSuite:
       CacheImplicits.defaultLocalDigestCacheByteSize,
       cacheVersion,
     )
+
+  // The String-based fileConverter mangles binary blobs (zips).
+  def binaryFileConverter = new FileConverter:
+    override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+    override def toVirtualFile(path: Path): VirtualFile =
+      val bytes =
+        if Files.isRegularFile(path) then Files.readAllBytes(path) else Array.empty[Byte]
+      new xsbti.BasicVirtualFileRef(path.toString) with VirtualFile:
+        override def contentHash: Long = sbt.util.HashUtil.xxhash64(bytes)
+        override def sizeBytes: Long = bytes.length.toLong
+        override def contentHashStr: String = Digest.sha256Hash(bytes).contentHashStr
+        override def input: InputStream = new ByteArrayInputStream(bytes)
 
   def fileConverter = new FileConverter:
     override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)

@@ -1,0 +1,18 @@
+# Regression for #9462: compile's classes dir (declared via Def.declareOutputDirectory)
+# must be restored on a cache hit after the classes directory is deleted.
+> compile
+> checkClasses
+> run
+> delClasses
+> checkNoClasses
+> compile
+> checkCompileHit
+> checkClasses
+> run
+
+# restoration also works when the sibling classes.sbtdir.zip is gone too
+> delClasses
+> delClassesZip
+> compile
+> checkClasses
+> run
