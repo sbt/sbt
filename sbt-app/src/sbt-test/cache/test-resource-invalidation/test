@@ -1,0 +1,8 @@
+# Contract for #9468: editing only a test resource must re-run the test against the
+# fresh content and fail when the assertion no longer holds; restoring the resource
+# must recover the passing result.
+> test
+$ copy-file changed/hello.txt src/test/resources/hello.txt
+-> test
+$ copy-file original/hello.txt src/test/resources/hello.txt
+> test

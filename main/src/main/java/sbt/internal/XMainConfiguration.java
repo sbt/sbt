@@ -9,15 +9,12 @@
 package sbt.internal;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.file.Paths;
 import xsbti.*;
 
 /**
@@ -31,11 +28,9 @@ public class XMainConfiguration {
   public xsbti.MainResult run(String moduleName, xsbti.AppConfiguration configuration)
       throws Throwable {
     try {
-      boolean isScripted = Boolean.parseBoolean(System.getProperty("sbt.scripted"));
-      // in batch scripted tests, we disable caching of JAR URL connections to avoid
-      // interference
-      // between tests
-      if (isScripted) disableCachingOfURLConnections();
+      // Keep unconditional: the JVM-wide JarFile cache serves stale bytes after a classpath
+      // jar is rewritten in place (sbt/sbt#9468).
+      disableJarConnectionCaching();
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
       xsbti.AppConfiguration updatedConfiguration = null;
       try {
@@ -116,20 +111,8 @@ public class XMainConfiguration {
     }
   }
 
-  private class FakeURLConnection extends URLConnection {
-    public FakeURLConnection(URL url) {
-      super(url);
-    }
-
-    public void connect() throws IOException {}
-  }
-
-  private void disableCachingOfURLConnections() {
-    try {
-      URLConnection conn = new FakeURLConnection(Paths.get(".").toUri().toURL());
-      conn.setDefaultUseCaches(false);
-    } catch (MalformedURLException e) {
-    }
+  private void disableJarConnectionCaching() {
+    URLConnection.setDefaultUseCaches("jar", false);
   }
 
   /*
