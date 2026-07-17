@@ -301,7 +301,7 @@ public class BootServerSocket implements AutoCloseable {
   }
 
   public static String namedPipeLocation(final long farmHash) {
-    return "\\\\.\\pipe\\sbt-load" + farmHash;
+    return "sbt-load" + farmHash;
   }
 
   @SuppressWarnings("EmptyCatchBlock")
