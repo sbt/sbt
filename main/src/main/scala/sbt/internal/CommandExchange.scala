@@ -320,9 +320,9 @@ private[sbt] final class CommandExchange {
     }
     procFile = None
     fastTrackThread.close()
-    channels foreach (_.shutdown(true))
+    channels.foreach(c => Util.ignoreResult(Try(c.shutdown(true))))
     // interrupt and kill the thread
-    server.foreach(_.shutdown())
+    server.foreach(s => Util.ignoreResult(Try(s.shutdown())))
     server = None
     EvaluateTask.onShutdown()
   }

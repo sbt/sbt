@@ -27,8 +27,15 @@ final class SbtServer(
     val baseDirectory: File,
     private val process: scala.sys.process.Process
 ) {
-  def close(): Unit =
-    session.shutdown(process.isAlive(), () => process.destroy()).get
+  def close(): Unit = {
+    val result = scala.util.Try(session.shutdown(process.isAlive(), () => process.destroy()).get)
+    if (process.isAlive()) process.destroy()
+    result match {
+      case scala.util.Failure(e) =>
+        System.err.println(s"server session shutdown failed (process destroyed): $e")
+      case _ =>
+    }
+  }
 }
 
 trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {

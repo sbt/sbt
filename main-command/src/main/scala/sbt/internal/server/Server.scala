@@ -159,7 +159,6 @@ private[sbt] object Server {
       }
 
       override def shutdown(): Unit = {
-        log.info("shutting down sbt server")
         if (portfile.exists) {
           IO.delete(portfile)
         }
@@ -171,6 +170,7 @@ private[sbt] object Server {
           case null =>
           case s    => s.close()
         }
+        log.info("shutting down sbt server")
       }
 
       private def writeTokenfile(): Unit = {
