@@ -45,10 +45,10 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     val closeThis: Boolean,
     val allowZombies: Boolean,
     val logger: Logger
-) extends URLClassLoader(Array.empty, null) {
+) extends URLClassLoader(Array.empty, null):
   private val cached: AtomicReference[ReverseLookupClassLoader] = new AtomicReference
   private val closed = new AtomicBoolean(false)
-  private val urls = classpath.map(_.toURI.toURL).toArray
+  private val urls = classpath.map(ClassLoaders.toRealURL).toArray
 
   /**
    * Get a classloader. If there is a loader available in the cache, it will use that loader,
@@ -69,7 +69,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     reverseLookupClassLoader.setup(tempDir)
     new BottomClassLoader(
       ReverseLookupClassLoaderHolder.this,
-      fullClasspath.map(_.toURI.toURL).toArray,
+      fullClasspath.map(ClassLoaders.toRealURL).toArray,
       reverseLookupClassLoader,
       tempDir,
       closeThis,
@@ -97,7 +97,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       case c    => c.close()
     }
   }
-}
+end ReverseLookupClassLoaderHolder
 
 /**
  * This is more or less copied from the NativeCopyLoader in zinc. It differs from the zinc
