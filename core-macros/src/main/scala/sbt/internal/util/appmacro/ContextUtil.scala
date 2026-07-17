@@ -155,31 +155,10 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   final class Output(
       val tpe: TypeRepr,
       val term: Term,
-      val name: String,
-      val parent: Symbol,
       val outputType: OutputType,
   ):
     override def toString: String =
-      s"Output($tpe, $term, $name, $outputType)"
-    val placeholder: Symbol =
-      tpe.asType match
-        case '[a] =>
-          Symbol.newVal(
-            parent,
-            name,
-            tpe,
-            Flags.Mutable,
-            Symbol.noSymbol
-          )
-    def toVarDef: ValDef =
-      ValDef(placeholder, rhs = Some('{ null }.asTerm))
-    def toAssign(value: Term): Term =
-      Block(
-        Assign(toRef, value) :: Nil,
-        toRef
-      )
-    def toRef: Ref = Ref(placeholder)
-    def isFile: Boolean = outputType == OutputType.File
+      s"Output($tpe, $term, $outputType)"
   end Output
 
   def applyTuple(tupleTerm: Term, tpe: TypeRepr, idx: Int): Term =

@@ -669,6 +669,12 @@ lazy val coreMacrosProj = (project in file("core-macros"))
     name := "Core Macros",
     SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // macro-expansion internals; Output's per-call-site var codegen members were removed
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "sbt.internal.util.appmacro.ContextUtil#Output.*"
+      ),
+    ),
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
