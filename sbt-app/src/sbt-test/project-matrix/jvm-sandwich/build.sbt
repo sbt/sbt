@@ -42,8 +42,8 @@ lazy val bazApp = (projectMatrix in file("baz-app"))
     name := "baz app",
     check := {
       val cp = (Compile / fullClasspath).value.map(_.data.id)
-      assert(cp.exists(_.endsWith("baz-core_2.13-0.1.0-SNAPSHOT.jar")), cp)
-      assert(!cp.exists(_.endsWith("baz-core_3.0.0-M1-0.1.0-SNAPSHOT.jar")), cp)
+      assert(cp.exists(_.endsWith("baz-core_2.13.jar")), cp)
+      assert(!cp.exists(_.endsWith("baz-core_3.0.0-M1.jar")), cp)
       assert(projectMatrixBaseDirectory.value == (ThisBuild / baseDirectory).value / "baz-app",
         s"projectMatrixBaseDirectory is ${projectMatrixBaseDirectory.value}")
     },
