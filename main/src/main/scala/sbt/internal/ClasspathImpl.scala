@@ -132,7 +132,7 @@ private[sbt] object ClasspathImpl {
     (Def
       .task {
         val converter = fileConverter.value
-        val vf = (packageBin / artifactPath).value
+        val vf = (packageInternal / artifactPath).value
         val jar = converter.toPath(vf)
         (TrackLevel.intersection(track, exportToInternal.value), vf, jar)
       })
@@ -141,13 +141,13 @@ private[sbt] object ClasspathImpl {
           Def.task {
             val converter = fileConverter.value
             val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
-            Seq((packageBin.value, analysisFile))
+            Seq((packageInternal.value, analysisFile))
           }
         case (TrackLevel.TrackIfMissing, _, jar) if !jar.toFile().exists =>
           Def.task {
             val converter = fileConverter.value
             val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
-            Seq((packageBin.value, analysisFile))
+            Seq((packageInternal.value, analysisFile))
           }
         case (_, vf, _) =>
           Def.task {

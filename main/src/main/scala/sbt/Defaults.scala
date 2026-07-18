@@ -1797,6 +1797,8 @@ object Defaults extends BuildCommon with DefExtra {
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
       packageTaskSettings(packageDoc, packageDocMappings) ++
+      packageTaskSettings(packageInternal, packageBinMappings) ++
+      inTask(packageInternal)(Seq(artifactName :== Artifact.internalArtifactName)) ++
       Seq(Keys.`package` := packageBin.value)
 
   def packageBinMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
