@@ -25,6 +25,7 @@ import sbt.nio.file.*
 import sbt.nio.file.syntax.pathToPathOps
 import sbt.nio.file.Glob.GlobOps
 import sbt.util.{ DiskActionCacheStore, Level }
+import sbt.internal.io.Retry
 import sbt.internal.util.complete.SizeParser
 import sjsonnew.JsonFormat
 import xsbti.{ PathBasedFile, VirtualFileRef }
@@ -205,10 +206,101 @@ private[sbt] object Clean {
     s.get(Keys.cacheStoreFactoryFactory).foreach(_.close())
     s.put(Keys.cacheStoreFactoryFactory, InMemoryCacheStore.factory(size))
 
+  private def actionCacheKeepFilter(s: State): Path => Boolean =
+    val extracted = Project.extract(s)
+    val refs = extracted.structure.allProjectRefs
+    val keepFiles =
+      refs.flatMap(ref => extracted.getOpt(ref / cleanKeepFiles).getOrElse(Nil)).distinct
+    val keepGlobs =
+      refs.flatMap(ref => extracted.getOpt(ref / cleanKeepGlobs).getOrElse(Nil)).distinct
+    val globs = keepFiles.map {
+      case f if f.isDirectory => Glob(f, AnyPath)
+      case f                  => f.toPath.toGlob
+    } ++ keepGlobs
+    (p: Path) => globs.exists(_.matches(p))
+
+  private def deleteStoreReferences(
+      dir: Path,
+      bases: Seq[Path],
+      exclude: Path => Boolean,
+      delete: Path => Unit
+  ): Unit = {
+    def loop(d: Path): Unit =
+      FileTreeView.default
+        .list(Glob(d, AnyPath))
+        .foreach {
+          // FileTreeView reports all-false attributes for dangling symlinks, so symlink
+          // detection must not rely on attrs.isSymbolicLink.
+          case (link, _) if Files.isSymbolicLink(link) =>
+            try {
+              val raw = Files.readSymbolicLink(link)
+              val resolved =
+                (if (raw.isAbsolute) raw
+                 else Option(link.getParent).fold(raw)(_.resolve(raw))).normalize()
+              if (bases.exists(resolved.startsWith(_)) && !exclude(link)) delete(link)
+            } catch { case _: IOException => () }
+          case (subdir, attrs) if attrs.isDirectory => loop(subdir)
+          case _                                    => ()
+        }
+    loop(dir)
+  }
+
+  private val clearActionCacheStores: State => State = (s: State) => {
+    val stores = s.get(BasicKeys.cacheStores).getOrElse(Nil).collect {
+      case d: DiskActionCacheStore => d
+    }
+    val bases = stores.map(_.base.toAbsolutePath.normalize).distinct
+    val exclude = actionCacheKeepFilter(s)
+    val failed = scala.collection.mutable.ListBuffer.empty[(Path, IOException)]
+    /* Deletion failures are collected and reported rather than swallowed. On
+     * Windows a delete can transiently fail with AccessDeniedException while a
+     * handle is briefly held, so retry (as DiskActionCacheStore#syncFile does for
+     * writes). Directories left non-empty by cleanKeepFiles / cleanKeepGlobs are
+     * expected to survive.
+     */
+    val delete: Path => Unit = path => {
+      try {
+        s.log.debug(s"clearCaches -- deleting $path")
+        Retry.io(Files.deleteIfExists(path), classOf[DirectoryNotEmptyException])
+        ()
+      } catch {
+        case _: DirectoryNotEmptyException => ()
+        case e: IOException                => failed += (path -> e)
+      }
+    }
+    /* Delete the target/out references (symlinks) before the cas blobs they point at. */
+    s.get(BasicKeys.rootOutputDirectory).foreach { rootOut =>
+      val valueDir = rootOut.resolve("value")
+      if (Files.exists(valueDir)) {
+        deleteContents(valueDir, exclude, FileTreeView.default, delete)
+        delete(valueDir)
+      }
+      if (Files.exists(rootOut) && bases.nonEmpty)
+        deleteStoreReferences(rootOut, bases, exclude, delete)
+    }
+    bases.filter(Files.exists(_)).foreach { base =>
+      deleteContents(base, exclude, FileTreeView.default, delete)
+    }
+    failed.foreach { case (p, e) => s.log.warn(s"clearCaches failed to delete $p: $e") }
+    if (bases.nonEmpty)
+      if (failed.isEmpty)
+        s.log.info(s"cleared action cache store(s): ${bases.mkString(", ")}")
+      else
+        s.log.warn(
+          s"partially cleared action cache store(s): ${bases.mkString(", ")} " +
+            s"(${failed.size} path(s) could not be deleted)"
+        )
+    s
+  }
+
+  /* Reset the in-memory caches before deleting the on-disk stores so that
+   * files the old caches may still reference (e.g. jars held open by cached
+   * classloaders) are released before their deletion is attempted. */
   private val clearCachesFun: State => State =
     registerCompilerCache
       .andThen(_.initializeClassLoaderCache)
       .andThen(addCacheStoreFactoryFactory)
+      .andThen(clearActionCacheStores)
 
   def clearCaches: Command =
     val help = Help.more(ClearCaches, ClearCachesDetailed)

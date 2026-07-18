@@ -254,7 +254,13 @@ $AliasCommand name=
   def continuousBriefHelp: (String, String) =
     (ContinuousExecutePrefix + " <command>", continuousDetail)
   def ClearCaches: String = "clearCaches"
-  def ClearCachesDetailed: String = "Clears sbt's internal caches."
+  def ClearCachesDetailed: String =
+    "Clears sbt's internal in-memory caches (compiler cache, classloader cache, and file-cache stores), " +
+      "deletes the contents of the local disk action cache (its cas/ and ac/ directories), " +
+      "and removes action-cache references under the root output directory: " +
+      "the materialized task-value files in target/out/value and any symbolic links pointing into the deleted cache. " +
+      "Paths matching cleanKeepFiles or cleanKeepGlobs are preserved. " +
+      "Unlike cleanFull, build outputs, the command history (target/out/.history), and the sbt boot directory are not deleted."
 
   val CleanFull: String = "cleanFull"
   def cleanFullDetailed: String = "Clears sbt's local caches."

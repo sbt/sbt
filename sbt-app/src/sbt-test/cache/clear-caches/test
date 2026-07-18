@@ -1,0 +1,20 @@
+# Populate the action cache, then verify clearCaches empties the disk store and
+# removes the references under target/out, while preserving keep-globbed paths,
+# regular files, and everything else outside the cache.
+> startServer
+> pure1
+$ exists target/out/a.txt
+> checkCacheNonEmpty
+$ mkdir clear-caches-diskcache/keep
+$ touch clear-caches-diskcache/keep/marker.txt
+$ touch target/out/regular.txt
+> clearCaches
+> checkCacheCleared
+> checkNoStoreLinks
+$ absent target/out/value
+$ absent target/out/a.txt
+$ exists target/out/regular.txt
+$ exists clear-caches-diskcache/keep/marker.txt
+> pure1
+$ exists target/out/a.txt
+> checkCacheNonEmpty
