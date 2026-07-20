@@ -147,6 +147,7 @@ jobs:
           ./sbt -v --client doc
           ./sbt -v --client publishLocal
           ./sbt -v --client test
+          ./sbt -v --client lmCoursierShaded/test
           ./sbt -v --client "serverTestProj/test"
           ./sbt -v --client "all $UTIL_TESTS"
       - name: Build and test (2)
