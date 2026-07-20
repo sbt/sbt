@@ -10,6 +10,9 @@ package sbt
 package plugins
 
 import Def.Setting
+import Keys.*
+import sbt.io.IO
+import sbt.io.syntax.*
 
 /**
  * Plugin that enables resolving artifacts via ivy.
@@ -29,6 +32,13 @@ object IvyPlugin extends AutoPlugin {
 
   override lazy val globalSettings: Seq[Setting[?]] =
     Defaults.globalIvyCore
+  override lazy val buildSettings: Seq[Setting[?]] =
+    Seq(
+      publish / clean := Def.uncached {
+        IO.delete(stagingDirectory.value)
+        IO.delete((ThisBuild / baseDirectory).value / "target" / "sona-bundle")
+      },
+    )
   override lazy val projectSettings: Seq[Setting[?]] =
     Classpaths.ivyPublishSettings ++ Classpaths.ivyBaseSettings
 

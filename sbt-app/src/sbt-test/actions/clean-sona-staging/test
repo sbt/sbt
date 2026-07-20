@@ -1,0 +1,7 @@
+$ touch target/sona-staging/dummy.txt
+$ touch target/sona-bundle/dummy.txt
+
+> clean
+
+$ absent target/sona-staging/dummy.txt
+$ absent target/sona-bundle/dummy.txt
