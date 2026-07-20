@@ -134,21 +134,10 @@ jobs:
         shell: bash
         run: |
           rm -rf "$HOME/.sbt/boot/" || true
-          ./sbt -v --client mimaReportBinaryIssues
-          ./sbt -v --client javafmtCheck
-          ./sbt -v --client "Test/javafmtCheck"
-          ./sbt -v --client scalafmtCheckAll
-          ./sbt -v --client scalafmtSbtCheck
-          ./sbt -v --client serverTestProj/scalafmtCheckAll
-          ./sbt -v --client launcherPackageIntegrationTest/scalafmtCheckAll
+          ./sbt -v --server "mimaReportBinaryIssues;javafmtCheck;Test/javafmtCheck;scalafmtCheckAll;scalafmtSbtCheck;serverTestProj/scalafmtCheckAll;launcherPackageIntegrationTest/scalafmtCheckAll"
           # ./sbt -v --client headerCheck
           # ./sbt -v --client "Test/headerCheck"
-          ./sbt -v --client "Test/compile"
-          ./sbt -v --client doc
-          ./sbt -v --client publishLocal
-          ./sbt -v --client test
-          ./sbt -v --client "serverTestProj/test"
-          ./sbt -v --client "all $UTIL_TESTS"
+          ./sbt -v --server "Test/compile;doc;publishLocal;test;serverTestProj/test;all $UTIL_TESTS"
       - name: Build and test (2)
         if: ${{ matrix.jobtype == 2 }}
         shell: bash
