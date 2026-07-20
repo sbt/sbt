@@ -70,9 +70,6 @@ lazy val bintrayTripple = settingKey[(String, String, String)]("id, url, and pat
 val artifactoryLinuxPattern = "[module]-[revision].[ext]"
 val artifactoryDebianPattern =
   "[module]-[revision].[ext];deb.distribution=all;deb.component=main;deb.architecture=all"
-val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
-val bintrayReleaseAllStaged =
-  TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
 val debianBuildId = settingKey[Int]("build id for Debian")
 
