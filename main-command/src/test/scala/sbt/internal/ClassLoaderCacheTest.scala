@@ -51,4 +51,31 @@ object ClassLoaderCacheTest extends BasicTestSuite:
         Predef.assert(cache.get(jarClassPath) == secondLoader)
         Predef.assert(cache.get(jarClassPath) != initLoader)
 
+  test("Loaders evicted by a newer timestamp should be closed by clear()"):
+    IO.withTemporaryDirectory: dir =>
+      val entry = "leak-test-resource.txt"
+      val jar = dir.toPath.resolve("evicted.jar").toFile
+      Using.resource(new java.util.jar.JarOutputStream(new java.io.FileOutputStream(jar))): out =>
+        out.putNextEntry(new java.util.zip.ZipEntry(entry))
+        out.write("hello".getBytes("UTF-8"))
+        out.closeEntry()
+
+      withCache: cache =>
+        val classPath = jar :: Nil
+        val first = cache.get(classPath)
+        Predef.assert(first.getResource(entry) != null, "jar resource should load before eviction")
+
+        // Bumping the timestamp makes a new Key, and addLoader calls clearExpiredLoaders after
+        // inserting it, so `first`'s entry is evicted from the delegate map here. Once evicted
+        // it is unreachable from the map, so only the `retired` set can still close it.
+        IO.setModifiedTimeOrFalse(jar, System.currentTimeMillis + 5000L)
+        val second = cache.get(classPath)
+        Predef.assert(first != second, "a newer timestamp should produce a new loader")
+
+        cache.clear()
+        Predef.assert(
+          first.getResource(entry) == null,
+          "clear() should have closed the evicted loader, releasing its jar handle"
+        )
+
 end ClassLoaderCacheTest

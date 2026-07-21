@@ -50,6 +50,52 @@ object TestRecapTest extends verify.BasicTestSuite:
     override def log(level: sbt.util.Level.Value, msg: => String): Unit =
       lines += level.toString -> msg
 
+  test("collect strips SuiteResult.throwables so the recap cannot pin the test classloader") {
+    // A test-thrown Throwable's backtrace pins the Class objects of every frame, and a Class
+    // strongly references its defining classloader; the recap is stashed on State.attributes,
+    // so retaining them would keep the test classloader (and its jar handles) alive.
+    val thrown = new AssertionError("boom")
+    val withThrowables =
+      new SuiteResult(TestResult.Failed, 0, 1, 0, 0, 0, 0, 0, thrown :: Nil)
+    val i = incompleteOf(
+      new TestsFailedException(
+        "a / Test / test",
+        Some(output(TestResult.Failed, "AFailing" -> withThrowables))
+      )
+    )
+    val collected = TestRecap.collect(i)
+    val retained = collected.head.testOutput.get.events("AFailing")
+    assert(retained.throwables.isEmpty, "throwables should be dropped from the retained output")
+    // Everything the recap actually renders must survive.
+    assert(retained.result == TestResult.Failed)
+    assert(retained.failureCount == 1)
+    assert(collected.head.testOutput.get.overall == TestResult.Failed)
+  }
+
+  test("collect sanitizes a copy and leaves the source exception's throwables intact") {
+    // The stripping above must not mutate the TestsFailedException in the Incomplete tree:
+    // that exception is what error reporting and the ClassLoaderLayeringStrategy diagnostic
+    // in Defaults read, and both need the real throwables. Only the copy parked on
+    // State.attributes is sanitized.
+    val thrown = new AssertionError("boom")
+    val source = new TestsFailedException(
+      "a / Test / test",
+      Some(
+        output(
+          TestResult.Failed,
+          "AFailing" -> new SuiteResult(TestResult.Failed, 0, 1, 0, 0, 0, 0, 0, thrown :: Nil)
+        )
+      )
+    )
+    val collected = TestRecap.collect(incompleteOf(source))
+    assert(collected.head.testOutput.get.events("AFailing").throwables.isEmpty)
+    val original = source.testOutput.get.events("AFailing").throwables
+    assert(
+      original == (thrown :: Nil),
+      s"collect must not strip the source exception, but its throwables became: $original"
+    )
+  }
+
   test("collect picks up TestsFailedException payloads from the Incomplete tree") {
     val i = incompleteOf(
       failure("a / Test / test", TestResult.Failed, "AFailing"),

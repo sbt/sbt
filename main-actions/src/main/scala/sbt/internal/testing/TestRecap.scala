@@ -45,7 +45,12 @@ import sbt.util.Logger
  */
 private[sbt] object TestRecap:
 
-  /** A single failed test task contributing to the recap. */
+  /**
+   * A single failed test task contributing to the recap.
+   *
+   * `testOutput` is sanitized by [[collect]]: its `SuiteResult.throwables` are dropped so the
+   * recap cannot pin the test class loader. See [[collect]] for why.
+   */
   final case class Failure(taskName: String, testOutput: Option[Tests.Output])
 
   /**
@@ -53,6 +58,13 @@ private[sbt] object TestRecap:
    * aggregated run that produced at least one `TestsFailedException`.
    * Monotonic-latest-failure semantics: never cleared on success, only
    * overwritten by the next failure.
+   *
+   * Note for consumers: the `SuiteResult.throwables` reachable from these
+   * failures are always empty -- [[collect]] strips them so the recap cannot
+   * pin the test class loader. An empty `throwables` here therefore means
+   * "not retained", NOT "no exception was thrown". The real throwables live on
+   * the `TestsFailedException` in the `Incomplete` tree, which is where error
+   * reporting reads them from.
    */
   val recapKey: AttributeKey[Vector[Failure]] = AttributeKey[Vector[Failure]](
     "testRecap",
@@ -69,16 +81,43 @@ private[sbt] object TestRecap:
    * Identity-deduplicated via `Incomplete.allExceptions` (which uses an
    * `IDSet[Throwable]` internally), so a single failing task shared across
    * multiple Incomplete paths in a DAG is counted once.
+   *
+   * The retained `Tests.Output` is stripped of `SuiteResult.throwables`: the
+   * recap only renders names and counts, but a test-thrown Throwable's
+   * backtrace pins the `Class` objects of every frame, and a `Class` strongly
+   * references its defining class loader. Since this data is stashed on
+   * `State.attributes` where it outlives the command, retaining the throwables
+   * would keep the test class loader -- and its open jar handles -- alive for
+   * the rest of the session. On Windows those handles make the cached jars
+   * undeletable (e.g. by `clearCaches`).
    */
   def collect(i: Incomplete): Vector[Failure] =
     Incomplete
       .allExceptions(i)
       .iterator
       .flatMap {
-        case e: TestsFailedException => Some(Failure(e.taskName, e.testOutput))
-        case _                       => None
+        case e: TestsFailedException =>
+          Some(Failure(e.taskName, e.testOutput.map(dropThrowables)))
+        case _ => None
       }
       .toVector
+
+  private def dropThrowables(o: Tests.Output): Tests.Output =
+    o.copy(events = o.events.view.mapValues(dropThrowables).toMap)
+
+  private def dropThrowables(s: SuiteResult): SuiteResult =
+    if s.throwables.isEmpty then s
+    else
+      new SuiteResult(
+        s.result,
+        s.passedCount,
+        s.failureCount,
+        s.errorCount,
+        s.skippedCount,
+        s.ignoredCount,
+        s.canceledCount,
+        s.pendingCount,
+      )
 
   /**
    * The rendered recap as a sequence of `\n`-free lines. Failures are

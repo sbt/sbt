@@ -39,6 +39,16 @@ object Checks {
       val failedSuites = f.testOutput.get.events.values.count: s =>
         s.result == sbt.protocol.testing.TestResult.Failed
       assert(failedSuites >= 1, s"${f.taskName} has no failed suite: ${f.testOutput.get.events}")
+      // The retained output must not carry live test-thrown Throwables: their backtraces pin
+      // the test classloader (and its open jar handles) for as long as the recap sits on
+      // State.attributes, which is the whole session. The recap only renders names and counts.
+      f.testOutput.get.events.foreach { case (suiteName, s) =>
+        assert(
+          s.throwables.isEmpty,
+          s"${f.taskName} suite $suiteName retained ${s.throwables.size} throwable(s): " +
+            s.throwables.map(_.getClass.getName).mkString(", ")
+        )
+      }
     }
     val lines = TestRecap.render(recap)
     assert(

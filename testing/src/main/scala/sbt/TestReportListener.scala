@@ -44,6 +44,20 @@ trait TestsListener extends TestReportListener {
 
 /**
  * Provides the overall `result` of a group of tests (a suite) and test counts for each result type.
+ *
+ * @param throwables
+ *   The exceptions thrown by the tests in this suite, as live objects. They are needed as objects
+ *   rather than as rendered text because the ClassLoaderLayeringStrategy diagnostic in `Defaults`
+ *   inspects them with `isInstanceOf` and walks `getCause` to recognise `NoClassDefFoundError` and
+ *   friends.
+ *
+ *   RETENTION HAZARD: a `Throwable`'s backtrace references the `Class` objects of every frame, and
+ *   a `Class` strongly references its defining class loader. Holding a `SuiteResult` with a
+ *   non-empty `throwables` therefore keeps the test class loader -- and every jar handle it has
+ *   open -- alive. That is fine for the duration of the test task, which is where these are
+ *   consumed, but anything that outlives the task must drop them first. `TestRecap.collect` does
+ *   exactly that before stashing a copy on `State.attributes`; see the note on `TestRecap.recapKey`.
+ *   On Windows a leaked handle makes the underlying jar undeletable (e.g. by `clearCaches`).
  */
 private[sbt] final class SuiteResult(
     val result: TestResult,

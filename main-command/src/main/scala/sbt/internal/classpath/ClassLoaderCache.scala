@@ -77,11 +77,33 @@ private[sbt] class ClassLoaderCache(
     new java.util.concurrent.ConcurrentHashMap[Key, Reference[ClassLoader]]()
   private val referenceQueue = new ReferenceQueue[ClassLoader]
 
+  /*
+   * Loaders evicted from `delegate` by clearExpiredLoaders are no longer reachable from the
+   * map, so clear()/close() alone can never close them. Nor can the cleanup thread: once the
+   * entry is removed, the Reference object itself becomes unreachable, and an unreachable
+   * Reference is never enqueued on the ReferenceQueue. They would linger with open jar handles
+   * for the life of the JVM. On Windows those handles make the underlying jars undeletable
+   * (e.g. clearCaches cannot delete cas blobs the loaders still reference). Track evicted
+   * loaders weakly so clear() can close them deterministically; weak keys preserve the
+   * metaspace-pressure design above by adding no strong retention of their own.
+   */
+  private val retired =
+    java.util.Collections.synchronizedMap(new java.util.WeakHashMap[ClassLoader, java.lang.Boolean])
+
   private def clearExpiredLoaders(): Unit = lock.synchronized {
     val clear = (k: Key, ref: Reference[ClassLoader]) => {
       ref.get() match {
         case w: WrappedLoader => w.invalidate()
         case _                =>
+      }
+      ref match {
+        case ClassLoaderReference(_, underlying) =>
+          retired.put(underlying, java.lang.Boolean.TRUE)
+        case r =>
+          r.get() match {
+            case null   =>
+            case loader => retired.put(loader, java.lang.Boolean.TRUE)
+          }
       }
       delegate.remove(k)
       ()
@@ -109,6 +131,7 @@ private[sbt] class ClassLoaderCache(
           referenceQueue.remove(1000) match {
             case ClassLoaderReference(key, classLoader) =>
               close(classLoader)
+              retired.remove(classLoader)
               delegate.remove(key)
               ()
             case _ =>
@@ -148,6 +171,10 @@ private[sbt] class ClassLoaderCache(
    * handle from being modified. On linux and mac, we probably leak some file descriptors but it's
    * fairly uncommon for sbt to run out of file descriptors.
    *
+   * Loaders evicted by clearExpiredLoaders (as opposed to by garbage collection) are a separate
+   * case: they are removed from `delegate`, so neither clear()/close() nor the reference-queue
+   * cleanup thread can reach them. Those are tracked weakly in `retired` and closed by
+   * clear()/close(), so their handles are released deterministically rather than never.
    */
   private val metaspaceIsLimited =
     ManagementFactory.getMemoryPoolMXBeans.asScala
@@ -230,6 +257,12 @@ private[sbt] class ClassLoaderCache(
         }
     }
     delegate.clear()
+    /* Also close loaders that were evicted from the delegate map but never closed (see
+     * `retired`); WeakHashMap iteration requires holding its monitor, so snapshot the keys
+     * first and close outside the lock. */
+    val evicted = retired.synchronized(new java.util.ArrayList(retired.keySet()).asScala.toList)
+    evicted.foreach(close)
+    retired.clear()
   }
 
   /**
