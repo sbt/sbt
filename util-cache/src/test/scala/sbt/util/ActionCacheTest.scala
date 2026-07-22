@@ -444,6 +444,90 @@ object ActionCacheTest extends BasicTestSuite:
         assert(Files.size(zipPath) > 0L)
       finally pool.shutdown()
 
+  // See https://github.com/sbt/sbt/issues/9349. With a warm cache, deleting the output tree
+  // out-of-band must not break the next build: restore recreates the missing parent directories.
+  test("Restore recreates a deleted output directory (direct blob)"):
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outDir =>
+        val conv = fileConverter
+        val cache = DiskActionCacheStore(cacheDir.toPath, conv)
+        val nested = outDir.toPath.resolve("classes/pkg/A.txt")
+        val blob = StringVirtualFile1(nested.toString, "compiled")
+        val refs = cache.putBlobs(Seq(blob))
+        cache.syncBlobs(refs, outDir.toPath)
+        assert(Files.exists(nested), "first sync should create the file")
+        IO.delete(outDir.toPath.resolve("classes").toFile())
+        assert(!Files.exists(nested.getParent))
+        cache.syncBlobs(refs, outDir.toPath)
+        assert(Files.exists(nested), "restore must recreate the deleted parent + file")
+
+  test("Restore recreates a deleted output directory on a cache hit (dirzip)"):
+    import sjsonnew.BasicJsonProtocol.*
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outDir =>
+        val conv = binaryConverter
+        val cache = DiskActionCacheStore(cacheDir.toPath, conv)
+        val classesDir = outDir.toPath.resolve("classes")
+        val classFile = classesDir.resolve("pkg/A.class")
+        var called = 0
+        val action: Unit => InternalActionResult[Int] = { _ =>
+          called += 1
+          Files.createDirectories(classFile.getParent)
+          Files.writeString(classFile, "compiled")
+          val dirzip =
+            ActionCache.packageDirectory(
+              VirtualFileRef.of(classesDir.toString),
+              conv,
+              outDir.toPath
+            )
+          InternalActionResult(1, Seq(dirzip))
+        }
+        val config = getCacheConfig(cache, outDir, converter = conv)
+        val v1 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 1)
+        assert(called == 1)
+        assert(Files.exists(classFile))
+        IO.delete(outDir.toPath.toFile())
+        assert(!Files.exists(classesDir))
+        val v2 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 1)
+        assert(
+          Files.exists(classFile),
+          s"class file must be restored after output dir deletion (called=$called)"
+        )
+
+  // A genuinely broken restore (syncFile write fails) must degrade to the onsite task rather than
+  // being silently swallowed by syncBlobs, which would report a cache hit with incomplete outputs.
+  test("Restore degrades to onsite recompute when materialising throws NoSuchFileException"):
+    testBrokenRestoreDegrades(r => new NoSuchFileException(r.toString))
+
+  test("Restore degrades to onsite recompute when materialising throws a non-IOException"):
+    testBrokenRestoreDegrades(_ => new RuntimeException("disk exploded"))
+
+  def testBrokenRestoreDegrades(mkError: HashedVirtualFileRef => Throwable): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outDir =>
+        val broken = new DiskActionCacheStore(cacheDir.toPath, fileConverter):
+          override def syncFile(
+              ref: HashedVirtualFileRef,
+              casFile: Path,
+              outputDirectory: Path,
+          ): Path = throw mkError(ref)
+        var called = 0
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          called += 1
+          val out = StringVirtualFile1(s"$outDir/a.txt", (a + b).toString)
+          InternalActionResult(a + b, Seq(out))
+        }
+        val config = getCacheConfig(broken, outDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, s"broken restore must degrade to onsite recompute (called=$called)")
+
   test("Changing cacheVersion invalidates the cache"):
     withDiskCache(testCacheVersionInvalidation)
 
@@ -492,6 +576,7 @@ object ActionCacheTest extends BasicTestSuite:
       cache: ActionCacheStore,
       outputDir: File,
       cacheVersion: Long = 0L,
+      converter: FileConverter = fileConverter,
   ): BuildWideCacheConfiguration =
     val logger = new Logger:
       override def trace(t: => Throwable): Unit = ()
@@ -500,7 +585,7 @@ object ActionCacheTest extends BasicTestSuite:
     BuildWideCacheConfiguration(
       cache,
       outputDir.toPath(),
-      fileConverter,
+      converter,
       logger,
       CacheEventLog(),
       CacheImplicits.defaultLocalDigestCacheByteSize,
@@ -512,4 +597,21 @@ object ActionCacheTest extends BasicTestSuite:
     override def toVirtualFile(path: Path): VirtualFile =
       val content = if Files.isRegularFile(path) then new String(Files.readAllBytes(path)) else ""
       StringVirtualFile1(path.toString, content)
+
+  // A converter whose VirtualFiles read raw bytes off disk, so binary blobs (e.g. dirzips) survive
+  // the put/sync round-trip instead of being mangled by a String round-trip.
+  def binaryConverter = new FileConverter:
+    override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+    override def toVirtualFile(path: Path): VirtualFile = DiskVirtualFile(path.toString)
+
+  final class DiskVirtualFile(path: String)
+      extends xsbti.BasicVirtualFileRef(path)
+      with VirtualFile:
+    private def bytes: Array[Byte] =
+      if Files.isRegularFile(Paths.get(path)) then Files.readAllBytes(Paths.get(path))
+      else Array.emptyByteArray
+    override def contentHash: Long = HashUtil.xxhash64(bytes)
+    override def sizeBytes: Long = bytes.length.toLong
+    override def contentHashStr: String = Digest.sha256Hash(bytes).contentHashStr
+    override def input: InputStream = new java.io.ByteArrayInputStream(bytes)
 end ActionCacheTest
