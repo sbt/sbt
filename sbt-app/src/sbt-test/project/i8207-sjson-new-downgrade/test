@@ -1,0 +1,10 @@
+# Issue 8207: a metabuild plugin must not downgrade sjson-new core.
+# Loading this build exercises the metabuild compile, which summons
+# the JsonFormat for String via the caching macro on javaOptions.
+# When the plugin downgrades sjson-new core on the metabuild
+# classpath, project load fails with a missing given. A successful
+# load is the regression assertion.
+> projects
+> checkMetabuildClasspath
+> checkProjectClasspath
+> githubGenerateSnapshot {}

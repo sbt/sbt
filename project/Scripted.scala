@@ -6,7 +6,7 @@ import sbt.*
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
 import scala.annotation.nowarn
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -21,6 +21,7 @@ trait ScriptedKeys {
       "Saves you some time when only your test has changed"
   )
   val scriptedSource = settingKey[File]("")
+  @transient
   val scriptedPrescripted = taskKey[File => Unit]("")
   val scriptedKeepTempDirectory = settingKey[Boolean](
     "If true, keeps the temporary directory after scripted tests complete for debugging."
@@ -40,9 +41,11 @@ object Scripted {
           case ("classloader-cache", "jni")   => true // no native lib is built for windows
           case ("classloader-cache", "spark") =>
             true // the test spark server is unable to bind to a local socket on Visual Studio 2019
-          case ("nio", "make-clone") => true // uses gcc which isn't set up on all systems
-          case ("watch", "symlinks") => true // symlinks don't work the same on windows
-          case _                     => false
+          case ("nio", "make-clone")           => true // uses gcc which isn't set up on all systems
+          case ("watch", "symlinks")           => true // symlinks don't work the same on windows
+          case ("cache", "compile-io-failure") =>
+            true // a read-only dir doesn't block writes on windows, so the I/O failure won't reproduce
+          case _ => false
         }
       )
     else NothingFilter
@@ -63,10 +66,10 @@ object Scripted {
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
     }
-    val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
+    val pairMap = pairs.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toMap
 
     val id = charClass(c => !c.isWhitespace && c != '/').+.string
-    val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
+    val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
 
     // A parser for page definitions
     val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>
@@ -128,9 +131,6 @@ object Scripted {
     logger.info(s"Tests selected: ${args.mkString("\n * ", "\n * ", "\n")}")
     logger.info("")
 
-    // Force Log4J to not use a thread context classloader otherwise it throws a CCE
-    sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
-
     val noJLine = new FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = ClasspathUtilities.toLoader(classpath, noJLine)
     val bridgeClass = Class.forName("sbt.scriptedtest.ScriptedRunner", true, loader)
@@ -171,7 +171,7 @@ object Scripted {
           case i if i > 0 => i
           case _          => 1
         }
-        import scala.language.reflectiveCalls
+        import scala.reflect.Selectable.reflectiveSelectable
 
         bridge.runInParallel(
           sourcePath,

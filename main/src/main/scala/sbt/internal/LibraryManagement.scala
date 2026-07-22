@@ -12,11 +12,13 @@ package internal
 import java.io.{ File, IOException }
 import java.net.{ URI, URL }
 import java.util.concurrent.Callable
+import java.util.regex.Matcher
 
 import gigahorse.AuthScheme
 import gigahorse.support.apachehttp.Gigahorse
 import sbt.Def.ScopedKey
 import sbt.internal.librarymanagement.*
+import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
 import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
@@ -549,6 +551,11 @@ private[sbt] object LibraryManagement {
     version == "3-latest.candidate"
   }
 
+  private def pluginCrossPath(project: CsrProject): Seq[String] =
+    val attrs = project.module.attributes
+    attrs.get(PomExtraDependencyAttributes.ScalaVersionKey).map("scala_" + _).toSeq ++
+      attrs.get(PomExtraDependencyAttributes.SbtVersionKey).map("sbt_" + _).toSeq
+
   /**
    * Publishes artifacts to the local Ivy repository without using Apache Ivy.
    * Uses the pattern: [org]/[module]/[revision]/[types]/[artifact](-[classifier]).[ext]
@@ -565,8 +572,9 @@ private[sbt] object LibraryManagement {
     val moduleName = project.module.name.value
     val version = project.version
 
-    // Base directory: localRepoBase / org / module / version
-    val moduleDir = localRepoBase / org / moduleName / version
+    // Base directory: localRepoBase / org / module / (scala_V/)(sbt_V/) / version
+    val moduleDir =
+      pluginCrossPath(project).foldLeft(localRepoBase / org / moduleName)(_ / _) / version
 
     log.info(s"Publishing to $moduleDir")
 
@@ -636,6 +644,7 @@ private[sbt] object LibraryManagement {
    */
   private def substituteIvyArtifactPattern(
       pattern: String,
+      project: CsrProject,
       org: String,
       moduleName: String,
       version: String,
@@ -653,8 +662,18 @@ private[sbt] object LibraryManagement {
     s = s.replace("[ext]", ext)
     if (classifier.nonEmpty) s = s.replace("(-[classifier])", s"-$classifier")
     else s = s.replace("(-[classifier])", "")
-    // Remove optional Ivy pattern parts (scala/sbt version, branch) for ivyless layout
-    s = s.replaceAll("\\(scala_[^)]+/\\)", "").replaceAll("\\(sbt_[^)]+/\\)", "")
+    // Substitute or drop optional Ivy pattern parts (scala/sbt version), remove branch for ivyless layout
+    val attrs = project.module.attributes
+    val scalaV = attrs.get(PomExtraDependencyAttributes.ScalaVersionKey)
+    val sbtV = attrs.get(PomExtraDependencyAttributes.SbtVersionKey)
+    s = s.replaceAll(
+      "\\(scala_[^)]+/\\)",
+      scalaV.map(v => Matcher.quoteReplacement(s"scala_$v/")).getOrElse("")
+    )
+    s = s.replaceAll(
+      "\\(sbt_[^)]+/\\)",
+      sbtV.map(v => Matcher.quoteReplacement(s"sbt_$v/")).getOrElse("")
+    )
     s = s.replaceAll("\\(\\[branch\\]/\\)", "")
     s
   }
@@ -748,6 +767,7 @@ private[sbt] object LibraryManagement {
       val artifactName = moduleName
       val pathPattern = substituteIvyArtifactPattern(
         artifactPattern,
+        project,
         org,
         moduleName,
         version,
@@ -769,6 +789,7 @@ private[sbt] object LibraryManagement {
     val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
     val ivyPathPattern = substituteIvyArtifactPattern(
       ivyPattern,
+      project,
       org,
       moduleName,
       version,

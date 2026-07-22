@@ -15,11 +15,11 @@ object Dependencies {
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  val launcherVersion = "1.6.1"
+  val launcherVersion = "1.6.2"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.7.0"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.8.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -62,7 +62,7 @@ object Dependencies {
   def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  lazy val sjsonNewVersion = "0.15.0"
+  lazy val sjsonNewVersion = "0.15.1"
   def sjsonNew(n: String) = Def.setting(
     "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value
@@ -113,7 +113,7 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-939a7ea82f140cdb1f51dc404bb43e00a8c43b83"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-f686954b0021a5c3245766ced0cdaeca8ba2fd7a"
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()

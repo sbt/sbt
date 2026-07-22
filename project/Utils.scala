@@ -1,5 +1,7 @@
 import scala.util.control.NonFatal
 import sbt.*
+import sbt.given
+import sbt.util.CacheImplicits.given
 import Keys.*
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafix
 
@@ -9,7 +11,9 @@ object Utils {
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
   val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")
+  @transient
   val scalaKeywords: TaskKey[Set[String]] = taskKey[Set[String]]("")
+  @transient
   val generateKeywords: TaskKey[File] = taskKey[File]("")
   val sbtnVersion = SettingKey[String]("sbtn-version")
 
@@ -66,7 +70,7 @@ object Utils {
     IO.read(propFile).contains(versionLine(version))
 
   def publishPomSettings: Seq[Setting[?]] = Seq(
-    pomPostProcess := cleanPom _
+    pomPostProcess := cleanPom
   )
 
   def cleanPom(pomNode: scala.xml.Node) = {
@@ -100,12 +104,11 @@ object Utils {
   }
 
   def getScalaKeywords: Set[String] = {
-    val g = new scala.tools.nsc.Global(new scala.tools.nsc.Settings)
-    g.nme.keywords.map(_.toString)
+    dotty.tools.dotc.core.StdNames.nme.keywords.map(_.toString).toSet
   }
 
   def writeScalaKeywords(base: File, keywords: Set[String]): File = {
-    val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
+    val init = keywords.map(tn => "\"" + tn + "\"").mkString("Set(", ", ", ")")
     val ObjectName = "ScalaKeywords"
     val PackageName = "sbt.internal.util"
     val keywordsSrc = s"""
@@ -123,7 +126,9 @@ object Utils {
     inConfig(Compile)(
       Seq(
         scalaKeywords := getScalaKeywords,
-        generateKeywords := writeScalaKeywords(sourceManaged.value, scalaKeywords.value),
+        generateKeywords := Def.uncached(
+          writeScalaKeywords(sourceManaged.value, scalaKeywords.value)
+        ),
         sourceGenerators += Def.task(Seq(generateKeywords.value)).taskValue
       )
     )
@@ -145,6 +150,7 @@ object Utils {
 
 object Licensed {
   lazy val notice = SettingKey[Option[File]]("notice")
+  @transient
   lazy val extractLicenses = TaskKey[Seq[File]]("extract-licenses")
 
   lazy val seeRegex = """\(see (.*?)\)""".r

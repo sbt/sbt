@@ -2847,7 +2847,7 @@ object Classpaths {
             case (false, _) =>
               Def.task { filteredDependencyClasspath.value }
             case (true, DependencyMode.Transitive) =>
-              Def.task { dependencyClasspath.value }
+              Def.task { internalDependencyPicklePath.value ++ externalDependencyClasspath.value }
             case (true, DependencyMode.Direct) =>
               Def.task {
                 val internalFiltered = ClasspathImpl.filterInternalByMode(
@@ -2855,7 +2855,7 @@ object Classpaths {
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
-                  internalDependencyClasspath.value,
+                  internalDependencyPicklePath.value,
                 )
                 val externalFiltered = ClasspathImpl.filterByDirectDeps(
                   allDependencies.value,
@@ -2870,7 +2870,7 @@ object Classpaths {
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
-                  internalDependencyClasspath.value,
+                  internalDependencyPicklePath.value,
                 )
                 val externalFiltered = ClasspathImpl.filterByPlusOne(
                   allDependencies.value,
@@ -3624,7 +3624,13 @@ object Classpaths {
         o %% "librarymanagement-ivy",
         o %% "util-logging",
         o %% "util-position",
-        o %% "io"
+        o %% "io",
+        "com.eed3si9n" %% "sjson-new-core",
+        "com.eed3si9n" %% "gigahorse-core",
+        "com.typesafe" %% "ssl-config-core",
+        "org.reactivestreams" % "reactive-streams",
+        "org.slf4j" % "slf4j-api",
+        "com.typesafe" % "config",
       )
       if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes
