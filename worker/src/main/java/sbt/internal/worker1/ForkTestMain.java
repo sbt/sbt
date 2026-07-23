@@ -167,7 +167,7 @@ public class ForkTestMain {
     private final String originalName;
     private ForkError cause1;
 
-    ForkError(final Throwable t) {
+    public ForkError(final Throwable t) {
       originalMessage = t.getMessage();
       originalName = t.getClass().getName();
       setStackTrace(t.getStackTrace());
@@ -176,6 +176,16 @@ public class ForkTestMain {
 
     public String getMessage() {
       return originalName + ": " + originalMessage;
+    }
+
+    /** Returns the fully qualified class name of the original exception. */
+    public String getOriginalName() {
+      return originalName;
+    }
+
+    /** Returns the original exception message (without the class name prefix). */
+    public String getOriginalMessage() {
+      return originalMessage;
     }
 
     public Exception getCause() {
