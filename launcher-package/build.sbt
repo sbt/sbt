@@ -54,9 +54,11 @@ lazy val isWindows: Boolean =
 lazy val isExperimental = sbtVersionToRelease.contains("RC") || sbtVersionToRelease.contains("M")
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
-val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
+val sbtLaunchJar = TaskKey[HashedVirtualFileRef]("sbt-launch-jar", "Resolves SBT launch jar")
 val moduleID = (organization) apply { (o) => ModuleID(o, "sbt", sbtVersionToRelease) }
-val sbtnJarsMappings = TaskKey[Seq[(File, String)]]("sbtn-jars-mappings", "Resolves sbtn JARs")
+@transient
+val sbtnJarsMappings =
+  TaskKey[Seq[(HashedVirtualFileRef, String)]]("sbtn-jars-mappings", "Resolves sbtn JARs")
 val sbtnJarsBaseUrl = SettingKey[String]("sbtn-jars-base-url")
 
 lazy val bintrayDebianUrl = settingKey[String]("API point for Debian packages")
@@ -70,14 +72,13 @@ lazy val bintrayTripple = settingKey[(String, String, String)]("id, url, and pat
 val artifactoryLinuxPattern = "[module]-[revision].[ext]"
 val artifactoryDebianPattern =
   "[module]-[revision].[ext];deb.distribution=all;deb.component=main;deb.architecture=all"
-val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
-val bintrayReleaseAllStaged =
-  TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
 val debianBuildId = settingKey[Int]("build id for Debian")
 
+@transient
 val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
 val exportRepoCsrDirectory = settingKey[File]("")
+@transient
 val exportRepo = taskKey[File]("export Ivy style repository")
 val exportRepoDirectory = settingKey[File]("directory for exported repository")
 
@@ -107,7 +108,7 @@ val launcherPackage = (project in file("."))
   .settings(
     name := "sbt-launcher-packaging",
     packageName := "sbt",
-    crossTarget := target.value,
+    crossPaths := false,
     autoScalaLibrary := false,
     clean := {
       val _ = (dist / clean).value
@@ -142,7 +143,7 @@ val launcherPackage = (project in file("."))
         }
       }
       // TODO - GPG Trust validation.
-      file
+      fileConverter.value.toVirtualFile(file.toPath)
     },
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
@@ -226,14 +227,20 @@ val launcherPackage = (project in file("."))
         IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
       }
       if (!sbtIncludeSbtn) Seq()
-      else if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
+      else if (isWindows)
+        Seq(
+          fileConverter.value
+            .toVirtualFile((t / x86WindowsImageName).toPath) -> s"bin/$x86WindowsImageName"
+        )
       else
         Seq(
           t / universalMacImageName -> s"bin/$universalMacImageName",
           t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
           t / aarch64LinuxImageName -> s"bin/$aarch64LinuxImageName",
           t / x86WindowsImageName -> s"bin/$x86WindowsImageName"
-        )
+        ).map { (k, v) =>
+          fileConverter.value.toVirtualFile(k.toPath) -> v
+        }
     },
 
     // GENERAL LINUX PACKAGING STUFFS
@@ -332,7 +339,9 @@ val launcherPackage = (project in file("."))
     Windows / packageName := packageName.value,
     Universal / version := sbtVersionToRelease,
     Universal / mappings += {
-      (baseDirectory.value.getParentFile / "sbt") -> ("bin" + java.io.File.separator + "sbt")
+      fileConverter.value.toVirtualFile(
+        (baseDirectory.value.getParentFile / "sbt").toPath
+      ) -> ("bin" + java.io.File.separator + "sbt")
     },
     Universal / mappings := {
       val t = (Universal / target).value
@@ -342,7 +351,7 @@ val launcherPackage = (project in file("."))
       prev.toList map {
         case (k, BinSbt) =>
           import java.nio.file.{ Files, FileSystems }
-          val x = IO.read(k)
+          val x = IO.read(fileConverter.value.toPath(k).toFile)
           IO.write(
             t / "sbt",
             x.replace(
@@ -352,13 +361,13 @@ val launcherPackage = (project in file("."))
           )
 
           if (FileSystems.getDefault.supportedFileAttributeViews.contains("posix")) {
-            val perms = Files.getPosixFilePermissions(k.toPath)
+            val perms = Files.getPosixFilePermissions(fileConverter.value.toPath(k))
             Files.setPosixFilePermissions((t / "sbt").toPath, perms)
           }
 
-          (t / "sbt", BinSbt)
+          (fileConverter.value.toVirtualFile((t / "sbt").toPath), BinSbt)
         case (k, BinBat) =>
-          val x = IO.read(k)
+          val x = IO.read(fileConverter.value.toPath(k).toFile)
           IO.write(
             t / "sbt.bat",
             x.replace(
@@ -366,7 +375,7 @@ val launcherPackage = (project in file("."))
               s"set init_sbt_version=$sbtVersionToRelease"
             )
           )
-          (t / "sbt.bat", BinBat)
+          (fileConverter.value.toVirtualFile((t / "sbt.bat").toPath), BinBat)
         case (k, v) => (k, v)
       }
     },
@@ -377,29 +386,34 @@ val launcherPackage = (project in file("."))
             sbtLaunchJar.value -> "bin/sbt-launch.jar"
           )
         }
-      else Def.task { Seq[(File, String)]() }
+      else Def.task { Seq[(HashedVirtualFileRef, String)]() }
     }).value,
     Universal / mappings ++= sbtnJarsMappings.value,
     Universal / mappings ++= (Def.taskDyn {
       if (sbtOfflineInstall && sbtVersionToRelease.startsWith("1."))
         Def.task {
           val _ = ((dist / exportRepoUsingCoursier)).value
-          directory(((dist / target)).value / "lib")
+          directory(((dist / target)).value / "lib").map { (k, v) =>
+            fileConverter.value.toVirtualFile(k.toPath) -> v
+          }
         }
       else if (sbtOfflineInstall)
         Def.task {
           val _ = ((dist / exportRepo)).value
-          directory(((dist / target)).value / "lib")
+          directory(((dist / target)).value / "lib").map { (k, v) =>
+            fileConverter.value.toVirtualFile(k.toPath) -> v
+          }
         }
-      else Def.task { Seq[(File, String)]() }
+      else Def.task { Seq[(HashedVirtualFileRef, String)]() }
     }).value,
     Universal / mappings ++= {
       val base = baseDirectory.value
+      val converter = fileConverter.value
       if (sbtVersionToRelease.startsWith("0.13.")) Nil
       else
-        Seq[(File, String)](
-          base.getParentFile / "LICENSE" -> "LICENSE",
-          base / "NOTICE" -> "NOTICE"
+        Seq[(HashedVirtualFileRef, String)](
+          converter.toVirtualFile((base.getParentFile / "LICENSE").toPath) -> "LICENSE",
+          converter.toVirtualFile((base / "NOTICE").toPath) -> "NOTICE"
         )
     },
 
@@ -458,7 +472,7 @@ def makePublishToForConfig(config: Configuration) = {
       },
       publishTo := {
         val (id, url, pattern) = bintrayTripple.value
-        val resolver = Resolver.url(id, new URI(url).toURL)(Patterns(pattern))
+        val resolver = Resolver.uri(id, new URI(url))(using Patterns(pattern))
         Some(resolver)
       }
     )

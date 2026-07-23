@@ -8,7 +8,7 @@
 
 package sbt.util
 
-import java.io.{ File, IOException, PrintWriter }
+import java.io.{ File, PrintWriter }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{
   AtomicMoveNotSupportedException,
@@ -147,7 +147,7 @@ object ActionCache:
               result
             case Left(e) => throw e
       catch
-        case e: IOException =>
+        case NonFatal(e) =>
           logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
           cacheEventLog.append(ActionCacheEvent.Error)
           result

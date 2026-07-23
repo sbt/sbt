@@ -342,6 +342,13 @@ class NetworkClient(
     conn
   }
 
+  private def bootSocketOpt(bootSocketName: String, namedPipeName: String): Option[Socket] =
+    Try(ClientSocket.bootSocket(bootSocketName)).toOption match
+      case Some(x)                => Some(x)
+      case None if Util.isWindows =>
+        Try(ClientSocket.localSocket(namedPipeName, useJNI)).toOption
+      case _ => None
+
   /**
    * Forks another instance of sbt in the background.
    * This instance must be shutdown explicitly via `sbt -client shutdown`
@@ -351,14 +358,13 @@ class NetworkClient(
     val target = base.resolve("project").resolve("target")
     val hash = HashUtil.farmHash(target.toString().getBytes("UTF-8"))
     val bootSocketName = BootServerSocket.socketLocation(base, hash)
+    val namedPipeName = BootServerSocket.namedPipeLocation(hash)
 
     /*
      * For unknown reasons, linux sometimes struggles to connect to the socket in some
      * scenarios.
      */
-    var socket: Option[Socket] =
-      if (!Properties.isLinux) Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
-      else None
+    var socket: Option[Socket] = bootSocketOpt(bootSocketName, namedPipeName)
     val term = Terminal.console
     term.exitRawMode()
     var serverStderrFile: Option[File] = None
@@ -428,7 +434,7 @@ class NetworkClient(
     if (!startServer) {
       val deadline = 5.seconds.fromNow
       while (socket.isEmpty && !deadline.isOverdue()) {
-        socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+        socket = bootSocketOpt(bootSocketName, namedPipeName)
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
@@ -449,7 +455,7 @@ class NetworkClient(
           val buffer = mutable.ArrayBuffer.empty[Byte]
           while (readThreadAlive.get) {
             if (socket.isEmpty) {
-              socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+              socket = bootSocketOpt(bootSocketName, namedPipeName)
             }
             socket.foreach { s =>
               try {
@@ -1592,7 +1598,8 @@ object NetworkClient {
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
     val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
     val useJNI =
-      BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+      (Util.isMac && sys.props.getOrElse("os.arch", "") != "x86_64") ||
+        System.getProperty("sbt.ipcsocket.jni", "false") == "true"
     val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   }

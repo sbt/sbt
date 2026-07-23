@@ -9,8 +9,9 @@
 package sbt
 package protocol
 
-import java.io.File
-import java.net.{ Socket, URI, InetAddress }
+import java.io.{ File, InputStream, OutputStream }
+import java.net.{ InetAddress, Socket, StandardProtocolFamily, URI, UnixDomainSocketAddress }
+import java.nio.channels.{ Channels, SocketChannel }
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
@@ -45,4 +46,15 @@ object ClientSocket {
   def localSocket(name: String, useJNI: Boolean): Socket =
     if (isWindows) new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
     else new UnixDomainSocket(name, useJNI)
+
+  def bootSocket(path: String): Socket =
+    val ch = SocketChannel.open(StandardProtocolFamily.UNIX)
+    ch.connect(UnixDomainSocketAddress.of(path))
+    new Socket:
+      private val in = Channels.newInputStream(ch)
+      private val out = Channels.newOutputStream(ch)
+      override def getInputStream: InputStream = in
+      override def getOutputStream: OutputStream = out
+      override def close(): Unit = ch.close()
+      override def isClosed: Boolean = !ch.isOpen
 }

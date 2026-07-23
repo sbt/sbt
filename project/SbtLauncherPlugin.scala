@@ -1,23 +1,30 @@
 import sbt.Keys.*
 import sbt.*
 import sbt.io.CopyOptions
+import sbt.util.CacheImplicits.given
 
 object SbtLauncherPlugin extends AutoPlugin {
   override def requires = plugins.IvyPlugin
 
   object autoImport {
     val SbtLaunchConfiguration = config("sbt-launch")
-    val sbtLaunchJar = taskKey[File]("constructs an sbt-launch.jar for this version of sbt.")
+    val sbtLaunchJar =
+      taskKey[HashedVirtualFileRef]("constructs an sbt-launch.jar for this version of sbt.")
     val rawSbtLaunchJar =
-      taskKey[File]("The released version of the sbt-launcher we use to bundle this application.")
+      taskKey[HashedVirtualFileRef](
+        "The released version of the sbt-launcher we use to bundle this application."
+      )
   }
   import autoImport.*
 
   override def projectConfigurations: Seq[Configuration] = Seq(SbtLaunchConfiguration)
   override def projectSettings: Seq[Setting[?]] = Seq(
     libraryDependencies += Dependencies.rawLauncher % SbtLaunchConfiguration.name,
-    rawSbtLaunchJar := {
-      Classpaths.managedJars(SbtLaunchConfiguration, Set("jar"), update.value).headOption match {
+    rawSbtLaunchJar := Def.uncached {
+      val converter = fileConverter.value
+      Classpaths
+        .managedJars(SbtLaunchConfiguration, Set("jar"), update.value, converter)
+        .headOption match {
         case Some(jar) => jar.data
         case None      =>
           sys.error(
@@ -25,7 +32,7 @@ object SbtLauncherPlugin extends AutoPlugin {
           )
       }
     },
-    sbtLaunchJar := {
+    sbtLaunchJar := Def.uncached {
       val propFiles = (Compile / resources).value
       val propFileLocations =
         for (file <- propFiles; if file.getName != "resources") yield {
@@ -33,7 +40,13 @@ object SbtLauncherPlugin extends AutoPlugin {
           else file.getName -> file
         }
       // TODO - We need to inject the appropriate boot.properties file for this version of sbt.
-      rebundle(rawSbtLaunchJar.value, propFileLocations.toMap, target.value / "sbt-launch.jar")
+      fileConverter.value.toVirtualFile(
+        rebundle(
+          fileConverter.value.toPath(rawSbtLaunchJar.value).toFile,
+          propFileLocations.toMap,
+          target.value / "sbt-launch.jar"
+        ).toPath
+      )
     }
   )
 

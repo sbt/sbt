@@ -8,14 +8,16 @@
 
 package sbt.internal;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
+import java.net.StandardProtocolFamily;
+import java.net.UnixDomainSocketAddress;
+import java.nio.channels.Channels;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,9 +30,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.scalasbt.ipcsocket.UnixDomainServerSocket;
-import org.scalasbt.ipcsocket.Win32NamedPipeServerSocket;
-import org.scalasbt.ipcsocket.Win32SecurityLevel;
 import sbt.internal.util.Terminal;
 import xsbti.AppConfiguration;
 
@@ -50,13 +49,12 @@ import xsbti.AppConfiguration;
  * will not be forthcoming.
  *
  * <p>To address these issues, the BootServerSocket can be used to immediately create a server
- * socket before sbt even starts loading the build. It works by creating a local socket either in
- * project/target/SOCK_NAME or a windows named pipe with name SOCK_NAME where SOCK_NAME is computed
- * as the hash of the project's base directory (for disambiguation in the windows case). If the
- * server can't create a server socket because there is already one running, it either prompts the
- * user if they want to start a new server even if there is already one running if there is a
- * console available or exits with the status code 2 which indicates that there is another sbt
- * process starting up.
+ * socket before sbt even starts loading the build. It works by creating a local Unix domain socket
+ * at a path under XDG_RUNTIME_DIR (or java.io.tmpdir) on all platforms, including Windows 10+ which
+ * supports AF_UNIX via JDK 16+. If the server can't create a server socket because there is already
+ * one running, it either prompts the user if they want to start a new server even if there is
+ * already one running if there is a console available or exits with the status code 2 which
+ * indicates that there is another sbt process starting up.
  *
  * <p>Once the server socket is created, it listens for new client connections. When a client
  * connects, the server will forward its input and output to the client via Terminal.setBootStreams
@@ -69,7 +67,7 @@ import xsbti.AppConfiguration;
  * <p>BootServerSocket is implemented in java so that it can be classloaded as quickly as possible.
  */
 public class BootServerSocket implements AutoCloseable {
-  private ServerSocket serverSocket = null;
+  private ServerSocketChannel serverChannel = null;
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicInteger threadId = new AtomicInteger(1);
@@ -83,16 +81,20 @@ public class BootServerSocket implements AutoCloseable {
   private final Path socketFile;
   private final AtomicBoolean needInput = new AtomicBoolean(false);
 
+  @SuppressWarnings("deprecation")
   private class ClientSocket implements AutoCloseable {
-    final Socket socket;
+    private final InputStream in;
+    private final OutputStream out;
+    private final Closeable closeable;
     final AtomicBoolean alive = new AtomicBoolean(true);
     final Future<?> future;
     private final LinkedBlockingQueue<Integer> bytes = new LinkedBlockingQueue<Integer>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    @SuppressWarnings("deprecation")
-    ClientSocket(final Socket socket) {
-      this.socket = socket;
+    private ClientSocket(final InputStream in, final OutputStream out, final Closeable closeable) {
+      this.in = in;
+      this.out = out;
+      this.closeable = closeable;
       clientSockets.add(this);
       Future<?> f = null;
       try {
@@ -110,15 +112,14 @@ public class BootServerSocket implements AutoCloseable {
                               }
                               return 0;
                             });
-                    final InputStream inputStream = socket.getInputStream();
                     while (alive.get()) {
                       try {
                         synchronized (needInput) {
                           while (!needInput.get() && alive.get()) needInput.wait();
                         }
                         if (alive.get()) {
-                          socket.getOutputStream().write(5);
-                          int b = inputStream.read();
+                          out.write(5);
+                          int b = in.read();
                           if (b != -1) {
                             bytes.put(b);
                             clientSocketReads.put(ClientSocket.this);
@@ -147,7 +148,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void write(final int i) {
       try {
-        if (alive.get()) socket.getOutputStream().write(i);
+        if (alive.get()) out.write(i);
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -156,7 +157,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void write(final byte[] b) {
       try {
-        if (alive.get()) socket.getOutputStream().write(b);
+        if (alive.get()) out.write(b);
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -165,7 +166,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void write(final byte[] b, final int offset, final int len) {
       try {
-        if (alive.get()) socket.getOutputStream().write(b, offset, len);
+        if (alive.get()) out.write(b, offset, len);
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -174,7 +175,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void flush() {
       try {
-        socket.getOutputStream().flush();
+        out.flush();
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -195,11 +196,7 @@ public class BootServerSocket implements AutoCloseable {
         alive.set(false);
         if (future != null) future.cancel(true);
         try {
-          socket.getOutputStream().close();
-          socket.getInputStream().close();
-          // Windows is very slow to close the socket for whatever reason
-          // We close the server socket anyway, so this should die then.
-          if (!System.getProperty("os.name", "").toLowerCase().startsWith("win")) socket.close();
+          closeable.close();
         } catch (final IOException e) {
         }
         clientSockets.remove(this);
@@ -267,57 +264,44 @@ public class BootServerSocket implements AutoCloseable {
     return outputStream;
   }
 
+  // Blocking accept; close() interrupts it via AsynchronousCloseException.
   private final Runnable acceptRunnable =
       () -> {
-        try {
-          serverSocket.setSoTimeout(5000);
-          while (running.get()) {
-            try {
-              ClientSocket clientSocket = new ClientSocket(serverSocket.accept());
-            } catch (final SocketTimeoutException e) {
-            } catch (final IOException e) {
-              running.set(false);
+        while (running.get()) {
+          try {
+            final SocketChannel sc = serverChannel.accept();
+            if (sc != null) {
+              new ClientSocket(Channels.newInputStream(sc), Channels.newOutputStream(sc), sc);
             }
+          } catch (final IOException e) {
+            running.set(false);
           }
-        } catch (final SocketException e) {
         }
       };
 
   public BootServerSocket(final AppConfiguration configuration, final long farmHash)
       throws ServerAlreadyBootingException, IOException {
     final Path base = configuration.baseDirectory().toPath().toRealPath();
-    if (!isWindows) {
-      final String actualSocketLocation = socketLocation(base, farmHash);
-      final Path target = Paths.get(actualSocketLocation).getParent();
-      if (!Files.isDirectory(target)) Files.createDirectories(target);
-      socketFile = Paths.get(actualSocketLocation);
-    } else {
-      socketFile = null;
-    }
-    serverSocket = newSocket(socketLocation(base, farmHash));
-    if (serverSocket != null) {
-      running.set(true);
-      acceptFuture = service.submit(acceptRunnable);
-    } else {
-      closed.set(true);
-      acceptFuture = null;
-    }
+    final String socketPath = socketLocation(base, farmHash);
+    final Path target = Paths.get(socketPath).getParent();
+    if (!Files.isDirectory(target)) Files.createDirectories(target);
+    socketFile = Paths.get(socketPath);
+    serverChannel = newChannel(socketPath);
+    running.set(true);
+    acceptFuture = service.submit(acceptRunnable);
   }
 
   public static String socketLocation(final Path base, final long farmHash)
       throws UnsupportedEncodingException, IOException {
-    final Path target = base.resolve("project").resolve("target");
-    if (isWindows) {
-      return "sbt-load" + farmHash;
-    } else {
-      final String alternativeSocketLocation =
-          System.getenv().getOrDefault("XDG_RUNTIME_DIR", System.getProperty("java.io.tmpdir"));
-      final Path alternativeSocketLocationRoot =
-          Paths.get(alternativeSocketLocation).resolve(".sbt");
-      final Path locationForSocket = alternativeSocketLocationRoot.resolve("sbt-socket" + farmHash);
-      final Path pathForSocket = locationForSocket.resolve("sbt-load.sock");
-      return pathForSocket.toString();
-    }
+    final String runtimeDir =
+        System.getenv().getOrDefault("XDG_RUNTIME_DIR", System.getProperty("java.io.tmpdir"));
+    final Path locationForSocket =
+        Paths.get(runtimeDir).resolve(".sbt").resolve("sbt-socket" + farmHash);
+    return locationForSocket.resolve("sbt-load.sock").toString();
+  }
+
+  public static String namedPipeLocation(final long farmHash) {
+    return "sbt-load" + farmHash;
   }
 
   @SuppressWarnings("EmptyCatchBlock")
@@ -329,7 +313,7 @@ public class BootServerSocket implements AutoCloseable {
       if (acceptFuture != null) acceptFuture.cancel(true);
       service.shutdownNow();
       try {
-        if (serverSocket != null) serverSocket.close();
+        serverChannel.close();
       } catch (final IOException e) {
       }
       try {
@@ -339,31 +323,18 @@ public class BootServerSocket implements AutoCloseable {
     }
   }
 
-  static final boolean isWindows =
-      System.getProperty("os.name", "").toLowerCase().startsWith("win");
-
-  static ServerSocket newSocket(final String sock) throws ServerAlreadyBootingException {
-    ServerSocket socket = null;
-    String name = socketName(sock);
-    boolean jni = requiresJNI() || System.getProperty("sbt.ipcsocket.jni", "false").equals("true");
+  /**
+   * Creates a Unix domain ServerSocketChannel at the given path, replacing any stale socket file.
+   * Throws ServerAlreadyBootingException if the channel cannot be bound.
+   */
+  static ServerSocketChannel newChannel(final String sock) throws ServerAlreadyBootingException {
     try {
-      if (!isWindows) Files.deleteIfExists(Paths.get(sock));
-      socket =
-          isWindows
-              ? new Win32NamedPipeServerSocket(name, jni, Win32SecurityLevel.OWNER_DACL)
-              : new UnixDomainServerSocket(name, jni);
-      return socket;
+      Files.deleteIfExists(Paths.get(sock));
+      final ServerSocketChannel channel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+      channel.bind(UnixDomainSocketAddress.of(sock));
+      return channel;
     } catch (final IOException e) {
       throw new ServerAlreadyBootingException(e);
     }
-  }
-
-  public static Boolean requiresJNI() {
-    final boolean isMac = System.getProperty("os.name").toLowerCase().startsWith("mac");
-    return isMac && !System.getProperty("os.arch", "").equals("x86_64");
-  }
-
-  private static String socketName(String sock) {
-    return isWindows ? "\\\\.\\pipe\\" + sock : sock;
   }
 }
