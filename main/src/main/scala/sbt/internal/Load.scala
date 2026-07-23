@@ -1129,7 +1129,7 @@ private[sbt] object Load {
       val newProjects = rest ++ discovered ++ projectLevelExtra
       val newAcc = acc :+ finalRoot
       val newGenerated = generated ++ generatedConfigClassFiles
-      loadTransitive1(newProjects, newAcc, newGenerated, commonSettings)
+      loadTransitive1(newProjects, newAcc, newGenerated, finalRoot.commonSettings)
     }
 
     // Load all config files AND process the project at the root directory, if it exists.
