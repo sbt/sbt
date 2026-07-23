@@ -284,14 +284,17 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
     refs.flatMap: r =>
-      try
-        val casFile = toCasFile(Digest(r))
-        if isCompleteBlob(casFile, Digest(r)) then
-          // println(s"syncBlobs: $casFile exists for $r")
-          Some(syncFile(r, casFile, outputDirectory))
-        else None
-      // Digest(r) can throw NoSuchFileException
-      catch case _: NoSuchFileException => None
+      // Only the blob-availability lookup may swallow NoSuchFileException (Digest(r) can throw it):
+      // an absent blob is a cache miss for that entry. A write failure from syncFile, however, must
+      // propagate so the caller can degrade to the onsite task (sbt/sbt#8890) instead of silently
+      // leaving the output tree incomplete (sbt/sbt#9349).
+      val casFileOpt =
+        try
+          val digest = Digest(r)
+          val casFile = toCasFile(digest)
+          if isCompleteBlob(casFile, digest) then Some(casFile) else None
+        catch case _: NoSuchFileException => None
+      casFileOpt.map(syncFile(r, _, outputDirectory))
 
   def syncFile(ref: HashedVirtualFileRef, casFile: Path, outputDirectory: Path): Path =
     val d = Digest(ref)
