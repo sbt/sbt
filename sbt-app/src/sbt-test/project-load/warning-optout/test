@@ -1,1 +1,9 @@
+$ copy-file changes/good.sbt build.sbt
+
 > about
+
+$ copy-file changes/bad1.sbt build.sbt
+
+-> reload
+
+$ copy-file changes/good.sbt build.sbt

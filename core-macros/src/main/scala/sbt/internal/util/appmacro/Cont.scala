@@ -430,7 +430,7 @@ trait Cont:
 
       val WrapOutputName = "wrapOutput_\u2603\u2603"
       val WrapOutputDirectoryName = "wrapOutputDirectory_\u2603\u2603"
-      var nowarnQuals: Set[String] = Set.empty
+      var nowarnQuals: Set[Term] = Set.empty
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
       val record = [a] =>
@@ -476,7 +476,7 @@ trait Cont:
                   qual,
                   replacement,
                   freshName("q"),
-                  isWarnSuppressed = nowarnQuals.contains(qual.show),
+                  isWarnSuppressed = nowarnQuals.contains(qual),
                 )
                 oldTree
           }

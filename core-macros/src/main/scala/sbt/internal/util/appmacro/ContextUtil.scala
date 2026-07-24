@@ -196,14 +196,13 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
 
   def idTransform[F[_]]: TermTransform[F] = in => in
 
-  /** Collects `qual.show` for each `.value` call wrapped in `@nowarn`, e.g. `(state.value: @nowarn)`. */
-  def collectNowarnQuals(tree: Term): Set[String] =
-    val result = mutable.HashSet[String]()
+  def collectNowarnQuals(tree: Term): Set[Term] =
+    val result = mutable.HashSet[Term]()
     @tailrec def extractQual(t: Term): Unit = t match
       case Inlined(_, _, inner)                                  => extractQual(inner)
       case Typed(inner, _)                                       => extractQual(inner)
-      case Apply(TypeApply(Select(_, _), _ :: Nil), qual :: Nil) => result += qual.show
-      case Apply(TypeApply(Ident(_), _ :: Nil), qual :: Nil)     => result += qual.show
+      case Apply(TypeApply(Select(_, _), _ :: Nil), qual :: Nil) => result += qual
+      case Apply(TypeApply(Ident(_), _ :: Nil), qual :: Nil)     => result += qual
       case _                                                     => ()
     object scanner extends TreeTraverser:
       override def traverseTree(t: Tree)(owner: Symbol): Unit = t match
