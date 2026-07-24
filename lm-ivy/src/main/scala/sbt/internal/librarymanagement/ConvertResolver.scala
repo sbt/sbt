@@ -116,18 +116,13 @@ private[sbt] object ConvertResolver {
         checksum <- checksums
         if !ChecksumHelper.isKnownAlgorithm(checksum)
       } throw new IllegalArgumentException("Unknown checksum algorithm: " + checksum)
-      repository.put(artifact, src, dest, overwrite);
-      // Fix for sbt#1156 - Artifactory will auto-generate MD5/sha1 files, so
-      // we need to overwrite what it has.
-      if (!artifact.getName.endsWith(".asc")) {
-        for (checksum <- checksums) {
-          putChecksumMethod match {
+      repository.put(artifact, src, dest, overwrite)
+      if !dest.endsWith(".asc") then
+        for checksum <- checksums do
+          putChecksumMethod match
             case Some(method) =>
               method.invoke(this, artifact, src, dest, true: java.lang.Boolean, checksum)
             case None => // TODO - issue warning?
-          }
-        }
-      }
       if (signerName != null) {
         putSignatureMethod match {
           case None         => ()
@@ -219,15 +214,16 @@ private[sbt] object ConvertResolver {
         resolver
       }
       case repo: FileRepository => {
-        val resolver = new FileSystemResolver with DescriptorRequired {
-          // Workaround for #1156
-          // Temporarily in sbt 0.13.x we deprecate overwriting
-          // in local files for non-changing revisions.
-          // This will be fully enforced in sbt 1.0.
-          setRepository(new WarnOnOverwriteFileRepo())
-          override val managedChecksumsEnabled: Boolean = managedChecksums
-          override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
-        }
+        val resolver =
+          new FileSystemResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
+            // Workaround for #1156
+            // Temporarily in sbt 0.13.x we deprecate overwriting
+            // in local files for non-changing revisions.
+            // This will be fully enforced in sbt 1.0.
+            setRepository(new WarnOnOverwriteFileRepo())
+            override val managedChecksumsEnabled: Boolean = managedChecksums
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+          }
         resolver.setName(repo.name)
         initializePatterns(resolver, repo.patterns, settings)
         import repo.configuration.{ isLocal, isTransactional }
