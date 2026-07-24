@@ -760,6 +760,7 @@ object Defaults extends BuildCommon with DefExtra {
           case NonFatal(_) => ()
         }
         clean.value
+        (ThisBuild / publish / clean).value
       },
       scalaCompilerBridgeBin := Def
         .ifS(Def.task {

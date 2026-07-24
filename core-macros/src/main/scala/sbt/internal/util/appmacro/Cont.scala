@@ -316,7 +316,7 @@ trait Cont:
                           .asExprOf[BuildWideCacheConfiguration]
                       inputs.foreach: input =>
                         if !input.isCacheInput then
-                          if !Cont.transientAllowSet(input.sym.name) then
+                          if !Cont.transientAllowSet(input.sym.name) && !input.isWarnSuppressed then
                             report.warning(
                               s"transient key ${input.sym.name} is excluded from the cache input"
                             )
@@ -445,6 +445,7 @@ trait Cont:
 
       val WrapOutputName = "wrapOutput_\u2603\u2603"
       val WrapOutputDirectoryName = "wrapOutputDirectory_\u2603\u2603"
+      var nowarnQuals: Set[Term] = Set.empty
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
       val record = [a] =>
@@ -490,12 +491,18 @@ trait Cont:
                     }.asTerm
                   case None => oldTree
               case _ =>
-                // todo cache opt-out attribute
-                inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
+                inputBuf += Input(
+                  TypeRepr.of[a],
+                  qual,
+                  replacement,
+                  freshName("q"),
+                  isWarnSuppressed = nowarnQuals.contains(qual),
+                )
                 oldTree
           }
       val exprWithConfig =
         cacheConfigExprOpt.map(config => '{ $config; $expr }).getOrElse(expr)
+      nowarnQuals = collectNowarnQuals(exprWithConfig.asTerm)
       val body = transformWrappers(exprWithConfig.asTerm, record, Symbol.spliceOwner)
       val r = inputBuf.toList match
         case Nil      => pure(body)

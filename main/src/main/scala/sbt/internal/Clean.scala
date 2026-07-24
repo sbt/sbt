@@ -218,6 +218,7 @@ private[sbt] object Clean {
     val h = Help.more(CleanFull, cleanFullDetailed)
     val expunge: State => State =
       (s: State) =>
+        import UpperStateOps.*
         val outputDirectory = s
           .get(BasicKeys.rootOutputDirectory)
           .getOrElse(sys.error("outputDirectory has not been set"))
@@ -225,6 +226,7 @@ private[sbt] object Clean {
         cacheStore.foreach:
           case d: DiskActionCacheStore => d.clear()
           case _                       => ()
+        val s2 = s.unsafeRunAggregated(LocalRootProject / clean)
         IO.delete(outputDirectory.toFile())
         IO.delete(
           s.configuration
