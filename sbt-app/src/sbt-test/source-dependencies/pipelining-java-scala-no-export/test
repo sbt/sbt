@@ -1,0 +1,4 @@
+> compile
+
+$ exists target/**/upstream/classes/example/Greeter.class
+$ exists target/**/downstream/classes/example/Main.class
