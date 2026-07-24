@@ -204,12 +204,19 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       case Apply(TypeApply(Select(_, _), _ :: Nil), qual :: Nil) => result += qual
       case Apply(TypeApply(Ident(_), _ :: Nil), qual :: Nil)     => result += qual
       case _                                                     => ()
+    def targetsTransient(s: String) = s.isEmpty || s.startsWith("msg=transient")
     object scanner extends TreeTraverser:
       override def traverseTree(t: Tree)(owner: Symbol): Unit = t match
         case Typed(inner, tpt) =>
           tpt.tpe match
             case AnnotatedType(_, annot) if annot.tpe.typeSymbol == nowarnAnnotSym =>
-              extractQual(inner)
+              val isUnfiltered = annot match
+                case Apply(_, Nil)                                            => true
+                case Apply(_, Literal(StringConstant(s)) :: Nil)              => targetsTransient(s)
+                case Apply(_, NamedArg(_, Literal(StringConstant(s))) :: Nil) => targetsTransient(s)
+                case Apply(_, _ :: Nil)                                       => true
+                case _                                                        => false
+              if isUnfiltered then extractQual(inner)
             case _ =>
               super.traverseTree(t)(owner)
         case _ => super.traverseTree(t)(owner)
