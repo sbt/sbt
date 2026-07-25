@@ -123,6 +123,8 @@ object SysProp:
   @deprecated("Resident compilation is no longer supported", "1.4.0")
   def residentLimit: Int = int("sbt.resident.limit", 0)
 
+  def analysisCacheMaxCount: Int = int("sbt.local_cache.analysis_count", 8)
+
   /**
    * Indicates whether formatting has been disabled in environment variables.
    * 1. -Dsbt.log.noformat=true means no formatting.

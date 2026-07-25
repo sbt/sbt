@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import com.github.benmanes.caffeine.cache.{ Cache as CCache, Caffeine, Weigher }
+import com.github.benmanes.caffeine.cache.{ Cache as CCache, Caffeine }
 import java.io.File
 import java.nio.file.{ Files, NoSuchFileException, Path as NioPath }
 import java.nio.file.attribute.BasicFileAttributes
@@ -92,16 +92,10 @@ private[sbt] object BuildDef:
   ): Seq[xsbti.compile.CompileAnalysis] =
     in.flatMap(a => extractAnalysis(a.metadata, converter))
 
-  private[sbt] final val localAnalysisCacheByteSize = 100 * 1024L * 1024L
-  private val weigher: Weigher[String, (Option[AnalysisContents], Long, Long)] = {
-    case (_, (_, _, sizeBytes)) => sizeBytes.toInt
-  }
   private val inMemoryAnalysisCache: CCache[String, (Option[AnalysisContents], Long, Long)] =
-    Caffeine
-      .newBuilder()
-      .maximumWeight(localAnalysisCacheByteSize)
-      .weigher(weigher)
-      .build()
+    val maxCount = SysProp.analysisCacheMaxCount
+    val builder = Caffeine.newBuilder()
+    (if maxCount == 0 then builder else builder.maximumSize(maxCount.toLong)).build()
   private def getOrElseUpdate(ref: VirtualFileRef, lastModified: Long, sizeBytes: Long)(
       value: => Option[AnalysisContents]
   ): Option[AnalysisContents] =
