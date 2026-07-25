@@ -354,7 +354,6 @@ object Keys {
 
   val fork = settingKey[Boolean]("If true, forks a new JVM when running.  If false, runs in the same JVM as the build.").withRank(ASetting)
   val forkOptions = taskKey[ForkOptions]("Configures JVM forking.").withRank(DSetting)
-  val forkWorkingDirectory = settingKey[Option[File]]("Working directory of forked processes started by run, test, and console. If None, the forked process inherits the working directory of the sbt process.").withRank(BSetting)
   val outputStrategy = settingKey[Option[sbt.OutputStrategy]]("Selects how to log output when running a main class.").withRank(DSetting)
   val connectInput = settingKey[Boolean]("If true, connects standard input when running a main class forked.").withRank(CSetting)
   val javaHome = settingKey[Option[File]]("Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.").withRank(ASetting)

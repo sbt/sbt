@@ -9,7 +9,9 @@ lazy val runAndTest = project.in(file("run-and-test"))
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
     Compile / javaOptions := Vector("Xmx256M"),
     Compile / envVars := Map("KEY" -> "VALUE"),
-    run / forkWorkingDirectory := Some(baseDirectory.value),
+    Compile / run / forkOptions := Def.uncached(
+      (Compile / run / forkOptions).value.withWorkingDirectory(Some(baseDirectory.value))
+    ),
 
     Test / javaOptions := Vector("Xmx512M"),
     Test / envVars := Map("KEY_TEST" -> "VALUE_TEST"),

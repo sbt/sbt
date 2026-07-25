@@ -191,7 +191,6 @@ object Defaults extends BuildCommon with DefExtra {
       apiURL := None,
       releaseNotesURL := None,
       javaHome :== None,
-      forkWorkingDirectory :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
@@ -1407,7 +1406,6 @@ object Defaults extends BuildCommon with DefExtra {
     )
   }
 
-  /** The forked process inherits sbt's working directory unless `forkWorkingDirectory` is set. */
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
     Def.task {
       val canUseArgumentsFile = sys.props
@@ -1418,13 +1416,17 @@ object Defaults extends BuildCommon with DefExtra {
         outputStrategy = outputStrategy.value,
         // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
         bootJars = Vector(),
-        workingDirectory = forkWorkingDirectory.value,
+        workingDirectory = Some(baseDirectory.value),
         runJVMOptions = javaOptions.value.toVector,
         connectInput = connectInput.value,
         envVars = envVars.value,
         canUseArgumentsFile = Some(canUseArgumentsFile)
       )
     }
+
+  /** Fork options for run-like tasks: the forked process inherits sbt's working directory. */
+  private[sbt] def runForkOptionsTask: Initialize[Task[ForkOptions]] =
+    Def.task(forkOptionsTask.value.withWorkingDirectory(None))
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
     Def.task {
@@ -2605,7 +2607,7 @@ object Defaults extends BuildCommon with DefExtra {
   private lazy val newRunnerSettings: Seq[Setting[?]] =
     Seq(
       runner := Def.uncached(ClassLoaders.runner.value),
-      forkOptions := Def.uncached(forkOptionsTask.value)
+      forkOptions := Def.uncached(runForkOptionsTask.value)
     )
 
   lazy val baseTasks: Seq[Setting[?]] = projectTasks ++ packageBase
@@ -4969,7 +4971,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
           }
         }
       }.evaluated
-    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(forkOptionsTask.value))
+    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(runForkOptionsTask.value))
   }
 
   // public API
@@ -4991,7 +4993,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
             r.run(mainClass, cp.files, arguments, s.log).get
           }
       }.value
-    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(forkOptionsTask.value))
+    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(runForkOptionsTask.value))
 
   def initScoped[T](sk: ScopedKey[?], i: Initialize[T]): Initialize[T] =
     initScope(fillTaskAxis(sk.scope, sk.key), i)

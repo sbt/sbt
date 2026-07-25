@@ -12,10 +12,10 @@ $ exists flag
 $ absent forked/flag
 $ delete flag
 
-# forkWorkingDirectory restores forking in a specific directory
+# run / forkOptions configures the forked working directory
 > session clear
 > set fork := true
-> set run / forkWorkingDirectory := Some(baseDirectory.value / "forked")
+> set Compile / run / forkOptions := Def.uncached((Compile / run / forkOptions).value.withWorkingDirectory(Some(baseDirectory.value / "forked")))
 $ mkdir forked
 > run
 $ exists forked/flag

@@ -502,19 +502,23 @@ class BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/jvmRunEnvironment") {
     val buildTarget = buildTargetUri("runAndTest", "Compile")
-    val targets = Vector(BuildTargetIdentifier(buildTarget))
+    val utilTarget = buildTargetUri("util", "Compile")
+    val targets = Vector(buildTarget, utilTarget).map(BuildTargetIdentifier.apply)
     val id = sendRequest("buildTarget/jvmRunEnvironment", JvmRunEnvironmentParams(targets, None))
     val res =
       svr.session.waitForResultInResponseMsg[JvmRunEnvironmentResult](10.seconds, id).get
-    val item = res.items.head
+    val item = res.items.find(_.target.uri == buildTarget).get
     assert(
       item.classpath.exists(_.toString.contains("jsoniter-scala-core_2.13-2.13.11.jar")),
       "classpath should contain compile dependency"
     )
     assert(item.jvmOptions.contains("Xmx256M"))
     assert(item.environmentVariables == Map("KEY" -> "VALUE"))
-    // run / forkWorkingDirectory is honored for the run environment
+    // run / forkOptions is honored for the run environment
     assert(item.workingDirectory.endsWith("/run-and-test"))
+    // by default, forked run inherits sbt's working directory
+    val utilItem = res.items.find(_.target.uri == utilTarget).get
+    assert(utilItem.workingDirectory.endsWith("/buildserver"))
   }
 
   test("buildTarget/jvmTestEnvironment") {
@@ -534,9 +538,8 @@ class BuildServerTest extends AbstractServerTest {
     )
     assert(item.jvmOptions.contains("Xmx512M"))
     assert(item.environmentVariables == Map("KEY_TEST" -> "VALUE_TEST"))
-    // with no Test / forkWorkingDirectory, the test environment inherits sbt's working directory
-    assert(item.workingDirectory.endsWith("/buildserver"))
-    assert(!item.workingDirectory.contains("run-and-test"))
+    // forked tests keep the project's baseDirectory as their working directory
+    assert(item.workingDirectory.endsWith("/run-and-test"))
   }
 
   test("buildTarget/scalaTestClasses") {
