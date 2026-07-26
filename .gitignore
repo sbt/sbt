@@ -19,3 +19,4 @@ launcher-package/citest/freshly-baked
 sbt-launch.jar
 local-temp
 .jdk
+*.sbt.semanticdb
