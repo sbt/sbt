@@ -173,9 +173,13 @@ class NetworkClient(
   private val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
   private class ServerFailedException extends Exception
-  private def startInputThread(): Unit = inputThread.get match {
-    case null => inputThread.set(new RawInputThread)
-    case _    =>
+  private val inputThreadLock = new Object
+  private def startInputThread(): Unit = inputThreadLock.synchronized {
+    inputThread.get match {
+      case null               => inputThread.set(new RawInputThread)
+      case t if t.stopped.get => inputThread.set(new RawInputThread)
+      case _                  => ()
+    }
   }
   private lazy val log: Logger = new Logger {
     def trace(t: => Throwable): Unit = ()
@@ -1130,18 +1134,21 @@ class NetworkClient(
 
   private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
     setDaemon(true)
-    start()
+    // stopped must be initialized before start(): run() reads it as soon as the thread runs.
     val stopped = new AtomicBoolean(false)
+    start()
     override final def run(): Unit = {
-      def read(): Unit = {
-        val b = inputStream.read
-        inLock.synchronized(stdinBytes.offer(b))
-        if (attached.get()) drain()
-      }
-      try read()
-      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
+      try {
+        var b = 0
+        while (!stopped.get && b != -1) {
+          b = inputStream.read
+          inLock.synchronized(stdinBytes.offer(b))
+          if (attached.get()) drain()
+        }
+      } catch { case _: InterruptedException | NonFatal(_) => () }
       finally {
-        inputThread.set(null)
+        stopped.set(true)
+        inputThreadLock.synchronized(Util.ignoreResult(inputThread.compareAndSet(this, null)))
       }
     }
 
@@ -1153,6 +1160,7 @@ class NetworkClient(
     }
 
     override def close(): Unit = {
+      stopped.set(true)
       RawInputThread.this.interrupt()
     }
   }
