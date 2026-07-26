@@ -7,9 +7,12 @@
 
 package testpkg
 
-import java.io.File
+import java.io.{ File, InputStream, PrintStream }
 import java.nio.file.{ Files, Path }
+import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit, TimeoutException }
 import scala.concurrent.duration.*
+import sbt.internal.client.NetworkClient
+import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.protocol.ServerSession
@@ -94,6 +97,47 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
 
     svr = new SbtServer(session, buildDir, process)
   }
+
+  private object BlockingInputStream extends InputStream {
+    override def read(): Int = {
+      try Thread.sleep(Long.MaxValue)
+      catch { case _: InterruptedException => }
+      -1
+    }
+  }
+  private val nullPrintStream = new PrintStream(_ => {}, false)
+
+  private def background[R](f: => R): R = {
+    val result = new LinkedBlockingQueue[Either[Throwable, R]]
+    val thread = new Thread("server-test-batch-client") {
+      setDaemon(true)
+      override def run(): Unit =
+        try Util.ignoreResult(result.put(Right(f)))
+        catch { case e: Throwable => Util.ignoreResult(result.put(Left(e))) }
+    }
+    thread.start()
+    result.poll(3, TimeUnit.MINUTES) match {
+      case null =>
+        thread.interrupt()
+        thread.join(10000)
+        throw new TimeoutException("client did not complete within 3 minutes")
+      case Left(e)  => throw e
+      case Right(r) => r
+    }
+  }
+
+  /** Runs the thin client in batch mode against this suite's server; returns its exit code. */
+  protected def runBatchClient(args: String*): Int =
+    background(
+      NetworkClient.client(
+        testPath.toFile,
+        args.toArray,
+        BlockingInputStream,
+        nullPrintStream,
+        nullPrintStream,
+        false
+      )
+    )
 
   override protected def afterAll(): Unit = {
     svr.close()

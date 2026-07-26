@@ -84,6 +84,19 @@ object VirtualTerminal {
     jsonRpcRequest(id, terminalCapabilities, query)
     queue
   }
+  private[sbt] def expireTerminalPropertiesQuery(
+      channelName: String,
+      queue: ArrayBlockingQueue[TerminalPropertiesResponse],
+  ): Option[TerminalPropertiesResponse] = {
+    import scala.jdk.CollectionConverters.*
+    pendingTerminalProperties.asScala.collectFirst {
+      case (k @ (`channelName`, _), q) if q eq queue => k
+    } match {
+      case Some(k) if pendingTerminalProperties.remove(k) != null => Option(queue.poll())
+      // The response handler won the removal: its put is imminent, wait it out briefly.
+      case _ => Option(queue.poll(100, java.util.concurrent.TimeUnit.MILLISECONDS))
+    }
+  }
   private[sbt] def cancelRequests(name: String): Unit = {
     import scala.jdk.CollectionConverters.*
     pendingTerminalCapabilities.asScala.foreach {
@@ -191,7 +204,10 @@ object VirtualTerminal {
           r.result.flatMap(Converter.fromJson[TerminalPropertiesResponse](_).toOption)
         pendingTerminalProperties.remove((callback.name, r.id)) match {
           case null   =>
-          case buffer => response.foreach(buffer.put)
+          case buffer =>
+            buffer.put(
+              response.getOrElse(TerminalPropertiesResponse(0, 0, false, false, false, false))
+            )
         }
       case r if pendingTerminalCapabilities.get((callback.name, r.id)) != null =>
         val response =

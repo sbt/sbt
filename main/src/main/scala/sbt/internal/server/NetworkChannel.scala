@@ -754,21 +754,31 @@ final class NetworkChannel(
           pending.set(true)
           val queue = VirtualTerminal.sendTerminalPropertiesQuery(term.name, jsonRpcRequest)
           val update: Runnable = () => {
-            queue.poll(5, java.util.concurrent.TimeUnit.SECONDS) match {
-              case null =>
-              case t    => properties.set(t)
-            }
-            pending.synchronized {
-              lastUpdate.set(Deadline.now)
-              pending.set(false)
-              pending.notifyAll()
+            try {
+              queue.poll(5, java.util.concurrent.TimeUnit.SECONDS) match {
+                case null =>
+                  VirtualTerminal.expireTerminalPropertiesQuery(term.name, queue) match {
+                    case Some(late) => properties.set(late)
+                    case None       => Util.ignoreResult(properties.compareAndSet(null, empty))
+                  }
+                case t => properties.set(t)
+              }
+            } finally {
+              pending.synchronized {
+                lastUpdate.set(Deadline.now)
+                pending.set(false)
+                pending.notifyAll()
+              }
             }
           }
           new Thread(update, s"network-terminal-${term.name}-update") {
             setDaemon(true)
           }.start()
         }
-        while (block && properties.get == null) pending.synchronized(pending.wait())
+        // The updater clears pending inside this monitor before notifying.
+        pending.synchronized {
+          while (block && properties.get == null && pending.get) pending.wait()
+        }
         ()
       } else throw new InterruptedException
     }
@@ -798,7 +808,7 @@ final class NetworkChannel(
       else
         withThread(
           {
-            if (pending.get) pending.synchronized(pending.wait())
+            pending.synchronized { while (pending.get) pending.wait() }
             Option(properties.get).map(f).getOrElse(false)
           },
           false
