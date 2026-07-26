@@ -22,8 +22,6 @@ jobs:
           java-version: "17"
           cache: sbt
       - uses: sbt/setup-sbt@v1
-        with:
-          disk-cache: false
       - name: Set bazel-remote version
         id: bazel-remote-version
         run: echo "version=2.6.2" >> "$GITHUB_OUTPUT"

@@ -4,6 +4,7 @@ import java.nio.file.{ FileAlreadyExistsException, Files }
 
 import sbt.Keys.*
 import sbt.util.CacheImplicits.given
+import sbt.librarymanagement.LibraryManagementCodec.given
 import sbt.internal.librarymanagement.IvyXml
 
 /** This local plugin provides ways of publishing just the binary jar. */
@@ -53,12 +54,15 @@ object PublishBinPlugin extends AutoPlugin {
         .value
     ),
     dummyDoc := {
-      val dummyFile = streams.value.cacheDirectory / "doc.jar"
+      val _ = projectID.value
+      val dummyFile = target.value / "dummy-doc" / "doc.jar"
       try {
         Files.createDirectories(dummyFile.toPath.getParent)
         Files.createFile(dummyFile.toPath)
       } catch { case _: FileAlreadyExistsException => }
-      fileConverter.value.toVirtualFile(dummyFile.toPath)
+      val out = fileConverter.value.toVirtualFile(dummyFile.toPath)
+      Def.declareOutput(out)
+      (out: HashedVirtualFileRef)
     },
     dummyDoc / packagedArtifact := Def.uncached(
       (Compile / packageDoc / artifact).value -> dummyDoc.value
