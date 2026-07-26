@@ -51,7 +51,7 @@ set sbt_args_allow_empty=
 set sbt_args_sbt_dir=
 set sbt_args_sbt_version=
 set sbt_args_mem=
-set sbt_args_client=
+set sbt_args_client=-1
 set sbt_args_jvm_client=
 set sbt_args_no_server=
 set sbt_args_experimental_execution_log=
@@ -123,22 +123,22 @@ if not defined _JAVACMD (
 
 if not defined _JAVACMD set _JAVACMD=java
 
-rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config. 
-if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS% 
+rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config.
+if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS%
 
-rem users can set JAVA_OPTS via .jvmopts (sbt-extras style) 
-if exist .jvmopts for /F %%A in (.jvmopts) do ( 
-  set _jvmopts_line=%%A 
-  if not "!_jvmopts_line:~0,1!" == "#" ( 
-    if defined _JAVA_OPTS ( 
-      set _JAVA_OPTS=!_JAVA_OPTS! %%A 
-    ) else ( 
-      set _JAVA_OPTS=%%A 
-    ) 
-  ) 
-) 
- 
-rem If nothing is defined, use the defaults. 
+rem users can set JAVA_OPTS via .jvmopts (sbt-extras style)
+if exist .jvmopts for /F %%A in (.jvmopts) do (
+  set _jvmopts_line=%%A
+  if not "!_jvmopts_line:~0,1!" == "#" (
+    if defined _JAVA_OPTS (
+      set _JAVA_OPTS=!_JAVA_OPTS! %%A
+    ) else (
+      set _JAVA_OPTS=%%A
+    )
+  )
+)
+
+rem If nothing is defined, use the defaults.
 if not defined _JAVA_OPTS if defined default_java_opts set _JAVA_OPTS=!default_java_opts!
 
 rem We use the value of the SBT_OPTS environment variable if defined, rather than the config.
@@ -198,6 +198,14 @@ if "%~0" == "--client" set _client_arg=true
 if defined _client_arg (
   set _client_arg=
   set sbt_args_client=1
+  goto args_loop
+)
+
+if "%~0" == "--server" set _server_arg=true
+
+if defined _server_arg (
+  set _server_arg=
+  set sbt_args_client=0
   goto args_loop
 )
 
@@ -800,7 +808,7 @@ if defined sbt_args_verbose (
   set "SBT_ARGS=-v !SBT_ARGS!"
 )
 
-set "SBT_SCRIPT=!SBT_BIN_DIR: =%%20!sbt.bat"
+for %%I in ("!SBT_BIN_DIR!sbt.bat") do set "SBT_SCRIPT=%%~sI"
 set "SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%"
 
 rem Microsoft Visual C++ 2010 SP1 Redistributable Package (x64) is required
@@ -1010,6 +1018,7 @@ for /F "delims=.-_ tokens=1-2" %%v in ("!sbtV!") do (
   set sbtBinaryV_1=%%v
   set sbtBinaryV_2=%%w
 )
+
 rem default to run_native_client=1 for sbt 2.x
 if !sbtBinaryV_1! geq 2 (
   if !sbt_args_jvm_client! equ 1 (
