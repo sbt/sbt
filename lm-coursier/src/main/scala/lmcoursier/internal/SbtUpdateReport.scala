@@ -254,8 +254,15 @@ private[internal] object SbtUpdateReport {
         .withOptional(false)
         .clearOverrides
 
+    // `Resolution.projectCache` is not a field. It builds a version-string-keyed view of
+    // `projectCache0` from scratch on every call, so reading it per dependency -- as the lookups
+    // below do, once per module and again per parent while assembling inherited info -- rebuilds a
+    // map of every resolved project once per module. Read it once and the lookups become what they
+    // read like.
+    val projectCache = res.projectCache
+
     def lookupProject(mv: coursier.core.Resolution.ModuleVersion): Option[Project] =
-      res.projectCache.get(mv) match {
+      projectCache.get(mv) match {
         case Some((_, p)) => Some(p)
         case _            =>
           interProjectDependencies.find(p => mv == (p.module, p.version))
@@ -377,11 +384,15 @@ private[internal] object SbtUpdateReport {
         classLoaders = classLoaders,
       )
 
+      // Rebuilt on every read; see the note in `moduleReports`. The eviction loop below reads it
+      // three times per conflict.
+      val subProjectCache = subRes.projectCache
+
       val reports0 = subRes.rootDependencies match {
-        case Seq(dep) if subRes.projectCache.contains(dep.moduleVersion) =>
+        case Seq(dep) if subProjectCache.contains(dep.moduleVersion) =>
           // quick hack ensuring the module for the only root dependency
           // appears first in the update report, see https://github.com/coursier/coursier/issues/650
-          val (_, proj) = subRes.projectCache(dep.moduleVersion)
+          val (_, proj) = subProjectCache(dep.moduleVersion)
           val mod = moduleId((dep, proj.version, infoProperties(proj).toMap))
           val (main, other) = reports.partition { r =>
             r.module.organization == mod.organization &&
@@ -406,14 +417,14 @@ private[internal] object SbtUpdateReport {
         // rather than handing them for each dependency (where each dependency could have its own forced
         // versions, and apply and pass them to its transitive dependencies, just like for exclusions today).
         if !forceVersions.contains(c.module)
-        projOpt = subRes.projectCache
+        projOpt = subProjectCache
           .get((c.module, c.wantedVersion))
-          .orElse(subRes.projectCache.get((c.module, c.version)))
+          .orElse(subProjectCache.get((c.module, c.version)))
         (_, proj) <- projOpt.toSeq
       } yield {
         val dep = Dependency(c.module, c.wantedVersion)
         val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
-        val dependeeProj = subRes.projectCache.get((c.dependeeModule, c.dependeeVersion)) match {
+        val dependeeProj = subProjectCache.get((c.dependeeModule, c.dependeeVersion)) match {
           case Some((_, p)) =>
             ProjectInfo(
               p.version,
