@@ -63,3 +63,27 @@ object GzipCacheStoreSpec extends verify.BasicTestSuite:
       assert(got == Vector("via", "the", "factory"))
       val magic = IO.readBytes(new File(dir, "output")).take(2)
       assert(magic(0) == 0x1f.toByte && magic(1) == 0x8b.toByte)
+
+  test("uncompressedSize reports what the payload inflates to"):
+    IO.withTemporaryDirectory: dir =>
+      val payload = Vector.fill(500)("a highly repetitive payload")
+      val gzipped = new File(dir, "gzipped.bin")
+      val plain = new File(dir, "plain.bin")
+      CacheStore.gzipFile(gzipped).write(payload)
+      CacheStore.file(plain).write(payload)
+      assert(
+        GzipFileInput.uncompressedSize(gzipped) == plain.length,
+        s"expected ${plain.length}, got ${GzipFileInput.uncompressedSize(gzipped)}"
+      )
+
+  test("uncompressedSize falls back to the size on disk for plain content"):
+    IO.withTemporaryDirectory: dir =>
+      val file = new File(dir, "plain.bin")
+      CacheStore.file(file).write(Vector("not", "gzipped"))
+      assert(GzipFileInput.uncompressedSize(file) == file.length)
+
+  test("uncompressedSize falls back for a file too short to hold a gzip member"):
+    IO.withTemporaryDirectory: dir =>
+      val file = new File(dir, "tiny.bin")
+      IO.write(file, "{}")
+      assert(GzipFileInput.uncompressedSize(file) == 2L)
