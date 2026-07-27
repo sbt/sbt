@@ -27,7 +27,7 @@ jobs:
         run: echo "version=2.6.2" >> "$GITHUB_OUTPUT"
       - name: Cache bazel-remote
         id: cache-bazel-remote
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: $RUNNER_TOOL_CACHE/local/bazel-remote
           key: bazel-remote-v${{ steps.bazel-remote-version.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
