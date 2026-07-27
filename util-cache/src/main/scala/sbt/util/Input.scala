@@ -8,7 +8,7 @@
 
 package sbt.util
 
-import java.io.{ Closeable, File, InputStream }
+import java.io.{ BufferedInputStream, Closeable, File, InputStream }
 
 import scala.util.control.NonFatal
 import sjsonnew.{ IsoString, JsonReader, SupportConverter }
@@ -54,6 +54,27 @@ class FileInput(file: File) extends Input {
     sjsonnew.support.scalajson.unsafe.Converter
       .fromJson(sjsonnew.support.scalajson.unsafe.Parser.parseFromFile(file).get)
       .get
+  }
+
+  def close() = ()
+}
+
+/** Sniffs the framing rather than trusting the name, so a cache written uncompressed still loads. */
+private[sbt] class GzipFileInput(file: File) extends Input {
+
+  override def read[T: JsonReader](): T = {
+    val json = Using.fileInputStream(file) { raw =>
+      val buffered = new BufferedInputStream(raw)
+      buffered.mark(2)
+      val gzipped = buffered.read() == 0x1f && buffered.read() == 0x8b
+      buffered.reset()
+      val bytes =
+        if (gzipped) Using.gzipInputStream(buffered)(IO.readBytes)
+        else IO.readBytes(buffered)
+      if (bytes.isEmpty) throw new EmptyCacheError()
+      sjsonnew.support.scalajson.unsafe.Parser.parseFromByteArray(bytes).get
+    }
+    sjsonnew.support.scalajson.unsafe.Converter.fromJson(json).get
   }
 
   def close() = ()
