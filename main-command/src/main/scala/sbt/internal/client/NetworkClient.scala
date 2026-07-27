@@ -16,7 +16,7 @@ import java.net.{ Socket, SocketException }
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
+import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, Semaphore, TimeUnit }
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
@@ -167,16 +167,14 @@ class NetworkClient(
 
   private val stdinBytes = new LinkedBlockingQueue[Integer]
   private val inLock = new Object
-  private val inputThread = new AtomicReference[RawInputThread]
+  // A single persistent reader for the life of the client.
+  private val inputThread = new RawInputThread
   private val exitClean = new AtomicBoolean(true)
   private val inClientSideRun = new AtomicBoolean(false)
   private val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
   private class ServerFailedException extends Exception
-  private def startInputThread(): Unit = inputThread.get match {
-    case null => inputThread.set(new RawInputThread)
-    case _    =>
-  }
+  private[client] def startInputThread(): Unit = inputThread.request()
   private lazy val log: Logger = new Logger {
     def trace(t: => Throwable): Unit = ()
     def success(message: => String): Unit = ()
@@ -302,16 +300,12 @@ class NetworkClient(
                 console.appendLog(Level.Info, s"${if (log) "sbt server " else ""}disconnected")
               }
               stdinBytes.offer(-1)
-              Option(inputThread.get).foreach(_.close())
+              inputThread.close()
               Option(interactiveThread.get).foreach(_.interrupt)
             }
           case `readSystemIn`       => startInputThread()
-          case `cancelReadSystemIn` =>
-            inputThread.get match {
-              case null =>
-              case t    => t.close()
-            }
-          case _ => self.onNotification(msg)
+          case `cancelReadSystemIn` => inputThread.cancel()
+          case _                    => self.onNotification(msg)
         }
       }
       override protected def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
@@ -570,7 +564,7 @@ class NetworkClient(
     }
     // Clean up stderr temp file on successful startup
     serverStderrFile.foreach(_.delete())
-    if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
+    if (attached.get && !stdinBytes.isEmpty) inputThread.drain()
   }
 
   /** Called on the response for a returning message. */
@@ -607,7 +601,7 @@ class NetworkClient(
     case msg if attachUUID.get == msg.id =>
       attachUUID.set(null)
       attached.set(true)
-      Option(inputThread.get).foreach(_.drain())
+      inputThread.drain()
       ()
   }
   def completeExec(execId: String, exitCode: Int) = {
@@ -1123,28 +1117,42 @@ class NetworkClient(
           try sendExecCommand("exit")
           finally c.close()
       }
-      Option(inputThread.get).foreach(_.interrupt())
+      inputThread.close()
     } catch {
       case t: Throwable => t.printStackTrace(); throw t
     }
 
-  private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
+  /**
+   * Reads stdin on behalf of the server, which asks for it one byte at a time via
+   * `readSystemIn`/`cancelReadSystemIn` notifications. The design here answers two problems:
+   *
+   *   - (2020, #5828/#5863/#5856) Switching the terminal between raw and canonical mode can't
+   *     happen while a read is blocked on it. So a read must exist only for as long as the
+   *     server has actually asked for a byte, never sitting on the terminal unrequested.
+   *   - (2026, #9507) Satisfying that by spawning a thread per byte that exits once forwarded
+   *     races the next request against that exit: a `readSystemIn` arriving mid-exit is silently
+   *     dropped, and since nothing else will ever ask for that byte again, the session stops
+   *     accepting input.
+   */
+  private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable:
     setDaemon(true)
+    private val stopped = AtomicBoolean(false)
+    private val readGate = Semaphore(0)
     start()
-    val stopped = new AtomicBoolean(false)
-    override final def run(): Unit = {
-      def read(): Unit = {
-        val b = inputStream.read
-        inLock.synchronized(stdinBytes.offer(b))
-        if (attached.get()) drain()
-      }
-      try read()
-      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
-      finally {
-        inputThread.set(null)
-      }
-    }
 
+    override final def run(): Unit =
+      while !stopped.get do
+        try
+          readGate.acquire()
+          if !stopped.get then
+            val b = inputStream.read
+            inLock.synchronized(stdinBytes.offer(b))
+            if attached.get() then drain()
+            if b == -1 then stopped.set(true)
+        catch case _: InterruptedException | NonFatal(_) => ()
+
+    def request(): Unit = readGate.release()
+    def cancel(): Unit = interrupt()
     def drain(): Unit = inLock.synchronized {
       while (!stdinBytes.isEmpty) {
         val byte = stdinBytes.poll()
@@ -1152,10 +1160,11 @@ class NetworkClient(
       }
     }
 
-    override def close(): Unit = {
+    override def close(): Unit =
+      stopped.set(true)
+      readGate.release()
       RawInputThread.this.interrupt()
-    }
-  }
+  end RawInputThread
 }
 
 object NetworkClient {

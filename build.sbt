@@ -638,6 +638,9 @@ lazy val commandProj = (project in file("main-command"))
       exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.connection"),
       exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.init"),
       exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.*"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.client.NetworkClient#RawInputThread.stopped"
+      ),
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
