@@ -126,7 +126,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0",
+    "2.0.4",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
@@ -391,7 +391,6 @@ lazy val utilCache = project
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.internal.util.CacheEventSummary#Data.*"),
     ),
     Test / fork := true,
   )
@@ -562,7 +561,6 @@ lazy val remoteCacheProj = (project in file("sbt-remote-cache"))
     libraryDependencies ++= Seq(remoteapis, scalaVerify % Test),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.internal.GrpcActionCacheStore.this"),
     ),
   )
 
@@ -674,12 +672,6 @@ lazy val coreMacrosProj = (project in file("core-macros"))
     SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      // macro-expansion internals; Output's per-call-site var codegen members were removed
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "sbt.internal.util.appmacro.ContextUtil#Output.*"
-      ),
-      exclude[DirectMissingMethodProblem]("sbt.internal.util.appmacro.ContextUtil#Input.*"),
-      exclude[ReversedMissingMethodProblem]("sbt.internal.util.appmacro.ContextUtil.*"),
     ),
   )
 
@@ -805,12 +797,8 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.this"),
       exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.descriptors"),
       exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.copy$default$3"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.copy$default$4"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy$default$6"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData._3"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData._4"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData._6"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy$default$7"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData._7"),
       // Updating remote vcs projects (sbt#1284)
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.creates"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.uniqueSubdirectoryFor"),
@@ -819,10 +807,6 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf"),
       exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
-      // Added optional CompileFailed context for BSP failure diagnostics (sbt#9345)
-      exclude[ReversedMissingMethodProblem](
-        "sbt.internal.server.BuildServerReporter.sendFailureReport"
-      ),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.GlobalPluginData.*"),
       exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.*"),
     ),
