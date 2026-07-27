@@ -1129,7 +1129,9 @@ private[sbt] object Load {
       val newProjects = rest ++ discovered ++ projectLevelExtra
       val newAcc = acc :+ finalRoot
       val newGenerated = generated ++ generatedConfigClassFiles
-      loadTransitive1(newProjects, newAcc, newGenerated, finalRoot.commonSettings)
+      // only root-level settings are build-wide; a submodule's own settings must not leak to siblings (#9517).
+      val cs = if isRootPath(p.base, buildBase) then finalRoot.commonSettings else commonSettings
+      loadTransitive1(newProjects, newAcc, newGenerated, cs)
     }
 
     // Load all config files AND process the project at the root directory, if it exists.
