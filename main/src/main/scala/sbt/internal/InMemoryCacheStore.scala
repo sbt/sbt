@@ -98,6 +98,9 @@ private[sbt] object InMemoryCacheStore {
     new CacheStoreFactory {
       override def make(identifier: String): CacheStore =
         new CacheStoreImpl(path.resolve(identifier), store, delegate.make(identifier))
+      // Without this the inherited default calls `make`, wrapping an uncompressed delegate.
+      override def makeCompressed(identifier: String): CacheStore =
+        new CacheStoreImpl(path.resolve(identifier), store, delegate.makeCompressed(identifier))
       override def sub(identifier: String): CacheStoreFactory =
         factory(store, path.resolve(identifier))
     }

@@ -12,7 +12,7 @@ import java.io.File
 import java.util.Calendar
 import sbt.io.IO
 import sbt.librarymanagement.*
-import sbt.util.CacheStore
+import sbt.util.{ CacheStore, CacheStoreFactory }
 
 object UpdateReportFormatSpec extends verify.BasicTestSuite:
 
@@ -159,6 +159,23 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
         CacheStore(file).read[UpdateReport]()(using LibraryManagementCodec.UpdateReportFormat)
       )
       assert(read.isFailure, s"a previous sbt must not misread a v1 cache: $read")
+
+  test("a compressed store round trips a report"):
+    // The production wiring is `cacheStoreFactory.makeCompressed("output")`; the plain store the other
+    // tests use would not catch a framing mistake.
+    IO.withTemporaryDirectory: dir =>
+      val original = fixture(dir)
+      val store = CacheStoreFactory.directory(dir).makeCompressed("output")
+      UpdateReportPersistence.writeTo(store, UpdateReportPersistence.toCache(original))
+      val magic = IO.readBytes(new File(dir, "output")).take(2)
+      assert(magic(0) == 0x1f.toByte && magic(1) == 0x8b.toByte, "expected gzip framing")
+      val ur = UpdateReportPersistence.fromCache(
+        UpdateReportPersistence.readFrom(store).getOrElse(sys.error("expected a cache"))
+      )
+      assert(
+        ur.configurations.map(_.modules.map(_.module.name)) ==
+          original.configurations.map(_.modules.map(_.module.name))
+      )
 
   test("readFrom returns None for a file that is not a report at all"):
     IO.withTemporaryDirectory: dir =>

@@ -22,7 +22,19 @@ object InMemoryCacheStoreTest extends Properties:
     example("a write populates the cache", writePopulates),
     example("a newer file invalidates the cached value", newerFileInvalidates),
     example("a read of a store with no file still reports absent", missingFileIsAbsent),
+    example("makeCompressed reaches the delegate", compressedReachesDelegate),
+    example("a store that did not write the file reads it back", freshStoreReadsFromDisk),
   )
+
+  /** Two factories over one directory, each with its own cache, as two sessions would be. */
+  private def withSessions[A](f: (Path, String => CacheStore, String => CacheStore) => A): A =
+    val dir = Files.createTempDirectory("sbt-inmemory-cache")
+    val first = InMemoryCacheStore.factory(1024L * 1024L)
+    val second = InMemoryCacheStore.factory(1024L * 1024L)
+    try f(dir, first(dir).makeCompressed, second(dir).makeCompressed)
+    finally
+      first.close()
+      second.close()
 
   private def withStore[A](budget: Long = 1024L * 1024L)(f: (Path, CacheStore) => A): A =
     val dir = Files.createTempDirectory("sbt-inmemory-cache")
@@ -71,4 +83,20 @@ object InMemoryCacheStoreTest extends Properties:
   def missingFileIsAbsent: Result =
     withStore() { (_, store) =>
       Result.assert(store.read[String]("fallback") == "fallback")
+    }
+
+  def compressedReachesDelegate: Result =
+    withSessions { (dir, first, _) =>
+      first("value").write("a highly repetitive payload")
+      val magic = IO.readBytes(dir.resolve("value").toFile).take(2)
+      Result
+        .assert(magic.length == 2 && magic(0) == 0x1f.toByte && magic(1) == 0x8b.toByte)
+        .log("the factory must forward makeCompressed, not wrap a plain delegate")
+    }
+
+  def freshStoreReadsFromDisk: Result =
+    withSessions { (_, first, second) =>
+      first("value").write("written by the first session")
+      val value = second("value").read[String]()
+      Result.assert(value == "written by the first session").log(s"got '$value'")
     }
