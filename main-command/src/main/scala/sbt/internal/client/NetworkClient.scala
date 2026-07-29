@@ -343,6 +343,14 @@ class NetworkClient(
         Try(ClientSocket.localSocket(namedPipeName, useJNI)).toOption
       case _ => None
 
+  private def connectTimeout: FiniteDuration =
+    sys.env
+      .get("SBT_CLIENT_CONNECT_TIMEOUT")
+      .flatMap(_.toIntOption)
+      .map(_.seconds)
+      .getOrElse(5.minutes)
+  private var connectDeadlineExpired = false
+
   /**
    * Forks another instance of sbt in the background.
    * This instance must be shutdown explicitly via `sbt -client shutdown`
@@ -482,6 +490,7 @@ class NetworkClient(
         } catch { case e: IOException => e.printStackTrace(System.err) }
       }
     }
+    val connectDeadline = connectTimeout.fromNow
     @tailrec
     def blockUntilStart(): Unit = {
       val stop =
@@ -525,9 +534,10 @@ class NetworkClient(
        */
       val existsValidProcess =
         process.fold(readThreadAlive.get)(p => p.isAlive || (Properties.isWin || p.exitValue == 2))
-      if (!portfile.exists && !stop && existsValidProcess) {
+      if (!portfile.exists && !stop && existsValidProcess && !connectDeadline.isOverdue()) {
         blockUntilStart()
       } else {
+        connectDeadlineExpired = connectDeadline.isOverdue() && !portfile.exists
         socket.foreach { s =>
           s.getInputStream.close()
           s.getOutputStream.close()
@@ -549,6 +559,12 @@ class NetworkClient(
       Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
     if (!portfile.exists()) {
+      if (connectDeadlineExpired) {
+        errorStream.write(
+          s"sbt server did not start within ${connectTimeout.toSeconds} seconds\n".getBytes("UTF-8")
+        )
+        errorStream.flush()
+      }
       // Print captured server stderr so users can see why the server failed to start
       for (errFile <- serverStderrFile) {
         try {
