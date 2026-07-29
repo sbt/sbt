@@ -36,6 +36,27 @@ object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
     // Distinct Deadline instances derived at call time, not a single shared frozen one.
     assert(!deadline1.eq(deadline2))
 
+  // Regression test: header values may legitimately contain '=' -- Basic auth credentials
+  // end in base64 padding. Splitting on every '=' silently truncated the value, so the
+  // server rejected the credential with UNAUTHENTICATED while the build still succeeded,
+  // leaving the cache permanently empty with no error reported.
+  test("header values retain '=' such as base64 padding"):
+    val twoPad = GrpcActionCacheStore.AuthCallCredentials(List("authorization=Basic dXNlcjpwdw=="))
+    val (key, value) = twoPad.pairs.head
+    assert(key.name == "authorization")
+    assert(value == "Basic dXNlcjpwdw==")
+
+    val onePad = GrpcActionCacheStore.AuthCallCredentials(List("authorization=Basic dXNlcjpwdzE="))
+    assert(onePad.pairs.head._2 == "Basic dXNlcjpwdzE=")
+
+    // An interior '=' is part of the value, not a second separator.
+    val interior = GrpcActionCacheStore.AuthCallCredentials(List("x-api-key=ab=cd"))
+    assert(interior.pairs.head._2 == "ab=cd")
+
+    // No '=' at all remains an error.
+    intercept[RuntimeException]:
+      GrpcActionCacheStore.AuthCallCredentials(List("bogus")).pairs
+
   private def newStore(): GrpcActionCacheStore =
     val base = Files.createTempDirectory("grpc-action-cache-test")
     val disk = DiskActionCacheStore(base, PlainVirtualFileConverter.converter)

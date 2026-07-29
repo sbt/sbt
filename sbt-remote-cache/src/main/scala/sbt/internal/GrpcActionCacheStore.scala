@@ -142,9 +142,12 @@ object GrpcActionCacheStore:
 
   class AuthCallCredentials(remoteHeaders: List[String]) extends CallCredentials:
     val pairs = remoteHeaders.map: h =>
-      h.split("=").toList match
+      // Split on the first '=' only. Splitting on every '=' would drop trailing
+      // padding from values such as Basic auth credentials ("Basic dXNlcjpwdw==")
+      // and reject values that legitimately contain '='.
+      h.split("=", 2).toList match
         case List(k, v) => Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER) -> v
-        case _          => sys.error("remote header must contain one '='")
+        case _          => sys.error("remote header must contain '='")
     override def applyRequestMetadata(
         requestInfo: CallCredentials.RequestInfo,
         executor: java.util.concurrent.Executor,
