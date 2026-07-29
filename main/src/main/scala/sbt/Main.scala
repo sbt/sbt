@@ -939,7 +939,7 @@ object BuiltinCommands {
       s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
       val result: Int =
         try
-          ITerminal.get.withRawInput(System.in.read) match {
+          ITerminal.get.withRawInput(ITerminal.get.inputStream.read) match {
             case -1 => 'q'.toInt
             case b  => b
           }

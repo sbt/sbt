@@ -640,6 +640,7 @@ object Terminal {
     }
     override def close(): Unit = if (closed.compareAndSet(false, true)) {
       executor.shutdownNow()
+      buffer.synchronized(buffer.put(-1: Integer))
       ()
     }
   }

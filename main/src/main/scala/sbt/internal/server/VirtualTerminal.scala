@@ -30,6 +30,7 @@ import sbt.protocol.Serialization.{
   terminalSetRawMode,
 }
 import sjsonnew.support.scalajson.unsafe.Converter
+import sbt.internal.util.Util
 import sbt.protocol.{
   Attach,
   TerminalAttributesQuery,
@@ -99,18 +100,24 @@ object VirtualTerminal {
   }
   private[sbt] def cancelRequests(name: String): Unit = {
     import scala.jdk.CollectionConverters.*
-    pendingTerminalCapabilities.asScala.foreach {
-      case (k @ (`name`, _), q) =>
-        pendingTerminalCapabilities.remove(k)
-        q.put(TerminalCapabilitiesResponse(None, None, None))
-      case _ =>
-    }
-    pendingTerminalProperties.asScala.foreach {
-      case (k @ (`name`, _), q) =>
-        pendingTerminalProperties.remove(k)
-        q.put(TerminalPropertiesResponse(0, 0, false, false, false, false))
-      case _ =>
-    }
+    def drain[A](
+        map: ConcurrentHashMap[(String, String), ArrayBlockingQueue[A]],
+        default: A
+    ): Unit =
+      map.asScala.foreach {
+        case (k @ (`name`, _), q) =>
+          map.remove(k)
+          Util.ignoreResult(q.offer(default))
+        case _ =>
+      }
+    drain(pendingTerminalCapabilities, TerminalCapabilitiesResponse(None, None, None))
+    drain(pendingTerminalProperties, TerminalPropertiesResponse(0, 0, false, false, false, false))
+    drain(pendingTerminalAttributes, TerminalAttributesResponse("", "", "", "", ""))
+    drain(pendingTerminalSetAttributes, ())
+    drain(pendingTerminalSetSize, ())
+    drain(pendingTerminalGetSize, TerminalGetSizeResponse(1, 1))
+    drain(pendingTerminalSetEcho, ())
+    drain(pendingTerminalSetRawMode, ())
   }
   private[sbt] def sendTerminalAttributesQuery(
       channelName: String,
@@ -177,7 +184,7 @@ object VirtualTerminal {
   ): ArrayBlockingQueue[Unit] = {
     val id = UUID.randomUUID.toString
     val queue = new ArrayBlockingQueue[Unit](1)
-    pendingTerminalSetEcho.put((channelName, id), queue)
+    pendingTerminalSetRawMode.put((channelName, id), queue)
     jsonRpcRequest(id, terminalSetRawMode, query)
     queue
   }

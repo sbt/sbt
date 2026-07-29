@@ -8,7 +8,14 @@
 
 package sbt.internal.server
 
-import sbt.protocol.TerminalPropertiesResponse
+import sbt.protocol.{
+  TerminalCapabilitiesQuery,
+  TerminalPropertiesResponse,
+  TerminalSetAttributesCommand,
+  TerminalSetEchoCommand,
+  TerminalSetRawModeCommand,
+  TerminalSetSizeCommand,
+}
 import verify.BasicTestSuite
 
 object VirtualTerminalSpec extends BasicTestSuite:
@@ -24,4 +31,34 @@ object VirtualTerminalSpec extends BasicTestSuite:
     val r = TerminalPropertiesResponse(80, 24, true, true, true, true)
     queue.put(r)
     assert(VirtualTerminal.expireTerminalPropertiesQuery("expire-race", queue) == Some(r))
+
+  test("cancelRequests wakes waiters on every pending terminal map"):
+    val name = "drain-test"
+    val props = VirtualTerminal.sendTerminalPropertiesQuery(name, (_, _, _) => ())
+    val caps = VirtualTerminal.sendTerminalCapabilitiesQuery(
+      name,
+      (_, _, _) => (),
+      TerminalCapabilitiesQuery(None, None, None)
+    )
+    val attrs = VirtualTerminal.sendTerminalAttributesQuery(name, (_, _, _) => ())
+    val setAttrs = VirtualTerminal.setTerminalAttributesCommand(
+      name,
+      (_, _, _) => (),
+      TerminalSetAttributesCommand("", "", "", "", "")
+    )
+    val setSize =
+      VirtualTerminal.setTerminalSize(name, (_, _, _) => (), TerminalSetSizeCommand(80, 24))
+    val getSize = VirtualTerminal.getTerminalSize(name, (_, _, _) => ())
+    val echo = VirtualTerminal.setTerminalEcho(name, (_, _, _) => (), TerminalSetEchoCommand(true))
+    val raw =
+      VirtualTerminal.setTerminalRawMode(name, (_, _, _) => (), TerminalSetRawModeCommand(true))
+    VirtualTerminal.cancelRequests(name)
+    List(props, caps, attrs, setAttrs, setSize, getSize, echo, raw).foreach { q =>
+      assert(q.poll() != null)
+    }
+
+  test("cancelRequests leaves other channels' waiters parked"):
+    val queue = VirtualTerminal.sendTerminalPropertiesQuery("other-channel", (_, _, _) => ())
+    VirtualTerminal.cancelRequests("drain-test-2")
+    assert(queue.poll() == null)
 end VirtualTerminalSpec

@@ -135,10 +135,12 @@ private[sbt] class ServerSessionImpl(
    */
   override def close(): Unit = if (closed.compareAndSet(false, true)) {
     running.set(false)
-    try
+    try {
+      // close() cannot deliver EOF while the read thread is parked in a native read
+      socket.shutdownInput()
       out.close()
       socket.close()
-    catch case _: IOException => ()
+    } catch case _: IOException => ()
     onClose()
     if Thread.currentThread() != readThread then
       try readThread.joinFor(ServerSessionImpl.ReadThreadDestroyTimeout)
