@@ -2259,8 +2259,13 @@ object Defaults extends BuildCommon with DefExtra {
         val ci = (compile / compileInputs).value
         val c = fileConverter.value
         val dir = c.toPath(backendOutput.value).toFile
+        val ping = (TaskZero / earlyOutputPing).value
         result match
           case Result.Value(res) =>
+            // Zinc completes the ping during a real compile; on an action-cache hit
+            // zinc never runs, so complete it from the pickle jar. tryComplete is
+            // atomic: zinc's own completion always wins when it ran.
+            ping.tryComplete(Result.Value(c.toPath(earlyOutput.value).toFile.exists))
             val af = compileAnalysisFile.value
             val store = analysisStore(af.toPath(), c)
             if !af.exists then sys.error(s"${af} is missing")
@@ -2269,6 +2274,7 @@ object Defaults extends BuildCommon with DefExtra {
             bspTask.notifySuccess(analysis)
             res
           case Result.Inc(cause) =>
+            ping.tryComplete(Result.Value(false))
             val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
             reporter.sendFailureReport(ci.options.sources, compileFailed)
             bspTask.notifyFailure(compileFailed)
