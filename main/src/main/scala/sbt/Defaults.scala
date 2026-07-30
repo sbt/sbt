@@ -1428,7 +1428,11 @@ object Defaults extends BuildCommon with DefExtra {
 
   /** Fork options for run-like tasks: the forked process inherits sbt's working directory. */
   private[sbt] def runForkOptionsTask: Initialize[Task[ForkOptions]] =
-    Def.task(forkOptionsTask.value.withWorkingDirectory(None))
+    Def.task {
+      // this uses Compile / run / baseDirectory, which defaults to ThisBuild / baseDirectory
+      forkOptionsTask.value
+        .withWorkingDirectory(Some(baseDirectory.value))
+    }
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
     Def.task {
@@ -2609,7 +2613,8 @@ object Defaults extends BuildCommon with DefExtra {
   private lazy val newRunnerSettings: Seq[Setting[?]] =
     Seq(
       runner := Def.uncached(ClassLoaders.runner.value),
-      forkOptions := Def.uncached(runForkOptionsTask.value)
+      forkOptions := Def.uncached(runForkOptionsTask.value),
+      baseDirectory := (ThisBuild / baseDirectory).value,
     )
 
   lazy val baseTasks: Seq[Setting[?]] = projectTasks ++ packageBase
