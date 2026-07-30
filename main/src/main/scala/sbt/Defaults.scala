@@ -3085,7 +3085,7 @@ object Classpaths {
           .map(m => d.withRevision(m.module.revision))
       }.distinct
     }.value,
-    publish := LibraryManagement.ivylessPublishTask.tag(Tags.Publish, Tags.Network).value,
+    publish := publishOrSkip(publishConfiguration, publish / skip).value,
     publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
     publishM2 := LibraryManagement.ivylessPublishM2Task.tag(Tags.Publish, Tags.Network).value,
     credentials ++= Def.uncached {
@@ -3923,15 +3923,11 @@ object Classpaths {
   ): Initialize[Task[Unit]] =
     Def
       .taskIf {
-        if (skip.value) {
+        if skip.value then
           val log = streams.value.log
           val ref = thisProjectRef.value
           logSkipPublish(log, ref)
-        } else {
-          sys.error(
-            "publishOrSkip requires the sbt-ivy plugin. Use publish/publishLocal for ivyless publishing."
-          )
-        }
+        else LibraryManagement.ivylessPublishTask(config).value
       }
       .tag(Tags.Publish, Tags.Network)
 

@@ -607,7 +607,7 @@ private[sbt] object LibraryManagement {
     val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
     if !ivyXmlFile.exists || overwrite then
       IO.write(ivyXmlFile, ivyXmlContent)
-      log.info(s"Published $ivyXmlFile")
+      log.info(s"published $ivyXmlFile")
       writeChecksums(ivyXmlFile)
     else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
 
@@ -633,7 +633,7 @@ private[sbt] object LibraryManagement {
       if !targetFile.exists || overwrite then
         IO.createDirectory(targetDir)
         IO.copyFile(sourceFile, targetFile)
-        log.info(s"Published $targetFile")
+        log.info(s"published $targetFile")
         writeChecksums(targetFile)
       else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
   end ivylessPublishLocal
@@ -712,7 +712,7 @@ private[sbt] object LibraryManagement {
       throw new IOException(
         s"PUT $url failed: ${response.status} ${response.statusText}$body"
       )
-    log.info(s"Published $url")
+    log.info(s"published $url")
 
   /**
    * Publishes artifacts to a remote Ivy repo (URLRepository) without using Apache Ivy.
@@ -875,7 +875,7 @@ private[sbt] object LibraryManagement {
         if !targetFile.exists || overwrite then
           targetFile.getParentFile.mkdirs()
           IO.copyFile(sourceFile, targetFile)
-          log.info(s"Published $targetFile")
+          log.info(s"published $targetFile")
           writeChecksumsForFile(targetFile, checksumAlgorithms, log)
         else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
 
@@ -906,7 +906,7 @@ private[sbt] object LibraryManagement {
           |""".stripMargin
     val metadataFile = new File(versionDir, "maven-metadata-local.xml")
     IO.write(metadataFile, metadata)
-    log.info(s"Published $metadataFile")
+    log.info(s"published $metadataFile")
 
   /**
    * Publishes artifacts to a remote Maven repo (HTTP) without using Apache Ivy.
@@ -1001,129 +1001,119 @@ private[sbt] object LibraryManagement {
   }
 
   /**
-   * Task initializer for ivyless publish (remote Ivy repo or file repo).
-   * When useIvy is false and publishTo is URLRepository or FileRepository, uses ivyless publish; otherwise uses Ivy.
+   * Task initializer for ivyless publish.
    */
-  def ivylessPublishTask: Def.Initialize[Task[Unit]] =
+  def ivylessPublishTask(configKey: TaskKey[PublishConfiguration]): Def.Initialize[Task[Unit]] =
     import Keys.*
-    Def.ifS(Def.task { (publish / skip).value })(
-      Def.task {
-        val log = streams.value.log
-        val ref = thisProjectRef.value
-        log.debug(s"Skipping publish for ${Reference.display(ref)}")
-      }
-    )(
-      Def.ifS(Def.task { useIvy.value })(
-        Def.task {
-          val log = streams.value.log
-          val conf = publishConfiguration.value
-          val module = ivyModule.value.asInstanceOf[ModuleDescriptor]
-          val publisherInterface = publisher.value
-          publisherInterface.publish(module, conf, log)
-        }
-      )(
-        Def.task {
-          val log = streams.value.log
-          val resolver = sbt.Classpaths.getPublishTo(publishTo.value)
-          val project = csrProject.value.withPublications(csrPublications.value)
-          val config = publishConfiguration.value
-          val artifacts = config.artifacts
-          resolver match {
-            case urlRepo: sbt.librarymanagement.URLRepository =>
-              val creds = allCredentials.value
-              ivylessPublish(
-                project,
-                artifacts,
-                config.checksums,
-                urlRepo,
-                creds,
-                config.overwrite,
-                log
-              )
-            case fileRepo: sbt.librarymanagement.FileRepository =>
-              ivylessPublishToFile(
-                project,
-                artifacts,
-                config.checksums,
-                fileRepo,
-                config.overwrite,
-                log
-              )
-            case pbr: sbt.librarymanagement.PatternsBasedRepository
-                if pbr.patterns.artifactPatterns.headOption.exists { pat =>
-                  pat.contains("[organisation]") && !pat.trim.startsWith("http")
-                } =>
-              // File repo detected by pattern (e.g. scripted classloader makes type match fail)
-              val pat = pbr.patterns.artifactPatterns.head
-              val baseStr =
-                pat.substring(0, pat.indexOf("[organisation]")).replace('\\', '/').stripSuffix("/")
-              val repoDir =
-                (if (baseStr.startsWith("file:")) new File(new java.net.URI(baseStr))
-                 else new File(baseStr)).getAbsoluteFile
-              if pbr.patterns.isMavenCompatible then
-                log.info(s"Ivyless publish (Maven layout) to file repo: $repoDir")
-                ivylessPublishMavenToFile(
-                  project,
-                  artifacts,
-                  config.checksums,
-                  repoDir,
-                  config.overwrite,
-                  log
-                )
-              else
-                log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
-                ivylessPublishLocal(
-                  project,
-                  artifacts,
-                  config.checksums,
-                  repoDir,
-                  config.overwrite,
-                  log
-                )
-            case mavenCache: sbt.librarymanagement.MavenCache =>
-              ivylessPublishMavenToFile(
-                project,
-                artifacts,
-                config.checksums,
-                mavenCache.rootFile,
-                config.overwrite,
-                log
-              )
-            case mavenRepo: sbt.librarymanagement.MavenRepo =>
-              val root = mavenRepo.root.stripSuffix("/")
-              if root.startsWith("http://") || root.startsWith("https://") then
-                val creds = allCredentials.value
-                ivylessPublishMavenToUrl(
-                  project,
-                  artifacts,
-                  config.checksums,
-                  root,
-                  creds,
-                  config.overwrite,
-                  log
-                )
-              else if root.startsWith("file:") then
-                val repoBase = new File(URI.create(root))
-                ivylessPublishMavenToFile(
-                  project,
-                  artifacts,
-                  config.checksums,
-                  repoBase,
-                  config.overwrite,
-                  log
-                )
-              else
-                sys.error(
-                  s"Ivyless Maven publish: unsupported root '$root'. Set useIvy := true or use a supported repository (http/https/file)."
-                )
-            case other =>
-              sys.error(
-                s"Ivyless publish does not support ${other.getClass.getName}. Set useIvy := true or use URLRepository, FileRepository, or MavenRepository."
-              )
-          }
-        }
+    Def.task {
+      dispatchIvylessPublish(
+        sbt.Classpaths.getPublishTo(publishTo.value),
+        csrProject.value.withPublications(csrPublications.value),
+        configKey.value,
+        allCredentials.value,
+        streams.value.log
       )
-    )
+    }
+
+  private def dispatchIvylessPublish(
+      resolver: Resolver,
+      project: CsrProject,
+      config: PublishConfiguration,
+      creds: Seq[Credentials],
+      log: Logger
+  ): Unit =
+    val artifacts = config.artifacts
+    resolver match
+      case urlRepo: sbt.librarymanagement.URLRepository =>
+        ivylessPublish(
+          project,
+          artifacts,
+          config.checksums,
+          urlRepo,
+          creds,
+          config.overwrite,
+          log
+        )
+      case fileRepo: sbt.librarymanagement.FileRepository =>
+        ivylessPublishToFile(
+          project,
+          artifacts,
+          config.checksums,
+          fileRepo,
+          config.overwrite,
+          log
+        )
+      case pbr: sbt.librarymanagement.PatternsBasedRepository
+          if pbr.patterns.artifactPatterns.headOption.exists { pat =>
+            pat.contains("[organisation]") && !pat.trim.startsWith("http")
+          } =>
+        // File repo detected by pattern (e.g. scripted classloader makes type match fail)
+        val pat = pbr.patterns.artifactPatterns.head
+        val baseStr =
+          pat.substring(0, pat.indexOf("[organisation]")).replace('\\', '/').stripSuffix("/")
+        val repoDir =
+          (if (baseStr.startsWith("file:")) new File(new java.net.URI(baseStr))
+           else new File(baseStr)).getAbsoluteFile
+        if pbr.patterns.isMavenCompatible then
+          log.info(s"Ivyless publish (Maven layout) to file repo: $repoDir")
+          ivylessPublishMavenToFile(
+            project,
+            artifacts,
+            config.checksums,
+            repoDir,
+            config.overwrite,
+            log
+          )
+        else
+          log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
+          ivylessPublishLocal(
+            project,
+            artifacts,
+            config.checksums,
+            repoDir,
+            config.overwrite,
+            log
+          )
+      case mavenCache: sbt.librarymanagement.MavenCache =>
+        ivylessPublishMavenToFile(
+          project,
+          artifacts,
+          config.checksums,
+          mavenCache.rootFile,
+          config.overwrite,
+          log
+        )
+      case mavenRepo: sbt.librarymanagement.MavenRepo =>
+        val root = mavenRepo.root.stripSuffix("/")
+        if root.startsWith("http://") || root.startsWith("https://") then
+          ivylessPublishMavenToUrl(
+            project,
+            artifacts,
+            config.checksums,
+            root,
+            creds,
+            config.overwrite,
+            log
+          )
+        else if root.startsWith("file:") then
+          val repoBase = new File(URI.create(root))
+          ivylessPublishMavenToFile(
+            project,
+            artifacts,
+            config.checksums,
+            repoBase,
+            config.overwrite,
+            log
+          )
+        else
+          sys.error(
+            s"ivyless Maven publish: unsupported root '$root'; use a supported repository (http/https/file)."
+          )
+      case other =>
+        sys.error(
+          s"ivyless publish does not support ${other.getClass.getName}; use URLRepository, FileRepository, or MavenRepository."
+        )
+  end dispatchIvylessPublish
 
   /**
    * Task initializer for ivyless publishLocal.
