@@ -16,7 +16,13 @@ import sbt.Def.{ Initialize, Setting }
 import sbt.Keys.*
 import sbt.ProjectExtra.*
 import sbt.internal.LibraryManagement
-import sbt.internal.librarymanagement.{ IvyActions, IvySbt, IvyXml, ProjectResolver }
+import sbt.internal.librarymanagement.{
+  GenericPublisher,
+  IvyActions,
+  IvySbt,
+  IvyXml,
+  ProjectResolver
+}
 import sbt.internal.librarymanagement.ivy.*
 import sbt.io.syntax.*
 import sbt.librarymanagement.*
@@ -67,7 +73,22 @@ object IvyDependencyPlugin extends AutoPlugin:
           }
         )(
           Def.task {
-            Classpaths.defaultPublisher(dependencyResolution.value, fullResolvers.value.toVector)
+            val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
+              new File(System.getProperty("user.home")) / ".ivy2"
+            }
+            val localResolver =
+              Resolver.file("local", ivyHome / "local")(using Resolver.ivyStylePatterns)
+            // otherResolvers already has Resolver.publishMavenLocal +: publishTo.value.toVector
+            val knownResolvers = localResolver +: otherResolvers.value
+            Publisher(
+              GenericPublisher(
+                dependencyResolution.value,
+                fullResolvers.value.toVector,
+                csrProject.value.withPublications(csrPublications.value),
+                allCredentials.value,
+                knownResolvers
+              )
+            )
           }
         )
         .value
