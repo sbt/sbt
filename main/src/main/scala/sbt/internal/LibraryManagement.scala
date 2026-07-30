@@ -448,6 +448,9 @@ private[sbt] object LibraryManagement {
   def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock =
     app.provider.scalaProvider.launcher.globalLock
 
+  // Extension used for PGP signature files; checksums are not generated for these.
+  private final val signatureExt = ".asc"
+
   // Pattern for Scala 3 release candidates: X.Y.Z-RCN (not nightlies)
   private val Scala3RCPattern = """^(\d+)\.(\d+)\.(\d+)-RC(\d+)$""".r
 
@@ -587,19 +590,6 @@ private[sbt] object LibraryManagement {
       case "ivy"                                   => "ivys"
       case other                                   => other + "s"
 
-    // Helper to write checksums for a file using sbt.util.Digest
-    def writeChecksums(file: File): Unit =
-      checksumAlgorithms.foreach: algo =>
-        val digestAlgo = algo.toLowerCase match
-          case "md5"  => sbt.util.Digest.Md5
-          case "sha1" => sbt.util.Digest.Sha1
-          case other  =>
-            throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
-        val digest = sbt.util.Digest(digestAlgo, file.toPath)
-        val checksumFile = new File(file.getPath + "." + algo.toLowerCase)
-        IO.write(checksumFile, digest.hashHexString)
-        log.debug(s"Wrote checksum: $checksumFile")
-
     // Write ivy.xml first (so ivys/ exists even if artifact copy fails)
     val ivysDir = moduleDir / "ivys"
     val ivyXmlFile = ivysDir / "ivy.xml"
@@ -608,7 +598,7 @@ private[sbt] object LibraryManagement {
     if !ivyXmlFile.exists || overwrite then
       IO.write(ivyXmlFile, ivyXmlContent)
       log.info(s"published $ivyXmlFile")
-      writeChecksums(ivyXmlFile)
+      writeChecksumsForFile(ivyXmlFile, checksumAlgorithms, log)
     else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
 
     // Build a lookup from (type, classifier, ext) to cross-versioned publication name
@@ -634,7 +624,8 @@ private[sbt] object LibraryManagement {
         IO.createDirectory(targetDir)
         IO.copyFile(sourceFile, targetFile)
         log.info(s"published $targetFile")
-        writeChecksums(targetFile)
+        if !targetFile.getName.endsWith(signatureExt) then
+          writeChecksumsForFile(targetFile, checksumAlgorithms, log)
       else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
   end ivylessPublishLocal
 
@@ -746,21 +737,6 @@ private[sbt] object LibraryManagement {
       case "ivy"                                   => "ivys"
       case other                                   => other + "s"
 
-    def writeChecksums(file: File): Vector[(File, String)] =
-      checksumAlgorithms.map { algo =>
-        val digestAlgo = algo.toLowerCase match
-          case "md5"  => sbt.util.Digest.Md5
-          case "sha1" => sbt.util.Digest.Sha1
-          case other  =>
-            throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
-        val digest = sbt.util.Digest(digestAlgo, file.toPath)
-        val content = digest.hashHexString
-        val suffix = "." + algo.toLowerCase
-        val tmpFile = File.createTempFile("checksum", suffix)
-        IO.write(tmpFile, content)
-        (tmpFile, suffix)
-      }
-
     artifacts.foreach { case (artifact, sourceFile) =>
       val folder = typeToFolder(artifact.`type`)
       val classifier = artifact.classifier.map("-" + _).getOrElse("")
@@ -778,12 +754,13 @@ private[sbt] object LibraryManagement {
       )
       val url = URI.create(pathPattern).toURL()
       httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
-      val checksums = writeChecksums(sourceFile)
-      checksums.foreach { case (cf, suffix) =>
-        val checksumUrl = URI.create(pathPattern + suffix).toURL()
-        try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
-        finally cf.delete()
-      }
+      if !url.toString.endsWith(signatureExt) then
+        val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
+        checksums.foreach { case (cf, suffix) =>
+          val checksumUrl = URI.create(pathPattern + suffix).toURL()
+          try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
+          finally cf.delete()
+        }
     }
 
     val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
@@ -803,7 +780,7 @@ private[sbt] object LibraryManagement {
     try {
       IO.write(ivyTmp, ivyXmlContent)
       httpPut(ivyUrl, ivyTmp, credentialFor(ivyUrl, directCreds, None), log)
-      val checksums = writeChecksums(ivyTmp)
+      val checksums = writeChecksumsToTempFiles(ivyTmp, checksumAlgorithms)
       checksums.foreach { case (cf, suffix) =>
         val checksumUrl = URI.create(ivyPathPattern + suffix).toURL()
         try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
@@ -826,21 +803,42 @@ private[sbt] object LibraryManagement {
     val fileName = s"$artifactId-$version$classifierPart.${artifact.extension}"
     s"$groupPath/$artifactId/$version/$fileName"
 
+  private def normalizedChecksumAlgorithm(algo: String): String =
+    algo.toLowerCase match
+      case a @ ("md5" | "sha1") => a
+      case other                =>
+        throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+
+  /**
+   * Writes a `targetFile.<algo>` checksum file alongside `targetFile` for each algorithm.
+   */
   private def writeChecksumsForFile(
       targetFile: File,
       algorithms: Vector[String],
       log: Logger
   ): Unit =
     algorithms.foreach: algo =>
-      val digestAlgo = algo.toLowerCase match
-        case "md5"  => sbt.util.Digest.Md5
-        case "sha1" => sbt.util.Digest.Sha1
-        case other  =>
-          throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+      val digestAlgo = normalizedChecksumAlgorithm(algo)
       val digest = sbt.util.Digest(digestAlgo, targetFile.toPath)
-      val checksumFile = new File(targetFile.getPath + "." + algo.toLowerCase)
+      val checksumFile = new File(targetFile.getPath + "." + digestAlgo)
       IO.write(checksumFile, digest.hashHexString)
       log.debug(s"Wrote checksum: $checksumFile")
+
+  /**
+   * Computes checksums for `file` and writes each to its own temp file, paired with its
+   * suffix (e.g. ".md5"), for callers that need to HTTP PUT them elsewhere before discarding.
+   */
+  private def writeChecksumsToTempFiles(
+      file: File,
+      algorithms: Vector[String]
+  ): Vector[(File, String)] =
+    algorithms.map: algo =>
+      val digestAlgo = normalizedChecksumAlgorithm(algo)
+      val digest = sbt.util.Digest(digestAlgo, file.toPath)
+      val suffix = "." + digestAlgo
+      val tmpFile = File.createTempFile("checksum", suffix)
+      IO.write(tmpFile, digest.hashHexString)
+      (tmpFile, suffix)
 
   /**
    * Publishes artifacts to a local Maven repo (Maven layout) without using Apache Ivy.
@@ -876,7 +874,8 @@ private[sbt] object LibraryManagement {
           targetFile.getParentFile.mkdirs()
           IO.copyFile(sourceFile, targetFile)
           log.info(s"published $targetFile")
-          writeChecksumsForFile(targetFile, checksumAlgorithms, log)
+          if !targetFile.toString.endsWith(signatureExt) then
+            writeChecksumsForFile(targetFile, checksumAlgorithms, log)
         else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
 
     if version.endsWith("-SNAPSHOT") then
@@ -935,21 +934,6 @@ private[sbt] object LibraryManagement {
     val directCreds = credentials.collect:
       case d: Credentials.DirectCredentials => d
 
-    def writeChecksums(file: File): Vector[(File, String)] =
-      checksumAlgorithms
-        .map: algo =>
-          val digestAlgo = algo.toLowerCase match
-            case "md5"  => sbt.util.Digest.Md5
-            case "sha1" => sbt.util.Digest.Sha1
-            case other  =>
-              throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
-          val digest = sbt.util.Digest(digestAlgo, file.toPath)
-          val content = digest.hashHexString
-          val suffix = "." + algo.toLowerCase
-          val tmpFile = File.createTempFile("checksum", suffix)
-          IO.write(tmpFile, content)
-          (tmpFile, suffix)
-
     val base = baseUrl.stripSuffix("/") + "/"
     artifacts.foreach:
       case (artifact, sourceFile) =>
@@ -957,12 +941,13 @@ private[sbt] object LibraryManagement {
         val url = URI.create(base + path).toURL()
         try
           httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
-          val checksums = writeChecksums(sourceFile)
-          checksums.foreach:
-            case (cf, suffix) =>
-              val checksumUrl = URI.create(base + path + suffix).toURL()
-              try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
-              finally cf.delete()
+          if !sourceFile.toString.endsWith(signatureExt) then
+            val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
+            checksums.foreach:
+              case (cf, suffix) =>
+                val checksumUrl = URI.create(base + path + suffix).toURL()
+                try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
+                finally cf.delete()
         catch
           case e: IOException =>
             throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
