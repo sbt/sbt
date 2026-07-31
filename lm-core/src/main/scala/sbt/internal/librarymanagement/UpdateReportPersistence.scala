@@ -20,7 +20,9 @@ final case class UpdateReportCache(
     lite: UpdateReportLite,
     stats: UpdateStats,
     stamps: Map[String, Long],
-    cachedDescriptor: File
+    cachedDescriptor: File,
+    /** Per configuration, its modules in the resolver's order. */
+    moduleOrder: Vector[Vector[ModuleReport]]
 )
 
 object UpdateReportPersistence:
@@ -45,8 +47,8 @@ object UpdateReportPersistence:
 
   /** Interns the modules of a decoded cache, in a pass since the generated reader has no hook. */
   private def internModules(cache: UpdateReportCache): UpdateReportCache =
-    cache.copy(lite =
-      UpdateReportLite(
+    cache.copy(
+      lite = UpdateReportLite(
         cache.lite.configurations.map(cr =>
           ConfigurationReportLite(
             cr.configuration,
@@ -59,7 +61,9 @@ object UpdateReportPersistence:
             )
           )
         )
-      )
+      ),
+      // Interned too, so the restored order shares the instances the details were pooled to.
+      moduleOrder = cache.moduleOrder.map(_.map(UpdateReportInterner.intern))
     )
 
   /** The shape before this one, a whole serialized `UpdateReport`, carries no version. */
@@ -71,8 +75,12 @@ object UpdateReportPersistence:
       modules: Vector[Int]
   )
 
-  /** One configuration's details, in the order the configuration resolved them. */
-  private final case class IndexedConfig(configuration: String, details: Vector[IndexedDetail])
+  /** `modules` is absent when the resolver's order is the flattened detail order. */
+  private final case class IndexedConfig(
+      configuration: String,
+      details: Vector[IndexedDetail],
+      modules: Option[Vector[Int]]
+  )
 
   private given indexedDetailFormat: JsonFormat[IndexedDetail] = new JsonFormat[IndexedDetail]:
     def write[J](obj: IndexedDetail, builder: Builder[J]): Unit =
@@ -96,14 +104,18 @@ object UpdateReportPersistence:
       builder.beginObject()
       builder.addField("configuration", obj.configuration)
       builder.addField("details", obj.details)
+      obj.modules.foreach(builder.addField("modules", _))
       builder.endObject()
     def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): IndexedConfig = jsOpt match
       case Some(js) =>
         unbuilder.beginObject(js)
         val configuration = unbuilder.readField[String]("configuration")
         val details = unbuilder.readField[Vector[IndexedDetail]]("details")
+        // Absent and empty mean different things here, and `readField` cannot tell them apart.
+        val modules =
+          unbuilder.lookupField("modules").map(_ => unbuilder.readField[Vector[Int]]("modules"))
         unbuilder.endObject()
-        IndexedConfig(configuration, details)
+        IndexedConfig(configuration, details, modules)
       case None => deserializationError("Expected JsObject but found None")
 
   private final class ModuleTable:
@@ -132,13 +144,14 @@ object UpdateReportPersistence:
 
   private def writeV1[J](obj: UpdateReportCache, builder: Builder[J]): Unit =
     val modules = new ModuleTable
-    val configurations = obj.lite.configurations.map: cr =>
-      IndexedConfig(
-        cr.configuration,
-        cr.details.map(oar =>
-          IndexedDetail(oar.organization, oar.name, oar.modules.map(modules.indexOf))
-        )
+    val configurations = obj.lite.configurations.zipWithIndex.map: (cr, i) =>
+      val details = cr.details.map(oar =>
+        IndexedDetail(oar.organization, oar.name, oar.modules.map(modules.indexOf))
       )
+      val flattened = details.flatMap(_.modules)
+      val order = obj.moduleOrder.lift(i).fold(flattened)(_.map(modules.indexOf))
+      // Written only where the resolver interleaved organizations; elsewhere it is the flattened order.
+      IndexedConfig(cr.configuration, details, Option.when(order != flattened)(order))
     builder.beginObject()
     builder.addField("version", FormatVersion)
     // Filled by the traversal above, so it has to be rendered after it.
@@ -180,7 +193,8 @@ object UpdateReportPersistence:
       ),
       stats,
       stamps,
-      cachedDescriptor
+      cachedDescriptor,
+      configurations.map(cfg => cfg.modules.getOrElse(cfg.details.flatMap(_.modules)).map(modules))
     )
 
   /**
@@ -225,12 +239,21 @@ object UpdateReportPersistence:
       lite = JsonUtil.toLite(ur),
       stats = ur.stats,
       stamps = ur.stamps,
-      cachedDescriptor = ur.cachedDescriptor
+      cachedDescriptor = ur.cachedDescriptor,
+      // Normalized the way `toLite` normalizes the details, so a module and its order entry share one
+      // table slot instead of being written twice as near-identical values.
+      moduleOrder = ur.configurations.map(_.modules.map(JsonUtil.withFilteredCallers))
     )
 
   def fromCache(cache: UpdateReportCache): UpdateReport =
-    JsonUtil
-      .fromLiteFull(cache.lite, cache.cachedDescriptor)
+    val restored = JsonUtil.fromLiteFull(cache.lite, cache.cachedDescriptor)
+    // `fromLiteFull` flattens the details, which regroups the modules by (organization, name).
+    // `lift`, not `zip`: a short order leaves the remaining configurations as flattened rather than
+    // dropping them. An order that is present and empty is a configuration that resolved nothing.
+    val configurations = restored.configurations.zipWithIndex.map: (cr, i) =>
+      cache.moduleOrder.lift(i).fold(cr)(cr.withModules)
+    restored
+      .withConfigurations(configurations)
       .withStats(cache.stats)
       .withStamps(cache.stamps)
 

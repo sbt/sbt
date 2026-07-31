@@ -52,6 +52,37 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
       assert(names(original).head == Vector("zebra-lib", "alpha-lib"), "fixture must not be sorted")
       assert(names(readBack) == names(original), "classpath order comes from this order")
 
+  // The fixture above leaves `details` empty, so the two orders coincide there.
+  test("module order survives when details group differently than the resolver ordered them"):
+    IO.withTemporaryDirectory: dir =>
+      val descriptor = new File(dir, "ivy.xml")
+      IO.touch(descriptor)
+      def moduleReport(name: String, version: String): ModuleReport =
+        val jar = new File(dir, s"$name-$version.jar")
+        IO.touch(jar)
+        val artifact = Artifact(name, "jar", "jar", None, Vector.empty, None, Map.empty, None)
+        ModuleReport(ModuleID("org." + name, name, version), Vector((artifact, jar)), Vector.empty)
+          .withConfigurations(Vector(ConfigRef("compile")))
+      val a1 = moduleReport("a", "1.0.0")
+      val a2 = moduleReport("a", "2.0.0")
+      val b1 = moduleReport("b", "1.0.0")
+      val details = Vector(
+        OrganizationArtifactReport("org.a", "a", Vector(a1, a2)),
+        OrganizationArtifactReport("org.b", "b", Vector(b1))
+      )
+      val resolved = Vector(a1, b1, a2)
+      val original = UpdateReport(
+        descriptor,
+        Vector(ConfigurationReport(ConfigRef("compile"), resolved, details)),
+        UpdateStats(0L, 0L, 0L, false),
+        Map.empty
+      )
+      val readBack = roundTrip(dir, "interleaved.json", original)
+      assert(
+        readBack.configurations.head.modules.map(_.module) == resolved.map(_.module),
+        "flattening the details would give a, a, b"
+      )
+
   test("a module report used by two configurations reads back as one instance"):
     IO.withTemporaryDirectory: dir =>
       val ur = roundTrip(dir, "shared.json", fixture(dir))
@@ -150,15 +181,68 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
       store.write(UpdateReportPersistence.toCache(fixture(dir)))(using liteCacheFormat)
       assert(UpdateReportPersistence.readFrom(store).isEmpty)
 
-  test("a v1 cache is a miss for a reader that only knows the full-report shape"):
+  test("a module and its order entry are one table entry, not two"):
+    // `toLite` reorders a module's callers when it drops the artificial ones. The order has to carry
+    // the same normalization, or the module is value-distinct from its own order entry.
     IO.withTemporaryDirectory: dir =>
-      val file = new File(dir, "v1.json")
+      val file = new File(dir, "callers.json")
+      val original = withArtificialCallers(dir)
+      UpdateReportPersistence
+        .writeTo(CacheStore(file), UpdateReportPersistence.toCache(original))
+      assert(
+        occurrences(IO.read(file), "\"organization\":\"org.example\"") == 2,
+        s"expected 1 table entry and 1 detail group, got ${IO.read(file)}"
+      )
+      val cr = roundTrip(dir, "callers-rt.json", original).configurations.head
+      assert(
+        cr.modules.head eq cr.details.head.modules.head,
+        "the restored modules and details must be the same instances"
+      )
+
+  test("an uninterleaved configuration stores no separate order"):
+    IO.withTemporaryDirectory: dir =>
+      val file = new File(dir, "identity.json")
       UpdateReportPersistence
         .writeTo(CacheStore(file), UpdateReportPersistence.toCache(fixture(dir)))
-      val read = scala.util.Try(
-        CacheStore(file).read[UpdateReport]()(using LibraryManagementCodec.UpdateReportFormat)
+      val json = IO.read(file)
+      assert(
+        occurrences(json, "\"configuration\"") == occurrences(json, "\"details\""),
+        s"every configuration should carry details, got $json"
       )
-      assert(read.isFailure, s"a previous sbt must not misread a v1 cache: $read")
+      assert(
+        occurrences(json, "\"modules\"") == occurrences(json, "\"details\"") * 2 + 1,
+        s"expected only the table and the per-detail indices, got $json"
+      )
+
+  test("a configuration that resolved nothing does not come back with the details flattened"):
+    // The elision is "absent means flattened". An order that is present and empty has to stay empty,
+    // which an empty array cannot say on its own -- hence the `lookupField` on the read side.
+    IO.withTemporaryDirectory: dir =>
+      val descriptor = new File(dir, "ivy.xml")
+      IO.touch(descriptor)
+      val jar = new File(dir, "evicted.jar")
+      IO.touch(jar)
+      val artifact = Artifact("evicted", "jar", "jar", None, Vector.empty, None, Map.empty, None)
+      val evicted =
+        ModuleReport(
+          ModuleID("org.example", "evicted", "1.0.0"),
+          Vector((artifact, jar)),
+          Vector.empty
+        )
+          .withConfigurations(Vector(ConfigRef("compile")))
+      val details = Vector(OrganizationArtifactReport("org.example", "evicted", Vector(evicted)))
+      val original = UpdateReport(
+        descriptor,
+        Vector(ConfigurationReport(ConfigRef("compile"), Vector.empty, details)),
+        UpdateStats(0L, 0L, 0L, false),
+        Map.empty
+      )
+      val readBack = roundTrip(dir, "empty-order.json", original)
+      assert(readBack.configurations.head.details.size == 1, "the details must survive")
+      assert(
+        readBack.configurations.head.modules.isEmpty,
+        s"expected no modules, got ${readBack.configurations.head.modules.map(_.module)}"
+      )
 
   test("a compressed store round trips a report"):
     // The production wiring is `cacheStoreFactory.makeCompressed("output")`; the plain store the other
@@ -170,12 +254,24 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
       val magic = IO.readBytes(new File(dir, "output")).take(2)
       assert(magic(0) == 0x1f.toByte && magic(1) == 0x8b.toByte, "expected gzip framing")
       val ur = UpdateReportPersistence.fromCache(
-        UpdateReportPersistence.readFrom(store).getOrElse(sys.error("expected a cache"))
+        UpdateReportPersistence
+          .readFrom(store)
+          .getOrElse(sys.error("expected a cache"))
       )
       assert(
         ur.configurations.map(_.modules.map(_.module.name)) ==
           original.configurations.map(_.modules.map(_.module.name))
       )
+
+  test("a v1 cache is a miss for a reader that only knows the full-report shape"):
+    IO.withTemporaryDirectory: dir =>
+      val file = new File(dir, "v1.json")
+      UpdateReportPersistence
+        .writeTo(CacheStore(file), UpdateReportPersistence.toCache(fixture(dir)))
+      val read = scala.util.Try(
+        CacheStore(file).read[UpdateReport]()(using LibraryManagementCodec.UpdateReportFormat)
+      )
+      assert(read.isFailure, s"a previous sbt must not misread a v1 cache: $read")
 
   test("readFrom returns None for a file that is not a report at all"):
     IO.withTemporaryDirectory: dir =>
@@ -196,6 +292,27 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
         builder.endObject()
       def read[J](jsOpt: Option[J], unbuilder: sjsonnew.Unbuilder[J]): UpdateReportCache =
         sjsonnew.deserializationError("write-only")
+
+  /** One module whose callers survive `filterOutArtificialCallers` only in a different order. */
+  private def withArtificialCallers(dir: File): UpdateReport =
+    val jar = new File(dir, "lib.jar")
+    IO.touch(jar)
+    val descriptor = new File(dir, "ivy.xml")
+    IO.touch(descriptor)
+    def caller(org: String) =
+      Caller(ModuleID(org, "c", "1.0.0"), Vector.empty, Map.empty, false, false, true, false)
+    val artifact = Artifact("lib", "jar", "jar", None, Vector.empty, None, Map.empty, None)
+    val mr =
+      ModuleReport(ModuleID("org.example", "lib", "1.0.0"), Vector((artifact, jar)), Vector.empty)
+        .withConfigurations(Vector(ConfigRef("compile")))
+        .withCallers(Vector(caller("org.real"), caller("org.scala-sbt.temp")))
+    val details = Vector(OrganizationArtifactReport("org.example", "lib", Vector(mr)))
+    UpdateReport(
+      descriptor,
+      Vector(ConfigurationReport(ConfigRef("compile"), Vector(mr), details)),
+      UpdateStats(0L, 0L, 0L, false),
+      Map.empty
+    )
 
   private def roundTrip(dir: File, name: String, ur: UpdateReport): UpdateReport =
     val store = CacheStore(new File(dir, name))
