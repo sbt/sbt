@@ -226,7 +226,7 @@ private[sbt] object ClassLoaders {
                 new ReverseLookupClassLoaderHolder(
                   classpath = allDependencies,
                   parent = scalaReflectLayer,
-                  closeThis = false,
+                  closeThis = close,
                   allowZombies = allowZombies,
                   logger = logger,
                 )
