@@ -104,7 +104,7 @@ private[sbt] class ServerSessionImpl(
                 .deserializeJsonMessage(frame)
                 .fold(
                   errorDesc => onInvalidFrame(frame, errorDesc),
-                  _ match {
+                  {
                     case msg: JsonRpcRequestMessage      => onRequest(msg)
                     case msg: JsonRpcResponseMessage     => onResponse(msg)
                     case msg: JsonRpcNotificationMessage => onNotification(msg)

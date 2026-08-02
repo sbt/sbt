@@ -74,12 +74,12 @@ private[sbt] object CrossJava {
         val ds =
           if (!first.contains(".") && first.contains("u")) splitDot(first.replaceFirst("u", ".0."))
           else splitDot(first)
-        val nums = ds.takeWhile(
-          _ match {
+        val nums = ds
+          .takeWhile {
             case Num(_) => true
             case _      => false
           }
-        ) map { _.toLong }
+          .map { _.toLong }
         if (nums.isEmpty) {
           sys.error(s"Invalid SDKMAN Java version: $version")
         }
