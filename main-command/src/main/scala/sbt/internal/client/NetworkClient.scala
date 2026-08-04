@@ -156,6 +156,11 @@ class NetworkClient(
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 
+  private[sbt] def logFailure(e: Exception): Unit = {
+    errorStream.println(s"sbt client failed: $e")
+    e.printStackTrace(errorStream)
+  }
+
   private def portfile = arguments.baseDirectory / "project" / "target" / "active.json"
 
   def connection: ServerSession = connectionHolder.synchronized {
@@ -311,7 +316,12 @@ class NetworkClient(
       override protected def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
       override protected def onResponse(msg: JsonRpcResponseMessage): Unit = self.onResponse(msg)
       override protected def onClose(): Unit = if (!rebooting.get) {
-        if (exitClean.get != false) exitClean.set(!running.get)
+        if (exitClean.get != false) {
+          val serverDropped = running.get
+          exitClean.set(!serverDropped)
+          if (serverDropped && !shutdownOnly)
+            console.appendLog(Level.Error, "sbt server disconnected")
+        }
         running.set(false)
         Option(interactiveThread.get).foreach(_.interrupt())
       }
@@ -1473,8 +1483,11 @@ object NetworkClient {
     try {
       if (client.connect(promptCompleteUsers = false)) client.run()
       else 1
-    } catch { case _: Exception => 1 }
-    finally client.close()
+    } catch {
+      case e: Exception =>
+        client.logFailure(e)
+        1
+    } finally client.close()
   }
   def client(
       baseDirectory: File,
@@ -1505,8 +1518,11 @@ object NetworkClient {
         if (client.connect(promptCompleteUsers = false)) client.run()
         else 1
       }
-    } catch { case _: Exception => 1 }
-    finally client.close()
+    } catch {
+      case e: Exception =>
+        client.logFailure(e)
+        1
+    } finally client.close()
   }
   def client(
       baseDirectory: File,
