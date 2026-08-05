@@ -36,6 +36,11 @@ final class Task[A](
   def postTransform(f: (A, AttributeMap) => AttributeMap): Task[A] =
     new Task(attributes, a => f(a, post(a)), work)
 
+  override def priority: Int = getOrElse(Task.Priority, 0)
+
+  /** See [[TaskId.priority]]. */
+  private[sbt] def withPriority(priority: Int): Task[A] = set(Task.Priority, priority)
+
   def tag(tags: Tag*): Task[A] = tagw(tags.map(t => (t, 1))*)
   def tagw(tags: (Tag, Int)*): Task[A] =
     val tgs: TagMap = get(tagsKey).getOrElse(TagMap.empty)
@@ -57,6 +62,7 @@ object Task:
 
   val Name = AttributeKey[String]("name")
   val Description = AttributeKey[String]("description")
+  private[sbt] val Priority = AttributeKey[Int]("priority")
   val defaultAttributeMap = const(AttributeMap.empty)
 
   given taskMonad: Monad[Task] with
