@@ -15,6 +15,7 @@ import xsbti.{
   CompileFailed,
   FileConverter,
   HashedVirtualFileRef,
+  PathBasedFile,
   Problem,
   Position,
   Severity,
@@ -425,6 +426,29 @@ object ActionCacheTest extends BasicTestSuite:
           "stored ref must not re-stat the file"
         )
 
+  test("Restore preserves the last-modified time through the CAS round-trip"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        val outPath = (tempDir / "a.txt").toPath
+        val midnightUTC = java.nio.file.attribute.FileTime.from(
+          java.time.Instant.parse("2026-08-01T00:00:00Z")
+        )
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          Files.writeString(outPath, "foo")
+          Files.setLastModifiedTime(outPath, midnightUTC)
+          InternalActionResult(a + b, Seq(binaryConverter.toVirtualFile(outPath)))
+        }
+        val config = getCacheConfig(cache, tempDir, converter = binaryConverter)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val actual = Files.getLastModifiedTime(outPath)
+        assert(
+          actual == midnightUTC,
+          s"expected the file's mtime to survive the CAS round-trip unchanged " +
+            s"(wrote $midnightUTC, but after caching it reads $actual)"
+        )
+
   test("A successful task whose value fails to serialize returns it uncached"):
     withDiskCache: cache =>
       var called = 0
@@ -746,7 +770,8 @@ object ActionCacheTest extends BasicTestSuite:
 
   final class DiskVirtualFile(path: String)
       extends xsbti.BasicVirtualFileRef(path)
-      with VirtualFile:
+      with VirtualFile
+      with PathBasedFile:
     private def bytes: Array[Byte] =
       if Files.isRegularFile(Paths.get(path)) then Files.readAllBytes(Paths.get(path))
       else Array.emptyByteArray
@@ -754,4 +779,5 @@ object ActionCacheTest extends BasicTestSuite:
     override def sizeBytes: Long = bytes.length.toLong
     override def contentHashStr: String = Digest.sha256Hash(bytes).contentHashStr
     override def input: InputStream = new java.io.ByteArrayInputStream(bytes)
+    override def toPath(): Path = Paths.get(path)
 end ActionCacheTest

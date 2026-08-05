@@ -215,7 +215,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
           val inlineRefs = request.inlineOutputFiles.map: path =>
             value.outputFiles.find(_.id == path).get
           val contents = getBlobs(inlineRefs).toVector.map: b =>
-            ByteBuffer.wrap(IO.readBytes(b.input))
+            Using.resource(b.input)(in => ByteBuffer.wrap(IO.readBytes(in)))
           Right(value.withContents(contents))
       catch case NonFatal(e) => Left(e)
     else Left(notFound)
@@ -231,17 +231,23 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     catch case e: IOException => Left(e)
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    blobs.map: (b: VirtualFile) =>
-      putBlob(b.input, Digest(b))
-      (b: HashedVirtualFileRef)
+    blobs.map:
+      case b: PathBasedFile =>
+        putBlob(b.toPath(), Digest(b))
+        (b: HashedVirtualFileRef)
+      case b: VirtualFile =>
+        Using.resource(b.input)(putBlob(_, Digest(b)))
+        (b: HashedVirtualFileRef)
 
   def toCasFile(digest: Digest): Path =
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
 
   def putBlob(blob: Path, digest: Digest): Path =
-    Using.resource(Files.newInputStream(blob)) { in =>
-      putBlob(in, digest)
-    }
+    val casFile = toCasFile(digest)
+    if isCompleteBlob(casFile, digest) then casFile
+    else
+      IO.copyFile(blob.toFile(), casFile.toFile(), preserveLastModified = true)
+      casFile
 
   /** Move blob directly to CAS. Internal use only. */
   private[sbt] def putBlobInternal(blob: Path, digest: Digest): Path =
