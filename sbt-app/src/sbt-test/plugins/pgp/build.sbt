@@ -1,12 +1,13 @@
 Global / credentials := Seq(Credentials("", "pgp", "", "test password"))
-
-scalaVersion := "3.8.4"
-name := "app"
-version := "1.0"
-publishLocal := {}
 Global / pgpSecretRing := baseDirectory.value / "secring.pgp"
 Global / pgpPublicRing := baseDirectory.value / "pubring.pgp"
 Global / useGpg := false
+
+scalaVersion := "3.8.4"
+organization := "com.example"
+name := "app"
+version := "1.0"
+publishLocal := {}
 
 publishTo := {
   val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
