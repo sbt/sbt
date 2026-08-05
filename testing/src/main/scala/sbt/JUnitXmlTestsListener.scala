@@ -14,8 +14,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Hashtable
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.NANOSECONDS
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Properties
@@ -220,19 +221,33 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
     override def initialValue(): SuiteRef = new SuiteRef(None)
   }
 
-  private def withTestSuite[T](f: TestSuite => T): T =
-    testSuite.get().current.map(f).getOrElse(sys.error("no test suite"))
+  /**
+   * Suites started and not yet written, by group name rather than by thread: a forked worker runs a
+   * group's classes concurrently and sbt delivers all their events on the one thread reading that
+   * connection, so several suites are open per thread.
+   */
+  private val openSuites = new ConcurrentHashMap[String, TestSuite]()
+
+  /**
+   * Groups that have called [[doInit]] and not yet [[doComplete]]. One listener serves every group of
+   * a test task and both are per group, so only the last group out may drop what is still open.
+   */
+  private val openRuns = new AtomicInteger(0)
 
   /** Creates the output Dir */
   override def doInit(): Unit = {
+    openRuns.incrementAndGet()
     val _ = targetDir.mkdirs()
   }
 
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String): Unit =
-    testSuite.set(new SuiteRef(Some(new TestSuite(name))))
+  override def startGroup(name: String): Unit = {
+    val suite = new TestSuite(name)
+    openSuites.put(name, suite)
+    testSuite.set(new SuiteRef(Some(suite)))
+  }
 
   /**
    * Adds all details for the given even to the current suite.
@@ -245,15 +260,23 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * late event into an error line via `TestFramework.safeForeach`.
    */
   override def testEvent(event: TestEvent): Unit =
-    testSuite.get().current match {
-      case Some(suite) => for (e <- event.detail) suite.addEvent(e)
+    for (e <- event.detail) suiteOf(e) match {
+      case Some(suite) => suite.addEvent(e)
       case None        =>
         if (logger != null) {
-          logger.debug(
-            s"ignoring ${event.detail.size} test event(s) reported after the suite was written"
-          )
+          logger.debug("ignoring a test event reported after the suite was written")
         } else ()
     }
+
+  /**
+   * The open suite an event belongs to: the one it names, since that is the only thing telling two
+   * suites on one thread apart, else the thread's own -- for an event named after something other
+   * than its group, a nested task's class say, which only that thread can attribute.
+   */
+  private def suiteOf(e: TEvent): Option[TestSuite] =
+    Option(e.fullyQualifiedName)
+      .flatMap(name => Option(openSuites.get(name)))
+      .orElse(testSuite.get().current)
 
   /**
    * called for each class or equivalent grouping We map one group to one Testsuite, so for each
@@ -284,8 +307,8 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
       def selector = null
       def throwable = new OptionalThrowable(t)
     }
-    withTestSuite(_.addEvent(event))
-    writeSuite()
+    suiteOf(event).foreach(_.addEvent(event))
+    writeSuite(name)
   }
 
   /**
@@ -293,7 +316,7 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * that is named after the suite.
    */
   override def endGroup(name: String, result: TestResult): Unit = {
-    writeSuite()
+    writeSuite(name)
   }
 
   // Here we normalize the name to ensure that it's a nicer filename, rather than
@@ -306,29 +329,46 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   private def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-  private def writeSuite(): Unit = {
-    val file = if (legacyTestReport) {
-      new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    } else {
-      new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    }
-    if (logger != null) {
-      logger.debug(s"writing JUnit XML test report: $file")
-    }
-    val testSuiteResult = withTestSuite(_.stop())
-    XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
-    /* Order matters: `clear()` releases the suite for this thread *and* for every thread that
-     * inherited the cell, which `remove()` cannot reach. `remove()` then drops this thread's
-     * own entry. Without the `clear()` the suite -- and through its buffered events the test
-     * class loader with its open jar handles -- would stay reachable from pooled worker threads
-     * for the life of the JVM.
-     */
-    testSuite.get().clear()
-    testSuite.remove()
+  /**
+   * Writes the suite `name` stands for, if it is still open. By name, not by the ending thread: a
+   * suite can end on a thread that never started it, since sbt reports the suites a dying worker left
+   * open from the thread watching that process. Ending a name twice writes it once.
+   */
+  private def writeSuite(name: String): Unit = Option(openSuites.remove(name)) match {
+    case None =>
+      if (logger != null) {
+        logger.debug(s"ignoring the end of test suite $name, which is not open")
+      }
+    case Some(suite) =>
+      val file = if (legacyTestReport) {
+        new File(targetDir, s"${normalizeName(suite.name)}.xml").getAbsolutePath
+      } else {
+        new File(targetDir, s"TEST-${normalizeName(suite.name)}.xml").getAbsolutePath
+      }
+      if (logger != null) {
+        logger.debug(s"writing JUnit XML test report: $file")
+      }
+      XML.save(file, suite.stop(), "UTF-8", xmlDecl = true, null)
+      /* Only when this thread's cell is the suite just written -- the other suites open on this
+       * thread still need theirs. Order matters: `clear()` releases the suite for this thread
+       * *and* for every thread that inherited the cell, which `remove()` cannot reach. `remove()`
+       * then drops this thread's own entry. Without the `clear()` the suite -- and through its
+       * buffered events the test class loader with its open jar handles -- would stay reachable
+       * from pooled worker threads for the life of the JVM.
+       */
+      val ref = testSuite.get()
+      if (ref.current.exists(_ eq suite)) {
+        ref.clear()
+        testSuite.remove()
+      }
   }
 
-  /** Does nothing, as we write each file after a suite is done. */
-  override def doComplete(finalResult: TestResult): Unit = {}
+  /**
+   * Drops any suite left open, which no longer has an end to write it -- but only once the last group
+   * is out, since a suite still open belongs to a group still running. See [[openRuns]].
+   */
+  override def doComplete(finalResult: TestResult): Unit =
+    if (openRuns.decrementAndGet() <= 0) openSuites.clear()
 
   /** Returns None */
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = None
