@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Scanner;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -34,6 +36,12 @@ import sbt.testing.*;
  * (https://www.jsonrpc.org/specification).
  */
 public final class WorkerMain {
+  /**
+   * How long to wait for sbt to answer a request. Deliberately generous: if sbt goes away the
+   * socket EOF releases every waiter anyway, and timing out is fatal to the run.
+   */
+  private static final long RPC_TIMEOUT_MILLIS = 600000L;
+
   private PrintStream originalOut;
   private InputStream originalIn;
 
@@ -41,6 +49,7 @@ public final class WorkerMain {
   // When using tcp, this is going to be the socket out
   private PrintStream jsonOut;
   private Scanner inScanner;
+  private WorkerRpc rpc;
 
   public static Gson mkGson() {
     RuntimeTypeAdapterFactory<Fingerprint> fingerprintFac =
@@ -115,10 +124,15 @@ public final class WorkerMain {
     Socket client = new Socket(loopback, serverPort);
     this.jsonOut = new PrintStream(client.getOutputStream(), true, "UTF-8");
     this.inScanner = new Scanner(client.getInputStream(), "UTF-8");
-    if (this.inScanner.hasNextLine()) {
-      String line = this.inScanner.nextLine();
-      process(line);
-    }
+    this.rpc = new WorkerRpc(this.jsonOut, this.inScanner, RPC_TIMEOUT_MILLIS);
+    // The request runs here, not on the reader thread: in queue mode the test session blocks on
+    // nextTest replies that only the reader thread can deliver.
+    final BlockingQueue<String> requests = new LinkedBlockingQueue<>();
+    final String endOfStream = new String(); // sentinel, compared by reference
+    this.rpc.start(requests::add, () -> requests.add(endOfStream));
+    final String line = requests.take();
+    if (line != endOfStream) process(line);
+    this.rpc.close();
   }
 
   /** This processes single request of supposed JSON line. */
@@ -187,10 +201,10 @@ public final class WorkerMain {
       ClassLoader parent = new ForkTestMain().getClass().getClassLoader();
       // empty virtual classpath means raw mode
       if (jvmRunInfo.classpath.isEmpty()) {
-        ForkTestMain.main(id, info, this.jsonOut, parent);
+        ForkTestMain.main(id, info, this.jsonOut, parent, this.rpc);
       } else {
         try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent)) {
-          ForkTestMain.main(id, info, this.jsonOut, cl);
+          ForkTestMain.main(id, info, this.jsonOut, cl, this.rpc);
         }
       }
     } else {

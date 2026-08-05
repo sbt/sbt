@@ -37,6 +37,12 @@ public class TestInfo implements Serializable {
   public final ArrayList<TaskDef> taskDefs;
   public final ArrayList<TestRunner> testRunners;
 
+  /**
+   * When true, the worker leases test classes one at a time from sbt via the {@code nextTest}
+   * request instead of running the whole {@code taskDefs} batch it was given.
+   */
+  public final boolean queueMode;
+
   public TestInfo(
       boolean jvm,
       RunInfo.JvmRunInfo jvmRunInfo,
@@ -46,6 +52,28 @@ public class TestInfo implements Serializable {
       Integer parallelism,
       ArrayList<TaskDef> taskDefs,
       ArrayList<TestRunner> testRunners) {
+    this(
+        jvm,
+        jvmRunInfo,
+        nativeRunInfo,
+        ansiCodesSupported,
+        parallel,
+        parallelism,
+        taskDefs,
+        testRunners,
+        false);
+  }
+
+  public TestInfo(
+      boolean jvm,
+      RunInfo.JvmRunInfo jvmRunInfo,
+      RunInfo.NativeRunInfo nativeRunInfo,
+      boolean ansiCodesSupported,
+      boolean parallel,
+      Integer parallelism,
+      ArrayList<TaskDef> taskDefs,
+      ArrayList<TestRunner> testRunners,
+      boolean queueMode) {
     this.jvm = jvm;
     this.jvmRunInfo = jvmRunInfo;
     this.nativeRunInfo = nativeRunInfo;
@@ -54,5 +82,6 @@ public class TestInfo implements Serializable {
     this.parallelism = parallelism;
     this.taskDefs = taskDefs;
     this.testRunners = testRunners;
+    this.queueMode = queueMode;
   }
 }
