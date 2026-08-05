@@ -346,10 +346,6 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         writeFileAndNotify(p)
       case p =>
         try
-          // A matching digest means the content is already the blob's, so a dirzip's extracted
-          // directory is in sync and must not be unpackaged again. Relink to the CAS to keep
-          // deduplication, but only where that isn't a needless delete-and-copy: on machines
-          // without symlink support the copy already there is what we would write back.
           if Digest.sameDigest(p, d) then
             val result =
               if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
