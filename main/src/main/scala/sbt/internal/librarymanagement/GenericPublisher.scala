@@ -33,7 +33,7 @@ class GenericPublisher private[sbt] (
     pomRepositories: Vector[Resolver],
     project: CsrProject,
     credentials: Seq[Credentials],
-    resolvers: Map[String, Resolver]
+    resolvers: Seq[Resolver]
 ) extends PublisherInterface:
 
   // Extension used for PGP signature files; checksums are not generated for these.
@@ -82,7 +82,9 @@ class GenericPublisher private[sbt] (
     val name = configuration.resolverName.getOrElse(
       sys.error("GenericPublisher.publish requires PublishConfiguration.resolverName to be set")
     )
-    val target = resolvers.getOrElse(name, sys.error(s"No resolver named '$name' is configured"))
+    val target = resolvers
+      .find(_.name == name)
+      .getOrElse(sys.error(s"No resolver named '$name' is configured"))
     val artifacts = configuration.artifacts
     target match
       case urlRepo: URLRepository =>
@@ -580,30 +582,14 @@ object GenericPublisher:
       project: CsrProject,
       credentials: Seq[Credentials]
   ): GenericPublisher =
-    apply(dependencyResolution, pomRepositories, project, credentials, Map.empty[String, Resolver])
+    apply(dependencyResolution, pomRepositories, project, credentials, Nil)
 
-  /** Convenience overload: keys `resolvers` by their own `.name`. */
   def apply(
       dependencyResolution: DependencyResolution,
       pomRepositories: Vector[Resolver],
       project: CsrProject,
       credentials: Seq[Credentials],
       resolvers: Seq[Resolver]
-  ): GenericPublisher =
-    apply(
-      dependencyResolution,
-      pomRepositories,
-      project,
-      credentials,
-      resolvers.map(r => r.name -> r).toMap
-    )
-
-  def apply(
-      dependencyResolution: DependencyResolution,
-      pomRepositories: Vector[Resolver],
-      project: CsrProject,
-      credentials: Seq[Credentials],
-      resolvers: Map[String, Resolver]
   ): GenericPublisher =
     new GenericPublisher(dependencyResolution, pomRepositories, project, credentials, resolvers)
 end GenericPublisher
