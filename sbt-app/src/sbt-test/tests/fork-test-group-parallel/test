@@ -1,3 +1,25 @@
 > testFailure
 > set Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, 1)
 > testFull
+
+# The defaults still serialize forked test groups, as they always have: defaultRestrictions yields
+# Tags.limit(ForkedTestGroup, 1), so restoring them keeps these groups off each other's lock
+# directory.
+> set Global / concurrentRestrictions := Defaults.defaultRestrictions.value
+> testFull
+
+# Asserted on the rules rather than on a collision, so it holds on a one-core box too.
+> checkForkLimit 1
+
+# The upgrade case: a build that raised the ForkedTestGroup limit itself must keep it. Raising it
+# takes replacing the Seq, since += yields min(1, 4) — see the last scenario. These groups collide
+# on a lock directory when they overlap, so the failure below is the proof of overlap.
+> set Global / concurrentRestrictions := Seq(Tags.limitAll(4), Tags.limit(Tags.ForkedTestGroup, 4))
+> checkForkLimit 4
+-> testFull
+
+# And += on top of the defaults is still one at a time, exactly as it was.
+> set Global / concurrentRestrictions := Defaults.defaultRestrictions.value
+> set Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, 4)
+> checkForkLimit 1
+> testFull

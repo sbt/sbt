@@ -1,0 +1,8 @@
+# Four projects, one pool of four forked test JVMs, work stealing on build-wide. b, c and d have one
+# test class each so they cannot spread; a has twenty, and every one of them blocks until a holds
+# the whole pool. A worker runs one class at a time, so those barriers pin a's JVMs without draining
+# a's queue, and the pool can only fill the intended way: b, c and d finish, their JVMs exit, and
+# sbt admits a's remaining worker tasks, each forking a new JVM that steals from a's queue. testFull
+# rather than test: test is testQuick and would skip on a warm cache.
+> testFull
+> check

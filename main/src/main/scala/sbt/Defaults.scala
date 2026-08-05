@@ -195,6 +195,7 @@ object Defaults extends BuildCommon with DefExtra {
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== true,
+      testForkedWorkStealing :== false,
       testForkedParallelism :== None,
       javaOptions :== Nil,
       sbtPlugin :== false,
@@ -1243,6 +1244,10 @@ object Defaults extends BuildCommon with DefExtra {
     executeTests := Def.uncached(Def.taskDyn {
       import sbt.TupleSyntax.*
       val fpm = testForkedParallelism.value
+      // Unscoped, matching how the engine reads it (EvaluateTask.getSetting: current project,
+      // delegating project -> build -> global). `Global / concurrentRestrictions` delegates only to
+      // itself, so a limit raised at ThisBuild would be missed and stealing silently do nothing.
+      val mfw = stealingWorkers(testForkedWorkStealing.value, concurrentRestrictions.value)
       (
         test / streams,
         loadedTestFrameworks,
@@ -1268,7 +1273,8 @@ object Defaults extends BuildCommon with DefExtra {
           jo,
           clls,
           s"${Util.quoteIfNotScalaId(thisProj.id)} / ",
-          c
+          c,
+          mfw
         )
       }
     }.value),
@@ -1443,6 +1449,22 @@ object Defaults extends BuildCommon with DefExtra {
       )
     }
 
+  /**
+   * The most forked JVMs one test group may spread over: however many concurrent forked test groups
+   * `concurrentRestrictions` admits, or one when stealing is off.
+   */
+  private[sbt] def stealingWorkers(stealing: Boolean, rules: Seq[Tags.Rule]): Int =
+    if !stealing then 1
+    else
+      // Read off the rules rather than the core count, since a build that raised Tags.limitAll past
+      // it asked for that concurrency. Rules admitting even the ceiling name no total limit at all,
+      // so those fall back to the core count instead of a JVM per test class.
+      val admitted = Tags.maxAllowed(rules, Tags.ForkedTestGroup, forkedTestProbeCeiling)
+      if admitted >= forkedTestProbeCeiling then EvaluateTask.SystemProcessors else admitted
+
+  /** Where probing `concurrentRestrictions` for the forked test JVM ceiling gives up. */
+  private val forkedTestProbeCeiling = 1024
+
   def inputTests(key: InputKey[?]): Initialize[InputTask[TestResult]] =
     inputTests0.mapReferenced(Def.mapScope((s) => s.rescope(key.key)))
 
@@ -1486,6 +1508,8 @@ object Defaults extends BuildCommon with DefExtra {
         classLoaderLayeringStrategy.value,
         projectId = s"${Util.quoteIfNotScalaId(thisProject.value.id)} / ",
         converter = fileConverter.value,
+        // Unscoped for the same reason as in `executeTests` above.
+        maxWorkers = stealingWorkers(testForkedWorkStealing.value, concurrentRestrictions.value),
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
@@ -1605,6 +1629,7 @@ object Defaults extends BuildCommon with DefExtra {
     )
   }
 
+  // Kept for binary compatibility; the older overloads delegate through this arity.
   private[sbt] def allTestGroupsTask(
       s: TaskStreams,
       frameworks: Map[TestFramework, Framework],
@@ -1618,6 +1643,38 @@ object Defaults extends BuildCommon with DefExtra {
       strategy: ClassLoaderLayeringStrategy,
       projectId: String,
       converter: FileConverter,
+  ): Task[Tests.Output] = {
+    allTestGroupsTask(
+      s,
+      frameworks,
+      loader,
+      groups,
+      config,
+      cp,
+      forkedParallelExecution,
+      forkedParallelism,
+      javaOptions,
+      strategy,
+      projectId,
+      converter,
+      maxWorkers = 1,
+    )
+  }
+
+  private[sbt] def allTestGroupsTask(
+      s: TaskStreams,
+      frameworks: Map[TestFramework, Framework],
+      loader: ClassLoader,
+      groups: Seq[Tests.Group],
+      config: Tests.Execution,
+      cp: Classpath,
+      forkedParallelExecution: Boolean,
+      forkedParallelism: Option[Int],
+      javaOptions: Seq[String],
+      strategy: ClassLoaderLayeringStrategy,
+      projectId: String,
+      converter: FileConverter,
+      maxWorkers: Int,
   ): Task[Tests.Output] = {
     val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
       groups
@@ -1637,24 +1694,30 @@ object Defaults extends BuildCommon with DefExtra {
 
     val runners = createTestRunners(filteredFrameworks, loader, config)
 
+    val groupWorkers = Tests.workersPerGroup(maxWorkers, groups, processedOptions)
+
     val groupTasks = groups map { group =>
       group.runPolicy match {
         case Tests.SubProcess(opts) =>
           s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
-          val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
           s.log.debug(
-            s"Forking tests - parallelism = ${forkedConfig.parallel}, threads = ${forkedParallelism.getOrElse("auto")}"
+            s"Forking tests - parallelism = ${config.parallel && forkedParallelExecution}, threads = ${forkedParallelism.getOrElse("auto")}"
           )
+          // `config` un-ANDed: ForkTests needs `parallelExecution` alone to size the JVM count, and
+          // ANDs `forkedParallelExecution` in only for what each JVM does with the classes it holds.
           ForkTests(
             runners,
             processedOptions(group),
-            forkedConfig,
+            config,
             data(cp),
             converter,
             opts,
             s.log,
+            forkedParallelExecution,
             forkedParallelism,
             strategy != ClassLoaderLayeringStrategy.Raw,
+            filteredFrameworks,
+            groupWorkers,
             (Tags.ForkedTestGroup, 1) +: group.tags*
           )
         case Tests.InProcess =>

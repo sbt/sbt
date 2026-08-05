@@ -96,6 +96,17 @@ object Tags {
   /** Returns a Rule that limits the maximum number of concurrent executing tasks tagged with `tag` to `max`. */
   def limit(tag: Tag, max: Int): Rule = new Single(tag, max)
 
+  /**
+   * The largest number of concurrently running tasks tagged `tag` that `rules` admits, up to
+   * `bound`. Rules are opaque, so the limit is found by probing [[predicate]].
+   */
+  private[sbt] def maxAllowed(rules: Seq[Rule], tag: Tag, bound: Int): Int =
+    val allows = predicate(rules)
+    (1 to math.max(1, bound))
+      .takeWhile(n => allows(Map(tag -> n, All -> n)))
+      .lastOption
+      .getOrElse(1)
+
   def limitSum(max: Int, tags: Tag*): Rule = new Sum(tags, max)
 
   /** Ensure that a task with the given tag always executes in isolation. */

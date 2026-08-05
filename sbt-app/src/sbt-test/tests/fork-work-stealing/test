@@ -1,0 +1,94 @@
+# Eight scenarios in one sbt session, since launching sbt dominates a scripted test's runtime. The
+# queue logic, framework index mapping and protocol shapes are covered by unit tests in
+# main-actions; this covers what those cannot, that a real worker issues nextTest and runs the class
+# it leased. testFull rather than test: test is testQuick and would skip on a warm cache.
+
+# 1. six classes, at most two JVMs: classes are leased from sbt's queue one at a time.
+# expect-spread makes suite A fail unless a second JVM really did record work, so this scenario
+# cannot pass with work stealing disabled.
+> checkThreads
+$ touch expect-spread
+> testFull
+> check
+
+# 2. a worker killed mid-suite must report that suite instead of dropping it.
+# Clear the recorded outcomes first so the assertion cannot pass on scenario 1's leftovers.
+$ delete expect-spread
+$ delete reported
+$ touch mode-crash
+-> testFull
+> checkCrash
+
+# 3. spreading a group is parallel execution, so a build that turned parallel execution off must
+# keep getting one JVM however many the rules would otherwise allow.
+$ delete mode-crash
+$ delete pids
+> set Test / parallelExecution := false
+> testFull
+> checkSerial
+
+# 4. testForkedParallel says whether a worker runs the classes it holds at the same time; it says nothing
+# about how many workers the group gets. Turning it off is a build asking for one class at a time per JVM,
+# which is a reason to spread rather than a reason not to, so the group must still be leased across JVMs.
+# expect-spread makes suite A fail unless a second JVM really recorded work.
+$ delete pids
+$ touch expect-spread
+> set Test / parallelExecution := true
+> set Test / testForkedParallel := false
+> testFull
+> checkSpread
+$ delete expect-spread
+> set Test / testForkedParallel := true
+
+# 5. the flag is read at the test task's own scope, so a project whose suites clobber shared external
+# state can opt out while the build keeps stealing on globally. One JVM, every suite in it.
+$ delete pids
+> set Test / testForkedWorkStealing := false
+> testFull
+> checkOptOut
+> set Test / testForkedWorkStealing := true
+
+# 6. the fan-out ceiling has to come from the same concurrentRestrictions the task engine honours.
+# The engine looks that setting up at the current project and delegates project -> build -> global,
+# so a build that raises the ForkedTestGroup limit at ThisBuild scope really does get that many
+# concurrent forked groups. Global is Zero on every axis and delegates only to itself, so reading the
+# ceiling there saw past a ThisBuild definition to the default's limit of one -- and stealing became a
+# silent no-op for a build that had configured it the way the setting's own documentation describes.
+# Global is put back to the default first, so this fails unless the ThisBuild definition is the one
+# being read.
+$ delete pids
+$ touch expect-spread
+> set Global / concurrentRestrictions := Defaults.defaultRestrictions.value
+> set ThisBuild / concurrentRestrictions := Seq(Tags.limitAll(java.lang.Runtime.getRuntime.availableProcessors), Tags.limit(Tags.ForkedTestGroup, 2), Tags.exclusiveGroup(Tags.Clean))
+> testFull
+> check
+$ delete expect-spread
+
+# 7. stealing on together with a worker running more than one class at a time. testForkedParallel is
+# on -- its default, so every scenario above already had it on -- but on its own that changes nothing
+# in queue mode: the thread count comes from testForkedParallelism, which defaults to None and means
+# one class at a time per JVM. Setting it is the only way both settings are doing something at once,
+# and the only time a group has several suites open on one connection's reader thread, which is what
+# keying the listener's open suites by name is for. expect-threads fails a class unless a sibling is
+# running in its own JVM, so this cannot pass on one-at-a-time behaviour, and check still requires one
+# report per class -- several suites open on one thread is exactly what used to collapse them into one.
+$ delete pids
+$ touch expect-threads
+$ touch expect-spread
+> set Test / parallelExecution := true
+> set Test / testForkedParallel := true
+> set Test / testForkedParallelism := Some(2)
+> testFull
+> check
+$ delete expect-threads
+$ delete expect-spread
+> set Test / testForkedParallelism := None
+
+# 8. a class matching two frameworks is two work units, and spreading them would let one class's two
+# runs overlap in different JVMs — two writers on one TEST-<suite>.xml. MarkedFramework2 carries the
+# same fingerprint as MarkedFramework, so E and F match both and the whole group stays in one JVM.
+# Last, because it leaves a framework registered that keeps the group unspreadable.
+$ delete pids
+> set Test / testFrameworks += TestFramework("MarkedFramework2")
+> testFull
+> checkOverlap

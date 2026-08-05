@@ -1,0 +1,5 @@
+# Five projects, four classes each, against a two-JVM pool. The two JVMs must go to the first workers of two
+# different projects; a project that takes both while four others have none fails the check. testFull rather
+# than test: test is testQuick and would skip on a warm cache.
+> testFull
+> check

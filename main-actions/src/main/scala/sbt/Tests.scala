@@ -485,6 +485,16 @@ object Tests {
       case TestResult.Failed                    => 1
       case TestResult.Error                     => 2
 
+  // Shares one project's forked-test-JVM budget across the groups that will actually fork.
+  private[sbt] def workersPerGroup(
+      budget: Int,
+      groups: Seq[Group],
+      processed: Map[Group, ProcessedOptions]
+  ): Int =
+    val forking = groups.count: g =>
+      g.runPolicy.isInstanceOf[SubProcess] && processed.get(g).exists(_.tests.nonEmpty)
+    math.max(1, budget / math.max(1, forking))
+
   def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
     if (results.isEmpty) {
       task { Output(TestResult.Passed, Map.empty, Nil) }
