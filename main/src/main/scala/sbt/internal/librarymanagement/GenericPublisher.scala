@@ -82,9 +82,15 @@ class GenericPublisher private[sbt] (
     val name = configuration.resolverName.getOrElse(
       sys.error("GenericPublisher.publish requires PublishConfiguration.resolverName to be set")
     )
-    val target = resolvers
-      .find(_.name == name)
-      .getOrElse(sys.error(s"No resolver named '$name' is configured"))
+    val target = resolvers.filter(_.name == name) match
+      case Seq(r) => r
+      case Seq()  => sys.error(s"no resolver named '$name' is configured")
+      case _      =>
+        sys.error(
+          s"multiple resolvers are named '$name'; " +
+            s"'local' and '${Resolver.publishMavenLocal.name}' are reserved for " +
+            "publishLocal and publishM2 respectively"
+        )
     val artifacts = configuration.artifacts
     target match
       case urlRepo: URLRepository =>
