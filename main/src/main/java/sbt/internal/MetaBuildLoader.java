@@ -66,8 +66,11 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
+    // Every org.jline artifact must live in this tier together. The REPL's ScalaInstance
+    // loader is parented to it, so a partial match leaves the REPL running one JLine
+    // version's reader against another's terminal (#9317, #8294).
     final String jlineJars =
-        "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jni))?-[0-9.]+|jline-native-[0-9.]+";
+        "jline-?[0-9.]+-sbt-.*|jline-(terminal(-jni)?|native|reader|builtins|style)-[0-9.]+";
     final String testInterfaceJars = "test-interface(-.*)?";
     final String compilerInterfaceJars = "compiler-interface(-.*)?";
     final String utilInterfaceJars = "util-interface(-.*)?";
