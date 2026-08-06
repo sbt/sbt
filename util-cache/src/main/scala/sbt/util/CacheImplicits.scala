@@ -21,14 +21,16 @@ end CacheImplicits
 
 trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
   private val localDigestCacheByteSize = AtomicLong(CacheImplicits.defaultLocalDigestCacheByteSize)
-  private val weigher: Weigher[String, (String, Long, Long)] = { case (k, (v1, _, _)) =>
-    k.size + v1.size + 16
+  private val weigher: Weigher[String, (String, Long, Long, Option[AnyRef])] = {
+    case (k, (v1, _, _, _)) =>
+      k.size + v1.size + 16
   }
-  private val digestWeigher: Weigher[String, (Digest, Long, Long)] = { case (k, (v1, _, _)) =>
-    k.size + v1.digestSize + 16
+  private val digestWeigher: Weigher[String, (Digest, Long, Long, Option[AnyRef])] = {
+    case (k, (v1, _, _, _)) =>
+      k.size + v1.digestSize + 16
   }
 
-  private val stampCache: AtomicReference[CCache[String, (String, Long, Long)]] =
+  private val stampCache: AtomicReference[CCache[String, (String, Long, Long, Option[AnyRef])]] =
     AtomicReference(
       Caffeine
         .newBuilder()
@@ -37,7 +39,7 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
         .build()
     )
 
-  private val digestCache: AtomicReference[CCache[String, (Digest, Long, Long)]] =
+  private val digestCache: AtomicReference[CCache[String, (Digest, Long, Long, Option[AnyRef])]] =
     AtomicReference(
       Caffeine
         .newBuilder()
@@ -67,24 +69,36 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
           .build()
       )
 
-  private def getOrElseUpdate(ref: HashedVirtualFileRef, lastModified: Long, sizeBytes: Long)(
+  // `fileKey` is the path's identity on disk (e.g. device+inode on POSIX), read alongside
+  // lastModified/sizeBytes from the same attributes call.
+  private def getOrElseUpdate(
+      ref: HashedVirtualFileRef,
+      lastModified: Long,
+      sizeBytes: Long,
+      fileKey: Option[AnyRef]
+  )(
       value: => String
   ) =
     Option(stampCache.get().getIfPresent(ref.id())) match
-      case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
-      case _                                                          =>
+      case Some((v, mod, i, fk)) if lastModified == mod && sizeBytes == i && fk == fileKey => v
+      case _                                                                               =>
         val v = value
-        stampCache.get().put(ref.id(), (v, lastModified, sizeBytes))
+        stampCache.get().put(ref.id(), (v, lastModified, sizeBytes, fileKey))
         v
 
-  private def getOrElseUpdate(ref: VirtualFileRef, lastModified: Long, sizeBytes: Long)(
+  private def getOrElseUpdate(
+      ref: VirtualFileRef,
+      lastModified: Long,
+      sizeBytes: Long,
+      fileKey: Option[AnyRef]
+  )(
       value: => Digest
   ) =
     Option(digestCache.get().getIfPresent(ref.id())) match
-      case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
-      case _                                                          =>
+      case Some((v, mod, i, fk)) if lastModified == mod && sizeBytes == i && fk == fileKey => v
+      case _                                                                               =>
         val v = value
-        digestCache.get().put(ref.id(), (v, lastModified, sizeBytes))
+        digestCache.get().put(ref.id(), (v, lastModified, sizeBytes, fileKey))
         v
 
   /**
@@ -103,7 +117,8 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
             else
               val lastModified = attrs.lastModifiedTime().toMillis()
               val sizeBytes = attrs.size()
-              getOrElseUpdate(ref, lastModified, sizeBytes)(fallback)
+              val fileKey = Option(attrs.fileKey())
+              getOrElseUpdate(ref, lastModified, sizeBytes, fileKey)(fallback)
           catch case e: NoSuchFileException => throw e
         case _ => fallback
 
@@ -117,10 +132,11 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
         else
           val lastModified = attrs.lastModifiedTime().toMillis()
           val sizeBytes = attrs.size()
+          val fileKey = Option(attrs.fileKey())
           vf match
             case h: HashedVirtualFileRef =>
-              getOrElseUpdate(vf, lastModified, sizeBytes)(Digest(h))
+              getOrElseUpdate(vf, lastModified, sizeBytes, fileKey)(Digest(h))
             case _ =>
-              getOrElseUpdate(vf, lastModified, sizeBytes)(fallback)
+              getOrElseUpdate(vf, lastModified, sizeBytes, fileKey)(fallback)
       case _ => Digest.sha256Hash(converter.toPath(vf))
 end CacheImplicits
