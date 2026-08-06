@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ConflictManagerFormats { self: sjsonnew.BasicJsonProtocol =>
+trait ConflictManagerFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given ConflictManagerFormat: JsonFormat[sbt.librarymanagement.ConflictManager] = new JsonFormat[sbt.librarymanagement.ConflictManager] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ConflictManager = {
     __jsOpt match {

@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ChecksumFormats { self: sjsonnew.BasicJsonProtocol =>
+trait ChecksumFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given ChecksumFormat: JsonFormat[sbt.librarymanagement.Checksum] = new JsonFormat[sbt.librarymanagement.Checksum] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.Checksum = {
     __jsOpt match {

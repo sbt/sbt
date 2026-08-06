@@ -6,6 +6,6 @@
 package sbt.librarymanagement
 
 import _root_.sjsonnew.JsonFormat
-trait SshAuthenticationFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.PasswordAuthenticationFormats & sbt.librarymanagement.KeyFileAuthenticationFormats =>
+trait SshAuthenticationFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats & sbt.librarymanagement.PasswordAuthenticationFormats & sbt.librarymanagement.KeyFileAuthenticationFormats =>
 given SshAuthenticationFormat: JsonFormat[sbt.librarymanagement.SshAuthentication] = flatUnionFormat2[sbt.librarymanagement.SshAuthentication, sbt.librarymanagement.PasswordAuthentication, sbt.librarymanagement.KeyFileAuthentication]("type")
 }

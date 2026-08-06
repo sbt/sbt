@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait FileConfigurationFormats { self: sjsonnew.BasicJsonProtocol =>
+trait FileConfigurationFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given FileConfigurationFormat: JsonFormat[sbt.librarymanagement.FileConfiguration] = new JsonFormat[sbt.librarymanagement.FileConfiguration] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.FileConfiguration = {
     __jsOpt match {

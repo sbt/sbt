@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait InclExclRuleFormats { self: sbt.librarymanagement.ConfigRefFormats & sbt.librarymanagement.CrossVersionFormats & sbt.librarymanagement.DisabledFormats & sbt.librarymanagement.BinaryFormats & sbt.librarymanagement.ConstantFormats & sbt.librarymanagement.PatchFormats & sbt.librarymanagement.FullFormats & sbt.librarymanagement.For3Use2_13Formats & sbt.librarymanagement.For2_13Use3Formats & sjsonnew.BasicJsonProtocol =>
+trait InclExclRuleFormats { self: sbt.librarymanagement.ConfigRefFormats & sbt.librarymanagement.CrossVersionFormats & sbt.librarymanagement.DisabledFormats & sbt.librarymanagement.BinaryFormats & sbt.librarymanagement.ConstantFormats & sbt.librarymanagement.PatchFormats & sbt.librarymanagement.FullFormats & sbt.librarymanagement.For3Use2_13Formats & sbt.librarymanagement.For2_13Use3Formats & sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given InclExclRuleFormat: JsonFormat[sbt.librarymanagement.InclExclRule] = new JsonFormat[sbt.librarymanagement.InclExclRule] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.InclExclRule = {
     __jsOpt match {

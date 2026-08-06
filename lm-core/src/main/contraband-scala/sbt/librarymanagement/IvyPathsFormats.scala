@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait IvyPathsFormats { self: sjsonnew.BasicJsonProtocol =>
+trait IvyPathsFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given IvyPathsFormat: JsonFormat[sbt.librarymanagement.IvyPaths] = new JsonFormat[sbt.librarymanagement.IvyPaths] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.IvyPaths = {
     __jsOpt match {
