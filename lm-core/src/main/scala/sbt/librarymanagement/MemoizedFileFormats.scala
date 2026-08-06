@@ -33,7 +33,7 @@ trait MemoizedFileFormats extends FileIsoStringLongs {
   // sjsonnew.HashUtil.sha256ToLong is private[sjsonnew]; same semantics via the public sha256
   private def hashFile(path: Path): Long = {
     val buf = HashUtil.sha256(path.toFile())
-    if (buf.length < 8) 0L else ByteBuffer.wrap(buf).getLong()
+    if buf.length < 8 then 0L else ByteBuffer.wrap(buf).getLong()
   }
 
   private def memoizedHash(path: Path): Long =
