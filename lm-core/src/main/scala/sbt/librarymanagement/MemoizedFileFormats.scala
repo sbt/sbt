@@ -40,7 +40,7 @@ trait MemoizedFileFormats extends FileIsoStringLongs {
     Try(Files.readAttributes(path, classOf[BasicFileAttributes])).toOption match {
       case None =>
         // no size/mtime to validate a cache entry against, so hash uncached
-        if (Files.isRegularFile(path)) hashFile(path) else 0L
+        if Files.isRegularFile(path) then hashFile(path) else 0L
       case Some(attrs) =>
         val key = path.toString
         val mtime = attrs.lastModifiedTime.toMillis
