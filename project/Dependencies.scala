@@ -95,6 +95,7 @@ object Dependencies {
   val junit = "junit" % "junit" % "4.13.2"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+  val slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.36"
   val remoteapis =
     "com.eed3si9n.remoteapis.shaded" % "shaded-remoteapis-java" % "2.3.0-M1-9fe80facbdb38084ca18c5a75e1905f77ed0fa82"
   val gson = "org.scala-sbt.gson" % "shaded-gson" % "2.13.1"
