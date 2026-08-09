@@ -318,9 +318,8 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     // See https://github.com/sbt/sbt/issues/7656
     // On Windows, the program has be running under the Administrator privileges or the
     // user enable Developer Mode on Windows 10+ to create symbolic links.
-    def writeFileAndNotify(outPath: Path): Path =
-      Option(outPath.getParent()).foreach(parent => IO.createDirectory(parent.toFile()))
-      val result = Retry:
+    def linkOrCopy(outPath: Path): Path =
+      Retry:
         if Files.exists(outPath) then IO.delete(outPath.toFile())
         if symlinkSupported.get() && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
@@ -339,6 +338,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
                 symlinkSupported.set(false)
               copyFile(outPath)
         else copyFile(outPath)
+    def writeFileAndNotify(outPath: Path): Path =
+      Option(outPath.getParent()).foreach(parent => IO.createDirectory(parent.toFile()))
+      val result = linkOrCopy(outPath)
       afterFileWrite(ref, result, outputDirectory)
       result
     val resolvedPath = converter.toPath(ref) match
@@ -350,11 +352,11 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         writeFileAndNotify(p)
       case p =>
         try
-          // `!symlinkSupported` prevents unnecessary deletion of files and then copying them again
-          // in #writeFileAndNotify on machines that don't support symlinks.
-          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then
-            afterFileUpToDate(ref, p, outputDirectory)
-            p
+          if Digest.sameDigest(p, d) then
+            val result =
+              if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
+            afterFileUpToDate(ref, result, outputDirectory)
+            result
           else
             // println(s"- syncFile: $p has different digest")
             IO.delete(p.toFile())

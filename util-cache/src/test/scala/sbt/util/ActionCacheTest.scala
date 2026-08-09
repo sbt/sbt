@@ -115,6 +115,63 @@ object ActionCacheTest extends BasicTestSuite:
         assert((dir / "a.txt").exists, "a.txt not re-extracted after the directory was deleted")
         assert((dir / "b.txt").exists, "b.txt not re-extracted after the directory was deleted")
 
+  test("Disk cache does not re-extract a dirzip whose archive digest already matches"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+
+        // packageDirectory leaves a regular file whose digest already matches the blob, so the
+        // extracted tree is in sync by construction and syncing must not unpackage it again.
+        IO.write(dir / "a.txt", "diverged")
+        cache.syncBlobs(refs, outputDirectory)
+        assert(IO.read(dir / "a.txt") == "diverged")
+
+  test("Disk cache relinks a digest-matching dirzip to the CAS"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+        val zipPath = Paths.get(dir.toString + ActionCache.dirZipExt)
+        assert(!Files.isSymbolicLink(zipPath), "packageDirectory should leave a regular file")
+
+        cache.syncBlobs(refs, outputDirectory)
+        assert(Files.isSymbolicLink(zipPath), "digest-matching archive was not relinked to the CAS")
+
+  test("Disk cache re-extracts a dirzip whose archive digest differs"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+
+        IO.write(Paths.get(dir.toString + ActionCache.dirZipExt).toFile(), "not an archive")
+        IO.write(dir / "a.txt", "diverged")
+        IO.write(dir / "stray.txt", "stray")
+        cache.syncBlobs(refs, outputDirectory)
+        assert(IO.read(dir / "a.txt") == "contents A", "diverged file was not restored")
+        assert(!(dir / "stray.txt").exists, "stray file was not removed")
+
   test("In-memory cache can hold action value"):
     withInMemoryCache(testActionCacheBasic)
 

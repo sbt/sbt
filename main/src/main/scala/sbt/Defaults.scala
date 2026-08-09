@@ -3096,9 +3096,9 @@ object Classpaths {
           .map(m => d.withRevision(m.module.revision))
       }.distinct
     }.value,
-    publish := LibraryManagement.ivylessPublishTask.tag(Tags.Publish, Tags.Network).value,
-    publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
-    publishM2 := LibraryManagement.ivylessPublishM2Task.tag(Tags.Publish, Tags.Network).value,
+    publish := publishOrSkip(publishConfiguration, publish / skip).value,
+    publishLocal := publishOrSkip(publishLocalConfiguration, publishLocal / skip).value,
+    publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,
     credentials ++= Def.uncached {
       val alreadyContainsCentralCredentials: Boolean = credentials.value.exists {
         case d: Credentials.DirectCredentials => d.host == Sona.host
@@ -3509,9 +3509,24 @@ object Classpaths {
     },
     ivySbt := Def.uncached((): Any),
     ivyModule := Def.uncached((): Any),
-    publisher := Def.uncached(
-      Classpaths.defaultPublisher(dependencyResolution.value, fullResolvers.value.toVector)
-    ),
+    publisher := Def.uncached {
+      val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
+        new File(sys.props("user.home")) / ".ivy2"
+      }
+      val localResolver = Resolver.file("local", ivyHome / "local")(using Resolver.ivyStylePatterns)
+      // publishLocal/publishM2/publish target these by name (see publishConfig's resolverName
+      // default and publishM2Configuration below).
+      val knownResolvers = localResolver +: otherResolvers.value
+      Publisher(
+        GenericPublisher(
+          dependencyResolution.value,
+          fullResolvers.value.toVector,
+          csrProject.value.withPublications(csrPublications.value),
+          allCredentials.value,
+          knownResolvers
+        )
+      )
+    },
     allCredentials := Def.uncached(LMCoursier.allCredentialsTask.value),
     transitiveUpdate := Def.uncached(transitiveUpdateTask.value),
     updateCacheName := {
@@ -3934,15 +3949,17 @@ object Classpaths {
   ): Initialize[Task[Unit]] =
     Def
       .taskIf {
-        if (skip.value) {
+        if skip.value then
           val log = streams.value.log
           val ref = thisProjectRef.value
           logSkipPublish(log, ref)
-        } else {
-          sys.error(
-            "publishOrSkip requires the sbt-ivy plugin. Use publish/publishLocal for ivyless publishing."
-          )
-        }
+        else
+          val conf = config.value
+          val log = streams.value.log
+          val intf = publisher.value
+          val module =
+            intf.moduleDescriptor(moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration])
+          intf.publish(module, conf, log)
       }
       .tag(Tags.Publish, Tags.Network)
 
@@ -4394,53 +4411,6 @@ object Classpaths {
   private object NoOpResolver:
     val name = "inter-project"
     override def toString: String = name
-
-  /** Default publisher that delegates moduleDescriptor to Coursier and generates POM without Ivy. */
-  private[sbt] def defaultPublisher(
-      lm: DependencyResolution,
-      resolvers: Vector[Resolver] = Vector.empty,
-  ): Publisher =
-    Publisher(new PublisherInterface {
-      def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
-        lm.moduleDescriptor(moduleSetting)
-      def publish(
-          module: ModuleDescriptor,
-          configuration: PublishConfiguration,
-          log: Logger
-      ): Unit =
-        sys.error("Ivy-based publish requires the sbt-ivy plugin or useIvy := true")
-      def makePomFile(
-          module: ModuleDescriptor,
-          configuration: MakePomConfiguration,
-          log: Logger
-      ): java.io.File =
-        val file = configuration.file.getOrElse(sys.error("makePom file must be specified."))
-        val ms = module.moduleSettings.asInstanceOf[ModuleDescriptorConfiguration]
-        val mid = ms.module
-        val info = configuration.moduleInfo.orElse(Option(ms.moduleInfo))
-        val deps = module.directDependencies
-        val extra = configuration.extra.getOrElse(scala.xml.NodeSeq.Empty)
-        val confs = configuration.configurations
-        val scalaInfo = ms.scalaModuleInfo
-        val pomXml =
-          sbt.internal.PomGenerator.makePom(
-            mid,
-            info,
-            deps,
-            confs,
-            extra,
-            scalaInfo,
-            resolvers,
-            configuration.filterRepositories,
-            configuration.allRepositories,
-          )
-        val processed = configuration.process(pomXml)
-        val printer = new scala.xml.PrettyPrinter(1000, 4)
-        val formatted = scala.xml.XML.loadString(printer.format(processed))
-        scala.xml.XML.save(file.getAbsolutePath, formatted, "UTF-8", xmlDecl = true)
-        log.info("Wrote " + file.getAbsolutePath)
-        file
-    })
 
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
