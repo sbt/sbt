@@ -971,6 +971,22 @@ object Defaults extends BuildCommon {
           val cp = converter.toVirtualFile(converter.toPath(backendOutput.value)) +:
             data(cp0).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
+        },
+        compileInputs2 := Def.uncached {
+          compileScalaBackend.value
+          val (_, _, packedBackendOutput) = compileIncremental.value
+          val inputs = compileInputs.value
+          val c = fileConverter.value
+          CompileInputs2(
+            packedBackendOutput +: data(dependencyClasspath.value).toVector,
+            sourcesVF.value,
+            scalacOptions.value.toVector,
+            javacOptions.value.toVector,
+            c.toVirtualFile(inputs.options.classesDirectory),
+            c.toVirtualFile(inputs.setup.cacheFile.toPath),
+            extraIncOptions.value.toVector,
+            scalaVersion.value,
+          )
         }
       )
     ) ++
@@ -2327,23 +2343,47 @@ object Defaults extends BuildCommon {
 
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
-    val s = streams.value
-    val r = compileScalaBackend.value
-    val in0 = (compileJava / compileInputs).value
-    val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
+    val backendResult = compileScalaBackend.value
+    val result = cachedCompileJavaTask.result.value
     val reporter = (compile / bspReporter).value
-    try
-      val result0 = incCompiler
-        .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
-        .compileAllJava(in, s.log)
-      reporter.sendSuccessReport(result0.analysis())
-      result0.withHasModified(result0.hasModified || r.hasModified)
-    catch {
-      case NonFatal(e) =>
-        reporter.sendFailureReport(in.options.sources)
-        throw e
+    val inputs = (compileJava / compileInputs).value
+    val c = fileConverter.value
+    result match {
+      case Result.Value(hasModified) =>
+        val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+        val contents = store.unsafeGet()
+        reporter.sendSuccessReport(contents.getAnalysis())
+        CompileResult.of(
+          contents.getAnalysis(),
+          contents.getMiniSetup(),
+          hasModified || backendResult.hasModified
+        )
+      case Result.Inc(cause) =>
+        reporter.sendFailureReport(inputs.options.sources)
+        throw cause
     }
   }
+
+  private val cachedCompileJavaTask = Def
+    .cachedTask {
+      val s = streams.value
+      val in0 = (compileJava / compileInputs).value
+      val ci2 = (compileJava / compileInputs2).value
+      val c = fileConverter.value
+      val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val previous = store.unsafeGet()
+      val in = in0.withPreviousResult(
+        PreviousResult.of(previous.getAnalysis(), previous.getMiniSetup())
+      )
+      val result = incCompiler
+        .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
+        .compileAllJava(in, s.log)
+      store.set(AnalysisContents.create(result.analysis(), result.setup()))
+      Def.declareOutput(c.toVirtualFile(in.setup.cacheFile.toPath))
+      Def.declareOutputDirectory(c.toVirtualFile(in.options.classesDirectory))
+      result.hasModified
+    }
+    .tag(Tags.Compile, Tags.CPU)
 
   private def compileIncrementalTaskImpl(
       task: BspCompileTask,
@@ -4421,9 +4461,9 @@ object Classpaths {
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
     val resourceDirs = resourceDirectories.value
-    val _ = compile.value
+    compile.value
     val backendDir = c.toPath(backendOutput.value)
-    val _ = resources.value
+    resources.value
     backendDir.toFile() :: resourceDirs.toList.filter(_.exists())
   }
 
