@@ -22,7 +22,7 @@ import scala.jdk.CollectionConverters.*
 import xsbti.PathBasedFile
 import xsbti.VirtualFile
 import xsbti.VirtualFileRef
-import dotty.tools.dotc.ast.untpd.{ Annotated, ValOrDefDef, Tree }
+import dotty.tools.dotc.ast.untpd.{ Annotated, ValOrDefDef, Tree, ModuleDef, TypeDef }
 
 /**
  *  This file is responsible for compiling the .sbt files used to configure sbt builds.
@@ -100,7 +100,8 @@ private[sbt] object EvaluateConfigurations {
     val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines, options)
     val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
     val (definitions, settings) = splitSettingsDefinitions(
-      addOffsetToRange(offset, settingsAndDefinitions)
+      addOffsetToRange(offset, settingsAndDefinitions),
+      file.name()
     )
     new ParsedFile(allImports, definitions.map(loseTree), settings.map(loseTree))
   }
@@ -303,16 +304,21 @@ private[sbt] object EvaluateConfigurations {
     )
 
   private def splitSettingsDefinitions(
-      lines: Seq[(String, Tree, LineRange)]
+      lines: Seq[(String, Tree, LineRange)],
+      fileName: String
   ): (Seq[(String, Tree, LineRange)], Seq[(String, Tree, LineRange)]) =
-    lines partition { case (_, tree, _) => isDefinition(tree) }
+    lines partition { case (_, tree, range) => isDefinition(tree, fileName, range) }
 
   @tailrec
-  private def isDefinition(tree: Tree): Boolean = {
+  private def isDefinition(tree: Tree, fileName: String, range: LineRange): Boolean = {
     tree match {
-      case Annotated(arg, annot) => isDefinition(arg)
-      case _: ValOrDefDef        => true
-      case _                     => false
+      case Annotated(arg, annot)     => isDefinition(arg, fileName, range)
+      case _: ValOrDefDef            => true
+      case _: ModuleDef | _: TypeDef =>
+        throw new MessageOnlyException(
+          s"${fileName}:${range.start}: Defining types in *.sbt file is not supported"
+        )
+      case _ => false
     }
   }
 
