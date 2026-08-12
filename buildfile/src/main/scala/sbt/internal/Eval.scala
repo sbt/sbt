@@ -5,8 +5,9 @@ import dotty.tools.dotc.ast
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Contexts.{ atPhase, Context }
-import dotty.tools.dotc.core.{ Flags, NameKinds, Names, Phases, Symbols, Types }
+import dotty.tools.dotc.core.{ Flags, NameKinds, Names, Phases, Symbols, Types, Constants }
 import dotty.tools.dotc.core.Periods.Period
+import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.util.SourceFile
@@ -267,8 +268,41 @@ class Eval(
     val run = driver.compiler.newRun
     val source = ev.makeSource(moduleName)
     run.compileSources(source :: Nil)
-    checkError("an error in expression")
     val unit = run.units.head
+    val traverser = new tpd.TreeTraverser {
+      override def traverse(tree: tpd.Tree)(using Context): Unit = {
+        tree match {
+          case x: tpd.TypeDef
+              if x.name.mangledString == s"${moduleName}${NameTransformer.MODULE_SUFFIX_STRING}" =>
+            x.rhs match {
+              case template: tpd.Template =>
+                template.body.foreach {
+                  case defdef: tpd.DefDef if defdef.name.mangledString == WrapValName =>
+                    defdef.rhs match {
+                      case tpd.Block(
+                            (typeDef: tpd.TypeDef) :: Nil,
+                            ast.untpd.Literal(Constants.Constant(()))
+                          ) =>
+                        reporter.report(
+                          Diagnostic.Error(
+                            "Defining types in *.sbt file is not supported",
+                            typeDef.sourcePos
+                          )
+                        )
+                      case _ =>
+                    }
+                  case _ =>
+                }
+              case _ =>
+            }
+          case _: tpd.PackageDef =>
+            traverseChildren(tree)
+          case _ =>
+        }
+      }
+    }
+    traverser.traverse(unit.tpdTree)
+    checkError("an error in expression")
     val extra: A = ev.extract(run, unit)
     backingDir.foreach { backing =>
       ev.write(extra, cacheFile(backing, moduleName))
