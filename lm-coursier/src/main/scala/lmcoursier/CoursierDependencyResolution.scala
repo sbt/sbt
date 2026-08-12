@@ -15,6 +15,7 @@ import lmcoursier.internal.{
   InterProjectRepository,
   LockFile,
   LockedArtifactsRun,
+  RequestedInputsCompanion,
   ResolutionParams,
   ResolutionRun,
   ResolutionSerializer,
@@ -359,13 +360,21 @@ class CoursierDependencyResolution(
         classLoaders = protocolHandlerClassLoader.toSeq,
       )
 
+    val requested =
+      RequestedInputsCompanion.build(
+        resolutionParams.dependencies,
+        resolutionParams.mainRepositories,
+        conf.scalaVersion,
+        resolutionParams
+      )
+
     val e = for {
       (resolutions, lockDataOpt) <- ResolutionRun.resolutionsWithLockFileData(
         resolutionParams,
         verbosityLevel,
         log,
         conf.lockFile,
-        conf.scalaVersion
+        requested
       )
       artifactResult0 <- lockDataOpt match {
         case Some(lockData) =>
@@ -406,7 +415,7 @@ class CoursierDependencyResolution(
             .toMap
           ResolutionSerializer.extractLockFileData(
             resolutions,
-            resolutionParams,
+            requested,
             conf.scalaVersion,
             "2.0.0",
             artifactMap

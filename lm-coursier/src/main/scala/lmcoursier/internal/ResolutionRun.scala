@@ -220,23 +220,12 @@ object ResolutionRun {
     }
   }
 
-  def resolutionsWithLockFile(
-      params: ResolutionParams,
-      verbosityLevel: Int,
-      log: Logger,
-      lockFileOpt: Option[java.io.File],
-      scalaVersion: Option[String]
-  ): Either[coursier.error.ResolutionError, (Map[Configuration, Resolution], Boolean)] = {
-    resolutionsWithLockFileData(params, verbosityLevel, log, lockFileOpt, scalaVersion)
-      .map { case (res, lockDataOpt) => (res, lockDataOpt.isDefined) }
-  }
-
   def resolutionsWithLockFileData(
       params: ResolutionParams,
       verbosityLevel: Int,
       log: Logger,
       lockFileOpt: Option[java.io.File],
-      scalaVersion: Option[String]
+      requested: RequestedInputs
   ): Either[
     coursier.error.ResolutionError,
     (Map[Configuration, Resolution], Option[LockFileData])
@@ -245,13 +234,6 @@ object ResolutionRun {
       .flatMap { lockFile =>
         LockFile.read(lockFile) match {
           case Right(lockData) =>
-            val requested =
-              RequestedInputsCompanion.build(
-                params.dependencies,
-                params.mainRepositories,
-                scalaVersion,
-                params
-              )
             if (requested == lockData.requested) {
               if (verbosityLevel >= 1) {
                 log.info(s"Using lock file: ${lockFile.getAbsolutePath}")
