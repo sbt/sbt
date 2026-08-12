@@ -245,15 +245,14 @@ object ResolutionRun {
       .flatMap { lockFile =>
         LockFile.read(lockFile) match {
           case Right(lockData) =>
-            if (
-              BuildClock.matches(
-                lockData,
+            val requested =
+              RequestedInputsCompanion.build(
                 params.dependencies,
                 params.mainRepositories,
                 scalaVersion,
                 params
               )
-            ) {
+            if (requested == lockData.requested) {
               if (verbosityLevel >= 1) {
                 log.info(s"Using lock file: ${lockFile.getAbsolutePath}")
               }
@@ -261,7 +260,9 @@ object ResolutionRun {
               Some(Right((reconstructed, Some(lockData))))
             } else {
               if (verbosityLevel >= 1) {
-                log.info(s"Lock file outdated, performing resolution")
+                val reasons: Vector[String] =
+                  RequestedInputsCompanion.mismatchReasons(requested, lockData.requested)
+                log.info(s"Lock file outdated (${reasons.mkString(", ")}), performing resolution")
               }
               None
             }

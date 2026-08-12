@@ -16,12 +16,13 @@ object ResolutionSerializer {
       sbtVersion: String,
       artifactMap: Map[Dependency, Seq[(String, String, String)]]
   ): Either[DependencyError, LockFileData] =
-    val buildClock = BuildClock.compute(
-      params.dependencies,
-      params.mainRepositories,
-      scalaVersion,
-      params
-    )
+    val requested: RequestedInputs =
+      RequestedInputsCompanion.build(
+        params.dependencies,
+        params.mainRepositories,
+        scalaVersion,
+        params
+      )
 
     val configurations0 = resolutions.toVector
       .sortBy(_._1.value)
@@ -38,7 +39,7 @@ object ResolutionSerializer {
 
       LockFileData(
         version = LockFileConstants.currentVersion,
-        buildClock = buildClock,
+        requested = requested,
         configurations = configurations,
         metadata = metadata
       )

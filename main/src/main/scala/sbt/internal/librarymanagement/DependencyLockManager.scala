@@ -32,15 +32,14 @@ object DependencyLockManager:
 
   def validate(
       lockFile: File,
-      currentBuildClock: String,
+      currentRequested: RequestedInputs,
       log: Logger
   ): Option[LockFileData] =
     read(lockFile, log).filter { lock =>
-      val isValid = lock.buildClock == currentBuildClock
+      val isValid = currentRequested == lock.requested
       if !isValid then
-        log.debug(
-          s"Lock file is stale (buildClock mismatch: ${lock.buildClock} != $currentBuildClock)"
-        )
+        val reasons = RequestedInputsCompanion.mismatchReasons(currentRequested, lock.requested)
+        log.debug(s"Lock file is stale (${reasons.mkString(", ")})")
       isValid
     }
 
@@ -72,7 +71,7 @@ object DependencyLockManager:
       report: UpdateReport,
       sbtVersion: String,
       scalaVersion: Option[String],
-      buildClock: String,
+      requestedInputs: RequestedInputs,
       log: Logger,
       cacheDir: Option[File] = None
   ): LockFileData =
@@ -113,7 +112,7 @@ object DependencyLockManager:
 
     LockFileData(
       version = LockFileConstants.currentVersion,
-      buildClock = buildClock,
+      requested = requestedInputs,
       configurations = configurations,
       metadata = metadata
     )

@@ -6,11 +6,29 @@ import java.io.File
 import sbt.io.IO
 
 class LockFileSpec extends AnyFunSuite {
+  val requestedInputsSample: RequestedInputs =
+    RequestedInputs(
+      dependencies = Vector(
+        RequestedDependency(
+          configuration = "configuration",
+          organization = "organization",
+          name = "name",
+          version = "version",
+          variantSelector = "variantSelector"
+        )
+      ),
+      repositories = Vector("repository"),
+      scalaVersion = Some("3.3.3"),
+      maxIterations = 50,
+      forceVersions = Vector(RequestedForceVersion("module", "version")),
+      exclusions = Vector(RequestedExclusion("organization", "name")),
+      strict = Some("strict?")
+    )
 
   test("LockFileData serialization round-trip") {
     val lockData = LockFileData(
       version = "1.0",
-      buildClock = "abc123",
+      requested = requestedInputsSample,
       configurations = Vector(
         ConfigurationLock(
           name = "compile",
@@ -52,7 +70,7 @@ class LockFileSpec extends AnyFunSuite {
 
       val readData = readResult.toOption.get
       assert(readData.version == lockData.version)
-      assert(readData.buildClock == lockData.buildClock)
+      assert(readData.requested == lockData.requested)
       assert(readData.configurations.size == 1)
       assert(readData.configurations.head.name == "compile")
       assert(readData.configurations.head.dependencies.size == 1)
@@ -91,7 +109,7 @@ class LockFileSpec extends AnyFunSuite {
 
     val lockData = LockFileData(
       version = "1.0",
-      buildClock = "test",
+      requested = requestedInputsSample,
       configurations = Vector(ConfigurationLock("compile", Vector(dep))),
       metadata = LockFileMetadata("2.0.0", None)
     )
@@ -107,7 +125,7 @@ class LockFileSpec extends AnyFunSuite {
   test("LockFile.write outputs pretty JSON") {
     val lockData = LockFileData(
       version = "1.0",
-      buildClock = "pretty-test",
+      requested = requestedInputsSample,
       configurations = Vector.empty,
       metadata = LockFileMetadata(
         sbtVersion = "2.0.0",

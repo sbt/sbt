@@ -29,9 +29,37 @@ type LockFileMetadata {
   scalaVersion: String
 }
 
+type RequestedDependency {
+  configuration: String! 
+  organization: String! 
+  name: String! 
+  version: String! 
+  variantSelector: String!
+}
+
+type RequestedForceVersion {
+  module: String! 
+  version: String!
+}
+
+type RequestedExclusion {
+  organization: String! 
+  name: String!
+}
+
+type RequestedInputs {
+  dependencies: [lmcoursier.internal.RequestedDependency]
+  repositories: [String]
+  scalaVersion: String 
+  maxIterations: Int! 
+  forceVersions: [lmcoursier.internal.RequestedForceVersion]
+  exclusions: [lmcoursier.internal.RequestedExclusion]
+  strict: String
+}
+
 type LockFileData {
   version: String!
-  buildClock: String!
+  requested: lmcoursier.internal.RequestedInputs!
   configurations: [lmcoursier.internal.ConfigurationLock]
   metadata: lmcoursier.internal.LockFileMetadata!
 }

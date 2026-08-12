@@ -4039,7 +4039,7 @@ object Classpaths {
     val scalaV = scalaVersion.?.value
     val deps = libraryDependencies.value
     val resolverNames = fullResolvers.value.map(_.name)
-    val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+    val requested = DependencyLockFile.computeRequestedInputs(deps, resolverNames)
 
     val cacheDir = csrCacheDirectory.value
     val lock = DependencyLockManager.createFromUpdateReport(
@@ -4047,7 +4047,7 @@ object Classpaths {
       report,
       sv,
       scalaV,
-      buildClock,
+      requested,
       log,
       Some(cacheDir)
     )
@@ -4062,8 +4062,8 @@ object Classpaths {
     if lockFile.exists() then
       val deps = libraryDependencies.value
       val resolverNames = fullResolvers.value.map(_.name)
-      val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
-      DependencyLockManager.validate(lockFile, currentBuildClock, log) match
+      val currentRequested = DependencyLockFile.computeRequestedInputs(deps, resolverNames)
+      DependencyLockManager.validate(lockFile, currentRequested, log) match
         case Some(_) => ()
         case None    =>
           throw new MessageOnlyException(
