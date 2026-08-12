@@ -1,17 +1,9 @@
 package lmcoursier.internal
 
-import coursier.core.{ Configuration, Dependency, Repository }
-import scala.collection.immutable.Seq
-
 object RequestedInputsCompanion {
-  def build(
-      dependencies: Seq[(Configuration, Dependency)],
-      repositories: Seq[Repository],
-      scalaVersion: Option[String],
-      params: ResolutionParams
-  ): RequestedInputs = {
+  def build(scalaVersion: Option[String], params: ResolutionParams): RequestedInputs = {
     val requestedDependencies: Vector[RequestedDependency] =
-      dependencies
+      params.dependencies
         .map { case (config, dep) =>
           RequestedDependency(
             configuration = config.value,
@@ -36,7 +28,7 @@ object RequestedInputsCompanion {
 
     RequestedInputs(
       dependencies = requestedDependencies,
-      repositories = repositories.map(_.toString).toVector,
+      repositories = params.mainRepositories.map(_.toString).toVector,
       scalaVersion = scalaVersion,
       maxIterations = params.params.maxIterations,
       forceVersions = forceVersions,

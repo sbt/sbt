@@ -361,12 +361,7 @@ class CoursierDependencyResolution(
       )
 
     val requested =
-      RequestedInputsCompanion.build(
-        resolutionParams.dependencies,
-        resolutionParams.mainRepositories,
-        conf.scalaVersion,
-        resolutionParams
-      )
+      RequestedInputsCompanion.build(conf.scalaVersion, resolutionParams)
 
     val e = for {
       (resolutions, lockDataOpt) <- ResolutionRun.resolutionsWithLockFileData(
