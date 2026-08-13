@@ -821,50 +821,6 @@ object BuildServerProtocol {
     )
   }
 
-  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] =
-    Def
-      .task {
-        val target = Keys.bspTargetIdentifier.value
-        val scalacOptions = Keys.scalacOptions.value
-        val classDirectory = Keys.classDirectory.value
-        val externalDependencyClasspath = Keys.externalDependencyClasspath.value
-        val internalDependencyClasspath = for {
-          (ref, configs) <- bspInternalDependencyConfigurations.value
-          config <- configs
-        } yield ref / config / Keys.packageBin
-        (
-          target,
-          scalacOptions,
-          classDirectory,
-          externalDependencyClasspath,
-          internalDependencyClasspath
-        )
-      }
-      .flatMapTask {
-        (
-            target,
-            scalacOptions,
-            classDirectory,
-            externalDependencyClasspath,
-            internalDependencyClasspath
-        ) =>
-          Def.task {
-            val converter = fileConverter.value
-            val cp0 = internalDependencyClasspath.join.value.distinct ++
-              externalDependencyClasspath.map(_.data)
-            val classpath = cp0
-              .map(converter.toPath)
-              .map(_.toFile.toURI)
-              .toVector
-            ScalacOptionsItem(
-              target,
-              scalacOptions.toVector,
-              classpath,
-              classDirectory.toURI
-            )
-          }
-      }
-
   private lazy val classpathTask: Def.Initialize[Task[Vector[URI]]] = Def.taskDyn {
     val converter = fileConverter.value
     val externalDependencyClasspath = Keys.externalDependencyClasspath.value

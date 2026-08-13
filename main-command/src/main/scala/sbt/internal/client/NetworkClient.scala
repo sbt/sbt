@@ -1195,7 +1195,7 @@ object NetworkClient {
   }
   private def simpleConsoleInterface(
       doPrintln: String => Unit,
-      useColor: Boolean = Terminal.isColorEnabled
+      useColor: Boolean
   ): ConsoleInterface =
     new ConsoleInterface {
       import scala.Console.{ GREEN, RED, RESET, YELLOW }
@@ -1517,21 +1517,6 @@ object NetworkClient {
       useJNI: Boolean
   ): Int = client(baseDirectory, parseArgs(args), inputStream, errorStream, terminal, useJNI)
 
-  private def simpleClient(
-      arguments: Arguments,
-      inputStream: InputStream,
-      errorStream: PrintStream,
-      useJNI: Boolean,
-      terminal: Terminal
-  ): NetworkClient = {
-    val doPrint: String => Unit = line => {
-      if (terminal.getLastLine.isDefined) terminal.printStream.println()
-      terminal.printStream.println(line)
-    }
-    val interface = NetworkClient.simpleConsoleInterface(doPrint, terminal.isColorEnabled)
-    val printStream = terminal.printStream
-    new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
-  }
   private def simpleClient(
       arguments: Arguments,
       inputStream: InputStream,

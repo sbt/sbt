@@ -33,10 +33,6 @@ sealed class Disabled private () extends sbt.librarymanagement.CrossVersion() wi
   override def toString: String = {
     "Disabled()"
   }
-  private def copy(): Disabled = {
-    new Disabled()
-  }
-
 }
 object Disabled extends sbt.librarymanagement.Disabled {
   def apply(): Disabled = Disabled
@@ -97,7 +93,7 @@ final class Constant private (val value: String)
   override def toString: String = {
     "Constant(" + value + ")"
   }
-  private def copy(value: String = value): Constant = {
+  private def copy(value: String): Constant = {
     new Constant(value)
   }
   def withValue(value: String): Constant = {
@@ -124,9 +120,6 @@ final class Patch private () extends sbt.librarymanagement.CrossVersion() with S
   }
   override def toString: String = {
     "Patch()"
-  }
-  private def copy(): Patch = {
-    new Patch()
   }
 }
 

@@ -22,9 +22,6 @@ object Watched:
 
   type WatchSource = Source
 
-  private def waitMessage(project: String): String =
-    s"Waiting for source changes$project... (press enter to interrupt)"
-
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
 
   object WatchSource {

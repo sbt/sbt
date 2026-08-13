@@ -286,7 +286,7 @@ class GenericPublisher private[sbt] (
   private def credentialFor(
       url: URL,
       credentials: Seq[Credentials.DirectCredentials],
-      realm: Option[String] = None
+      realm: Option[String]
   ): Option[Credentials.DirectCredentials] =
     val byHost = credentials.filter(_.host == url.getHost)
     realm match
