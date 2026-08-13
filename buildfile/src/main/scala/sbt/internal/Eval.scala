@@ -278,19 +278,37 @@ class Eval(
               case template: tpd.Template =>
                 template.body.foreach {
                   case defdef: tpd.DefDef if defdef.name.mangledString == WrapValName =>
-                    defdef.rhs match {
-                      case tpd.Block(
-                            (typeDef: tpd.TypeDef) :: Nil,
-                            ast.untpd.Literal(Constants.Constant(()))
-                          ) =>
+                    PartialFunction
+                      .condOpt(defdef.rhs) {
+                        case tpd.Block(
+                              (typeDef: tpd.TypeDef) :: Nil,
+                              ast.untpd.Literal(Constants.Constant(()))
+                            ) =>
+                          // class
+                          typeDef.sourcePos
+                        case tpd.Block(
+                              (valDef: tpd.ValDef) :: (typeDef: tpd.TypeDef) :: Nil,
+                              ast.untpd.Literal(Constants.Constant(()))
+                            ) if valDef.tpt.tpe =:= typeDef.tpe =>
+                          // object
+                          typeDef.sourcePos
+                        case tpd.Block(
+                              (typeDef1: tpd.TypeDef) :: (valDef: tpd.ValDef) :: (typeDef2: tpd.TypeDef) :: Nil,
+                              ast.untpd.Literal(Constants.Constant(()))
+                            )
+                            if (valDef.tpt.tpe =:= typeDef2.tpe) && (s"${typeDef1.name.mangledString}${NameTransformer.MODULE_SUFFIX_STRING}" ==
+                              typeDef2.name.mangledString) =>
+                          // enum, case class
+                          typeDef1.sourcePos
+                      }
+                      .foreach { pos =>
                         reporter.report(
                           Diagnostic.Error(
                             "Defining types in *.sbt file is not supported",
-                            typeDef.sourcePos
+                            pos
                           )
                         )
-                      case _ =>
-                    }
+                      }
                   case _ =>
                 }
               case _ =>
