@@ -71,6 +71,7 @@ class LockFileSpec extends AnyFunSuite {
 
       val readData = readResult.toOption.get
       assert(readData.version == lockData.version)
+      assert(readData.buildClock == lockData.buildClock)
       assert(readData.requested == lockData.requested)
       assert(readData.configurations.size == 1)
       assert(readData.configurations.head.name == "compile")
