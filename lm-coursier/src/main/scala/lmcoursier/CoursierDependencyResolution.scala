@@ -7,6 +7,7 @@ import coursier.{ Organization, Resolution }
 import coursier.core.{ Classifier, Configuration, Dependency, VariantPublication, Publication }
 import coursier.cache.CacheDefaults
 import coursier.util.Artifact
+import coursier.version.VersionConstraint
 import lmcoursier.definitions.ToCoursier
 import lmcoursier.internal.{
   ArtifactsParams,
@@ -27,7 +28,6 @@ import lmcoursier.syntax.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import coursier.core.BomDependency
-import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Try, Failure }
 
@@ -228,9 +228,7 @@ class CoursierDependencyResolution(
           optionalCrossVer = true,
           projectPlatform = projectPlatform
         )
-      (BomDependency(ToCoursier.module(mod), ver, Configuration.empty): @nowarn(
-        "msg=BomDependency is deprecated"
-      ))
+      BomDependency(ToCoursier.module(mod), VersionConstraint(ver), Configuration.empty)
     }
     // Coursier fills version from BOM only when versionConstraint is empty (Resolution.processedRootDependencies).
     // So for deps with "*" or "" and BOMs present, pass empty version so BOM can supply it (sbt#4531).
@@ -520,7 +518,7 @@ class CoursierDependencyResolution(
       downloadErrors: Seq[coursier.error.ResolutionError.CantDownloadModule]
   ): Map[ModuleID, Seq[ModuleID]] =
     downloadErrors.map { err =>
-      val failedDependency = (Dependency(err.module, err.versionConstraint.asString): @nowarn)
+      val failedDependency = Dependency(err.module, err.versionConstraint)
       val failedModule = toModuleId(err.module, err.versionConstraint.asString)
       failedModule -> resolvePath(resolution, failedDependency, rootModule)
     }.toMap
