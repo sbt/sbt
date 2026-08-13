@@ -410,6 +410,7 @@ class CoursierDependencyResolution(
             .toMap
           ResolutionSerializer.extractLockFileData(
             resolutions,
+            resolutionParams,
             requested,
             conf.scalaVersion,
             "2.0.0",

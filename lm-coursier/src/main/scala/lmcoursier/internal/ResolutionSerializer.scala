@@ -11,11 +11,19 @@ object ResolutionSerializer {
 
   def extractLockFileData(
       resolutions: Map[Configuration, Resolution],
+      params: ResolutionParams,
       requested: RequestedInputs,
       scalaVersion: Option[String],
       sbtVersion: String,
       artifactMap: Map[Dependency, Seq[(String, String, String)]]
   ): Either[DependencyError, LockFileData] =
+    val buildClock = BuildClock.compute(
+      params.dependencies,
+      params.mainRepositories,
+      scalaVersion,
+      params
+    )
+
     val configurations0 = resolutions.toVector
       .sortBy(_._1.value)
       .map { case (config, resolution) =>
@@ -31,6 +39,7 @@ object ResolutionSerializer {
 
       LockFileData(
         version = LockFileConstants.currentVersion,
+        buildClock = buildClock,
         requested = requested,
         configurations = configurations,
         metadata = metadata

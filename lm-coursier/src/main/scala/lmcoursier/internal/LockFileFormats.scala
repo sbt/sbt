@@ -262,11 +262,12 @@ trait LockFileDataFormats {
         case Some(js) =>
           unbuilder.beginObject(js)
           val version = unbuilder.readField[String]("version")
+          val buildClock = unbuilder.readField[String]("buildClock")
           val requested = unbuilder.readField[RequestedInputs]("requested")
           val configurations = unbuilder.readField[Vector[ConfigurationLock]]("configurations")
           val metadata = unbuilder.readField[LockFileMetadata]("metadata")
           unbuilder.endObject()
-          LockFileData(version, requested, configurations, metadata)
+          LockFileData(version, buildClock, requested, configurations, metadata)
         case None =>
           deserializationError("Expected JsObject but found None")
       }
@@ -274,6 +275,7 @@ trait LockFileDataFormats {
     override def write[J](obj: LockFileData, builder: Builder[J]): Unit = {
       builder.beginObject()
       builder.addField("version", obj.version)
+      builder.addField("buildClock", obj.buildClock)
       builder.addField("requested", obj.requested)
       builder.addField("configurations", obj.configurations)
       builder.addField("metadata", obj.metadata)

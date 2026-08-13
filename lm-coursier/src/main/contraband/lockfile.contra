@@ -59,6 +59,7 @@ type RequestedInputs {
 
 type LockFileData {
   version: String!
+  buildClock: String!
   requested: lmcoursier.internal.RequestedInputs!
   configurations: [lmcoursier.internal.ConfigurationLock]
   metadata: lmcoursier.internal.LockFileMetadata!

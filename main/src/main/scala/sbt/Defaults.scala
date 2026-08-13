@@ -4039,6 +4039,7 @@ object Classpaths {
     val scalaV = scalaVersion.?.value
     val deps = libraryDependencies.value
     val resolverNames = fullResolvers.value.map(_.name)
+    val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
     val requested = DependencyLockFile.computeRequestedInputs(deps, resolverNames)
 
     val cacheDir = csrCacheDirectory.value
@@ -4047,6 +4048,7 @@ object Classpaths {
       report,
       sv,
       scalaV,
+      buildClock,
       requested,
       log,
       Some(cacheDir)

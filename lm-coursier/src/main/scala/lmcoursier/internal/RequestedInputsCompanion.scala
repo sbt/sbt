@@ -1,6 +1,17 @@
 package lmcoursier.internal
 
 object RequestedInputsCompanion {
+  val empty: RequestedInputs =
+    RequestedInputs(
+      dependencies = Vector.empty,
+      repositories = Vector.empty,
+      scalaVersion = None,
+      maxIterations = 0,
+      forceVersions = Vector.empty,
+      exclusions = Vector.empty,
+      strict = None
+    )
+
   def build(scalaVersion: Option[String], params: ResolutionParams): RequestedInputs = {
     val requestedDependencies: Vector[RequestedDependency] =
       params.dependencies

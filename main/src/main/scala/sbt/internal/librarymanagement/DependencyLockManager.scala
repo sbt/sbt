@@ -32,6 +32,20 @@ object DependencyLockManager:
 
   def validate(
       lockFile: File,
+      currentBuildClock: String,
+      log: Logger
+  ): Option[LockFileData] =
+    read(lockFile, log).filter { lock =>
+      val isValid = lock.buildClock == currentBuildClock
+      if !isValid then
+        log.debug(
+          s"Lock file is stale (buildClock mismatch: ${lock.buildClock} != $currentBuildClock)"
+        )
+      isValid
+    }
+
+  def validate(
+      lockFile: File,
       currentRequested: RequestedInputs,
       log: Logger
   ): Option[LockFileData] =
@@ -66,14 +80,13 @@ object DependencyLockManager:
             )
           converted
 
-  def createFromUpdateReport(
-      projectId: String,
+  private def buildLockFileData(
       report: UpdateReport,
       sbtVersion: String,
       scalaVersion: Option[String],
+      buildClock: String,
       requestedInputs: RequestedInputs,
-      log: Logger,
-      cacheDir: Option[File] = None
+      cacheDir: Option[File]
   ): LockFileData =
     val configurations = report.configurations.map { configReport =>
       val deps = configReport.modules.map { moduleReport =>
@@ -112,9 +125,47 @@ object DependencyLockManager:
 
     LockFileData(
       version = LockFileConstants.currentVersion,
+      buildClock = buildClock,
       requested = requestedInputs,
       configurations = configurations,
       metadata = metadata
+    )
+
+  def createFromUpdateReport(
+      projectId: String,
+      report: UpdateReport,
+      sbtVersion: String,
+      scalaVersion: Option[String],
+      buildClock: String,
+      log: Logger,
+      cacheDir: Option[File] = None
+  ): LockFileData =
+    buildLockFileData(
+      report,
+      sbtVersion,
+      scalaVersion,
+      buildClock,
+      RequestedInputsCompanion.empty,
+      cacheDir
+    )
+
+  def createFromUpdateReport(
+      projectId: String,
+      report: UpdateReport,
+      sbtVersion: String,
+      scalaVersion: Option[String],
+      buildClock: String,
+      requested: RequestedInputs,
+      log: Logger,
+      cacheDir: Option[File]
+  ): LockFileData =
+    buildLockFileData(
+      report,
+      sbtVersion,
+      scalaVersion,
+      buildClock,
+      requested,
+      cacheDir
     )
 
   def getLockedVersions(
