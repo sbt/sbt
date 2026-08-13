@@ -9,11 +9,12 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
+import java.net.URI
 import scala.util.Try
-import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
+import sjsonnew.{ Builder, IsoStringLong, JsonFormat, Unbuilder, deserializationError }
+import sbt.io.IO
 import sbt.util.CacheStore
 import sbt.librarymanagement.*
-import sbt.librarymanagement.LibraryManagementCodec.given
 
 final case class UpdateReportCache(
     lite: UpdateReportLite,
@@ -23,6 +24,43 @@ final case class UpdateReportCache(
 )
 
 object UpdateReportPersistence:
+
+  /**
+   * The generated library-management codecs, with the artifact content hash disabled: nothing reads the
+   * hash back, and computing it re-reads the whole downloaded classpath.
+   *
+   * `fileStringLongIso` is virtual, so overriding it also reaches the `Vector[(Artifact, File)]` nested
+   * inside the generated `ModuleReportFormat`.
+   */
+  private[sbt] object CacheCodec extends LibraryManagementCodec:
+    override implicit lazy val fileStringLongIso: IsoStringLong[File] =
+      IsoStringLong.iso[File](
+        (f: File) => (IO.toURI(f).toASCIIString, 0L),
+        (p: (String, Long)) => IO.toFile(new URI(p._1))
+      )
+
+  end CacheCodec
+
+  import CacheCodec.given
+
+  /** Interns the modules of a decoded cache, in a pass since the generated reader has no hook. */
+  private def internModules(cache: UpdateReportCache): UpdateReportCache =
+    cache.copy(lite =
+      UpdateReportLite(
+        cache.lite.configurations.map(cr =>
+          ConfigurationReportLite(
+            cr.configuration,
+            cr.details.map(d =>
+              OrganizationArtifactReport(
+                d.organization,
+                d.name,
+                d.modules.map(UpdateReportInterner.intern)
+              )
+            )
+          )
+        )
+      )
+    )
 
   given updateReportCacheFormat: JsonFormat[UpdateReportCache] =
     new JsonFormat[UpdateReportCache]:
@@ -38,7 +76,7 @@ object UpdateReportPersistence:
             val stamps = unbuilder.readField[Map[String, Long]]("stamps")
             val cachedDescriptor = unbuilder.readField[File]("cachedDescriptor")
             unbuilder.endObject()
-            UpdateReportCache(lite, stats, stamps, cachedDescriptor)
+            internModules(UpdateReportCache(lite, stats, stamps, cachedDescriptor))
           case None =>
             deserializationError("Expected JsObject but found None")
 
@@ -69,6 +107,7 @@ object UpdateReportPersistence:
       .orElse(
         Try(store.read[UpdateReport]()).toOption
           .map(toCache)
+          .map(internModules)
       )
 
   def writeTo(store: CacheStore, cache: UpdateReportCache): Unit =

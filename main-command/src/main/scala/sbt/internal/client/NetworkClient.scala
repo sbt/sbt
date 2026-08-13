@@ -16,7 +16,7 @@ import java.net.{ Socket, SocketException }
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
+import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, Semaphore, TimeUnit }
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
@@ -167,22 +167,25 @@ class NetworkClient(
 
   private val stdinBytes = new LinkedBlockingQueue[Integer]
   private val inLock = new Object
-  private val inputThread = new AtomicReference[RawInputThread]
+  // A single persistent reader for the life of the client.
+  private val inputThread = new RawInputThread
   private val exitClean = new AtomicBoolean(true)
   private val inClientSideRun = new AtomicBoolean(false)
   private val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
   private class ServerFailedException extends Exception
-  private def startInputThread(): Unit = inputThread.get match {
-    case null => inputThread.set(new RawInputThread)
-    case _    =>
-  }
+  private[client] def startInputThread(): Unit = inputThread.request()
   private lazy val log: Logger = new Logger {
     def trace(t: => Throwable): Unit = ()
     def success(message: => String): Unit = ()
     def log(level: Level.Value, message: => String): Unit = console.appendLog(level, message)
   }
   private val interactive = arguments.commandArguments.isEmpty
+  private val startupMessages: List[String] =
+    "entering thin client - BEEP WHIRR" ::
+      "starting sbt server in the background" ::
+      "use 'sbt shutdown' to shutdown the server" ::
+      " " :: Nil
 
   private[sbt] def connectOrStartServerAndConnect(
       promptCompleteUsers: Boolean,
@@ -297,16 +300,12 @@ class NetworkClient(
                 console.appendLog(Level.Info, s"${if (log) "sbt server " else ""}disconnected")
               }
               stdinBytes.offer(-1)
-              Option(inputThread.get).foreach(_.close())
+              inputThread.close()
               Option(interactiveThread.get).foreach(_.interrupt)
             }
           case `readSystemIn`       => startInputThread()
-          case `cancelReadSystemIn` =>
-            inputThread.get match {
-              case null =>
-              case t    => t.close()
-            }
-          case _ => self.onNotification(msg)
+          case `cancelReadSystemIn` => inputThread.cancel()
+          case _                    => self.onNotification(msg)
         }
       }
       override protected def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
@@ -337,6 +336,21 @@ class NetworkClient(
     conn
   }
 
+  private def bootSocketOpt(bootSocketName: String, namedPipeName: String): Option[Socket] =
+    Try(ClientSocket.bootSocket(bootSocketName)).toOption match
+      case Some(x)                => Some(x)
+      case None if Util.isWindows =>
+        Try(ClientSocket.localSocket(namedPipeName, useJNI)).toOption
+      case _ => None
+
+  private def connectTimeout: FiniteDuration =
+    sys.env
+      .get("SBT_CLIENT_CONNECT_TIMEOUT")
+      .flatMap(_.toIntOption)
+      .map(_.seconds)
+      .getOrElse(5.minutes)
+  private var connectDeadlineExpired = false
+
   /**
    * Forks another instance of sbt in the background.
    * This instance must be shutdown explicitly via `sbt -client shutdown`
@@ -346,21 +360,21 @@ class NetworkClient(
     val target = base.resolve("project").resolve("target")
     val hash = HashUtil.farmHash(target.toString().getBytes("UTF-8"))
     val bootSocketName = BootServerSocket.socketLocation(base, hash)
+    val namedPipeName = BootServerSocket.namedPipeLocation(hash)
 
     /*
      * For unknown reasons, linux sometimes struggles to connect to the socket in some
      * scenarios.
      */
-    var socket: Option[Socket] =
-      if (!Properties.isLinux) Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
-      else None
+    var socket: Option[Socket] = bootSocketOpt(bootSocketName, namedPipeName)
     val term = Terminal.console
     term.exitRawMode()
     var serverStderrFile: Option[File] = None
     val process = socket match {
       case None if startServer =>
-        if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
-
+        if log then
+          startupMessages.foreach: msg =>
+            console.appendLog(Level.Info, msg)
         val props =
           Seq(
             term.getWidth,
@@ -370,31 +384,19 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
-        val cmd = arguments.sbtLaunchJar match {
-          case Some(lj) =>
-            if (log) {
-              val sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
-              console.appendLog(Level.Warn, s"server is started using sbt-launch jar directly")
-              console.appendLog(
-                Level.Warn,
-                "this is not the recommended way: .sbtopts and .jvmopts files are not loaded and SBT_OPTS is ignored"
-              )
-              console.appendLog(
-                Level.Warn,
-                s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
-              )
-            }
-            val java = Option(Properties.javaHome)
-              .map { javaHome =>
-                s"$javaHome/bin/java"
-              }
-              .getOrElse("java")
-            List(java) ++ arguments.sbtArguments ++
-              List("-jar", lj, DashDashDetachStdio, DashDashServer)
-          case _ =>
-            List(arguments.sbtScript) ++ arguments.sbtArguments ++
-              List(DashDashDetachStdio, DashDashServer)
+        if (log && arguments.sbtLaunchJar.isDefined) {
+          val sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+          console.appendLog(Level.Warn, s"server is started using sbt-launch jar directly")
+          console.appendLog(
+            Level.Warn,
+            "this is not the recommended way: .sbtopts and .jvmopts files are not loaded and SBT_OPTS is ignored"
+          )
+          console.appendLog(
+            Level.Warn,
+            s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
+          )
         }
+        val cmd = NetworkClient.serverCommand(arguments)
 
         // https://github.com/sbt/sbt/issues/6271
         val nohup =
@@ -434,7 +436,7 @@ class NetworkClient(
     if (!startServer) {
       val deadline = 5.seconds.fromNow
       while (socket.isEmpty && !deadline.isOverdue()) {
-        socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+        socket = bootSocketOpt(bootSocketName, namedPipeName)
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
@@ -455,7 +457,7 @@ class NetworkClient(
           val buffer = mutable.ArrayBuffer.empty[Byte]
           while (readThreadAlive.get) {
             if (socket.isEmpty) {
-              socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+              socket = bootSocketOpt(bootSocketName, namedPipeName)
             }
             socket.foreach { s =>
               try {
@@ -488,6 +490,7 @@ class NetworkClient(
         } catch { case e: IOException => e.printStackTrace(System.err) }
       }
     }
+    val connectDeadline = connectTimeout.fromNow
     @tailrec
     def blockUntilStart(): Unit = {
       val stop =
@@ -531,9 +534,10 @@ class NetworkClient(
        */
       val existsValidProcess =
         process.fold(readThreadAlive.get)(p => p.isAlive || (Properties.isWin || p.exitValue == 2))
-      if (!portfile.exists && !stop && existsValidProcess) {
+      if (!portfile.exists && !stop && existsValidProcess && !connectDeadline.isOverdue()) {
         blockUntilStart()
       } else {
+        connectDeadlineExpired = connectDeadline.isOverdue() && !portfile.exists
         socket.foreach { s =>
           s.getInputStream.close()
           s.getOutputStream.close()
@@ -555,6 +559,12 @@ class NetworkClient(
       Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
     if (!portfile.exists()) {
+      if (connectDeadlineExpired) {
+        errorStream.write(
+          s"sbt server did not start within ${connectTimeout.toSeconds} seconds\n".getBytes("UTF-8")
+        )
+        errorStream.flush()
+      }
       // Print captured server stderr so users can see why the server failed to start
       for (errFile <- serverStderrFile) {
         try {
@@ -570,7 +580,7 @@ class NetworkClient(
     }
     // Clean up stderr temp file on successful startup
     serverStderrFile.foreach(_.delete())
-    if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
+    if (attached.get && !stdinBytes.isEmpty) inputThread.drain()
   }
 
   /** Called on the response for a returning message. */
@@ -607,7 +617,7 @@ class NetworkClient(
     case msg if attachUUID.get == msg.id =>
       attachUUID.set(null)
       attached.set(true)
-      Option(inputThread.get).foreach(_.drain())
+      inputThread.drain()
       ()
   }
   def completeExec(execId: String, exitCode: Int) = {
@@ -963,10 +973,8 @@ class NetworkClient(
           catch { case _: InterruptedException => }
           if (exitClean.get) 0 else 1
         }
-        if (interactive) {
-          console.appendLog(Level.Info, "terminate the server with `shutdown`")
-          block()
-        } else if (exit) 0
+        if interactive then block()
+        else if exit then 0
         else {
           batchMode.set(true)
           val res = batchExecute(userCommands.toList)
@@ -1125,28 +1133,42 @@ class NetworkClient(
           try sendExecCommand("exit")
           finally c.close()
       }
-      Option(inputThread.get).foreach(_.interrupt())
+      inputThread.close()
     } catch {
       case t: Throwable => t.printStackTrace(); throw t
     }
 
-  private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
+  /**
+   * Reads stdin on behalf of the server, which asks for it one byte at a time via
+   * `readSystemIn`/`cancelReadSystemIn` notifications. The design here answers two problems:
+   *
+   *   - (2020, #5828/#5863/#5856) Switching the terminal between raw and canonical mode can't
+   *     happen while a read is blocked on it. So a read must exist only for as long as the
+   *     server has actually asked for a byte, never sitting on the terminal unrequested.
+   *   - (2026, #9507) Satisfying that by spawning a thread per byte that exits once forwarded
+   *     races the next request against that exit: a `readSystemIn` arriving mid-exit is silently
+   *     dropped, and since nothing else will ever ask for that byte again, the session stops
+   *     accepting input.
+   */
+  private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable:
     setDaemon(true)
+    private val stopped = AtomicBoolean(false)
+    private val readGate = Semaphore(0)
     start()
-    val stopped = new AtomicBoolean(false)
-    override final def run(): Unit = {
-      def read(): Unit = {
-        val b = inputStream.read
-        inLock.synchronized(stdinBytes.offer(b))
-        if (attached.get()) drain()
-      }
-      try read()
-      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
-      finally {
-        inputThread.set(null)
-      }
-    }
 
+    override final def run(): Unit =
+      while !stopped.get do
+        try
+          readGate.acquire()
+          if !stopped.get then
+            val b = inputStream.read
+            inLock.synchronized(stdinBytes.offer(b))
+            if attached.get() then drain()
+            if b == -1 then stopped.set(true)
+        catch case _: InterruptedException | NonFatal(_) => ()
+
+    def request(): Unit = readGate.release()
+    def cancel(): Unit = interrupt()
     def drain(): Unit = inLock.synchronized {
       while (!stdinBytes.isEmpty) {
         val byte = stdinBytes.poll()
@@ -1154,10 +1176,11 @@ class NetworkClient(
       }
     }
 
-    override def close(): Unit = {
+    override def close(): Unit =
+      stopped.set(true)
+      readGate.release()
       RawInputThread.this.interrupt()
-    }
-  }
+  end RawInputThread
 }
 
 object NetworkClient {
@@ -1172,7 +1195,7 @@ object NetworkClient {
   }
   private def simpleConsoleInterface(
       doPrintln: String => Unit,
-      useColor: Boolean = Terminal.isColorEnabled
+      useColor: Boolean
   ): ConsoleInterface =
     new ConsoleInterface {
       import scala.Console.{ GREEN, RED, RESET, YELLOW }
@@ -1198,6 +1221,7 @@ object NetworkClient {
       val sbtScript: String,
       val bsp: Boolean,
       val sbtLaunchJar: Option[String],
+      val launcherValueArgs: Seq[String] = Nil,
   ) {
     def withBaseDirectory(file: File): Arguments =
       new Arguments(
@@ -1208,8 +1232,20 @@ object NetworkClient {
         sbtScript,
         bsp,
         sbtLaunchJar,
+        launcherValueArgs,
       )
   }
+  private[client] def serverCommand(arguments: Arguments): List[String] =
+    arguments.sbtLaunchJar match {
+      case Some(lj) =>
+        val java =
+          Option(Properties.javaHome).map(javaHome => s"$javaHome/bin/java").getOrElse("java")
+        List(java) ++ arguments.sbtArguments.filterNot(emptyBuildFlags.contains) ++
+          List("-jar", lj, DashDashDetachStdio, DashDashServer)
+      case _ =>
+        List(arguments.sbtScript) ++ arguments.launcherValueArgs ++ arguments.sbtArguments ++
+          List(DashDashDetachStdio, DashDashServer)
+    }
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"
   private[client] val noStdErr = "--no-stderr"
@@ -1270,11 +1306,13 @@ object NetworkClient {
     "--no-share",
     "-no-global",
     "--no-global",
+    "shutdownall"
+  )
+  private[client] val emptyBuildFlags: Set[String] = Set(
     "-allow-empty",
     "--allow-empty",
     "-sbt-create",
     "--sbt-create",
-    "shutdownall",
   )
   // Prefixes for launcher flags using = syntax
   private[client] val launcherEqPrefixes: Seq[String] = Seq(
@@ -1285,6 +1323,8 @@ object NetworkClient {
     "--autostart=",
     "-autostart=",
   )
+  private[client] val launcherValueEqPrefixes: Seq[String] =
+    launcherValueFlags.toSeq.map(_ + "=")
   private[client] def parseArgs(args: Array[String]): Arguments = {
     val defaultSbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
     var sbtScript = Properties.propOrNone("sbt.script")
@@ -1293,16 +1333,40 @@ object NetworkClient {
     val commandArgs = new mutable.ArrayBuffer[String]
     val sbtArguments = new mutable.ArrayBuffer[String]
     val completionArguments = new mutable.ArrayBuffer[String]
+    val launcherValueArgs = new mutable.ArrayBuffer[String]
     val SysProp = "-D([^=]+)=(.*)".r
-    val sanitized = args.flatMap {
-      case a if a.startsWith("\"") => Array(a)
-      case a                       => a.split(" ")
+    val sanitized = new mutable.ArrayBuffer[String]
+    val splitFromPrev = new mutable.ArrayBuffer[Boolean]
+    args.foreach {
+      case a if a.startsWith("\"") =>
+        sanitized += a
+        splitFromPrev += false
+      case a =>
+        var first = true
+        a.split(" ").foreach { part =>
+          if (part.nonEmpty) {
+            sanitized += part
+            splitFromPrev += !first
+            first = false
+          }
+        }
+    }
+    def valueFrom(start: Int): (String, Int) = {
+      var last = start
+      val sb = new StringBuilder(sanitized(start))
+      while (last + 1 < sanitized.length && splitFromPrev(last + 1)) {
+        last += 1
+        sb.append(" ").append(sanitized(last))
+      }
+      (sb.toString, last)
     }
     var i = 0
     while (i < sanitized.length) {
       sanitized(i) match {
-        case a if completionArguments.nonEmpty => completionArguments += a
-        case a if commandArgs.nonEmpty         => commandArgs += a
+        case a if completionArguments.nonEmpty                        => completionArguments += a
+        case a if commandArgs.nonEmpty && emptyBuildFlags.contains(a) =>
+          sbtArguments += a
+        case a if commandArgs.nonEmpty                                     => commandArgs += a
         case a if a == noStdErr || a == noTab || a.startsWith(completions) =>
           completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
@@ -1329,7 +1393,20 @@ object NetworkClient {
         case a if a.startsWith("-autostart=") =>
           System.setProperty("sbt.server.autostart", a.stripPrefix("-autostart="))
         case a if launcherValueFlags.contains(a) =>
-          if (i + 1 < sanitized.length) i += 1
+          if (i + 1 < sanitized.length) {
+            launcherValueArgs += a
+            val (value, last) = valueFrom(i + 1)
+            launcherValueArgs += value
+            i = last
+          }
+        case a if launcherValueEqPrefixes.exists(p => a.startsWith(p)) =>
+          val (full, last) = valueFrom(i)
+          i = last
+          val eq = full.indexOf('=')
+          if (eq < full.length - 1) {
+            launcherValueArgs += full.substring(0, eq)
+            launcherValueArgs += full.substring(eq + 1)
+          }
         case a if launcherNoValueFlags.contains(a)                => ()
         case a if launcherEqPrefixes.exists(p => a.startsWith(p)) => ()
         case a if a.startsWith("-J")                              => ()
@@ -1356,6 +1433,7 @@ object NetworkClient {
       sbtScript.getOrElse(defaultSbtScript).replace("%20", " "),
       bsp,
       launchJar,
+      launcherValueArgs.toSeq,
     )
   }
 
@@ -1439,21 +1517,6 @@ object NetworkClient {
       useJNI: Boolean
   ): Int = client(baseDirectory, parseArgs(args), inputStream, errorStream, terminal, useJNI)
 
-  private def simpleClient(
-      arguments: Arguments,
-      inputStream: InputStream,
-      errorStream: PrintStream,
-      useJNI: Boolean,
-      terminal: Terminal
-  ): NetworkClient = {
-    val doPrint: String => Unit = line => {
-      if (terminal.getLastLine.isDefined) terminal.printStream.println()
-      terminal.printStream.println(line)
-    }
-    val interface = NetworkClient.simpleConsoleInterface(doPrint, terminal.isColorEnabled)
-    val printStream = terminal.printStream
-    new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
-  }
   private def simpleClient(
       arguments: Arguments,
       inputStream: InputStream,
@@ -1545,7 +1608,8 @@ object NetworkClient {
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
     val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
     val useJNI =
-      BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+      (Util.isMac && sys.props.getOrElse("os.arch", "") != "x86_64") ||
+        System.getProperty("sbt.ipcsocket.jni", "false") == "true"
     val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   }

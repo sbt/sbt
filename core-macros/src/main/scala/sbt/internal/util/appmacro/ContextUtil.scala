@@ -76,11 +76,13 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
 
   private val cacheLevelSym = Symbol.requiredClass("sbt.util.cacheLevel")
   private val transientSym = Symbol.requiredClass("scala.transient")
+  private val nowarnAnnotSym = Symbol.requiredClass("scala.annotation.nowarn")
   final class Input(
       val tpe: TypeRepr,
       val qual: Term,
       val term: Term,
       val name: String,
+      val isWarnSuppressed: Boolean,
   ):
     override def toString: String =
       s"Input($tpe, $qual, $term, $name, $tags)"
@@ -155,31 +157,10 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   final class Output(
       val tpe: TypeRepr,
       val term: Term,
-      val name: String,
-      val parent: Symbol,
       val outputType: OutputType,
   ):
     override def toString: String =
-      s"Output($tpe, $term, $name, $outputType)"
-    val placeholder: Symbol =
-      tpe.asType match
-        case '[a] =>
-          Symbol.newVal(
-            parent,
-            name,
-            tpe,
-            Flags.Mutable,
-            Symbol.noSymbol
-          )
-    def toVarDef: ValDef =
-      ValDef(placeholder, rhs = Some('{ null }.asTerm))
-    def toAssign(value: Term): Term =
-      Block(
-        Assign(toRef, value) :: Nil,
-        toRef
-      )
-    def toRef: Ref = Ref(placeholder)
-    def isFile: Boolean = outputType == OutputType.File
+      s"Output($tpe, $term, $outputType)"
   end Output
 
   def applyTuple(tupleTerm: Term, tpe: TypeRepr, idx: Int): Term =
@@ -193,6 +174,34 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   end TermTransform
 
   def idTransform[F[_]]: TermTransform[F] = in => in
+
+  def collectNowarnQuals(tree: Term): Set[Term] =
+    val result = mutable.HashSet[Term]()
+    @tailrec def extractQual(t: Term): Unit = t match
+      case Inlined(_, _, inner)                                  => extractQual(inner)
+      case Typed(inner, _)                                       => extractQual(inner)
+      case Apply(TypeApply(Select(_, _), _ :: Nil), qual :: Nil) => result += qual
+      case Apply(TypeApply(Ident(_), _ :: Nil), qual :: Nil)     => result += qual
+      case _                                                     => ()
+    def targetsTransient(s: String) = s.isEmpty || s.startsWith("msg=transient")
+    object scanner extends TreeTraverser:
+      override def traverseTree(t: Tree)(owner: Symbol): Unit = t match
+        case Typed(inner, tpt) =>
+          tpt.tpe match
+            case AnnotatedType(_, annot) if annot.tpe.typeSymbol == nowarnAnnotSym =>
+              val isUnfiltered = annot match
+                case Apply(_, Nil)                                            => true
+                case Apply(_, Literal(StringConstant(s)) :: Nil)              => targetsTransient(s)
+                case Apply(_, NamedArg(_, Literal(StringConstant(s))) :: Nil) => targetsTransient(s)
+                case Apply(_, _ :: Nil)                                       => true
+                case _                                                        => false
+              if isUnfiltered then extractQual(inner)
+            case _ =>
+              super.traverseTree(t)(owner)
+        case _ => super.traverseTree(t)(owner)
+    end scanner
+    scanner.traverseTree(tree)(Symbol.spliceOwner)
+    result.toSet
 
   def collectDefs(tree: Term, isWrapper: (String, TypeRepr, Term) => Boolean): Set[Symbol] =
     val defs = mutable.HashSet[Symbol]()

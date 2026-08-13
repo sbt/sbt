@@ -402,7 +402,7 @@ object Defaults extends BuildCommon with DefExtra {
       },
       serverHandlers :== Nil,
       windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
-      serverUseJni := BootServerSocket.requiresJNI || SysProp.serverUseJni,
+      serverUseJni := SysProp.serverUseJni,
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,
@@ -760,14 +760,16 @@ object Defaults extends BuildCommon with DefExtra {
           case NonFatal(_) => ()
         }
         clean.value
+        (ThisBuild / publish / clean).value
       },
-      scalaCompilerBridgeBin := Def
-        .ifS(Def.task {
+      scalaCompilerBridgeBin := Def.uncached {
+        if {
           val sv = scalaVersion.value
           val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ScalaArtifacts.hasScala2SbtBridge(sv)
           hasSbtBridge
-        })(Compiler.compilerBridgeFromUpdate)(Def.task(Vector.empty))
-        .value,
+        } then Compiler.compilerBridgeFromUpdate.value
+        else Vector.empty
+      },
       scalaCompilerBridgeJars := (Def.taskDyn {
         val s = streams.value
         val b = scalaCompilerBridgeBin.value
@@ -986,6 +988,22 @@ object Defaults extends BuildCommon with DefExtra {
           val converter = fileConverter.value
           val cp = cp1.map(converter.toPath).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
+        },
+        compileInputs2 := Def.uncached {
+          compileScalaBackend.value
+          val (_, _, packedBackendOutput) = compileIncremental.value
+          val inputs = compileInputs.value
+          val c = fileConverter.value
+          CompileInputs2(
+            packedBackendOutput +: data(dependencyClasspath.value).toVector,
+            sourcesVF.value,
+            scalacOptions.value.toVector,
+            javacOptions.value.toVector,
+            c.toVirtualFile(inputs.options.classesDirectory),
+            c.toVirtualFile(inputs.setup.cacheFile.toPath),
+            extraIncOptions.value.toVector,
+            scalaVersion.value,
+          )
         }
       )
     ) ++
@@ -1140,19 +1158,20 @@ object Defaults extends BuildCommon with DefExtra {
       selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
       run / mainClass := (run / selectMainClass).value,
       mainClass := Def.uncached {
-        // Suppress warning for run commands (user is actively running, warning is noise)
-        def isRunCommand(s: String): Boolean = s match
+        // Suppress warning for run/test commands (user is actively running, warning is noise)
+        def isRunOrTestCommand(s: String): Boolean = s match
           case "run" | "runMain" | "bgRun" | "bgRunMain" | "fgRun" | "fgRunMain" => true
+          case "test" | "testFull" | "testOnly" | "testQuick" | "testSelected"   => true
           case _                                                                 => false
         val logWarning = state.value.currentCommand.forall(!_.commandLine.split(" ").exists {
-          case s if isRunCommand(s) => true
-          case r                    =>
+          case s if isRunOrTestCommand(s) => true
+          case r                          =>
             // Handle both "/" (new syntax like Test/run) and ":" (old syntax like test:run)
             r.split("[/:]") match {
               case Array(parts*) =>
                 parts.lastOption match {
-                  case Some(s) if isRunCommand(s) => true
-                  case _                          => false
+                  case Some(s) if isRunOrTestCommand(s) => true
+                  case _                                => false
                 }
             }
         })
@@ -1404,6 +1423,7 @@ object Defaults extends BuildCommon with DefExtra {
       )
     )
   }
+
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
     Def.task {
       val canUseArgumentsFile = sys.props
@@ -1420,6 +1440,14 @@ object Defaults extends BuildCommon with DefExtra {
         envVars = envVars.value,
         canUseArgumentsFile = Some(canUseArgumentsFile)
       )
+    }
+
+  /** Fork options for run-like tasks: the forked process inherits sbt's working directory. */
+  private[sbt] def runForkOptionsTask: Initialize[Task[ForkOptions]] =
+    Def.task {
+      // this uses Compile / run / baseDirectory, which defaults to ThisBuild / baseDirectory
+      forkOptionsTask.value
+        .withWorkingDirectory(Some(baseDirectory.value))
     }
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
@@ -2247,8 +2275,13 @@ object Defaults extends BuildCommon with DefExtra {
         val ci = (compile / compileInputs).value
         val c = fileConverter.value
         val dir = c.toPath(backendOutput.value).toFile
+        val ping = (TaskZero / earlyOutputPing).value
         result match
           case Result.Value(res) =>
+            // Zinc completes the ping during a real compile; on an action-cache hit
+            // zinc never runs, so complete it from the pickle jar. tryComplete is
+            // atomic: zinc's own completion always wins when it ran.
+            ping.tryComplete(Result.Value(c.toPath(earlyOutput.value).toFile.exists))
             val af = compileAnalysisFile.value
             val store = analysisStore(af.toPath(), c)
             if !af.exists then sys.error(s"${af} is missing")
@@ -2257,8 +2290,9 @@ object Defaults extends BuildCommon with DefExtra {
             bspTask.notifySuccess(analysis)
             res
           case Result.Inc(cause) =>
+            ping.tryComplete(Result.Value(false))
             val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
-            reporter.sendFailureReport(ci.options.sources)
+            reporter.sendFailureReport(ci.options.sources, compileFailed)
             bspTask.notifyFailure(compileFailed)
             throw cause
       },
@@ -2299,27 +2333,49 @@ object Defaults extends BuildCommon with DefExtra {
 
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
-    val s = streams.value
-    val projectId = thisProject.value.id
-    val r = compileScalaBackend.value
-    val in0 = (compileJava / compileInputs).value
-    val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
+    val backendResult = compileScalaBackend.value
+    val result = cachedCompileJavaTask.result.value
     val reporter = (compile / bspReporter).value
-    val log = CompileDebugLogger(projectId, s.log)
-    try {
-      if (r.hasModified) {
-        val result0 = incCompiler
-          .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
-          .compileAllJava(in, log)
-        reporter.sendSuccessReport(result0.analysis())
-        result0.withHasModified(result0.hasModified || r.hasModified)
-      } else r
-    } catch {
-      case NonFatal(e) =>
-        reporter.sendFailureReport(in.options.sources)
-        throw e
+    val inputs = (compileJava / compileInputs).value
+    val c = fileConverter.value
+    result match {
+      case Result.Value(hasModified) =>
+        val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+        val contents = store.unsafeGet()
+        reporter.sendSuccessReport(contents.getAnalysis())
+        CompileResult.of(
+          contents.getAnalysis(),
+          contents.getMiniSetup(),
+          hasModified || backendResult.hasModified
+        )
+      case Result.Inc(cause) =>
+        reporter.sendFailureReport(inputs.options.sources)
+        throw cause
     }
   }
+
+  private val cachedCompileJavaTask = Def
+    .cachedTask {
+      val s = streams.value
+      val projectId = projectIdFromScope(s)
+      val in0 = (compileJava / compileInputs).value
+      val ci2 = (compileJava / compileInputs2).value
+      val c = fileConverter.value
+      val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val previous = store.unsafeGet()
+      val in = in0.withPreviousResult(
+        PreviousResult.of(previous.getAnalysis(), previous.getMiniSetup())
+      )
+      val log = CompileDebugLogger(projectId, s.log)
+      val result = incCompiler
+        .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
+        .compileAllJava(in, log)
+      store.set(AnalysisContents.create(result.analysis(), result.setup()))
+      Def.declareOutput(c.toVirtualFile(in.setup.cacheFile.toPath))
+      Def.declareOutputDirectory(c.toVirtualFile(in.options.classesDirectory))
+      result.hasModified
+    }
+    .tag(Tags.Compile, Tags.CPU)
 
   private def compileIncrementalTaskImpl(
       task: BspCompileTask,
@@ -2601,7 +2657,8 @@ object Defaults extends BuildCommon with DefExtra {
   private lazy val newRunnerSettings: Seq[Setting[?]] =
     Seq(
       runner := Def.uncached(ClassLoaders.runner.value),
-      forkOptions := Def.uncached(forkOptionsTask.value)
+      forkOptions := Def.uncached(runForkOptionsTask.value),
+      baseDirectory := (ThisBuild / baseDirectory).value,
     )
 
   lazy val baseTasks: Seq[Setting[?]] = projectTasks ++ packageBase
@@ -2846,7 +2903,7 @@ object Classpaths {
             case (false, _) =>
               Def.task { filteredDependencyClasspath.value }
             case (true, DependencyMode.Transitive) =>
-              Def.task { dependencyClasspath.value }
+              Def.task { internalDependencyPicklePath.value ++ externalDependencyClasspath.value }
             case (true, DependencyMode.Direct) =>
               Def.task {
                 val internalFiltered = ClasspathImpl.filterInternalByMode(
@@ -2854,7 +2911,7 @@ object Classpaths {
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
-                  internalDependencyClasspath.value,
+                  internalDependencyPicklePath.value,
                 )
                 val externalFiltered = ClasspathImpl.filterByDirectDeps(
                   allDependencies.value,
@@ -2869,7 +2926,7 @@ object Classpaths {
                   thisProjectRef.value,
                   settingsData.value,
                   buildDependencies.value,
-                  internalDependencyClasspath.value,
+                  internalDependencyPicklePath.value,
                 )
                 val externalFiltered = ClasspathImpl.filterByPlusOne(
                   allDependencies.value,
@@ -3077,9 +3134,9 @@ object Classpaths {
           .map(m => d.withRevision(m.module.revision))
       }.distinct
     }.value,
-    publish := LibraryManagement.ivylessPublishTask.tag(Tags.Publish, Tags.Network).value,
-    publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
-    publishM2 := LibraryManagement.ivylessPublishM2Task.tag(Tags.Publish, Tags.Network).value,
+    publish := publishOrSkip(publishConfiguration, publish / skip).value,
+    publishLocal := publishOrSkip(publishLocalConfiguration, publishLocal / skip).value,
+    publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,
     credentials ++= Def.uncached {
       val alreadyContainsCentralCredentials: Boolean = credentials.value.exists {
         case d: Credentials.DirectCredentials => d.host == Sona.host
@@ -3490,9 +3547,24 @@ object Classpaths {
     },
     ivySbt := Def.uncached((): Any),
     ivyModule := Def.uncached((): Any),
-    publisher := Def.uncached(
-      Classpaths.defaultPublisher(dependencyResolution.value, fullResolvers.value.toVector)
-    ),
+    publisher := Def.uncached {
+      val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
+        new File(sys.props("user.home")) / ".ivy2"
+      }
+      val localResolver = Resolver.file("local", ivyHome / "local")(using Resolver.ivyStylePatterns)
+      // publishLocal/publishM2/publish target these by name (see publishConfig's resolverName
+      // default and publishM2Configuration below).
+      val knownResolvers = localResolver +: otherResolvers.value
+      Publisher(
+        GenericPublisher(
+          dependencyResolution.value,
+          fullResolvers.value.toVector,
+          csrProject.value.withPublications(csrPublications.value),
+          allCredentials.value,
+          knownResolvers
+        )
+      )
+    },
     allCredentials := Def.uncached(LMCoursier.allCredentialsTask.value),
     transitiveUpdate := Def.uncached(transitiveUpdateTask.value),
     updateCacheName := {
@@ -3623,7 +3695,13 @@ object Classpaths {
         o %% "librarymanagement-ivy",
         o %% "util-logging",
         o %% "util-position",
-        o %% "io"
+        o %% "io",
+        "com.eed3si9n" %% "sjson-new-core",
+        "com.eed3si9n" %% "gigahorse-core",
+        "com.typesafe" %% "ssl-config-core",
+        "org.reactivestreams" % "reactive-streams",
+        "org.slf4j" % "slf4j-api",
+        "com.typesafe" % "config",
       )
       if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes
@@ -3909,15 +3987,17 @@ object Classpaths {
   ): Initialize[Task[Unit]] =
     Def
       .taskIf {
-        if (skip.value) {
+        if skip.value then
           val log = streams.value.log
           val ref = thisProjectRef.value
           logSkipPublish(log, ref)
-        } else {
-          sys.error(
-            "publishOrSkip requires the sbt-ivy plugin. Use publish/publishLocal for ivyless publishing."
-          )
-        }
+        else
+          val conf = config.value
+          val log = streams.value.log
+          val intf = publisher.value
+          val module =
+            intf.moduleDescriptor(moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration])
+          intf.publish(module, conf, log)
       }
       .tag(Tags.Publish, Tags.Network)
 
@@ -4370,59 +4450,12 @@ object Classpaths {
     val name = "inter-project"
     override def toString: String = name
 
-  /** Default publisher that delegates moduleDescriptor to Coursier and generates POM without Ivy. */
-  private[sbt] def defaultPublisher(
-      lm: DependencyResolution,
-      resolvers: Vector[Resolver] = Vector.empty,
-  ): Publisher =
-    Publisher(new PublisherInterface {
-      def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
-        lm.moduleDescriptor(moduleSetting)
-      def publish(
-          module: ModuleDescriptor,
-          configuration: PublishConfiguration,
-          log: Logger
-      ): Unit =
-        sys.error("Ivy-based publish requires the sbt-ivy plugin or useIvy := true")
-      def makePomFile(
-          module: ModuleDescriptor,
-          configuration: MakePomConfiguration,
-          log: Logger
-      ): java.io.File =
-        val file = configuration.file.getOrElse(sys.error("makePom file must be specified."))
-        val ms = module.moduleSettings.asInstanceOf[ModuleDescriptorConfiguration]
-        val mid = ms.module
-        val info = configuration.moduleInfo.orElse(Option(ms.moduleInfo))
-        val deps = module.directDependencies
-        val extra = configuration.extra.getOrElse(scala.xml.NodeSeq.Empty)
-        val confs = configuration.configurations
-        val scalaInfo = ms.scalaModuleInfo
-        val pomXml =
-          sbt.internal.PomGenerator.makePom(
-            mid,
-            info,
-            deps,
-            confs,
-            extra,
-            scalaInfo,
-            resolvers,
-            configuration.filterRepositories,
-            configuration.allRepositories,
-          )
-        val processed = configuration.process(pomXml)
-        val printer = new scala.xml.PrettyPrinter(1000, 4)
-        val formatted = scala.xml.XML.loadString(printer.format(processed))
-        scala.xml.XML.save(file.getAbsolutePath, formatted, "UTF-8", xmlDecl = true)
-        log.info("Wrote " + file.getAbsolutePath)
-        file
-    })
-
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
     val resourceDirs = resourceDirectories.value
-    val vfBackendDir = compileIncremental.value._2
-    val backendDir = c.toPath(vfBackendDir)
-    val _ = resources.value
+    compile.value
+    val backendDir = c.toPath(backendOutput.value)
+    resources.value
     backendDir.toFile() :: resourceDirs.toList.filter(_.exists())
   }
 
@@ -4965,7 +4998,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
           }
         }
       }.evaluated
-    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(forkOptionsTask.value))
+    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(runForkOptionsTask.value))
   }
 
   // public API
@@ -4987,7 +5020,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
             r.run(mainClass, cp.files, arguments, s.log).get
           }
       }.value
-    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(forkOptionsTask.value))
+    ) ++ inTask(scoped)((config / forkOptions) := Def.uncached(runForkOptionsTask.value))
 
   def initScoped[T](sk: ScopedKey[?], i: Initialize[T]): Initialize[T] =
     initScope(fillTaskAxis(sk.scope, sk.key), i)

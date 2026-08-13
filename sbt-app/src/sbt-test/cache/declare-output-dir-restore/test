@@ -1,0 +1,16 @@
+# Regression for #9462: a Def.declareOutputDirectory dir must be restored on a cache hit
+# after the extracted directory is deleted (the sibling .sbtdir.zip survives an rm -rf).
+> declareDir
+> checkFiles
+> delDir
+> checkGone
+> declareDir
+> checkHit
+> checkFiles
+
+# restoration also works when the sibling zip itself is gone
+> delDir
+> delZip
+> declareDir
+> checkHit
+> checkFiles

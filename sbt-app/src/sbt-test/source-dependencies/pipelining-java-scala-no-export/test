@@ -1,0 +1,21 @@
+> compile
+
+$ exists target/**/upstream/classes/example/Greeter.class
+$ exists target/**/downstream/classes/example/Main.class
+
+$ copy-file javac-invocations javac-before
+> compile
+$ must-mirror javac-before javac-invocations
+
+$ copy-file changes/Marker.scala upstream/src/main/scala/example/Marker.scala
+> compile
+
+$ copy-file changes/Greeter.java upstream/src/main/java/example/Greeter.java
+> compile
+> downstream / run
+$ copy-file javac-invocations javac-after-java
+
+$ delete target/out/jvm/scala-2.13.18/upstream/classes/example/Greeter.class
+> compile
+$ exists target/out/jvm/scala-2.13.18/upstream/classes/example/Greeter.class
+$ must-mirror javac-after-java javac-invocations

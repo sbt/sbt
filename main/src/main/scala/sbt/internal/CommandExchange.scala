@@ -255,7 +255,7 @@ private[sbt] final class CommandExchange {
         case Some(Success(())) =>
           // remember to shutdown only when the server comes up
           server = Some(serverInstance)
-          s.log.info("started sbt server")
+          s.log.debug("started sbt server")
           // register this server in the shared proc directory
           try {
             val procDir = SysProp.globalLocalCache / "proc"
@@ -320,9 +320,9 @@ private[sbt] final class CommandExchange {
     }
     procFile = None
     fastTrackThread.close()
-    channels foreach (_.shutdown(true))
+    channels.foreach(c => Util.ignoreResult(Try(c.shutdown(true))))
     // interrupt and kill the thread
-    server.foreach(_.shutdown())
+    server.foreach(s => Util.ignoreResult(Try(s.shutdown())))
     server = None
     EvaluateTask.onShutdown()
   }

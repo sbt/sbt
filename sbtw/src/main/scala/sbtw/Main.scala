@@ -16,8 +16,7 @@ object Main:
     )
     val sbtBinDir = new File(sbtHome, "bin")
 
-    val fileSbtOpts = ConfigLoader.loadSbtOpts(cwd, sbtHome)
-    val fileArgs = fileSbtOpts.flatMap(_.split("\\s+").filter(_.nonEmpty))
+    val fileArgs = ConfigLoader.loadSbtOpts(cwd, sbtHome)
     val allArgs = fileArgs ++ args
 
     ArgParser.parse(allArgs.toArray) match
@@ -31,8 +30,9 @@ object Main:
     else if opts.version || opts.numericVersion || opts.scriptVersion then
       handleVersionCommands(cwd, sbtHome, sbtBinDir, opts)
     else if opts.shutdownAll then
-      val javaCmd = Runner.findJavaCmd(opts.javaHome)
-      Runner.shutdownAll(javaCmd)
+      SelectedJava.resolve(opts.javaHome) match
+        case Left(error)     => reportJavaHomeError(error)
+        case Right(selected) => Runner.shutdownAll(selected)
     else if !opts.allowEmpty && !opts.sbtNew && !ConfigLoader.isSbtProjectDir(cwd) then
       System.err.println(
         "[error] Neither build.sbt nor a 'project' directory in the current directory: " + cwd
@@ -40,61 +40,80 @@ object Main:
       System.err.println("[error] run 'sbt new', touch build.sbt, or run 'sbt --allow-empty'.")
       1
     else
-      val buildPropsVersion = ConfigLoader.sbtVersionFromBuildProperties(cwd)
+      SelectedJava.resolve(opts.javaHome) match
+        case Left(error)     => reportJavaHomeError(error)
+        case Right(selected) => launch(cwd, sbtBinDir, opts, selected)
 
-      val javaCmd = Runner.findJavaCmd(opts.javaHome)
-      val javaVer = Runner.javaVersion(javaCmd)
-      val minJdk = Runner.minimumJdkVersion(buildPropsVersion)
-      if javaVer > 0 && javaVer < minJdk then
-        if minJdk >= 17 then
-          System.err.println(
-            "[error] sbt 2.x requires JDK 17 or above, but you have JDK " + javaVer
-          )
-        else System.err.println("[error] sbt requires at least JDK 8+, you have " + javaVer)
-        1
+  private def reportJavaHomeError(error: String): Int =
+    System.err.println(error)
+    1
+
+  private def launch(
+      cwd: File,
+      sbtBinDir: File,
+      opts: LauncherOptions,
+      selected: SelectedJava
+  ): Int =
+    val buildPropsVersion = ConfigLoader.sbtVersionFromBuildProperties(cwd)
+    val javaVer = Runner.javaVersion(selected.javaCmd)
+    val minJdk = Runner.minimumJdkVersion(buildPropsVersion)
+    if javaVer > 0 && javaVer < minJdk then
+      if minJdk >= 17 then
+        System.err.println(
+          "[error] sbt 2.x requires JDK 17 or above, but you have JDK " + javaVer
+        )
+      else System.err.println("[error] sbt requires at least JDK 8+, you have " + javaVer)
+      1
+    else
+      val bspMode = opts.residual.exists(a => a == "bsp" || a == "-bsp" || a == "--bsp")
+      val clientOpt = opts.client || sys.env.get("SBT_NATIVE_CLIENT").contains("true")
+      val useNativeClient =
+        if bspMode then false
+        else shouldRunNativeClient(opts.copy(client = clientOpt), buildPropsVersion)
+
+      if useNativeClient then
+        val scriptPath = sbtBinDir.getAbsolutePath.replace("\\", "/") + "/sbt.bat"
+        Runner.runNativeClient(sbtBinDir, scriptPath, opts, selected)
       else
-        val bspMode = opts.residual.exists(a => a == "bsp" || a == "-bsp" || a == "--bsp")
-        val clientOpt = opts.client || sys.env.get("SBT_NATIVE_CLIENT").contains("true")
-        val useNativeClient =
-          if bspMode then false
-          else shouldRunNativeClient(opts.copy(client = clientOpt), buildPropsVersion)
-
-        if useNativeClient then
-          val scriptPath = sbtBinDir.getAbsolutePath.replace("\\", "/") + "/sbt.bat"
-          Runner.runNativeClient(sbtBinDir, scriptPath, opts)
+        val sbtJar = opts.sbtJar
+          .filter(p => new File(p).isFile)
+          .getOrElse(new File(sbtBinDir, "sbt-launch.jar").getAbsolutePath)
+        if !new File(sbtJar).isFile then
+          System.err.println("[error] Launcher jar not found: " + sbtJar)
+          1
         else
-          val sbtJar = opts.sbtJar
-            .filter(p => new File(p).isFile)
-            .getOrElse(new File(sbtBinDir, "sbt-launch.jar").getAbsolutePath)
-          if !new File(sbtJar).isFile then
-            System.err.println("[error] Launcher jar not found: " + sbtJar)
-            1
-          else
-            var javaOpts = ConfigLoader.loadJvmOpts(cwd)
-            if javaOpts.isEmpty then javaOpts = ConfigLoader.defaultJavaOpts
-            var sbtOpts = Runner.buildSbtOpts(opts)
+          var javaOpts = ConfigLoader.loadJvmOpts(cwd)
+          if javaOpts.isEmpty then javaOpts = ConfigLoader.defaultJavaOpts
+          var sbtOpts = Runner.buildSbtOpts(opts)
 
-            val (residualJava, bootArgs) = Runner.splitResidual(opts.residual)
-            javaOpts = javaOpts ++ residualJava
+          val (residualJava, bootArgs) = Runner.splitResidual(opts.residual)
+          javaOpts = javaOpts ++ residualJava
 
-            val (finalJava, finalSbt) = if opts.mem.isDefined then
-              val evictedJava = Memory.evictMemoryOpts(javaOpts)
-              val evictedSbt = Memory.evictMemoryOpts(sbtOpts)
-              val memOpts = Memory.addMemory(opts.mem.get, javaVer)
-              (evictedJava ++ memOpts, evictedSbt)
-            else Memory.addDefaultMemory(javaOpts, sbtOpts, javaVer, LauncherOptions.defaultMemMb)
-            sbtOpts = finalSbt
+          val (finalJava, finalSbt) = if opts.mem.isDefined then
+            val evictedJava = Memory.evictMemoryOpts(javaOpts)
+            val evictedSbt = Memory.evictMemoryOpts(sbtOpts)
+            val memOpts = Memory.addMemory(opts.mem.get, javaVer)
+            (evictedJava ++ memOpts, evictedSbt)
+          else Memory.addDefaultMemory(javaOpts, sbtOpts, javaVer, LauncherOptions.defaultMemMb)
+          sbtOpts = finalSbt
 
-            if !opts.noHideJdkWarnings && javaVer >= 25 then
-              sbtOpts = sbtOpts ++ Seq(
-                "--sun-misc-unsafe-memory-access=allow",
-                "--enable-native-access=ALL-UNNAMED"
-              )
-            val javaOptsWithDebug = opts.jvmDebug.fold(finalJava)(port =>
-              finalJava :+ s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$port"
+          if !opts.noHideJdkWarnings && javaVer >= 25 then
+            sbtOpts = sbtOpts ++ Seq(
+              "--sun-misc-unsafe-memory-access=allow",
+              "--enable-native-access=ALL-UNNAMED"
             )
+          val javaOptsWithDebug = opts.jvmDebug.fold(finalJava)(port =>
+            finalJava :+ s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$port"
+          )
 
-            Runner.runJvm(javaCmd, javaOptsWithDebug, sbtOpts, sbtJar, bootArgs, opts.verbose)
+          Runner.runJvm(
+            selected,
+            javaOptsWithDebug,
+            sbtOpts,
+            sbtJar,
+            bootArgs,
+            opts.verbose
+          )
 
   private def shouldRunNativeClient(
       opts: LauncherOptions,
@@ -130,19 +149,22 @@ object Main:
       )
       0
     else if opts.numericVersion then
-      val javaCmd = Runner.findJavaCmd(opts.javaHome)
-      val sbtJar = opts.sbtJar
-        .filter(p => new File(p).isFile)
-        .getOrElse(new File(sbtBinDir, "sbt-launch.jar").getAbsolutePath)
-      if !new File(sbtJar).isFile then
-        System.err.println("[error] Launcher jar not found for version check")
-        1
-      else
-        try
-          val out = Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!!
-          println(out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse(""))
-          0
-        catch { case _: Exception => 1 }
+      SelectedJava.resolve(opts.javaHome) match
+        case Left(error)     => reportJavaHomeError(error)
+        case Right(selected) =>
+          val sbtJar = opts.sbtJar
+            .filter(p => new File(p).isFile)
+            .getOrElse(new File(sbtBinDir, "sbt-launch.jar").getAbsolutePath)
+          if !new File(sbtJar).isFile then
+            System.err.println("[error] Launcher jar not found for version check")
+            1
+          else
+            try
+              val cmd = Seq(selected.javaCmd, "-jar", sbtJar, "sbtVersion")
+              val out = Process(cmd, None, selected.envOverlay*).!!
+              println(out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse(""))
+              0
+            catch { case _: Exception => 1 }
     else 0
 
   private def projectSbtVersion(cwd: File): Option[String] =

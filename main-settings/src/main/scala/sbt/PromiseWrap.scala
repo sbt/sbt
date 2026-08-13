@@ -17,6 +17,11 @@ final class PromiseWrap[A]:
       case Result.Inc(cause)   => underlying.failure(cause)
       case Result.Value(value) => underlying.success(value)
     }
+  def tryComplete(result: Result[A]): Boolean =
+    result match {
+      case Result.Inc(cause)   => underlying.tryFailure(cause)
+      case Result.Value(value) => underlying.trySuccess(value)
+    }
   def success(value: A): Unit = underlying.success(value)
   def failure(cause: Throwable): Unit = underlying.failure(cause)
   def isCompleted: Boolean = underlying.isCompleted

@@ -10,16 +10,16 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  val ioVersion = nightlyVersion.getOrElse("1.12.1")
-  val zincVersion = nightlyVersion.getOrElse("2.0.0-M18")
+  val ioVersion = nightlyVersion.getOrElse("1.12.2")
+  val zincVersion = nightlyVersion.getOrElse("2.0.4")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  val launcherVersion = "1.6.1"
+  val launcherVersion = "1.6.2"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.6.3"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.8.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -62,7 +62,7 @@ object Dependencies {
   def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  lazy val sjsonNewVersion = "0.15.0"
+  lazy val sjsonNewVersion = "0.15.1"
   def sjsonNew(n: String) = Def.setting(
     "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value
@@ -113,7 +113,7 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-77cc781d727b367d3761f097d89f5a4762771d41"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-f686954b0021a5c3245766ced0cdaeca8ba2fd7a"
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
@@ -121,7 +121,7 @@ object Dependencies {
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.25-M25"
+  val coursierVersion = "2.1.25-M26"
 
   val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
     .cross(CrossVersion.for3Use2_13)

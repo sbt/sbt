@@ -61,9 +61,11 @@ object Keys {
   val extraAppenders = settingKey[AppenderSupplier]("A function that provides additional loggers for a given setting.").withRank(DSetting)
   @deprecated("will be removed", "2.0.0")
   val useLog4J = settingKey[Boolean]("Toggles whether or not to use log4j for sbt internal loggers.").withRank(Invisible)
+  @transient
   val logManager = settingKey[LogManager]("The log manager, which creates Loggers for different contexts.").withRank(DSetting)
   private[sbt] val loggerContext = AttributeKey[LoggerContext]("sbt-logger-context", "The logger config which creates Loggers for different contexts.", Int.MaxValue)
   val logBuffered = settingKey[Boolean]("True if logging should be buffered until work completes.").withRank(CSetting)
+  @transient
   val sLog = settingKey[Logger]("Logger usable by settings during project loading.").withRank(CSetting)
   val serverLog = taskKey[Unit]("A dummy task to set server log level using Global / serverLog / logLevel.").withRank(CTask)
   val canonicalInput = settingKey[Boolean]("Toggles whether a task should use canonical input (line buffered with echo) or raw input").withRank(DSetting)
@@ -401,6 +403,7 @@ object Keys {
   val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors.").withRank(CTask)
   val testExecution = taskKey[Tests.Execution]("Settings controlling test execution").withRank(DTask)
   val testFilter = taskKey[Seq[String] => Seq[String => Boolean]]("Filter controlling whether the test is executed").withRank(DTask)
+  @transient
   val testResultLogger = settingKey[TestResultLogger]("Logs results after a test task completes.").withRank(DTask)
   val testGrouping = taskKey[Seq[Tests.Group]]("Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.").withRank(BMinusTask)
   val isModule = AttributeKey[Boolean]("isModule", "True if the target is a module.", DSetting)
@@ -522,6 +525,7 @@ object Keys {
   val csrInterProjectDependencies = taskKey[Seq[lmcoursier.definitions.Project]]("Projects the current project depends on, possibly transitively")
   val csrExtraProjects = taskKey[Seq[lmcoursier.definitions.Project]]("").withRank(CTask)
   val csrFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
+  @transient
   val csrLogger = taskKey[Option[CacheLogger]]("")
 
   @transient

@@ -78,18 +78,18 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
       - name: Checkout sbt/sbt
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: true
       - name: Checkout sbt/io
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: sbt/io
           ref: develop
           path: io
       - name: Checkout sbt/zinc
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: sbt/zinc
           ref: develop
@@ -110,8 +110,10 @@ jobs:
           cache: "sbt"
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
+        with:
+          disk-cache: false
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: 3.12
       - name: Pre-test cleanup
@@ -132,21 +134,10 @@ jobs:
         shell: bash
         run: |
           rm -rf "$HOME/.sbt/boot/" || true
-          ./sbt -v --client mimaReportBinaryIssues
-          ./sbt -v --client javafmtCheck
-          ./sbt -v --client "Test/javafmtCheck"
-          ./sbt -v --client scalafmtCheckAll
-          ./sbt -v --client scalafmtSbtCheck
-          ./sbt -v --client serverTestProj/scalafmtCheckAll
-          ./sbt -v --client launcherPackageIntegrationTest/scalafmtCheckAll
+          ./sbt -v --server "mimaReportBinaryIssues;javafmtCheck;Test/javafmtCheck;scalafmtCheckAll;scalafmtSbtCheck;serverTestProj/scalafmtCheckAll;launcherPackageIntegrationTest/scalafmtCheckAll"
           # ./sbt -v --client headerCheck
           # ./sbt -v --client "Test/headerCheck"
-          ./sbt -v --client "Test/compile"
-          ./sbt -v --client doc
-          ./sbt -v --client publishLocal
-          ./sbt -v --client test
-          ./sbt -v --client "serverTestProj/test"
-          ./sbt -v --client "all $UTIL_TESTS"
+          ./sbt -v --server "Test/compile;doc;publishLocal;test;serverTestProj/test;all $UTIL_TESTS"
       - name: Build and test (2)
         if: ${{ matrix.jobtype == 2 }}
         shell: bash
@@ -172,8 +163,7 @@ jobs:
         if: ${{ matrix.jobtype == 5 }}
         shell: bash
         run: |
-          ./sbt -v "scripted project/*"
-          ./sbt -v "scripted project1/*"
+          ./sbt -v "scripted global-plugin/* project/*"
       # - name: Build and test (6)
       #  if: ${{ matrix.jobtype == 6 }}
       #  shell: bash
@@ -206,7 +196,7 @@ jobs:
         if: ${{ matrix.jobtype == 12 }}
         shell: bash
         run: |
-          ./sbt -v "scripted cache/*"
+          ./sbt -v --server "scripted cache/*"
       # - name: Hash Benchmark
       #   if: ${{ matrix.jobtype == 13 }}
       #   shell: bash

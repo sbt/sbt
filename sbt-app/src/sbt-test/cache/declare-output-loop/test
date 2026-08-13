@@ -1,0 +1,10 @@
+# Regression for #9462: every execution of a Def.declareOutput call site must register,
+# including calls inside a .map over a runtime-determined list. The task also contains a
+# declareOutput in a never-taken branch, which must contribute nothing.
+> declareLoop
+> checkAll
+> delFiles
+> checkNone
+> declareLoop
+> checkHit
+> checkAll

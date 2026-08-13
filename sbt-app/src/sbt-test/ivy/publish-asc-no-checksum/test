@@ -1,0 +1,16 @@
+# useIvy := true forces the Ivy-backed publisher (ConvertResolver), which is what generates
+# checksums via the ChecksumFriendlyURLResolver shim.
+> publish
+
+# ordinary artifacts and their checksums are published as usual
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.jar
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.jar.md5
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.jar.sha1
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.pom
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.pom.md5
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.pom.sha1
+
+# the .asc signature artifact is published, but must NOT get its own checksum files
+$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.jar.asc
+-$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.jar.asc.md5
+-$ exists target/sona-staging/com/example/foo/1.0.0/foo-1.0.0.jar.asc.sha1

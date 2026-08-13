@@ -11,6 +11,7 @@ package sbt.internal.util
 import org.scalacheck.*
 import Prop.*
 
+import scala.annotation.tailrec
 import scala.collection.mutable.HashSet
 
 object DagSpecification extends Properties("Dag") {
@@ -41,6 +42,7 @@ object DagSpecification extends Properties("Dag") {
   private def isSet[T](c: Seq[T]) = Set(c*).size == c.size
   private def dependenciesPrecedeNodes(sort: List[TestDag]) = {
     val seen = new HashSet[TestDag]
+    @tailrec
     def iterate(remaining: List[TestDag]): Boolean = {
       remaining match {
         case Nil          => true

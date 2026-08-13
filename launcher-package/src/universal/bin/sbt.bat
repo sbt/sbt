@@ -51,7 +51,7 @@ set sbt_args_allow_empty=
 set sbt_args_sbt_dir=
 set sbt_args_sbt_version=
 set sbt_args_mem=
-set sbt_args_client=
+set sbt_args_client=-1
 set sbt_args_jvm_client=
 set sbt_args_no_server=
 set sbt_args_experimental_execution_log=
@@ -87,7 +87,8 @@ if exist "!SBT_CONFIG!" (
 )
 
 rem poor man's jenv (which is not available on Windows)
-if defined JAVA_HOMES (
+rem explicit -java-home wins over the project .java-version
+if not defined SBT_EXPLICIT_JAVA_HOME if defined JAVA_HOMES (
   if exist .java-version for /F %%A in (.java-version) do (
     set JAVA_HOME=%JAVA_HOMES%\%%A
     set JDK_HOME=%JAVA_HOMES%\%%A
@@ -96,8 +97,12 @@ if defined JAVA_HOMES (
 
 if exist "project\build.properties" (
   for /F "eol=# delims== tokens=1*" %%a in (project\build.properties) do (
-    if "%%a" == "sbt.version" if not "%%b" == "" (
-      set build_props_sbt_version=%%b
+    set "_prop_key="
+    set "_prop_val="
+    for /F "tokens=1 delims= " %%k in ("%%a") do set "_prop_key=%%k"
+    for /F "tokens=1 delims= " %%v in ("%%b") do set "_prop_val=%%v"
+    if "!_prop_key!" == "sbt.version" if not "!_prop_val!" == "" (
+      set "build_props_sbt_version=!_prop_val!"
     )
   )
 )
@@ -194,6 +199,14 @@ if "%~0" == "--client" set _client_arg=true
 if defined _client_arg (
   set _client_arg=
   set sbt_args_client=1
+  goto args_loop
+)
+
+if "%~0" == "--server" set _server_arg=true
+
+if defined _server_arg (
+  set _server_arg=
+  set sbt_args_client=0
   goto args_loop
 )
 
@@ -499,8 +512,11 @@ if defined _java_home_arg (
   if not "%~1" == "" (
     if exist "%~1\bin\java.exe" (
       set "_JAVACMD=%~1\bin\java.exe"
+      set "JAVACMD=%~1\bin\java.exe"
       set "JAVA_HOME=%~1"
       set "JDK_HOME=%~1"
+      set "SBT_EXPLICIT_JAVA_HOME=1"
+      set "PATH=%~1\bin;!PATH!"
       shift
       goto args_loop
     ) else (
@@ -782,6 +798,9 @@ if defined sbt_args_verbose (
   echo.
 )
 
+rem one-hop marker: drop it before the server JVM
+set "SBT_EXPLICIT_JAVA_HOME="
+
 "!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! %JAVA_TOOL_OPTIONS% %JDK_JAVA_OPTIONS% -cp "!sbt_jar!" xsbt.boot.Boot %*
 
 goto :eof
@@ -796,7 +815,7 @@ if defined sbt_args_verbose (
   set "SBT_ARGS=-v !SBT_ARGS!"
 )
 
-set "SBT_SCRIPT=!SBT_BIN_DIR: =%%20!sbt.bat"
+for %%I in ("!SBT_BIN_DIR!sbt.bat") do set "SBT_SCRIPT=%%~sI"
 set "SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%"
 
 rem Microsoft Visual C++ 2010 SP1 Redistributable Package (x64) is required

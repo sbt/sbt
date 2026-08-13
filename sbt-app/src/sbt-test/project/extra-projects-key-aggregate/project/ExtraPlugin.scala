@@ -6,10 +6,18 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-import sbt._, Keys._
+import sbt.*, Keys.*
 
-object ExtraPlugin extends AutoPlugin {
+object ExtraPlugin extends AutoPlugin:
+  object autoImport:
+    val cantTouchThis = settingKey[String]("")
+  end autoImport
+  import autoImport.*
+
   override def trigger = allRequirements
   override def extraProjects: Seq[Project] =
-    Seq(Project("z", file("z")).settings(name := "z"))
-}
+    Seq(Project("mc", file("mc")).settings(
+      name := "mc",
+      cantTouchThis := "can't touch this",  
+    ))
+end ExtraPlugin

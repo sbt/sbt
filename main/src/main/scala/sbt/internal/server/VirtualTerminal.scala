@@ -12,6 +12,7 @@ package server
 
 import java.util.concurrent.{ ArrayBlockingQueue, ConcurrentHashMap }
 import java.util.UUID
+import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.{
   JsonRpcNotificationMessage,
   JsonRpcRequestMessage,
@@ -30,6 +31,7 @@ import sbt.protocol.Serialization.{
   terminalSetRawMode,
 }
 import sjsonnew.support.scalajson.unsafe.Converter
+import sbt.internal.util.Util
 import sbt.protocol.{
   Attach,
   TerminalAttributesQuery,
@@ -84,20 +86,39 @@ object VirtualTerminal {
     jsonRpcRequest(id, terminalCapabilities, query)
     queue
   }
+  private[sbt] def expireTerminalPropertiesQuery(
+      channelName: String,
+      queue: ArrayBlockingQueue[TerminalPropertiesResponse],
+  ): Option[TerminalPropertiesResponse] = {
+    import scala.jdk.CollectionConverters.*
+    pendingTerminalProperties.asScala.collectFirst {
+      case (k @ (`channelName`, _), q) if q eq queue => k
+    } match {
+      case Some(k) if pendingTerminalProperties.remove(k) != null => Option(queue.poll())
+      // The response handler won the removal: its put is imminent, wait it out briefly.
+      case _ => Option(queue.poll(100, java.util.concurrent.TimeUnit.MILLISECONDS))
+    }
+  }
   private[sbt] def cancelRequests(name: String): Unit = {
     import scala.jdk.CollectionConverters.*
-    pendingTerminalCapabilities.asScala.foreach {
-      case (k @ (`name`, _), q) =>
-        pendingTerminalCapabilities.remove(k)
-        q.put(TerminalCapabilitiesResponse(None, None, None))
-      case _ =>
-    }
-    pendingTerminalProperties.asScala.foreach {
-      case (k @ (`name`, _), q) =>
-        pendingTerminalProperties.remove(k)
-        q.put(TerminalPropertiesResponse(0, 0, false, false, false, false))
-      case _ =>
-    }
+    def drain[A](
+        map: ConcurrentHashMap[(String, String), ArrayBlockingQueue[A]],
+        default: A
+    ): Unit =
+      map.asScala.foreach {
+        case (k @ (`name`, _), q) =>
+          map.remove(k)
+          Util.ignoreResult(q.offer(default))
+        case _ =>
+      }
+    drain(pendingTerminalCapabilities, TerminalCapabilitiesResponse(None, None, None))
+    drain(pendingTerminalProperties, TerminalPropertiesResponse(0, 0, false, false, false, false))
+    drain(pendingTerminalAttributes, TerminalAttributesResponse("", "", "", "", ""))
+    drain(pendingTerminalSetAttributes, ())
+    drain(pendingTerminalSetSize, ())
+    drain(pendingTerminalGetSize, TerminalGetSizeResponse(1, 1))
+    drain(pendingTerminalSetEcho, ())
+    drain(pendingTerminalSetRawMode, ())
   }
   private[sbt] def sendTerminalAttributesQuery(
       channelName: String,
@@ -164,7 +185,7 @@ object VirtualTerminal {
   ): ArrayBlockingQueue[Unit] = {
     val id = UUID.randomUUID.toString
     val queue = new ArrayBlockingQueue[Unit](1)
-    pendingTerminalSetEcho.put((channelName, id), queue)
+    pendingTerminalSetRawMode.put((channelName, id), queue)
     jsonRpcRequest(id, terminalSetRawMode, query)
     queue
   }
@@ -176,13 +197,20 @@ object VirtualTerminal {
   private val requestHandler: Handler[JsonRpcRequestMessage] =
     callback => {
       case r if r.method == attach =>
-        val isInteractive = r.params
-          .flatMap(Converter.fromJson[Attach](_).toOption.map(_.interactive))
-          .exists(identity)
-        StandardMain.exchange.channelForName(callback.name) match {
-          case Some(nc: NetworkChannel) => nc.setInteractive(r.id, isInteractive)
-          case _                        =>
-        }
+        if (callback.isAuthenticated) {
+          val isInteractive = r.params
+            .flatMap(Converter.fromJson[Attach](_).toOption.map(_.interactive))
+            .exists(identity)
+          StandardMain.exchange.channelForName(callback.name) match {
+            case Some(nc: NetworkChannel) => nc.setInteractive(r.id, isInteractive)
+            case _                        =>
+          }
+        } else
+          callback.jsonRpcRespondError(
+            Some(r.id),
+            ErrorCodes.InvalidRequest,
+            s"'$attach' is not allowed before authentication."
+          )
     }
   private val responseHandler: Handler[JsonRpcResponseMessage] =
     callback => {
@@ -191,7 +219,10 @@ object VirtualTerminal {
           r.result.flatMap(Converter.fromJson[TerminalPropertiesResponse](_).toOption)
         pendingTerminalProperties.remove((callback.name, r.id)) match {
           case null   =>
-          case buffer => response.foreach(buffer.put)
+          case buffer =>
+            buffer.put(
+              response.getOrElse(TerminalPropertiesResponse(0, 0, false, false, false, false))
+            )
         }
       case r if pendingTerminalCapabilities.get((callback.name, r.id)) != null =>
         val response =
@@ -242,12 +273,14 @@ object VirtualTerminal {
   private val notificationHandler: Handler[JsonRpcNotificationMessage] =
     callback => {
       case n if n.method == systemIn =>
-        import sjsonnew.BasicJsonProtocol.*
-        n.params.flatMap(Converter.fromJson[Byte](_).toOption).foreach { byte =>
-          StandardMain.exchange.channelForName(callback.name) match {
-            case Some(nc: NetworkChannel) => nc.write(byte)
-            case _                        =>
+        if (callback.isAuthenticated) {
+          import sjsonnew.BasicJsonProtocol.*
+          n.params.flatMap(Converter.fromJson[Byte](_).toOption).foreach { byte =>
+            StandardMain.exchange.channelForName(callback.name) match {
+              case Some(nc: NetworkChannel) => nc.write(byte)
+              case _                        =>
+            }
           }
-        }
+        } else callback.log.warn(s"ignoring '$systemIn' before authentication")
     }
 }

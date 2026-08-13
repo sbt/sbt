@@ -1,6 +1,6 @@
 package sbt.util
 
-import sbt.internal.util.{ ActionCacheEvent, CacheEventLog }
+import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, CacheEventSummary }
 import verify.BasicTestSuite
 
 object CacheEventLogTest extends BasicTestSuite:
@@ -59,6 +59,9 @@ object CacheEventLogTest extends BasicTestSuite:
     logger.append(ActionCacheEvent.OnsiteTask)
     val expectedSummary = "cache 75%, 1 disk cache hit, 2 remote cache hits, 1 onsite task"
     assertEquals(logger.summary.toString(), expectedSummary)
+    logger.summary match
+      case data: CacheEventSummary.Data => assert(data.remoteHitCount == 2L)
+      case _                            => sys.error("expected CacheEventSummary.Data")
   }
 
   test("summary of 1 disk event after clear") {

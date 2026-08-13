@@ -224,13 +224,18 @@ trait Parsers {
   lazy val Port = token(IntBasic, "<port>")
 
   /** Parses a signed integer. */
-  lazy val IntBasic = mapOrFail('-'.? ~ Digit.+)(Function.tupled(toInt))
+  lazy val IntBasic = parseSigned(_.toInt)
+
+  /** Parses a signed long. */
+  lazy val LongBasic = parseSigned(_.toLong)
 
   /** Parses an unsigned integer. */
   lazy val NatBasic = mapOrFail(Digit.+)(_.mkString.toInt)
 
-  private def toInt(neg: Option[Char], digits: Seq[Char]): Int =
-    (neg.toSeq ++ digits).mkString.toInt
+  private def parseSigned[A](f: String => A) =
+    mapOrFail('-'.? ~ Digit.+) { case (neg, digits) =>
+      f((neg.toSeq ++ digits).mkString)
+    }
 
   /** Parses the lower-case values `true` and `false` into their corresponding Boolean values. */
   lazy val Bool = ("true" ^^^ true) | ("false" ^^^ false)

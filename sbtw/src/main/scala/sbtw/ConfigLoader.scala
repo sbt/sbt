@@ -21,12 +21,30 @@ object ConfigLoader:
     val fromConfig = new File(sbtHome, "conf/sbtopts")
     val fromEtc = new File("/etc/sbt/sbtopts")
     val fromSbtConfig = new File(sbtHome, "conf/sbtconfig.txt")
-    val fromEnv = sys.env.get("SBT_OPTS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
-    val fromProjectLines = loadLines(fromProject).map(stripJ)
-    val fromConfigLines = loadLines(fromConfig)
-    val fromEtcLines = loadLines(fromEtc)
-    val fromSbtConfigLines = loadLines(fromSbtConfig)
+    val fromEnv = sys.env.get("SBT_OPTS").toSeq.flatMap(tokenize)
+    val fromProjectLines = loadLines(fromProject).flatMap(tokenize).map(stripJ)
+    val fromConfigLines = loadLines(fromConfig).flatMap(tokenize)
+    val fromEtcLines = loadLines(fromEtc).flatMap(tokenize)
+    val fromSbtConfigLines = loadLines(fromSbtConfig).flatMap(tokenize)
     (fromEtcLines ++ fromConfigLines ++ fromSbtConfigLines ++ fromEnv ++ fromProjectLines)
+
+  /** Splits an sbtopts line on unquoted whitespace, honoring `'`/`"` (like the bash `parseLineIntoWords`). */
+  def tokenize(line: String): Seq[String] =
+    val out = scala.collection.mutable.ListBuffer.empty[String]
+    val word = new StringBuilder
+    var inDouble = false
+    var inSingle = false
+    line.foreach: c =>
+      if inDouble then if c == '"' then inDouble = false else word += c
+      else if inSingle then if c == '\'' then inSingle = false else word += c
+      else
+        c match
+          case '"'                 => inDouble = true
+          case '\''                => inSingle = true
+          case w if w.isWhitespace => if word.nonEmpty then { out += word.toString; word.clear() }
+          case other               => word += other
+    if word.nonEmpty then out += word.toString
+    out.toList
 
   def loadJvmOpts(cwd: File): Seq[String] =
     val fromProject = new File(cwd, ".jvmopts")

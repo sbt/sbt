@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import java.nio.file.Path as NioPath
 import java.net.URI
+import scala.annotation.tailrec
 // import Project._
 import Keys.{
   stateBuildStructure,
@@ -376,6 +377,15 @@ trait ProjectExtra extends Scoped.Syntax:
       val srvLogLevel: Option[Level.Value] = (ref / serverLog / logLevel).get(structure.data)
       val hs: Option[Seq[ServerHandler]] = get(ThisBuild / fullServerHandlers)
       val caches: Option[Seq[ActionCacheStore]] = get(cacheStores)
+      // cacheStores is recomputed on every reload; close any store dropped from the new value.
+      s.attributes.get(cacheStores.key) match
+        case Some(oldCaches) =>
+          val kept = caches.getOrElse(Nil)
+          oldCaches.foreach {
+            case store: AutoCloseable if !kept.exists(_ eq store) => store.close()
+            case _                                                => ()
+          }
+        case None => ()
       val rod: Option[NioPath] = get(rootOutputDirectory)
       val fileConverter: Option[FileConverter] = get(Keys.fileConverter)
       val commandDefs = allCommands.distinct.flatten[Command].map(_.tag(projectCommand, true))
@@ -607,6 +617,7 @@ trait ProjectExtra extends Scoped.Syntax:
         projectRef: ProjectRef
     ): Seq[ProjectRef] = {
       def dependencies(map: Map[ProjectRef, Seq[ProjectRef]], id: ProjectRef): Set[ProjectRef] = {
+        @tailrec
         def helper(map: Map[ProjectRef, Seq[ProjectRef]], acc: Set[ProjectRef]): Set[ProjectRef] =
           if (acc.exists(map.contains)) {
             val (kept, rem) = map.partition { case (k, _) => acc(k) }

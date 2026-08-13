@@ -64,6 +64,8 @@ trait Convert[C <: Quotes & Singleton] extends ContextUtil[C]:
                     report.errorAndAbort(message, position)
                   case _ =>
                     super.transformTerm(tree)(owner)
+              case _ =>
+                super.transformTerm(tree)(owner)
           case _ =>
             super.transformTerm(tree)(owner)
     end appTransformer

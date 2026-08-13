@@ -1,18 +1,29 @@
-> run fork
+# non-forked run executes in sbt's working directory
+> run
 $ exists flag
 $ delete flag
 
-$ mkdir forked
+# forked run inherits sbt's working directory by default,
+# even when run / baseDirectory points elsewhere (#1032)
 > set fork := true
 > set run / baseDirectory := baseDirectory(_ / "forked").value
+> run
+$ exists flag
+$ absent forked/flag
+$ delete flag
 
-> run forked
+# run / forkOptions configures the forked working directory
+> session clear
+> set fork := true
+> set Compile / run / forkOptions := Def.uncached((Compile / run / forkOptions).value.withWorkingDirectory(Some(baseDirectory.value / "forked")))
+$ mkdir forked
+> run
 $ exists forked/flag
 $ absent flag
 $ delete forked/flag
 
 > set envVars += ("flag.name" -> "env.flag")
-> run forked
+> run
 $ exists forked/env.flag
 $ absent flag
 $ absent forked/flag

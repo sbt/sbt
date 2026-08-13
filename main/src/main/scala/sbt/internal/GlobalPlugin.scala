@@ -9,6 +9,8 @@
 package sbt
 package internal
 
+import java.io.File
+import java.net.URI
 import sbt.librarymanagement.{
   Configuration,
   Configurations,
@@ -23,21 +25,21 @@ import Configurations.{ Compile, Runtime }
 import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
 import sbt.SlashSyntax0.*
 import sbt.librarymanagement.LibraryManagementCodec.given
-import java.io.File
 
 object GlobalPlugin {
   // constructs a sequence of settings that may be appended to a project's settings to
   //  statically add the global plugin as a classpath dependency.
   //  static here meaning that the relevant tasks for the global plugin have already been evaluated
   def inject(gp: GlobalPluginData): Seq[Setting[?]] =
+    val gpWithJar = gp.exportedJarUris.headOption
+      .fold(gp.projectID)(uri => gp.projectID.from(uri.toString))
     Seq[Setting[?]](
-      projectDependencies ++= gp.projectID +: gp.dependencies,
+      projectDependencies ++= gpWithJar +: gp.dependencies,
       resolvers := {
         val rs = resolvers.value
         (rs ++ gp.resolvers).distinct
       },
       globalPluginUpdate := gp.updateReport,
-      // TODO: these shouldn't be required (but are): the project* settings above should take care of this
       injectInternalClasspath(Runtime, gp.internalClasspath),
       injectInternalClasspath(Compile, gp.internalClasspath)
     )
@@ -76,13 +78,16 @@ object GlobalPlugin {
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
+      val converter = fileConverter.value
+      val exportedJarUris = prods.map(a => converter.toPath(a.data).toUri).toVector
 
       GlobalPluginData(
         projectID.value,
         projectDependencies.value,
         resolvers.value.toVector,
         (Runtime / fullClasspath).value,
-        (prods ++ intcp).distinct
+        (prods ++ intcp).distinct,
+        exportedJarUris
       )(updateReport.value)
     }
     val resolvedTaskInit = taskInit.mapReferenced(Project.replaceThis(p))
@@ -120,7 +125,8 @@ final case class GlobalPluginData(
     dependencies: Seq[ModuleID],
     resolvers: Vector[Resolver],
     fullClasspath: Classpath,
-    internalClasspath: Classpath
+    internalClasspath: Classpath,
+    exportedJarUris: Vector[URI],
 )(val updateReport: UpdateReport)
 final case class GlobalPlugin(
     data: GlobalPluginData,

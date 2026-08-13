@@ -12,11 +12,12 @@ lazy val dep = project
 lazy val use = project
   .dependsOn(dep)
   .settings(
-    TaskKey[Unit]("checkPickle") := {
+    TaskKey[Unit]("checkPickle") := Def.uncached {
       val s = streams.value
       val x = (dep / Compile / compile).value
       val picklePath = (Compile / internalDependencyPicklePath).value
       assert(picklePath.size == 1 &&
-        picklePath.head.data.name == "early.jar", s"picklePath = ${picklePath}")
+        picklePath.head.data.name.endsWith(".jar") &&
+        picklePath.head.data.toString.contains("early"), s"picklePath = ${picklePath}")
     },
   )

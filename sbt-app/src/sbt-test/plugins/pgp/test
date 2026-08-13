@@ -1,1 +1,4 @@
-> plugins
+> publishSigned
+
+$ exists target/sona-staging/com/example/app_3/1.0/app_3-1.0.jar.asc
+# $ absent target/sona-staging/com/example/app_3/1.0/app_3-1.0-sources.jar.asc.md5

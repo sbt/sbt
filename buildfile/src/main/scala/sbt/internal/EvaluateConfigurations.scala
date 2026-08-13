@@ -350,8 +350,8 @@ object BuildUtilLite:
   /** Prepend `_root_` and import just the names. */
   def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
 
-  /** Wildcard import `._` for all values. */
-  def importAll(values: Seq[String]): Seq[String] = importNames(values map { _ + "._" })
+  /** Wildcard import `.{*, given}` for all values. */
+  def importAll(values: Seq[String]): Seq[String] = importNames(values map { _ + ".{*, given}" })
   def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
   def rootedName(s: String): String = if (s contains '.') "_root_." + s else s
 end BuildUtilLite

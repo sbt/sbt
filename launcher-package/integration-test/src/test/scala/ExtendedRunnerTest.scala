@@ -31,6 +31,14 @@ object ExtendedRunnerTest extends BasicTestSuite:
       "JAVA_OPTS" -> "",
       "SBT_OPTS" -> ""
     )
+  def sbtProcessLikeBsd(args: String*) =
+    Process(
+      launcherCmd ++ args,
+      IntegrationTestPaths.citestDir("citest"),
+      "JAVA_OPTS" -> "",
+      "SBT_OPTS" -> "",
+      "OSTYPE" -> "openbsd7.9"
+    )
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -84,11 +92,16 @@ object ExtendedRunnerTest extends BasicTestSuite:
       "compile",
       "-v",
       "--sbt-jar",
-      "../target/universal/stage/bin/sbt-launch.jar"
+      "../../target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt-launch.jar"
     ).!!.linesIterator.toList
     assert(
-      out.contains[String]("../target/universal/stage/bin/sbt-launch.jar") ||
-        out.contains[String]("\"../target/universal/stage/bin/sbt-launch.jar\"")
+      out.exists(line =>
+        line.endsWith(
+          "/target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt-launch.jar"
+        ) || line.endsWith(
+          "/target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt-launch.jar\""
+        )
+      )
     )
     ()
   }
@@ -142,6 +155,38 @@ object ExtendedRunnerTest extends BasicTestSuite:
         assert(out2.exists { _.contains("disconnected") })
       }
     }
+    ()
+  }
+
+  test("sbt falls back to JVM client on unsupported platform") {
+    if isWindows || isMac then ()
+    else
+      val out = sbtProcessLikeBsd("--client", "--no-colors", "compile").!!.linesIterator.toList
+      assert(out.exists { _.contains("server was not detected") })
+      sbtProcessLikeBsd("--client", "--no-colors", "shutdown").!
+    ()
+  }
+
+  test("sbt --client reports server startup errors") {
+    if isWindows then ()
+    else
+      IO.withTemporaryDirectory: tmp =>
+        val projectDir = new File(tmp, "project")
+        IO.createDirectory(projectDir)
+        IO.write(new File(projectDir, "build.properties"), "sbt.version=2.0.0\n")
+        IO.write(new File(tmp, "build.sbt"), "name := \"startup-error\"\n")
+        IO.write(new File(tmp, "target"), "")
+
+        val output = new StringBuffer
+        def append(line: String): Unit =
+          output.append(line).append(System.lineSeparator())
+          ()
+        val exitCode = sbtProcessInDir(tmp)("--client", "--no-colors", "about")
+          .!(ProcessLogger(append, append))
+        val diagnostics = output.toString
+        assert(exitCode == 1, diagnostics)
+        assert(diagnostics.contains("Could not create directory"), diagnostics)
+        assert(diagnostics.contains("target/global-logging"), diagnostics)
     ()
   }
 

@@ -20,6 +20,7 @@ lazy val root = (project in file("."))
       val moduleIds = moduleReports.map(_.module).distinct
       val moduleIdsShort = moduleIds
         .filter(m => m.name != "launcher-interface") // I get different result locally
+        .filter(m => m.organization != "org.scala-sbt")
         .map(m => s"${m.organization}:${m.name}")
 
       val expectedModuleIds = Seq(
@@ -41,7 +42,6 @@ lazy val root = (project in file("."))
         "junit:junit",
         "net.java.dev.jna:jna",
         "net.java.dev.jna:jna-platform",
-        "net.openhft:zero-allocation-hashing",
         "org.checkerframework:checker-qual",
         "org.fusesource.jansi:jansi",
         "org.hamcrest:hamcrest-core",
@@ -65,18 +65,6 @@ lazy val root = (project in file("."))
         "org.scala-sbt.ipcsocket:ipcsocket",
         "org.scala-sbt.ivy:ivy",
         "org.scala-sbt.jline:jline",
-        "org.scala-sbt:compiler-interface",
-        "org.scala-sbt:io_3",
-        "org.scala-sbt:sbinary_3",
-        "org.scala-sbt:template-resolver",
-        "org.scala-sbt:test-interface",
-        "org.scala-sbt:zinc-apiinfo_3",
-        "org.scala-sbt:zinc-classfile_3",
-        "org.scala-sbt:zinc-classpath_3",
-        "org.scala-sbt:zinc-compile-core_3",
-        "org.scala-sbt:zinc-core_3",
-        "org.scala-sbt:zinc-persist_3",
-        "org.scala-sbt:zinc_3",
         "org.scala-sbt.gson:shaded-gson",
         "org.slf4j:slf4j-api",
       )

@@ -14,14 +14,60 @@ jobs:
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
     steps:
-    - uses: actions/checkout@v6
-    - name: Setup JDK
-      uses: actions/setup-java@v5
-      with:
-        distribution: "zulu"
-        java-version: "17"
-        cache: sbt
-    - uses: sbt/setup-sbt@v1
-    - name: Server test
-      shell: bash
-      run: sbt -v --client "serverTestProj/test"
+      - uses: actions/checkout@v7
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Set bazel-remote version
+        id: bazel-remote-version
+        run: echo "version=2.6.2" >> "$GITHUB_OUTPUT"
+      - name: Cache bazel-remote
+        id: cache-bazel-remote
+        uses: actions/cache@v6
+        with:
+          path: $RUNNER_TOOL_CACHE/local/bazel-remote
+          key: bazel-remote-v${{ steps.bazel-remote-version.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Download bazel-remote
+        if: steps.cache-bazel-remote.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          BAZEL_REMOTE_VERSION: ${{ steps.bazel-remote-version.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TOOL_CACHE/local"
+          curl -sL -o "$RUNNER_TOOL_CACHE/local/bazel-remote" "https://github.com/buchgr/bazel-remote/releases/download/v${BAZEL_REMOTE_VERSION}/bazel-remote-${BAZEL_REMOTE_VERSION}-linux-amd64"
+          chmod +x "$RUNNER_TOOL_CACHE/local/bazel-remote"
+      - name: Add bazel-remote to PATH
+        run: echo "$RUNNER_TOOL_CACHE/local" >> "$GITHUB_PATH"
+      - name: Start bazel-remote
+        shell: bash
+        run: |
+          mkdir -p "$HOME/bazel-remote/temp"
+          nohup "$RUNNER_TOOL_CACHE/local/bazel-remote" --max_size 5 --dir "$HOME/bazel-remote/temp" \
+            --http_address localhost:8000 --grpc_address localhost:2024 \
+            > /tmp/bazel-remote.log 2>&1 &
+          echo $! > /tmp/bazel-remote.pid
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/status > /dev/null && exit 0
+            sleep 1
+          done
+          echo "bazel-remote did not start in time"
+          cat /tmp/bazel-remote.log
+          exit 1
+      - name: Remote cache scripted test
+        shell: bash
+        run: |
+          sbt -v --client "doc; publishLocal"
+          sbt -v --client "scripted remote-cache/*"
+      - name: Server test
+        shell: bash
+        run: sbt -v --client "serverTestProj/test"
+      - name: Stop bazel-remote
+        if: always()
+        run: |
+          if [ -f /tmp/bazel-remote.pid ]; then
+            kill "$(cat /tmp/bazel-remote.pid)" || true
+          fi

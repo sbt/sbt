@@ -33,14 +33,14 @@ class EventsTest extends AbstractServerTest {
     val invalidID = svr.session.nextId()
     val cancelId = svr.session.nextId()
     svr.session
-      .sendJsonRpc(cancelId, "sbt/cancelRequest", CancelRequestParams(invalidID.toString))
+      .sendJsonRpc(cancelId, "sbt/cancelRequest", CancelRequestParams(invalidID))
       .get
     val response = svr.session.waitForResponseMsg(20.seconds, cancelId).get
     assert(response.error.exists(_.code == -32800))
 
     // cancel the actual blockForever task so it doesn't block subsequent tests
     val cleanupId = svr.session.nextId()
-    svr.session.sendJsonRpc(cleanupId, "sbt/cancelRequest", CancelRequestParams(id.toString)).get
+    svr.session.sendJsonRpc(cleanupId, "sbt/cancelRequest", CancelRequestParams(id)).get
     svr.session.waitForResponseMsg(10.seconds, cleanupId).get
   }
 
@@ -58,7 +58,7 @@ class EventsTest extends AbstractServerTest {
     val cancelResult = svr.session
       .sendJsonRpcAwaitResult[ExecStatusEvent](
         "sbt/cancelRequest",
-        CancelRequestParams(id.toString),
+        CancelRequestParams(id),
         11.seconds
       )
       .get

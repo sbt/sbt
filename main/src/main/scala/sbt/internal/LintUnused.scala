@@ -47,6 +47,7 @@ object LintUnused {
       sbt.nio.Keys.outputFileStamper,
       sbt.nio.Keys.watchTriggers,
       serverConnectionType,
+      serverPort,
       serverIdleTimeout,
       shellPrompt,
       sLog,

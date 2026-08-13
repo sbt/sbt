@@ -10,7 +10,6 @@ package sbt.util
 private[sbt] object OptionInstances:
   lazy val optionMonad: Monad[Option] =
     new Monad[Option]:
-      type F[a] = Option[a]
 
       def pure[A](x: () => A): Option[A] = Some(x())
       def ap[A, B](ff: Option[A => B])(fa: Option[A]): Option[B] =

@@ -99,7 +99,7 @@ object IvyRepoSpec extends BaseIvySpecification {
   override lazy val resolvers: Vector[Resolver] = Vector(testIvy)
 
   lazy val testIvy = {
-    val repoUrl = getClass.getResource("/test-ivy-repo")
-    Resolver.url("Test Repo", repoUrl)(using Resolver.ivyStylePatterns)
+    val repoUrl = getClass.getResource("/test-ivy-repo").toURI()
+    Resolver.uri("Test Repo", repoUrl)(using Resolver.ivyStylePatterns)
   }
 }

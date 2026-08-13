@@ -36,7 +36,7 @@ private[librarymanagement] abstract class MavenRepositoryFunctions {
 private[librarymanagement] abstract class PatternsFunctions {
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
-  def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns*)
+  def apply(artifactPatterns: String*): Patterns = Patterns(false, artifactPatterns*)
   def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = {
     val patterns = artifactPatterns.toVector
     Patterns()
@@ -132,17 +132,15 @@ private[librarymanagement] abstract class ResolverFunctions {
 
   def typesafeRepo(status: String) =
     MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
-  def typesafeIvyRepo(status: String) =
-    url("typesafe-ivy-" + status, new URI(TypesafeRepositoryRoot + "/ivy-" + status + "/").toURL)(
-      using ivyStylePatterns
-    )
-  def sbtIvyRepo(status: String) =
-    url(s"sbt-ivy-$status", new URI(s"$SbtRepositoryRoot/ivy-$status/").toURL)(using
+  def typesafeIvyRepo(status: String): URLRepository =
+    uri("typesafe-ivy-" + status, URI(TypesafeRepositoryRoot + "/ivy-" + status + "/"))(using
       ivyStylePatterns
     )
+  def sbtIvyRepo(status: String) =
+    uri(s"sbt-ivy-$status", URI(s"$SbtRepositoryRoot/ivy-$status/"))(using ivyStylePatterns)
   def sbtPluginRepo(status: String) =
-    url("sbt-plugin-" + status, new URI(SbtRepositoryRoot + "/sbt-plugin-" + status + "/").toURL)(
-      using ivyStylePatterns
+    uri("sbt-plugin-" + status, URI(SbtRepositoryRoot + "/sbt-plugin-" + status + "/"))(using
+      ivyStylePatterns
     )
 
   @deprecated(
@@ -293,13 +291,27 @@ private[librarymanagement] abstract class ResolverFunctions {
       construct(name, SshConnection(None, hostname, port), resolvePatterns(basePath, basePatterns))
   }
 
-  /** A factory to construct an interface to an Ivy SSH resolver. */
+  /**
+   * A factory to construct an interface to an Ivy SSH resolver.
+   *
+   * The implicit `basePatterns` default to [[mavenStylePatterns]] (`isMavenCompatible = true`), under
+   * which the `[organisation]` token is rendered in slash-separated form. To keep the organization
+   * literal (e.g. `org.example`), supply Ivy-style patterns such as a [[Patterns]] built with
+   * `isMavenCompatible = false` (the [[Patterns]] default). See issue #535.
+   */
   object ssh extends Define[SshRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SshRepository(name, connection, patterns, None)
   }
 
-  /** A factory to construct an interface to an Ivy SFTP resolver. */
+  /**
+   * A factory to construct an interface to an Ivy SFTP resolver.
+   *
+   * The implicit `basePatterns` default to [[mavenStylePatterns]] (`isMavenCompatible = true`), under
+   * which the `[organisation]` token is rendered in slash-separated form. To keep the organization
+   * literal (e.g. `org.example`), supply Ivy-style patterns such as a [[Patterns]] built with
+   * `isMavenCompatible = false` (the [[Patterns]] default). See issue #535.
+   */
   object sftp extends Define[SftpRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SftpRepository(name, connection, patterns)
@@ -325,18 +337,38 @@ private[librarymanagement] abstract class ResolverFunctions {
 
     private def toUri(dir: File): URI = dir.toPath.toUri
   }
-  object url {
+  object url:
 
     /**
      * Constructs a URL resolver with the given name.  The patterns to use must be explicitly specified
      * using the `withPatterns` method on the constructed resolver object.
      */
+    @deprecated("Use Resolver.uri(...) instead", "2.0.2")
+    def apply(name: String): URLRepository = uri(name)
+
+    /** Constructs a URL resolver with the given name and base URL. */
+    @deprecated("Use Resolver.uri(...) instead", "2.0.2")
+    def apply(name: String, baseURL: URL)(implicit basePatterns: Patterns): URLRepository =
+      uri(name, baseURL.toURI)(using basePatterns)
+
+    /** Constructs a URL resolver with the given name and base URI. */
+    @deprecated("Use Resolver.uri(...) instead", "2.0.2")
+    def apply(name: String, baseURI: URI)(using Patterns): URLRepository =
+      uri(name, baseURI)
+  end url
+
+  object uri:
+    /**
+     * Constructs a URI resolver with the given name.  The patterns to use must be explicitly specified
+     * using the `withPatterns` method on the constructed resolver object.
+     */
     def apply(name: String): URLRepository = URLRepository(name, Patterns(false))
 
-    /** Constructs a file resolver with the given name and base directory. */
-    def apply(name: String, baseURL: URL)(implicit basePatterns: Patterns): URLRepository =
-      baseRepository(baseURL.toURI.normalize.toString)(URLRepository(name, _))
-  }
+    /** Constructs a URI resolver with the given name and base URI. */
+    def apply(name: String, baseURI: URI)(using Patterns): URLRepository =
+      baseRepository(baseURI.normalize.toString)(URLRepository(name, _))
+  end uri
+
   private def baseRepository[T](base: String)(construct: Patterns => T)(implicit
       basePatterns: Patterns
   ): T =
@@ -369,7 +401,18 @@ private[librarymanagement] abstract class ResolverFunctions {
     else normBase + "/" + pattern
   }
   def defaultFileConfiguration = FileConfiguration(true, None)
-  def mavenStylePatterns = Patterns().withArtifactPatterns(Vector(mavenStyleBasePattern))
+
+  /**
+   * Maven-compatible layout (`isMavenCompatible = true`). The `[organisation]`/`[organization]` token
+   * is rendered in slash-separated form (`org.example` becomes `org/example`) by the Ivy engine.
+   */
+  def mavenStylePatterns =
+    Patterns().withArtifactPatterns(Vector(mavenStyleBasePattern)).withIsMavenCompatible(true)
+
+  /**
+   * Ivy-style layout (`isMavenCompatible = false`). The `[organisation]`/`[organization]` token is
+   * substituted literally, keeping the dots (`org.example` stays `org.example`).
+   */
   def ivyStylePatterns = defaultIvyPatterns // Patterns(Nil, Nil, false)
 
   def defaultPatterns = mavenStylePatterns
@@ -474,7 +517,7 @@ private[librarymanagement] abstract class ResolverFunctions {
       if (ivy || art) {
         warnHttp(
           patterns.toString,
-          s""" or opt-in as Resolver.url("${repo.name}", url(...)).withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file""",
+          s""" or opt-in as Resolver.uri("${repo.name}", url(...)).withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file""",
           logger
         )
         true

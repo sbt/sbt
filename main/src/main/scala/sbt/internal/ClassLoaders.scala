@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import java.io.File
+import java.io.{ IOException, File }
 import java.net.URL
 import java.nio.file.Path
 import sbt.ClassLoaderLayeringStrategy.*
@@ -29,8 +29,22 @@ import xsbti.ArtifactInfo
 import xsbti.HashedVirtualFileRef
 
 private[sbt] object ClassLoaders {
+
+  /**
+   * https://github.com/sbt/sbt/issues/9468
+   * Resolves symlinks before converting to a URL. Classpath entries backed by a
+   * CAS cache would otherwise all share one URL across builds;
+   * the JVM's jar/URL connection caching is keyed by path, so once a jar: URL for that
+   * stable path has been opened, later reads can keep returning the first content seen\
+   * even after the symlink target (and the underlying file content) changes.
+   */
+  private[sbt] def toRealURL(f: File): URL =
+    val real = try f.toPath.toRealPath().toFile
+    catch case _: IOException => f
+    real.toURI.toURL
+
   extension (files: Seq[File]) {
-    def urls: Array[URL] = files.toArray.map(_.toURI.toURL)
+    def urls: Array[URL] = files.toArray.map(toRealURL)
   }
   private val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
@@ -210,11 +224,11 @@ private[sbt] object ClassLoaders {
               scalaReflectLayer,
               () =>
                 new ReverseLookupClassLoaderHolder(
-                  allDependencies,
-                  scalaReflectLayer,
-                  close,
-                  allowZombies,
-                  logger
+                  classpath = allDependencies,
+                  parent = scalaReflectLayer,
+                  closeThis = close,
+                  allowZombies = allowZombies,
+                  logger = logger,
                 )
             )
           } else scalaReflectLayer

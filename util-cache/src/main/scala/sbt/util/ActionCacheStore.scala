@@ -66,16 +66,20 @@ end ActionCacheStore
 
 trait AbstractActionCacheStore extends ActionCacheStore:
   def putBlobsIfNeeded(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+    // Read each blob's hash and size once, up front, and return only these plain value refs:
+    // serializing the ActionResult afterwards does no file I/O, and nothing re-stats a blob
+    // after its CAS entry is written.
+    val materialized: Seq[(VirtualFile, HashedVirtualFileRef)] = blobs.map: blob =>
+      blob -> HashedVirtualFileRef.of(blob.id, blob.contentHashStr, blob.sizeBytes)
     val found = findBlobs(blobs).toSet
     val missing = blobs.flatMap: blob =>
       val ref: HashedVirtualFileRef = blob
       if found.contains(ref) then None
       else Some(blob)
     val combined = putBlobs(missing).toSet ++ found
-    blobs.flatMap: blob =>
+    materialized.flatMap: (blob, plain) =>
       val ref: HashedVirtualFileRef = blob
-      if combined.contains(ref) then Some(ref)
-      else None
+      if combined.contains(ref) then Some(plain) else None
 
   def notFound: Throwable =
     new RuntimeException("not found")
@@ -211,7 +215,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
           val inlineRefs = request.inlineOutputFiles.map: path =>
             value.outputFiles.find(_.id == path).get
           val contents = getBlobs(inlineRefs).toVector.map: b =>
-            ByteBuffer.wrap(IO.readBytes(b.input))
+            Using.resource(b.input)(in => ByteBuffer.wrap(IO.readBytes(in)))
           Right(value.withContents(contents))
       catch case NonFatal(e) => Left(e)
     else Left(notFound)
@@ -227,17 +231,23 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     catch case e: IOException => Left(e)
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    blobs.map: (b: VirtualFile) =>
-      putBlob(b.input, Digest(b))
-      (b: HashedVirtualFileRef)
+    blobs.map:
+      case b: PathBasedFile =>
+        putBlob(b.toPath(), Digest(b))
+        (b: HashedVirtualFileRef)
+      case b: VirtualFile =>
+        Using.resource(b.input)(putBlob(_, Digest(b)))
+        (b: HashedVirtualFileRef)
 
   def toCasFile(digest: Digest): Path =
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
 
   def putBlob(blob: Path, digest: Digest): Path =
-    Using.resource(Files.newInputStream(blob)) { in =>
-      putBlob(in, digest)
-    }
+    val casFile = toCasFile(digest)
+    if isCompleteBlob(casFile, digest) then casFile
+    else
+      IO.copyFile(blob.toFile(), casFile.toFile(), preserveLastModified = true)
+      casFile
 
   /** Move blob directly to CAS. Internal use only. */
   private[sbt] def putBlobInternal(blob: Path, digest: Digest): Path =
@@ -284,14 +294,17 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
     refs.flatMap: r =>
-      try
-        val casFile = toCasFile(Digest(r))
-        if isCompleteBlob(casFile, Digest(r)) then
-          // println(s"syncBlobs: $casFile exists for $r")
-          Some(syncFile(r, casFile, outputDirectory))
-        else None
-      // Digest(r) can throw NoSuchFileException
-      catch case _: NoSuchFileException => None
+      // Only the blob-availability lookup may swallow NoSuchFileException (Digest(r) can throw it):
+      // an absent blob is a cache miss for that entry. A write failure from syncFile, however, must
+      // propagate so the caller can degrade to the onsite task (sbt/sbt#8890) instead of silently
+      // leaving the output tree incomplete (sbt/sbt#9349).
+      val casFileOpt =
+        try
+          val digest = Digest(r)
+          val casFile = toCasFile(digest)
+          if isCompleteBlob(casFile, digest) then Some(casFile) else None
+        catch case _: NoSuchFileException => None
+      casFileOpt.map(syncFile(r, _, outputDirectory))
 
   def syncFile(ref: HashedVirtualFileRef, casFile: Path, outputDirectory: Path): Path =
     val d = Digest(ref)
@@ -305,9 +318,8 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     // See https://github.com/sbt/sbt/issues/7656
     // On Windows, the program has be running under the Administrator privileges or the
     // user enable Developer Mode on Windows 10+ to create symbolic links.
-    def writeFileAndNotify(outPath: Path): Path =
-      Option(outPath.getParent()).foreach(parent => IO.createDirectory(parent.toFile()))
-      val result = Retry:
+    def linkOrCopy(outPath: Path): Path =
+      Retry:
         if Files.exists(outPath) then IO.delete(outPath.toFile())
         if symlinkSupported.get() && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
@@ -326,6 +338,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
                 symlinkSupported.set(false)
               copyFile(outPath)
         else copyFile(outPath)
+    def writeFileAndNotify(outPath: Path): Path =
+      Option(outPath.getParent()).foreach(parent => IO.createDirectory(parent.toFile()))
+      val result = linkOrCopy(outPath)
       afterFileWrite(ref, result, outputDirectory)
       result
     val resolvedPath = converter.toPath(ref) match
@@ -337,9 +352,11 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         writeFileAndNotify(p)
       case p =>
         try
-          // `!symlinkSupported` prevents unnecessary deletion of files and then copying them again
-          // in #writeFileAndNotify on machines that don't support symlinks.
-          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then p
+          if Digest.sameDigest(p, d) then
+            val result =
+              if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
+            afterFileUpToDate(ref, result, outputDirectory)
+            result
           else
             // println(s"- syncFile: $p has different digest")
             IO.delete(p.toFile())
@@ -356,6 +373,16 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
   def afterFileWrite(ref: HashedVirtualFileRef, path: Path, outputDirectory: Path): Unit =
     if path.toString().endsWith(ActionCache.dirZipExt) then unpackageDirZip(path, outputDirectory)
     else ()
+
+  /** Re-extract a dirzip whose extracted directory is missing: one stat on the warm path. */
+  private def afterFileUpToDate(
+      ref: HashedVirtualFileRef,
+      path: Path,
+      outputDirectory: Path
+  ): Unit =
+    if path.toString().endsWith(ActionCache.dirZipExt) then
+      val dirPath = Paths.get(path.toString.dropRight(ActionCache.dirZipExt.size))
+      if !Files.isDirectory(dirPath) then Util.ignoreResult(unpackageDirZip(path, outputDirectory))
 
   /**
    * Given a dirzip, unzip it in a temp directory, and sync each items to the outputDirectory.

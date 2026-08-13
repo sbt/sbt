@@ -6,14 +6,14 @@ object DatatypeConfig {
   /** Extract the only type parameter from a TpeRef */
   def oneArg(tpe: Type): Type = {
     val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?)[>\\]]""".r
-    val pat(arg0) = tpe.name
+    val pat(arg0) = tpe.name.runtimeChecked
     NamedType(arg0.split('.').toList)
   }
 
   /** Extract the two type parameters from a TpeRef */
   def twoArgs(tpe: Type): List[Type] = {
     val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?), (.+?)[>\\]]""".r
-    val pat(arg0, arg1) = tpe.name
+    val pat(arg0, arg1) = tpe.name.runtimeChecked
     NamedType(arg0.split('.').toList) :: NamedType(arg1.split('.').toList) :: Nil
   }
 

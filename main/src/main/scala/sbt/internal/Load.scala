@@ -1129,7 +1129,9 @@ private[sbt] object Load {
       val newProjects = rest ++ discovered ++ projectLevelExtra
       val newAcc = acc :+ finalRoot
       val newGenerated = generated ++ generatedConfigClassFiles
-      loadTransitive1(newProjects, newAcc, newGenerated, commonSettings)
+      // only root-level settings are build-wide; a submodule's own settings must not leak to siblings (#9517).
+      val cs = if isRootPath(p.base, buildBase) then finalRoot.commonSettings else commonSettings
+      loadTransitive1(newProjects, newAcc, newGenerated, cs)
     }
 
     // Load all config files AND process the project at the root directory, if it exists.
@@ -1411,41 +1413,43 @@ private[sbt] object Load {
       case None     => Nil
 
   /** These are the settings defined when loading a project "meta" build. */
-  val autoPluginSettings: Seq[Setting[?]] = inScope(GlobalScope.rescope(LocalRootProject))(
-    Seq(
-      sbtPlugin :== true,
-      isMetaBuild :== true,
-      pluginData := Def.uncached {
-        val prod = (Configurations.Runtime / exportedProducts).value
-        val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
-        val cp = (Configurations.Runtime / fullClasspath).value
-        val opts = (Configurations.Compile / scalacOptions).value
-        val javaOpts = (Configurations.Compile / javacOptions).value
-        val unmanagedSrcDirs = (Configurations.Compile / unmanagedSourceDirectories).value
-        val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
-        val managedSrcDirs = (Configurations.Compile / managedSourceDirectories).value
-        val managedSrcs = (Configurations.Compile / managedSources).value
-        val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
-        val converter = fileConverter.value
-        PluginData(
-          removeEntries(cp, prod),
-          prod,
-          Some(fullResolvers.value.toVector),
-          Some(update.value),
-          opts,
-          javaOpts,
-          unmanagedSrcDirs,
-          unmanagedSrcs,
-          managedSrcDirs,
-          managedSrcs,
-          Some(buildTarget),
-          converter,
-          internalCp,
-        )
-      },
-      onLoadMessage := ("loading project definition from " + baseDirectory.value)
+  def autoPluginSettings(config: LoadBuildConfiguration): Seq[Setting[?]] =
+    inScope(GlobalScope.rescope(LocalRootProject))(
+      Seq(
+        sbtPlugin :== true,
+        isMetaBuild :== true,
+        pluginData := Def.uncached {
+          val gpClasspath = globalPluginClasspath(config.globalPlugin)
+          val prod = (Configurations.Runtime / exportedProducts).value
+          val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
+          val cp = (Configurations.Runtime / fullClasspath).value
+          val opts = (Configurations.Compile / scalacOptions).value
+          val javaOpts = (Configurations.Compile / javacOptions).value
+          val unmanagedSrcDirs = (Configurations.Compile / unmanagedSourceDirectories).value
+          val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
+          val managedSrcDirs = (Configurations.Compile / managedSourceDirectories).value
+          val managedSrcs = (Configurations.Compile / managedSources).value
+          val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
+          val converter = fileConverter.value
+          PluginData(
+            (removeEntries(cp, prod) ++ gpClasspath).distinct,
+            prod,
+            Some(fullResolvers.value.toVector),
+            Some(update.value),
+            opts,
+            javaOpts,
+            unmanagedSrcDirs,
+            unmanagedSrcs,
+            managedSrcDirs,
+            managedSrcs,
+            Some(buildTarget),
+            converter,
+            internalCp,
+          )
+        },
+        onLoadMessage := ("loading project definition from " + baseDirectory.value)
+      )
     )
-  )
 
   private def removeEntries(
       cp: Def.Classpath,
@@ -1459,7 +1463,7 @@ private[sbt] object Load {
   def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
     config.copy(
       injectSettings = config.injectSettings.copy(
-        global = autoPluginSettings ++ config.injectSettings.global,
+        global = autoPluginSettings(config) ++ config.injectSettings.global,
         project = config.pluginManagement.inject ++ config.injectSettings.project
       )
     )

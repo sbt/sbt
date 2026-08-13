@@ -1,6 +1,6 @@
 package sbt.util
 
-import java.io.{ IOException, InputStream }
+import java.io.{ ByteArrayInputStream, IOException, InputStream }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
 import java.util.Optional
@@ -15,6 +15,7 @@ import xsbti.{
   CompileFailed,
   FileConverter,
   HashedVirtualFileRef,
+  PathBasedFile,
   Problem,
   Position,
   Severity,
@@ -25,6 +26,8 @@ import xsbti.{
 import ActionCache.InternalActionResult
 
 object ActionCacheTest extends BasicTestSuite:
+  final case class Unserializable(n: Int)
+
   val tags = CacheLevelTag.all.toList
 
   test("findMissingFile extracts the path from a wrapped NoSuchFileException"):
@@ -87,6 +90,87 @@ object ActionCacheTest extends BasicTestSuite:
         val b = bytes(index) & 0xff
         index += 1
         b
+
+  test("Disk cache re-extracts a dirzip whose directory was deleted"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        IO.write(dir / "b.txt", "contents B")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+        assert(refs.size == 1)
+
+        cache.syncBlobs(refs, outputDirectory)
+        assert((dir / "a.txt").exists && (dir / "b.txt").exists)
+
+        IO.delete(dir)
+        assert(!dir.exists)
+        cache.syncBlobs(refs, outputDirectory)
+        assert((dir / "a.txt").exists, "a.txt not re-extracted after the directory was deleted")
+        assert((dir / "b.txt").exists, "b.txt not re-extracted after the directory was deleted")
+
+  test("Disk cache does not re-extract a dirzip whose archive digest already matches"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+
+        // packageDirectory leaves a regular file whose digest already matches the blob, so the
+        // extracted tree is in sync by construction and syncing must not unpackage it again.
+        IO.write(dir / "a.txt", "diverged")
+        cache.syncBlobs(refs, outputDirectory)
+        assert(IO.read(dir / "a.txt") == "diverged")
+
+  test("Disk cache relinks a digest-matching dirzip to the CAS"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+        val zipPath = Paths.get(dir.toString + ActionCache.dirZipExt)
+        assert(!Files.isSymbolicLink(zipPath), "packageDirectory should leave a regular file")
+
+        cache.syncBlobs(refs, outputDirectory)
+        assert(Files.isSymbolicLink(zipPath), "digest-matching archive was not relinked to the CAS")
+
+  test("Disk cache re-extracts a dirzip whose archive digest differs"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+
+        IO.write(Paths.get(dir.toString + ActionCache.dirZipExt).toFile(), "not an archive")
+        IO.write(dir / "a.txt", "diverged")
+        IO.write(dir / "stray.txt", "stray")
+        cache.syncBlobs(refs, outputDirectory)
+        assert(IO.read(dir / "a.txt") == "contents A", "diverged file was not restored")
+        assert(!(dir / "stray.txt").exists, "stray file was not removed")
 
   test("In-memory cache can hold action value"):
     withInMemoryCache(testActionCacheBasic)
@@ -222,6 +306,233 @@ object ActionCacheTest extends BasicTestSuite:
       assert(caught2.problems()(0).message() == "Test error message")
       assert(caught2.getMessage() == "Compilation failed")
 
+  test("Disk cache does not cache an environmental (position-less) CompileFailed"):
+    withDiskCache(testEnvironmentalCompileFailureNotCached)
+
+  def testEnvironmentalCompileFailureNotCached(cache: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    // An I/O write failure surfaced by zinc as a compiler problem: an error with no source position.
+    val ioProblem = new Problem:
+      override def category(): String = "Test"
+      override def severity(): Severity = Severity.Error
+      override def message(): String = "error writing Meta$.class: AccessDeniedException"
+      override def position(): Position = new Position:
+        override def line(): Optional[Integer] = Optional.empty()
+        override def lineContent(): String = ""
+        override def offset(): Optional[Integer] = Optional.empty()
+        override def pointer(): Optional[Integer] = Optional.empty()
+        override def pointerSpace(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.empty()
+        override def sourceFile(): Optional[java.io.File] = Optional.empty()
+
+    val ioException = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(ioProblem)
+      override def getMessage(): String = "Compilation failed"
+
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (_, _) =>
+      called += 1
+      throw ioException
+    }
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+
+      try
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(false, "Expected CompileFailed to be thrown")
+      catch case _: CompileFailed => ()
+      assert(called == 1)
+
+      // The environment may have healed, so the second call must re-run the action rather than
+      // replay a stale cached failure.
+      try
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(false, "Expected CompileFailed to be thrown")
+      catch case _: CompileFailed => ()
+      assert(
+        called == 2,
+        s"environmental failure must not be cached; action should re-run (called=$called)"
+      )
+
+  test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
+    withDiskCache(testLegacyPoisonedFailureCured)
+
+  def testLegacyPoisonedFailureCured(cache: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+    var called = 0
+    val ioProblem = new Problem:
+      override def category(): String = "Test"
+      override def severity(): Severity = Severity.Error
+      override def message(): String = "error writing Meta$.class: AccessDeniedException"
+      override def position(): Position = new Position:
+        override def line(): Optional[Integer] = Optional.empty()
+        override def lineContent(): String = ""
+        override def offset(): Optional[Integer] = Optional.empty()
+        override def pointer(): Optional[Integer] = Optional.empty()
+        override def pointerSpace(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.empty()
+        override def sourceFile(): Optional[java.io.File] = Optional.empty()
+    val ioException = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(ioProblem)
+      override def getMessage(): String = "Compilation failed"
+
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+      called += 1
+      InternalActionResult(a + b, Nil)
+    }
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+
+      // Write the poisoned entry exactly the way sbt cached failures before the gate existed.
+      val digest = ActionCache.mkInput((1, 1), Digest.zero, Digest.zero, config.cacheVersion)
+      val json = Converter.toJsonUnsafe(CachedCompileFailure.fromException(ioException))
+      val failureFile = StringVirtualFile1(ActionCache.mkValuePath(digest), CompactPrinter(json))
+      cache.put(
+        UpdateActionResultRequest(
+          digest,
+          Vector(failureFile),
+          exitCode = ActionCache.failureExitCode
+        )
+      )
+
+      // The poison must not replay: the action runs and succeeds.
+      val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v1 == 2)
+      assert(called == 1, s"poisoned failure must not replay; action should run (called=$called)")
+
+      // The success overwrites the poison: the next call is a cache hit.
+      val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v2 == 2)
+      assert(called == 1, s"expected a success cache hit after the cure (called=$called)")
+
+  test("A file vanishing after its blob is stored no longer breaks the cache write"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      var called = 0
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val goodHash = Digest.sha256Hash("hello".getBytes(StandardCharsets.UTF_8)).contentHashStr
+        val casFile = cache.toCasFile(Digest(s"$goodHash/5"))
+        // Models the reported race: the backing file vanishes the moment its blob reaches the
+        // CAS (the concurrent winner's syncFile swap), so any later stat throws.
+        val vanishing = new xsbti.BasicVirtualFileRef(s"$tempDir/out.jar") with VirtualFile:
+          private def maybeThrow[A](a: A): A =
+            if Files.exists(casFile) then throw new NoSuchFileException(id) else a
+          override def contentHash: Long = 0L
+          override def sizeBytes: Long = maybeThrow(5L)
+          override def contentHashStr: String = maybeThrow(goodHash)
+          override def input: java.io.InputStream =
+            new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(vanishing))
+        }
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 1, s"expected a cache hit: the write must have succeeded (called=$called)")
+
+  test("A file already missing at the cache write degrades to an uncached task"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      var called = 0
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val gone = new xsbti.BasicVirtualFileRef(s"$tempDir/out.jar") with VirtualFile:
+          override def contentHash: Long = throw new NoSuchFileException(id)
+          override def sizeBytes: Long = throw new NoSuchFileException(id)
+          override def contentHashStr: String = throw new NoSuchFileException(id)
+          override def input: java.io.InputStream = throw new NoSuchFileException(id)
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(gone))
+        }
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "a degraded cache write must mean a cache miss on the next run")
+
+  test("put materializes output refs so serialization does no file I/O"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        @volatile var vanished = false
+        val goodHash = Digest.sha256Hash("hello".getBytes(StandardCharsets.UTF_8)).contentHashStr
+        val ref = new xsbti.BasicVirtualFileRef(s"$tempDir/out.jar") with VirtualFile:
+          private def maybeThrow[A](a: A): A =
+            if vanished then throw new NoSuchFileException(id) else a
+          override def contentHash: Long = 0L
+          override def sizeBytes: Long = maybeThrow(5L)
+          override def contentHashStr: String = maybeThrow(goodHash)
+          override def input: java.io.InputStream =
+            new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        val stored =
+          cache.put(UpdateActionResultRequest(Digest.dummy(42L), Vector(ref), exitCode = 0)) match
+            case Right(r) => r.outputFiles.head
+            case Left(e)  => throw new AssertionError(s"put failed: $e", e)
+        vanished = true
+        assert(stored.id == ref.id)
+        assert(
+          stored.contentHashStr == goodHash && stored.sizeBytes == 5L,
+          "stored ref must not re-stat the file"
+        )
+
+  test("Restore preserves the last-modified time through the CAS round-trip"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        val outPath = (tempDir / "a.txt").toPath
+        val midnightUTC = java.nio.file.attribute.FileTime.from(
+          java.time.Instant.parse("2026-08-01T00:00:00Z")
+        )
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          Files.writeString(outPath, "foo")
+          Files.setLastModifiedTime(outPath, midnightUTC)
+          InternalActionResult(a + b, Seq(binaryConverter.toVirtualFile(outPath)))
+        }
+        val config = getCacheConfig(cache, tempDir, converter = binaryConverter)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val actual = Files.getLastModifiedTime(outPath)
+        assert(
+          actual == midnightUTC,
+          s"expected the file's mtime to survive the CAS round-trip unchanged " +
+            s"(wrote $midnightUTC, but after caching it reads $actual)"
+        )
+
+  test("A successful task whose value fails to serialize returns it uncached"):
+    withDiskCache: cache =>
+      var called = 0
+      // Pins the value-serialization leg of the NonFatal recovery introduced in #9488, which
+      // had no test: a codec that always throws, standing in for any serialization failure
+      // during the cache write of a succeeded task.
+      given sjsonnew.JsonFormat[Unserializable] = new sjsonnew.JsonFormat[Unserializable]:
+        override def write[J](obj: Unserializable, builder: sjsonnew.Builder[J]): Unit =
+          sjsonnew.serializationError("Unserializable is unserializable")
+        override def read[J](
+            jsOpt: Option[J],
+            unbuilder: sjsonnew.Unbuilder[J]
+        ): Unserializable = Unserializable(0)
+      import sjsonnew.BasicJsonProtocol.*
+      val action: ((Int, Int)) => InternalActionResult[Unserializable] = { (a, b) =>
+        called += 1
+        InternalActionResult(Unserializable(a + b), Nil)
+      }
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == Unserializable(2))
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == Unserializable(2))
+        assert(called == 2, "a degraded cache write must mean a cache miss on the next run")
+
   test("Cache falls back to recompute when syncBlobs throws FileNotFoundException"):
     withDiskCache(testSyncBlobsThrowsFallback)
 
@@ -342,6 +653,90 @@ object ActionCacheTest extends BasicTestSuite:
         assert(Files.size(zipPath) > 0L)
       finally pool.shutdown()
 
+  // See https://github.com/sbt/sbt/issues/9349. With a warm cache, deleting the output tree
+  // out-of-band must not break the next build: restore recreates the missing parent directories.
+  test("Restore recreates a deleted output directory (direct blob)"):
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outDir =>
+        val conv = fileConverter
+        val cache = DiskActionCacheStore(cacheDir.toPath, conv)
+        val nested = outDir.toPath.resolve("classes/pkg/A.txt")
+        val blob = StringVirtualFile1(nested.toString, "compiled")
+        val refs = cache.putBlobs(Seq(blob))
+        cache.syncBlobs(refs, outDir.toPath)
+        assert(Files.exists(nested), "first sync should create the file")
+        IO.delete(outDir.toPath.resolve("classes").toFile())
+        assert(!Files.exists(nested.getParent))
+        cache.syncBlobs(refs, outDir.toPath)
+        assert(Files.exists(nested), "restore must recreate the deleted parent + file")
+
+  test("Restore recreates a deleted output directory on a cache hit (dirzip)"):
+    import sjsonnew.BasicJsonProtocol.*
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outDir =>
+        val conv = binaryConverter
+        val cache = DiskActionCacheStore(cacheDir.toPath, conv)
+        val classesDir = outDir.toPath.resolve("classes")
+        val classFile = classesDir.resolve("pkg/A.class")
+        var called = 0
+        val action: Unit => InternalActionResult[Int] = { _ =>
+          called += 1
+          Files.createDirectories(classFile.getParent)
+          Files.writeString(classFile, "compiled")
+          val dirzip =
+            ActionCache.packageDirectory(
+              VirtualFileRef.of(classesDir.toString),
+              conv,
+              outDir.toPath
+            )
+          InternalActionResult(1, Seq(dirzip))
+        }
+        val config = getCacheConfig(cache, outDir, converter = conv)
+        val v1 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 1)
+        assert(called == 1)
+        assert(Files.exists(classFile))
+        IO.delete(outDir.toPath.toFile())
+        assert(!Files.exists(classesDir))
+        val v2 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 1)
+        assert(
+          Files.exists(classFile),
+          s"class file must be restored after output dir deletion (called=$called)"
+        )
+
+  // A genuinely broken restore (syncFile write fails) must degrade to the onsite task rather than
+  // being silently swallowed by syncBlobs, which would report a cache hit with incomplete outputs.
+  test("Restore degrades to onsite recompute when materialising throws NoSuchFileException"):
+    testBrokenRestoreDegrades(r => new NoSuchFileException(r.toString))
+
+  test("Restore degrades to onsite recompute when materialising throws a non-IOException"):
+    testBrokenRestoreDegrades(_ => new RuntimeException("disk exploded"))
+
+  def testBrokenRestoreDegrades(mkError: HashedVirtualFileRef => Throwable): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outDir =>
+        val broken = new DiskActionCacheStore(cacheDir.toPath, fileConverter):
+          override def syncFile(
+              ref: HashedVirtualFileRef,
+              casFile: Path,
+              outputDirectory: Path,
+          ): Path = throw mkError(ref)
+        var called = 0
+        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+          called += 1
+          val out = StringVirtualFile1(s"$outDir/a.txt", (a + b).toString)
+          InternalActionResult(a + b, Seq(out))
+        }
+        val config = getCacheConfig(broken, outDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, s"broken restore must degrade to onsite recompute (called=$called)")
+
   test("Changing cacheVersion invalidates the cache"):
     withDiskCache(testCacheVersionInvalidation)
 
@@ -390,6 +785,7 @@ object ActionCacheTest extends BasicTestSuite:
       cache: ActionCacheStore,
       outputDir: File,
       cacheVersion: Long = 0L,
+      converter: FileConverter = fileConverter,
   ): BuildWideCacheConfiguration =
     val logger = new Logger:
       override def trace(t: => Throwable): Unit = ()
@@ -398,16 +794,47 @@ object ActionCacheTest extends BasicTestSuite:
     BuildWideCacheConfiguration(
       cache,
       outputDir.toPath(),
-      fileConverter,
+      converter,
       logger,
       CacheEventLog(),
       CacheImplicits.defaultLocalDigestCacheByteSize,
       cacheVersion,
     )
 
+  // The String-based fileConverter mangles binary blobs (zips).
+  def binaryFileConverter = new FileConverter:
+    override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+    override def toVirtualFile(path: Path): VirtualFile =
+      val bytes =
+        if Files.isRegularFile(path) then Files.readAllBytes(path) else Array.empty[Byte]
+      new xsbti.BasicVirtualFileRef(path.toString) with VirtualFile:
+        override def contentHash: Long = sbt.util.HashUtil.xxhash64(bytes)
+        override def sizeBytes: Long = bytes.length.toLong
+        override def contentHashStr: String = Digest.sha256Hash(bytes).contentHashStr
+        override def input: InputStream = new ByteArrayInputStream(bytes)
+
   def fileConverter = new FileConverter:
     override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
     override def toVirtualFile(path: Path): VirtualFile =
       val content = if Files.isRegularFile(path) then new String(Files.readAllBytes(path)) else ""
       StringVirtualFile1(path.toString, content)
+
+  // A converter whose VirtualFiles read raw bytes off disk, so binary blobs (e.g. dirzips) survive
+  // the put/sync round-trip instead of being mangled by a String round-trip.
+  def binaryConverter = new FileConverter:
+    override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+    override def toVirtualFile(path: Path): VirtualFile = DiskVirtualFile(path.toString)
+
+  final class DiskVirtualFile(path: String)
+      extends xsbti.BasicVirtualFileRef(path)
+      with VirtualFile
+      with PathBasedFile:
+    private def bytes: Array[Byte] =
+      if Files.isRegularFile(Paths.get(path)) then Files.readAllBytes(Paths.get(path))
+      else Array.emptyByteArray
+    override def contentHash: Long = HashUtil.xxhash64(bytes)
+    override def sizeBytes: Long = bytes.length.toLong
+    override def contentHashStr: String = Digest.sha256Hash(bytes).contentHashStr
+    override def input: InputStream = new java.io.ByteArrayInputStream(bytes)
+    override def toPath(): Path = Paths.get(path)
 end ActionCacheTest

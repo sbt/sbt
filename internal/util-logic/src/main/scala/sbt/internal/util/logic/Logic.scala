@@ -152,39 +152,6 @@ object Logic {
     if (contradictions.nonEmpty) Some(new InitialContradictions(contradictions)) else None
   }
 
-  private def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
-    val deps = dependencyMap(clauses)
-    // println(s"deps = $deps")
-    // println(s"graph(deps) = ${graph(deps)}")
-    val cycle = Dag.findNegativeCycle(graph(deps))
-    if (cycle.nonEmpty) Some(new CyclicNegation(cycle)) else None
-  }
-
-  private def graph(deps: Map[Atom, Set[Literal]]) = new Dag.DirectedSignedGraph[Atom] {
-    type Arrow = Literal
-    def nodes: List[Atom] = deps.keys.toList
-    def dependencies(a: Atom) = deps.getOrElse(a, Set.empty).toList
-
-    def isNegative(b: Literal) = b match {
-      case Negated(_) => true
-      case Atom(_)    => false
-    }
-
-    def head(b: Literal) = b.atom
-    override def toString(): String =
-      nodes
-        .flatMap(n => List(n) ++ dependencies(n).map(d => s"$n -> $d"))
-        .mkString("{\n", "\n", "\n}")
-  }
-
-  private def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
-    clauses.clauses.foldLeft(Map.empty[Atom, Set[Literal]]) { case (m, Clause(formula, heads)) =>
-      val deps = literals(formula)
-      heads.foldLeft(m) { (n, head) =>
-        n.updated(head, n.getOrElse(head, Set.empty) ++ deps)
-      }
-    }
-
   sealed abstract class LogicException(override val toString: String)
 
   final class InitialContradictions(val literals: Set[Atom])

@@ -289,7 +289,7 @@ private[sbt] class CachedResolutionResolveCache {
       (
         surviving map moduleIdMap,
         evicted map moduleIdMap map {
-          _.withEvicted(true).withEvictedReason(Some(mgr.toString))
+          _.withEvicted(true).withEvictedReason(Some(mgr))
         }
       )
     }

@@ -218,7 +218,7 @@ final class ScriptedTests(
       preHook: File => Unit,
       prop: RemoteSbtCreatorProp,
       log: Logger,
-      keepTempDirectory: Boolean = false
+      keepTempDirectory: Boolean
   ): Seq[Option[String]] = {
 
     val runner = new BatchScriptRunner

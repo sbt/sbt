@@ -192,6 +192,16 @@ trait Cont:
 
       val inputBuf = ListBuffer[Input]()
       val outputBuf = ListBuffer[Output]()
+      lazy val outputAccSym: Symbol =
+        Symbol.newVal(
+          Symbol.spliceOwner,
+          freshName("outputs"),
+          TypeRepr.of[ListBuffer[VirtualFile]],
+          Flags.EmptyFlags,
+          Symbol.noSymbol
+        )
+      def outputAccRef: Expr[ListBuffer[VirtualFile]] =
+        Ref(outputAccSym).asExprOf[ListBuffer[VirtualFile]]
 
       def unitExpr: Expr[Unit] = '{ () }
 
@@ -306,7 +316,7 @@ trait Cont:
                           .asExprOf[BuildWideCacheConfiguration]
                       inputs.foreach: input =>
                         if !input.isCacheInput then
-                          if !Cont.transientAllowSet(input.sym.name) then
+                          if !Cont.transientAllowSet(input.sym.name) && !input.isWarnSuppressed then
                             report.warning(
                               s"transient key ${input.sym.name} is excluded from the cache input"
                             )
@@ -405,31 +415,37 @@ trait Cont:
           }
 
       // This will generate following code for Def.declareOutput(...):
-      //   var $o1: VirtualFile = null
-      //   ActionCache.ActionResult({
+      //   val $outputs = ListBuffer.empty[VirtualFile]
+      //   ActionCache.InternalActionResult({
       //     body...
-      //     $o1 = out // Def.declareOutput(out)
+      //     ActionCache.registerOutput(out, $outputs) // Def.declareOutput(out)
       //     result
-      //   }, List($o1))
+      //   }, $outputs.toList)
       def letOutput[A1: Type](
           outputs: List[Output],
           cacheConfigExpr: Expr[BuildWideCacheConfiguration],
       )(body: Expr[A1]): Expr[ActionCache.InternalActionResult[A1]] =
-        Block(
-          outputs.map(_.toVarDef),
+        if outputs.isEmpty then
           '{
             ActionCache.InternalActionResult(
               value = $body,
-              outputs = List(${
-                Varargs[VirtualFile](outputs.map: out =>
-                  out.toRef.asExprOf[VirtualFile])
-              }*),
+              outputs = Nil,
             )
-          }.asTerm
-        ).asExprOf[ActionCache.InternalActionResult[A1]]
+          }
+        else
+          Block(
+            ValDef(outputAccSym, Some('{ ListBuffer.empty[VirtualFile] }.asTerm)) :: Nil,
+            '{
+              ActionCache.InternalActionResult(
+                value = $body,
+                outputs = $outputAccRef.toList,
+              )
+            }.asTerm
+          ).asExprOf[ActionCache.InternalActionResult[A1]]
 
       val WrapOutputName = "wrapOutput_\u2603\u2603"
       val WrapOutputDirectoryName = "wrapOutputDirectory_\u2603\u2603"
+      var nowarnQuals: Set[Term] = Set.empty
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
       val record = [a] =>
@@ -441,12 +457,16 @@ trait Cont:
                 val output = Output(
                   tpe = TypeRepr.of[a],
                   term = qual,
-                  name = freshName("o"),
-                  parent = Symbol.spliceOwner,
-                  outputType = OutputType.File
+                  outputType = OutputType.File,
                 )
                 outputBuf += output
-                if cacheConfigExprOpt.isDefined then output.toAssign(output.term)
+                if cacheConfigExprOpt.isDefined then
+                  '{
+                    ActionCache.registerOutput(
+                      ${ output.term.asExprOf[VirtualFile] },
+                      $outputAccRef,
+                    )
+                  }.asTerm
                 else oldTree
               case WrapOutputDirectoryName =>
                 val output = Output(
@@ -454,28 +474,35 @@ trait Cont:
                   // which contains hash.
                   tpe = TypeRepr.of[VirtualFile],
                   term = qual,
-                  name = freshName("o"),
-                  parent = Symbol.spliceOwner,
                   outputType = OutputType.Directory,
                 )
                 outputBuf += output
                 cacheConfigExprOpt match
                   case Some(cacheConfigExpr) =>
-                    output.toAssign('{
-                      ActionCache.packageDirectory(
-                        dir = ${ output.term.asExprOf[VirtualFileRef] },
-                        conv = $cacheConfigExpr.fileConverter,
-                        outputDirectory = $cacheConfigExpr.outputDirectory,
+                    '{
+                      ActionCache.registerOutput(
+                        ActionCache.packageDirectory(
+                          dir = ${ output.term.asExprOf[VirtualFileRef] },
+                          conv = $cacheConfigExpr.fileConverter,
+                          outputDirectory = $cacheConfigExpr.outputDirectory,
+                        ),
+                        $outputAccRef,
                       )
-                    }.asTerm)
+                    }.asTerm
                   case None => oldTree
               case _ =>
-                // todo cache opt-out attribute
-                inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
+                inputBuf += Input(
+                  TypeRepr.of[a],
+                  qual,
+                  replacement,
+                  freshName("q"),
+                  isWarnSuppressed = nowarnQuals.contains(qual),
+                )
                 oldTree
           }
       val exprWithConfig =
         cacheConfigExprOpt.map(config => '{ $config; $expr }).getOrElse(expr)
+      nowarnQuals = collectNowarnQuals(exprWithConfig.asTerm)
       val body = transformWrappers(exprWithConfig.asTerm, record, Symbol.spliceOwner)
       val r = inputBuf.toList match
         case Nil      => pure(body)
@@ -492,6 +519,7 @@ private[sbt] object Cont:
     "bspTargetIdentifier",
     "bspCompileTask",
     "cacheConfiguration",
+    "csrLogger",
     "compileAnalysisFile",
     "compileIncSetup",
     "compileInputs",
@@ -502,7 +530,10 @@ private[sbt] object Cont:
     "fileConverter",
     "managedResources",
     "managedSources",
+    "logManager",
+    "sLog",
     "streams",
+    "testResultLogger",
     "unmanagedSources",
   )
 end Cont

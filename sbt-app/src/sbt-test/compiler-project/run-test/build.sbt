@@ -6,3 +6,5 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.5" % Runtime,
 )
 libraryDependencies += scalaVersion("org.scala-lang" % "scala-compiler" % _ ).value
+
+Test / fork := true

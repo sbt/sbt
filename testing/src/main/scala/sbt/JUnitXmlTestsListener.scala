@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Hashtable
 import java.util.concurrent.TimeUnit.NANOSECONDS
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Properties
@@ -196,13 +197,31 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
     }
   }
 
+  /**
+   * A mutable cell holding the suite that is currently running on a thread.
+   *
+   * The cell exists purely so the suite can be released deterministically. `testSuite` below
+   * is an [[InheritableThreadLocal]], so every thread created while a suite is running -- for
+   * example a pooled worker spawned by an async test framework -- receives a copy of the
+   * *reference* to this cell at construction time. `ThreadLocal.remove()` only clears the
+   * calling thread's entry, so those inherited copies would otherwise pin the `TestSuite`, its
+   * buffered events, and through them the test class loader (and its open jar handles) for the
+   * remaining life of the JVM. Clearing the cell severs the reference for the owning thread and
+   * every thread that inherited it at once.
+   */
+  private final class SuiteRef(initial: Option[TestSuite]) {
+    private val ref = new AtomicReference(initial)
+    def current: Option[TestSuite] = ref.get()
+    def clear(): Unit = ref.set(None)
+  }
+
   /** The currently running test suite */
-  private val testSuite = new InheritableThreadLocal[Option[TestSuite]] {
-    override def initialValue(): Option[TestSuite] = None
+  private val testSuite = new InheritableThreadLocal[SuiteRef] {
+    override def initialValue(): SuiteRef = new SuiteRef(None)
   }
 
   private def withTestSuite[T](f: TestSuite => T): T =
-    testSuite.get().map(f).getOrElse(sys.error("no test suite"))
+    testSuite.get().current.map(f).getOrElse(sys.error("no test suite"))
 
   /** Creates the output Dir */
   override def doInit(): Unit = {
@@ -212,14 +231,29 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String): Unit = testSuite.set(Some(new TestSuite(name)))
+  override def startGroup(name: String): Unit =
+    testSuite.set(new SuiteRef(Some(new TestSuite(name))))
 
   /**
    * Adds all details for the given even to the current suite.
+   *
+   * Events that arrive after the suite has been written are dropped. Test frameworks may call
+   * the event handler from threads they spawned during the run (see `TestFramework.TestRunner`),
+   * and such a thread can report after `writeSuite` has already emitted the XML. Before the
+   * suite was released those late events were appended to an already-written suite, so they
+   * were discarded in practice; dropping them here keeps that outcome without turning every
+   * late event into an error line via `TestFramework.safeForeach`.
    */
-  override def testEvent(event: TestEvent): Unit = for (e <- event.detail) {
-    withTestSuite(_.addEvent(e))
-  }
+  override def testEvent(event: TestEvent): Unit =
+    testSuite.get().current match {
+      case Some(suite) => for (e <- event.detail) suite.addEvent(e)
+      case None        =>
+        if (logger != null) {
+          logger.debug(
+            s"ignoring ${event.detail.size} test event(s) reported after the suite was written"
+          )
+        } else ()
+    }
 
   /**
    * called for each class or equivalent grouping We map one group to one Testsuite, so for each
@@ -283,6 +317,13 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
     }
     val testSuiteResult = withTestSuite(_.stop())
     XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
+    /* Order matters: `clear()` releases the suite for this thread *and* for every thread that
+     * inherited the cell, which `remove()` cannot reach. `remove()` then drops this thread's
+     * own entry. Without the `clear()` the suite -- and through its buffered events the test
+     * class loader with its open jar handles -- would stay reachable from pooled worker threads
+     * for the life of the JVM.
+     */
+    testSuite.get().clear()
     testSuite.remove()
   }
 

@@ -12,13 +12,7 @@ package server
 
 import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
-import java.util.concurrent.{
-  ConcurrentHashMap,
-  Executors,
-  LinkedBlockingQueue,
-  RejectedExecutionException,
-  TimeUnit
-}
+import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
@@ -87,6 +81,7 @@ final class NetworkChannel(
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
   private var initialized = false
+  private var authenticated = false
 
   /**
    * Reference to the client-side custom options
@@ -98,6 +93,7 @@ final class NetworkChannel(
   private val pendingWrites = new LinkedBlockingQueue[(Array[Byte], Boolean)]()
   private val attached = new AtomicBoolean(false)
   private val alive = new AtomicBoolean(true)
+  private val isCanceled = new AtomicBoolean(false)
   private[sbt] def isInteractive = interactive.get
   private val interactive = new AtomicBoolean(false)
   private[sbt] def setInteractive(id: String, value: Boolean) = {
@@ -115,6 +111,10 @@ final class NetworkChannel(
   private[sbt] def prompt(): Unit = {
     interactive.set(true)
     jsonRpcNotify(promptChannel, "")
+  }
+  override def prompt(e: ConsolePromptEvent): Unit = {
+    isCanceled.set(false)
+    super.prompt(e)
   }
   private[sbt] def write(byte: Byte) = inputBuffer.add(byte.toInt)
 
@@ -146,6 +146,7 @@ final class NetworkChannel(
     def name: String = self.name
     private[sbt] def authOptions: Set[ServerAuthentication] = self.authOptions
     private[sbt] def authenticate(token: String): Boolean = self.authenticate(token)
+    private[sbt] def isAuthenticated: Boolean = self.isAuthenticated
     private[sbt] def setInitialized(value: Boolean): Unit = self.setInitialized(value)
     private[sbt] def setInitializeOption(opts: InitializeOption): Unit =
       self.setInitializeOption(opts)
@@ -170,7 +171,14 @@ final class NetworkChannel(
   private[sbt] def subscribeToAll: Boolean =
     Option(initializeOption.get).flatMap(_.subscribeToAll).getOrElse(false)
 
-  protected def authenticate(token: String): Boolean = instance.authenticate(token)
+  protected def authenticate(token: String): Boolean = {
+    val result = instance.authenticate(token)
+    if result then authenticated = true
+    result
+  }
+
+  private[sbt] def isAuthenticated: Boolean =
+    authenticated || authOptions.isEmpty
 
   protected def setInitialized(value: Boolean): Unit = initialized = value
 
@@ -539,6 +547,8 @@ final class NetworkChannel(
                 StandardMain.exchange.currentExec.exists(_.source.exists(_.channelName == name)))
             ) {
               runningEngine.cancelAndShutdown()
+              isCanceled.set(true)
+              discardPending()
 
               respondResult(
                 ExecStatusEvent(
@@ -587,6 +597,7 @@ final class NetworkChannel(
       remainingCommands: Option[(String, String)]
   ): Unit = {
     doFlush()
+    flusher.close()
     terminal.close()
     StandardMain.exchange.removeChannel(this)
     super.shutdown(logShutdown)
@@ -631,16 +642,19 @@ final class NetworkChannel(
   }
 
   /** Notify to Language Server's client. */
-  private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
-    val m =
-      JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
-    if (method != Serialization.systemOut) {
-      forceFlush()
-      log.debug(s"jsonRpcNotify: $m")
+  private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit =
+    if (isCanceled.get && NetworkChannel.isCanceledOutput(method))
+      ()
+    else {
+      val m =
+        JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
+      if (method != Serialization.systemOut) {
+        forceFlush()
+        log.debug(s"jsonRpcNotify: $m")
+      }
+      val bytes = Serialization.serializeNotificationMessage(m)
+      publishBytes(bytes)
     }
-    val bytes = Serialization.serializeNotificationMessage(m)
-    publishBytes(bytes)
-  }
 
   /** Notify to Language Server's client. */
   private[sbt] def jsonRpcRequest[A: JsonFormat](id: String, method: String, params: A): Unit = {
@@ -681,15 +695,23 @@ final class NetworkChannel(
 
   import scala.jdk.CollectionConverters.*
   private val outputBuffer = new LinkedBlockingQueue[Byte]
-  private val flushExecutor = Executors.newSingleThreadScheduledExecutor(r =>
-    new Thread(r, s"$name-output-buffer-timer-thread")
-  )
+  private def discardPending(): Unit = {
+    pendingWrites.clear()
+    outputBuffer.synchronized(outputBuffer.clear())
+  }
 
-  private def forceFlush(): Unit =
-    Util.ignoreResult(flushExecutor.shutdownNow())
-    doFlush()
+  // Batches writes to the client at most once per 20ms to cut terminal flicker (see
+  // CoalescingFlusher). forceFlush drains now while leaving the timer live.
+  private val flusher =
+    new CoalescingFlusher(s"$name-output-buffer-timer-thread", 20L, () => doFlush())
 
-  private def doFlush() = {
+  private def forceFlush(): Unit = flusher.forceFlush()
+
+  // Serializes an inline forceFlush drain against the timer's drain across BOTH the drain and the
+  // publish, so two stdout batches can't reach the client out of order (publishBytes is a queue
+  // put, so it can't deadlock under this lock).
+  private val flushLock = new AnyRef
+  private def doFlush(): Unit = flushLock.synchronized {
     val list = new java.util.ArrayList[Byte]
     outputBuffer.synchronized(outputBuffer.drainTo(list))
     if (!list.isEmpty) jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
@@ -697,42 +719,13 @@ final class NetworkChannel(
 
   private lazy val outputStream: OutputStream & AutoCloseable = new OutputStream
     with AutoCloseable {
-    /*
-     * We buffer calls to flush to the remote client so that it is called at most
-     * once every 20 milliseconds. This is done because many terminals seem to flicker
-     * and display ghost characters if we flush to the remote client too often. The
-     * json protocol is a bit bulky so this will also reduce the total number of
-     * bytes that are written to the named pipe or unix domain socket. The buffer
-     * period of 20 milliseconds was arbitrarily chosen and could be tuned in the future.
-     * The thinking is that writes tend to be bursty so a twenty millisecond window is
-     * probably long enough to catch each burst but short enough to not introduce
-     * noticeable latency.
-     */
-    private val flushFuture = new AtomicReference[java.util.concurrent.Future[?]]
     override def close(): Unit = {
       forceFlush()
     }
     override def write(b: Int): Unit = outputBuffer.synchronized {
       outputBuffer.put(b.toByte)
     }
-    override def flush(): Unit = {
-      flushFuture.get match {
-        case null =>
-          try {
-            flushFuture.set(
-              flushExecutor.schedule(
-                (() => {
-                  flushFuture.set(null)
-                  doFlush()
-                }): Runnable,
-                20,
-                TimeUnit.MILLISECONDS
-              )
-            )
-          } catch { case _: RejectedExecutionException => doFlush() }
-        case f =>
-      }
-    }
+    override def flush(): Unit = flusher.flush()
     override def write(b: Array[Byte]): Unit = outputBuffer.synchronized {
       b.foreach(outputBuffer.put)
     }
@@ -770,21 +763,31 @@ final class NetworkChannel(
           pending.set(true)
           val queue = VirtualTerminal.sendTerminalPropertiesQuery(term.name, jsonRpcRequest)
           val update: Runnable = () => {
-            queue.poll(5, java.util.concurrent.TimeUnit.SECONDS) match {
-              case null =>
-              case t    => properties.set(t)
-            }
-            pending.synchronized {
-              lastUpdate.set(Deadline.now)
-              pending.set(false)
-              pending.notifyAll()
+            try {
+              queue.poll(5, java.util.concurrent.TimeUnit.SECONDS) match {
+                case null =>
+                  VirtualTerminal.expireTerminalPropertiesQuery(term.name, queue) match {
+                    case Some(late) => properties.set(late)
+                    case None       => Util.ignoreResult(properties.compareAndSet(null, empty))
+                  }
+                case t => properties.set(t)
+              }
+            } finally {
+              pending.synchronized {
+                lastUpdate.set(Deadline.now)
+                pending.set(false)
+                pending.notifyAll()
+              }
             }
           }
           new Thread(update, s"network-terminal-${term.name}-update") {
             setDaemon(true)
           }.start()
         }
-        while (block && properties.get == null) pending.synchronized(pending.wait())
+        // The updater clears pending inside this monitor before notifying.
+        pending.synchronized {
+          while (block && properties.get == null && pending.get) pending.wait()
+        }
         ()
       } else throw new InterruptedException
     }
@@ -814,7 +817,7 @@ final class NetworkChannel(
       else
         withThread(
           {
-            if (pending.get) pending.synchronized(pending.wait())
+            pending.synchronized { while (pending.get) pending.wait() }
             Option(properties.get).map(f).getOrElse(false)
           },
           false
@@ -974,6 +977,9 @@ final class NetworkChannel(
 }
 
 object NetworkChannel {
+  private[server] def isCanceledOutput(method: String): Boolean =
+    method == Serialization.systemOut || method == Serialization.systemErr
+
   private[sbt] def cancel(
       execID: Option[String],
       id: String,

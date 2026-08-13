@@ -342,7 +342,7 @@ object BuildServerProtocol {
       JavacOptionsItem(target, javacOptions, classpath, classDirectory.toURI)
     },
     bspBuildTargetJVMRunEnvironment := bspInputTask { (_, filter) =>
-      val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+      val items = (run / bspBuildTargetJvmEnvironmentItem).result.all(filter).value
       val successfulItems = anyOrThrow(items)
       val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
       state.value.respondEvent(result)
@@ -353,7 +353,8 @@ object BuildServerProtocol {
       val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
       state.value.respondEvent(result)
     }.evaluated,
-    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem().value,
+    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem(forkOptions).value,
+    run / bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem(run / forkOptions).value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
     bspScalaMainClassesItem := scalaMainClassesTask.value,
@@ -792,7 +793,12 @@ object BuildServerProtocol {
       Def.task(taskImpl(workspace, filter))
     }
 
-  private def jvmEnvironmentItem(): Initialize[Task[JvmEnvironmentItem]] = Def.task {
+  private def bspEnvironmentVariables(opts: ForkOptions): Vector[String] =
+    opts.envVars.map { (k, v) => s"$k=$v" }.toVector
+
+  private def jvmEnvironmentItem(
+      forkOptions: Initialize[Task[ForkOptions]]
+  ): Initialize[Task[JvmEnvironmentItem]] = Def.task {
     val target = Keys.bspTargetIdentifier.value
     val converter = fileConverter.value
     val classpath = Keys.fullClasspath.value
@@ -800,62 +806,19 @@ object BuildServerProtocol {
       .map(converter.toPath)
       .map(_.toFile.toURI)
       .toVector
-    val jvmOptions = Keys.javaOptions.value.toVector
-    val baseDir = Keys.baseDirectory.value.getAbsolutePath
-    val env = envVars.value
+    val opts = forkOptions.value
+    val workingDir = opts.workingDirectory
+      .getOrElse(new File(sys.props("user.dir")))
+      .getAbsolutePath
 
     JvmEnvironmentItem(
       target,
       classpath,
-      jvmOptions,
-      baseDir,
-      env
+      opts.runJVMOptions,
+      workingDir,
+      opts.envVars
     )
   }
-
-  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] =
-    Def
-      .task {
-        val target = Keys.bspTargetIdentifier.value
-        val scalacOptions = Keys.scalacOptions.value
-        val classDirectory = Keys.classDirectory.value
-        val externalDependencyClasspath = Keys.externalDependencyClasspath.value
-        val internalDependencyClasspath = for {
-          (ref, configs) <- bspInternalDependencyConfigurations.value
-          config <- configs
-        } yield ref / config / Keys.packageBin
-        (
-          target,
-          scalacOptions,
-          classDirectory,
-          externalDependencyClasspath,
-          internalDependencyClasspath
-        )
-      }
-      .flatMapTask {
-        (
-            target,
-            scalacOptions,
-            classDirectory,
-            externalDependencyClasspath,
-            internalDependencyClasspath
-        ) =>
-          Def.task {
-            val converter = fileConverter.value
-            val cp0 = internalDependencyClasspath.join.value.distinct ++
-              externalDependencyClasspath.map(_.data)
-            val classpath = cp0
-              .map(converter.toPath)
-              .map(_.toFile.toURI)
-              .toVector
-            ScalacOptionsItem(
-              target,
-              scalacOptions.toVector,
-              classpath,
-              classDirectory.toURI
-            )
-          }
-      }
 
   private lazy val classpathTask: Def.Initialize[Task[Vector[URI]]] = Def.taskDyn {
     val converter = fileConverter.value
@@ -946,7 +909,8 @@ object BuildServerProtocol {
       val json = jsonParser.parsed
       val runParams = json.flatMap(Converter.fromJson[RunParams]).get
       val defaultClass = Keys.mainClass.value
-      val defaultJvmOptions = Keys.javaOptions.value
+      val defaultOpts = (run / forkOptions).value
+      val defaultEnv = bspEnvironmentVariables(defaultOpts)
 
       val mainClass = runParams.dataKind match {
         case Some("scala-main-class") =>
@@ -958,9 +922,7 @@ object BuildServerProtocol {
                 e.getMessage
               )
             case Success(value) =>
-              value.withEnvironmentVariables(
-                envVars.value.map { (k, v) => s"$k=$v" }.toVector ++ value.environmentVariables
-              )
+              value.withEnvironmentVariables(defaultEnv ++ value.environmentVariables)
           }
 
         case Some(dataKind) =>
@@ -978,8 +940,8 @@ object BuildServerProtocol {
               )
             ),
             runParams.arguments,
-            defaultJvmOptions.toVector,
-            envVars.value.map { (k, v) => s"$k=$v" }.toVector
+            defaultOpts.runJVMOptions,
+            defaultEnv
           )
       }
       runMainClassTask(mainClass, runParams.originId)
@@ -1037,21 +999,18 @@ object BuildServerProtocol {
     val state = Keys.state.value
     val logger = Keys.streams.value.log
     val classpath = Attributed.data(fullClasspath.value)
-    val forkOpts = ForkOptions(
-      javaHome = javaHome.value,
-      outputStrategy = outputStrategy.value,
-      // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
-      bootJars = Vector(),
-      workingDirectory = Some(baseDirectory.value),
-      runJVMOptions = mainClass.jvmOptions,
-      connectInput = connectInput.value,
-      envVars = mainClass.environmentVariables
-        .flatMap(_.split("=", 2).toList match {
-          case key :: value :: Nil => Some(key -> value)
-          case _                   => None
-        })
-        .toMap
-    )
+    // connectInput is disabled so non-interactive BSP output is captured as log messages
+    val forkOpts = (run / forkOptions).value
+      .withConnectInput(false)
+      .withRunJVMOptions(mainClass.jvmOptions)
+      .withEnvVars(
+        mainClass.environmentVariables
+          .flatMap(_.split("=", 2).toList match {
+            case key :: value :: Nil => Some(key -> value)
+            case _                   => None
+          })
+          .toMap
+      )
     val runner = new ForkRun(forkOpts)
     val converter = fileConverter.value
     val cp = classpath.map(converter.toPath)
@@ -1121,13 +1080,14 @@ object BuildServerProtocol {
   }
 
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
-    val jvmOptions = Keys.javaOptions.value.toVector
+    val opts = (run / forkOptions).value
+    val env = bspEnvironmentVariables(opts)
     val mainClasses = Keys.discoveredMainClasses.value.map(
       ScalaMainClass(
         _,
         Vector(),
-        jvmOptions,
-        envVars.value.map { (k, v) => s"$k=$v" }.toVector
+        opts.runJVMOptions,
+        env
       )
     )
     ScalaMainClassesItem(
