@@ -196,6 +196,7 @@ private[sbt] object Load {
       classpath = data(config.globalPluginClasspath).map(converter.toPath),
       base = base,
       options = defaultEvalOptions,
+      mkReporter = () => EvalReporter.logging(config.log),
     )
 
     val imports =
@@ -826,8 +827,9 @@ private[sbt] object Load {
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) {
         def mkReporter(): EvalReporter = plugs.pluginData.buildTarget match {
-          case None              => EvalReporter.console
-          case Some(buildTarget) => new BuildServerEvalReporter(buildTarget, EvalReporter.console)
+          case None              => EvalReporter.logging(log)
+          case Some(buildTarget) =>
+            new BuildServerEvalReporter(buildTarget, EvalReporter.logging(log))
         }
         mkEval(
           classpath = plugs.classpath.map(converter.toPath),

@@ -286,12 +286,20 @@ object StandardMain {
       else sys.props.get(execLogProp).map(Paths.get(_)).map(ActionCache.setExecLog)
     execLog.foreach: log =>
       ShutdownHooks.add(() => log.close())
-    GlobalLogging.initial(
+    val logging = GlobalLogging.initial(
       MainAppender.globalDefault(ConsoleOut.globalProxy),
       createTemp("sbt-global-log")(),
       ConsoleOut.globalProxy,
       initialLevel
     )
+    val currentLog = logging.backing.file.getCanonicalFile
+    val previousLog = file.toList
+      .flatMap(dir => Option(dir.listFiles).getOrElse(Array.empty[File]).toList)
+      .filter(f => f.getName.startsWith("sbt-global-log") && f.getName.endsWith(".log"))
+      .filterNot(_.getCanonicalFile == currentLog)
+      .sortBy(f => (f.lastModified, f.getName))
+      .lastOption
+    logging.copy(backing = logging.backing.copy(last = previousLog))
 
   private def initialGlobalLogging(file: Option[File]): GlobalLogging =
     initialGlobalLogging(file, Level.Info)

@@ -1,0 +1,17 @@
+[info] loading project definition from BASE/project
+[error] -- [E007] Type Mismatch Error: BASE/build.sbt:5:3
+[error] 5 |  }
+[error]   |   ^
+[error]   |Found:    Unit
+[error]   |Required: sbt.internal.DslEntry
+[error]   |
+[error]   |Maybe the enclosing block is missing a final expression after the definition of `A`?
+[error]   |
+[error]   | longer explanation available when compiling with `-explain`
+[error] -- Error: BASE/build.sbt:3:5
+[error] 3 |enum A:
+[error]   |^
+[error]   |Defining types in *.sbt file is not supported
+[error]   |
+[error] 4 |  case B
+[error] an error in expression: class dotty.tools.dotc.reporting.Diagnostic$Error at BASE/build.sbt:[980..985..996] L3: Defining types in *.sbt file is not supported

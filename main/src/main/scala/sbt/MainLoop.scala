@@ -53,9 +53,12 @@ private[sbt] object MainLoop:
   /** Run loop that evaluates remaining commands and manages changes to global logging configuration. */
   @tailrec def runLoggedLoop(state: State, logBacking: GlobalLogBacking): xsbti.MainResult =
     runAndClearLast(state, logBacking) match
-      // delete current and last log files when exiting normally
+      // delete the log files when exiting successfully; keep the current one on failure
       case RunNext.Return(result) =>
-        logBacking.file.delete()
+        val failed = result match
+          case e: xsbti.Exit => e.code != 0
+          case _             => false
+        if !failed then logBacking.file.delete()
         deleteLastLog(logBacking)
         result
       // delete previous log file, move current to previous, and start writing to a new file
