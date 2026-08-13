@@ -364,7 +364,7 @@ object Scoped:
 
       // Task-specific extensions
       def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[Task[A1]] =
-        dependsOnSeq(tasks.asInstanceOf[Seq[AnyInitTask]])
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)(_.dependsOn(_*))
       def dependsOnTask[A2](task1: Initialize[Task[A2]]): Initialize[Task[A1]] =
         dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
       def dependsOnSeq(tasks: Seq[AnyInitTask]): Initialize[Task[A1]] =
@@ -412,7 +412,9 @@ object Scoped:
       // InputTask specific extensions
       @targetName("dependsOnInitializeInputTask")
       def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[InputTask[A1]] =
-        dependsOnSeq(tasks.asInstanceOf[Seq[AnyInitTask]])
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)((thisTask, deps) =>
+          thisTask.mapTask(_.dependsOn(deps*))
+        )
       @targetName("dependsOnTaskInitializeInputTask")
       def dependsOnTask[B1](task1: Initialize[Task[B1]]): Initialize[InputTask[A1]] =
         dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
