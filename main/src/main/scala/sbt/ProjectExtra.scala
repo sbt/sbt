@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import java.nio.file.Path as NioPath
 import java.net.URI
+import scala.annotation.tailrec
 // import Project._
 import Keys.{
   stateBuildStructure,
@@ -616,6 +617,7 @@ trait ProjectExtra extends Scoped.Syntax:
         projectRef: ProjectRef
     ): Seq[ProjectRef] = {
       def dependencies(map: Map[ProjectRef, Seq[ProjectRef]], id: ProjectRef): Set[ProjectRef] = {
+        @tailrec
         def helper(map: Map[ProjectRef, Seq[ProjectRef]], acc: Set[ProjectRef]): Set[ProjectRef] =
           if (acc.exists(map.contains)) {
             val (kept, rem) = map.partition { case (k, _) => acc(k) }

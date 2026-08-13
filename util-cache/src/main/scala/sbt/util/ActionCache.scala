@@ -32,7 +32,7 @@ import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
 import scala.reflect.ClassTag
-import scala.annotation.{ meta, StaticAnnotation }
+import scala.annotation.{ meta, tailrec, StaticAnnotation }
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import sjsonnew.{ HashWriter, JsonFormat }
@@ -329,6 +329,7 @@ object ActionCache:
     )
 
   /** Walks `t`'s cause chain for a `NoSuchFileException`, returning the missing file's path. */
+  @tailrec
   private[sbt] def findMissingFile(t: Throwable): Option[String] =
     t match
       case null                   => None

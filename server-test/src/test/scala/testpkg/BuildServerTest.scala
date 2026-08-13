@@ -20,6 +20,7 @@ import java.io.File
 import java.net.URI
 import java.nio.file.{ Files, Paths }
 import java.util.concurrent.TimeoutException
+import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.util.{ Failure, Success }
 
@@ -303,6 +304,7 @@ class BuildServerTest extends AbstractServerTest {
             "diagnostics for Diagnostics.scala after a failed compile (#9345)"
         )
 
+    @tailrec
     def drainQueuedNotificationsAndFailOnForbiddenReset(): Unit =
       svr.session.waitForNotificationMsg(Duration.Zero)(_ => true) match {
         case Success(n) =>
