@@ -28,6 +28,7 @@ class LockFileSpec extends AnyFunSuite {
   test("LockFileData serialization round-trip") {
     val lockData = LockFileData(
       version = "1.0",
+      buildClock = "abc123",
       requested = requestedInputsSample,
       configurations = Vector(
         ConfigurationLock(
@@ -109,6 +110,7 @@ class LockFileSpec extends AnyFunSuite {
 
     val lockData = LockFileData(
       version = "1.0",
+      buildClock = "test",
       requested = requestedInputsSample,
       configurations = Vector(ConfigurationLock("compile", Vector(dep))),
       metadata = LockFileMetadata("2.0.0", None)
@@ -125,6 +127,7 @@ class LockFileSpec extends AnyFunSuite {
   test("LockFile.write outputs pretty JSON") {
     val lockData = LockFileData(
       version = "1.0",
+      buildClock = "pretty-test",
       requested = requestedInputsSample,
       configurations = Vector.empty,
       metadata = LockFileMetadata(
