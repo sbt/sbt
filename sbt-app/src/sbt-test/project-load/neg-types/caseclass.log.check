@@ -1,4 +1,3 @@
-[info] loading project definition from BASE/project
 [error] -- [E007] Type Mismatch Error: BASE/build.sbt:4:3
 [error] 4 |  }
 [error]   |   ^
