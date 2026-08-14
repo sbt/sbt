@@ -27,14 +27,7 @@ import sbt.nio.Keys.*
 // See also LineReader.scala
 object SysProp:
   def booleanOpt(name: String): Option[Boolean] =
-    sys.props.get(name) match {
-      case Some(x) => parseBoolean(x)
-      case _       =>
-        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
-          case Some(x) => parseBoolean(x)
-          case _       => None
-        }
-    }
+    strOpt(name).flatMap(parseBoolean)
   private def parseBoolean(value: String): Option[Boolean] =
     value.toLowerCase(Locale.ENGLISH) match {
       case "1" | "always" | "true" => Some(true)
@@ -45,6 +38,11 @@ object SysProp:
 
   def getOrFalse(name: String): Boolean = booleanOpt(name).getOrElse(false)
   def getOrTrue(name: String): Boolean = booleanOpt(name).getOrElse(true)
+
+  def strOpt(name: String): Option[String] =
+    sys.props
+      .get(name)
+      .orElse(sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')))
 
   def long(name: String, default: Long): Long =
     sys.props.get(name) match {
@@ -122,6 +120,9 @@ object SysProp:
 
   @deprecated("Resident compilation is no longer supported", "1.4.0")
   def residentLimit: Int = int("sbt.resident.limit", 0)
+
+  def testSummary: TestSummary =
+    strOpt("sbt.test_summary").flatMap(Tests.parseTestSummary).getOrElse(TestSummary.default)
 
   /**
    * Indicates whether formatting has been disabled in environment variables.

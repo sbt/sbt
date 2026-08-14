@@ -51,6 +51,7 @@ object LintUnused {
       serverIdleTimeout,
       shellPrompt,
       sLog,
+      testSummary,
       traceLevel,
       sonaDeploymentName,
     ),

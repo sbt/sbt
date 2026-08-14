@@ -1,5 +1,7 @@
+package com.example.a;
+
 import org.junit.Test;
 
-public class PassingTestB {
+public class TestA {
     @Test public void success() { /* passes */ }
 }

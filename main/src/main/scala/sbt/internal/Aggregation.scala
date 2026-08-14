@@ -10,7 +10,7 @@ package sbt
 package internal
 
 import sbt.Def.{ ScopedKey, Settings }
-import sbt.Keys.{ showSuccess, showTiming }
+import sbt.Keys.{ showSuccess, showTiming, testSummaryLogger }
 import sbt.ProjectExtra.*
 import sbt.ScopeAxis.{ Select, Zero }
 import sbt.internal.util.complete.Parser
@@ -126,6 +126,7 @@ object Aggregation {
     val config = extractedTaskConfig(extracted, structure, s)
     val start = System.currentTimeMillis
     Def.cacheEventLog.clear()
+    TestSummary.clear()
     val (newS, result) = withStreams(structure, s): str =>
       val transform = nodeView(s, str, roots, extra)
       runTask(toRun, s, str, structure.index.triggers, config)(using transform)
@@ -140,16 +141,31 @@ object Aggregation {
       show: ShowConfig
   )(using display: Show[ScopedKey[?]]): State =
     val complete = timedRun[A1](s, ts, extra)
+    val testEntries = TestSummary.drain()
+    if testEntries.nonEmpty then
+      val extracted = Project.extract(complete.state)
+      val logger = (extracted.currentRef / testSummaryLogger)
+        .get(extracted.structure.data)
+        .getOrElse(TestResultLogger.Defaults.Summary())
+      val adhocMode = testEntries.flatMap(_.options).collectFirst {
+        case Tests.AdhocOption.Summary(mode) => mode
+      }
+      val effectiveLogger = (logger, adhocMode) match
+        case (s: TestResultLogger.Defaults.Summary, Some(mode)) => s.copy(mode = mode)
+        case _                                                  => logger
+      effectiveLogger.summary(
+        complete.state.log,
+        testEntries.map(e => (e.testOutput, e.taskName, e.cached))
+      )
     showRun(complete, show)
     complete.results match
       case Result.Inc(i) =>
-        val failures = sbt.internal.testing.TestRecap.collect(i)
         val afterHandle = complete.state.handleError(i)
-        if failures.nonEmpty then
-          sbt.internal.testing.TestRecap.formatTo(afterHandle.log, failures)
-          afterHandle.put(sbt.internal.testing.TestRecap.recapKey, failures)
+        if testEntries.nonEmpty then afterHandle.put(TestSummary.entriesKey, testEntries)
         else afterHandle
-      case Result.Value(_) => complete.state
+      case Result.Value(_) =>
+        if testEntries.nonEmpty then complete.state.put(TestSummary.entriesKey, testEntries)
+        else complete.state
 
   def printSuccess(
       start: Long,

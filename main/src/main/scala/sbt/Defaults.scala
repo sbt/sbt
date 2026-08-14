@@ -1227,7 +1227,9 @@ object Defaults extends BuildCommon with DefExtra {
         testListeners :== Nil,
         testOptions :== Nil,
         testOptionDigests :== Nil,
-        testResultLogger :== TestResultLogger.Default,
+        testResultLogger :== TestResultLogger.SilentWhenNoTests,
+        testSummary :== SysProp.testSummary,
+        testSummaryLogger := TestResultLogger.Defaults.Summary(testSummary.value),
         testOnly / testFilter :== (IncrementalTest.selectedFilter),
         testSelected / testFilter :== (IncrementalTest.selectedFilter),
         extraTestDigests :== Nil,
@@ -1295,9 +1297,10 @@ object Defaults extends BuildCommon with DefExtra {
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
       try
         val output = executeTests.value
+        TestSummary.append(taskName, output, cached = Vector.empty, adhocOptions = Vector.empty)
         trl.run(streams.value.log, output, taskName)
-        // Throw with task name + Output so the cross-project recap
-        // (TestRecap.collect) can surface them. The throw lives here
+        // Throw with task name + Output so the aggregation boundary
+        // (Aggregation.runTasks) can signal the failure. The throw lives here
         // rather than in TestResultLogger so user-overridden loggers
         // cannot accidentally suppress the failure signal.
         output.overall match
@@ -1309,7 +1312,7 @@ object Defaults extends BuildCommon with DefExtra {
         // Tag any no-detail TestsFailedException (legacy executeTests
         // adapters, third-party Tests.Setup actions, anything constructing
         // `new TestsFailedException()` via the back-compat ctor) with the
-        // task name on its way out so the recap doesn't render <unknown>.
+        // task name on its way out so error reporting has it to show.
         case e: TestsFailedException if e.taskName.isEmpty =>
           throw new TestsFailedException(taskName, e.testOutput)
       finally close(testLoader.value)
@@ -1463,8 +1466,9 @@ object Defaults extends BuildCommon with DefExtra {
     inputTests0.mapReferenced(Def.mapScope((s) => s.rescope(key.key)))
 
   private lazy val inputTests0: Initialize[InputTask[TestResult]] = {
-    val parser = loadForParser(definedTestNames)((s, i) => testOnlyParser(s, i getOrElse Nil))
-    ParserGen(parser).flatMapTask { (selected, frameworkOptions) =>
+    val parser =
+      loadForParser(definedTestNames)((s, i) => testOnlyParserWithOption(s, i getOrElse Nil))
+    ParserGen(parser).flatMapTask { (selected, frameworkOptions, adhocOptions) =>
       val s = streams.value
       val filter = testFilter.value
       val config = testExecution.value
@@ -1505,11 +1509,21 @@ object Defaults extends BuildCommon with DefExtra {
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
+      val digests = definedTestDigests.value
+      val cacheConfig = Def.cacheConfiguration.value
       (Def
         .value[Task[Tests.Output]] { output })
         .map: out =>
+          val cached = IncrementalTest.cachedTestNames(
+            digests,
+            cacheConfig,
+            out.events.keySet,
+            selected,
+            frameworkOptions,
+          )
+          TestSummary.append(taskName, out, cached, adhocOptions.toVector)
           try
-            trl.run(s.log, out, taskName)
+            trl.run(s.log, out, taskName, cached)
             out.overall match
               case TestResult.Error | TestResult.Failed =>
                 throw new TestsFailedException(taskName, Some(out))
@@ -2620,6 +2634,17 @@ object Defaults extends BuildCommon with DefExtra {
     (state, mainClasses) =>
       Space ~> token(NotSpace.examples(mainClasses.toSet)) ~ spaceDelimited("<arg>")
   }
+
+  private def testOnlyParserWithOption
+      : (State, Seq[String]) => Parser[(Seq[String], Seq[String], Seq[Tests.AdhocOption])] =
+    (state, tests) =>
+      import DefaultParsers.*
+      val selectTests = distinctParser(tests.toSet, true)
+      val frameworkOpts = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
+      val options = (token(Space) ~> Tests.AdhocOption.parser).?
+      (options ~ selectTests ~ options ~ frameworkOpts).map { case o1 ~ t ~ o2 ~ f =>
+        (t, f, o1.toList ::: o2.toList)
+      }
 
   def testOnlyParser: (State, Seq[String]) => Parser[(Seq[String], Seq[String])] = {
     (state, tests) =>

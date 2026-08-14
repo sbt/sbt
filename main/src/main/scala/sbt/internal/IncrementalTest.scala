@@ -96,6 +96,33 @@ object IncrementalTest:
       frameworkOptions: Seq[String]
   ): (Seq[String], Digest, Digest) = (frameworkOptions, value, Digest.zero)
 
+  /**
+   * Defined tests whose passing result was reused from the action cache in
+   * the current run: selected by `selected` (same glob semantics as
+   * `filterTask`), carrying a cached success for `frameworkOptions`, and not
+   * re-executed (`executed` is the suite-name set of the run's
+   * `Tests.Output.events`, which keeps this empty for `testOnly` /
+   * `testFull` variants that rerun cached tests).
+   */
+  private[sbt] def cachedTestNames(
+      digests: Map[String, Digest],
+      config: BuildWideCacheConfiguration,
+      executed: Set[String],
+      selected: Seq[String],
+      frameworkOptions: Seq[String],
+  ): Vector[String] =
+    val filters = selectedFilter(selected)
+    digests.iterator
+      .collect {
+        case (name, ts) if !executed.contains(name) && filters.exists(_(name)) && {
+              val input = cacheInput(ts, frameworkOptions)
+              ActionCache.exists(input._1, input._2, input._3, config)
+            } =>
+          name
+      }
+      .toVector
+      .sorted
+
 end IncrementalTest
 
 private[sbt] case class TestStatusReporter(

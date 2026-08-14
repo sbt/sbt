@@ -55,8 +55,8 @@ trait TestsListener extends TestReportListener {
  *   a `Class` strongly references its defining class loader. Holding a `SuiteResult` with a
  *   non-empty `throwables` therefore keeps the test class loader -- and every jar handle it has
  *   open -- alive. That is fine for the duration of the test task, which is where these are
- *   consumed, but anything that outlives the task must drop them first. `TestRecap.collect` does
- *   exactly that before stashing a copy on `State.attributes`; see the note on `TestRecap.recapKey`.
+ *   consumed, but anything that outlives the task must drop them first. `TestSummary.append` does
+ *   exactly that before stashing a copy on `State.attributes`; see the note on `TestSummary.entriesKey`.
  *   On Windows a leaked handle makes the underlying jar undeletable (e.g. by `clearCaches`).
  */
 private[sbt] final class SuiteResult(
