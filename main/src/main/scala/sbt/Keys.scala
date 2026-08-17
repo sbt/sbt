@@ -217,6 +217,7 @@ object Keys {
   val autoCompilerPlugins = settingKey[Boolean]("If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.").withRank(AMinusSetting)
   val maxErrors = settingKey[Int]("The maximum number of errors, such as compile errors, to list.").withRank(ASetting)
   val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.").withRank(BPlusTask)
+  val resolvedScalacOptions = taskKey[Seq[String]]("scalacOptions with cache placeholders (e.g. ${CSR_CACHE}) resolved to absolute machine paths.").withRank(BPlusTask)
   val javacOptions = taskKey[Seq[String]]("Options for the Java compiler.").withRank(BPlusTask)
   val incOptions = taskKey[IncOptions]("Options for the incremental compiler.").withRank(BTask)
   val extraIncOptions = taskKey[Seq[(String, String)]]("Extra options for the incremental compiler").withRank(CTask)

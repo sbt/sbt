@@ -432,6 +432,39 @@ class BuildServerTest extends AbstractServerTest {
     )
   }
 
+  test("buildTarget/scalacOptions resolves cache placeholders (#9578)") {
+    val buildTargets = Seq(buildTargetUri("scalacOptionsPlugin", "Compile"))
+    val id = scalacOptions(buildTargets)
+    val result =
+      svr.session.waitForResultInResponseMsg[ScalacOptionsResult](30.seconds, id).get
+    val options = result.items.head.options
+
+    assert(
+      options.forall(!_.contains("${")),
+      s"buildTarget/scalacOptions returned an unresolved cache placeholder: $options"
+    )
+
+    // The kind-projector compiler plugin must be reported as a concrete, absolute,
+    // existing jar path — not a virtualized ${CSR_CACHE}/... reference.
+    val xplugin = options
+      .find(_.startsWith("-Xplugin:"))
+      .getOrElse(fail(s"expected a -Xplugin compiler-plugin option, got: $options"))
+    val pluginPath = xplugin.stripPrefix("-Xplugin:")
+    val pluginFile = new File(pluginPath)
+    assert(
+      pluginFile.isAbsolute,
+      s"resolved -Xplugin path is not absolute: $pluginPath"
+    )
+    assert(
+      pluginFile.getName.startsWith("kind-projector"),
+      s"expected the kind-projector plugin jar, got: $pluginPath"
+    )
+    assert(
+      pluginFile.exists,
+      s"resolved -Xplugin jar does not exist on disk: $pluginPath"
+    )
+  }
+
   test("buildTarget/cleanCache") {
     def classFile = svr.baseDirectory.toPath.resolve(
       "target/out/jvm/scala-2.13.11/runandtest/classes/main/Main.class"
