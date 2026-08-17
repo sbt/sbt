@@ -69,7 +69,7 @@ object NetworkClientSilentDisconnectTest extends BasicTestSuite:
         s"client exited 1 without explaining the disconnect: '$explained'"
       )
 
-  test("a corrupt portfile must not fail silently"):
+  test("a corrupt portfile is replaced and a fresh server connection is attempted"):
     val base = Files.createTempDirectory("corrupt-portfile-project").toFile
     Files.writeString(
       base.toPath.resolve("build.sbt"),
@@ -77,22 +77,58 @@ object NetworkClientSilentDisconnectTest extends BasicTestSuite:
     )
     val target = base.toPath.resolve("project").resolve("target")
     Files.createDirectories(target)
-    Files.writeString(target.resolve("active.json"), "not json")
-    val (code, explained) = runBatchClient(base)
-    assert(code == 1, s"expected exit 1, got $code")
-    assert(
-      explained.contains("sbt client failed"),
-      s"client exited 1 without explaining the failure: '$explained'"
-    )
+    val portfile = target.resolve("active.json")
+    Files.writeString(portfile, "not json")
+    try
+      val (_, explained) = runBatchClient(base)
+      assert(
+        explained.contains("corrupt or unreadable") &&
+          explained.contains("active.json") &&
+          explained.contains("starting a new server"),
+        s"client did not explain the corrupt portfile before retrying: '$explained'"
+      )
+      assert(
+        !Files.exists(portfile) || Files.readString(portfile) != "not json",
+        "corrupt portfile should have been replaced by a fresh server connection"
+      )
+    finally shutdownServer(base)
 
-  private def runBatchClient(base: File): (Int, String) =
+  test("an empty portfile is replaced and a fresh server connection is attempted"):
+    val base = Files.createTempDirectory("empty-portfile-project").toFile
+    Files.writeString(
+      base.toPath.resolve("build.sbt"),
+      "lazy val root = (project in file(\".\"))\n"
+    )
+    val target = base.toPath.resolve("project").resolve("target")
+    Files.createDirectories(target)
+    val portfile = target.resolve("active.json")
+    Files.writeString(portfile, "")
+    try
+      val (_, explained) = runBatchClient(base)
+      assert(
+        explained.contains("corrupt or unreadable") &&
+          explained.contains("active.json") &&
+          explained.contains("starting a new server"),
+        s"client did not explain the corrupt portfile before retrying: '$explained'"
+      )
+      assert(
+        !Files.exists(portfile) || Files.readString(portfile).nonEmpty,
+        "empty portfile should have been replaced by a fresh server connection"
+      )
+    finally shutdownServer(base)
+
+  private def shutdownServer(base: File): Unit =
+    try runBatchClient(base, Array("shutdown"))
+    catch case _: Exception => ()
+
+  private def runBatchClient(base: File, args: Array[String] = Array("compile")): (Int, String) =
     val errBytes = new ByteArrayOutputStream
     val outBytes = new ByteArrayOutputStream
     val err = new PrintStream(errBytes, true)
     val out = new PrintStream(outBytes, true)
     val code = NetworkClient.client(
       base,
-      Array("compile"),
+      args,
       new InputStream { override def read(): Int = -1 },
       out,
       err,

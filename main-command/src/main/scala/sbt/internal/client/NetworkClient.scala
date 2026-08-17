@@ -196,7 +196,7 @@ class NetworkClient(
       promptCompleteUsers: Boolean,
       retry: Boolean
   ): (Socket, Option[String]) =
-    try {
+    try
       if (!portfile.exists) {
         if (shutdownOnly) {
           console.appendLog(Level.Info, "no sbt server is running. ciao")
@@ -246,12 +246,14 @@ class NetworkClient(
         }
       }
       connect(0)
-    } catch {
-      case e: ConnectionRefusedException if retry =>
-        if (Files.deleteIfExists(portfile.toPath))
+    catch
+      case e @ (_: ConnectionRefusedException | _: ClientSocket.ConnectionFileReadException)
+          if retry =>
+        errorStream.println(s"${e.getMessage}; starting a new server")
+        if Files.deleteIfExists(portfile.toPath) then
           connectOrStartServerAndConnect(promptCompleteUsers, retry = false)
         else throw e
-    }
+  end connectOrStartServerAndConnect
 
   // Open server connection based on the portfile
   def init(promptCompleteUsers: Boolean, retry: Boolean): ServerSession = {
