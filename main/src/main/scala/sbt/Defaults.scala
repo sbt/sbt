@@ -984,9 +984,10 @@ object Defaults extends BuildCommon with DefExtra {
         compileOptions := Def.uncached {
           val opts = (compile / compileOptions).value
           val cp0 = dependencyClasspath.value
-          val cp1 = backendOutput.value +: data(cp0)
           val converter = fileConverter.value
-          val cp = cp1.map(converter.toPath).map(converter.toVirtualFile)
+          // backendOutput is a settingKey: its listing is captured at project load, so re-convert
+          val cp = converter.toVirtualFile(converter.toPath(backendOutput.value)) +:
+            data(cp0).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
         },
         compileInputs2 := Def.uncached {
@@ -2455,8 +2456,8 @@ object Defaults extends BuildCommon with DefExtra {
       compileOptions := Def.uncached {
         val c = fileConverter.value
         val cp0 = classpathTask.value
-        val cp1 = backendOutput.value +: data(cp0)
-        val cp = cp1.map(c.toPath).map(c.toVirtualFile)
+        // backendOutput is a settingKey: its listing is captured at project load, so re-convert
+        val cp = c.toVirtualFile(c.toPath(backendOutput.value)) +: data(cp0).map(c.toVirtualFile)
         val vs0 = sourcesVF.value
         val vs = vs0.toVector.map: x =>
           c.toVirtualFile(c.toPath(x))
