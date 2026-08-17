@@ -278,6 +278,15 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     try Files.exists(casFile) && Digest.sameDigest(casFile, digest)
     catch case _: NoSuchFileException => false
 
+  private def requireWithinBase(base: Path, target: Path, ref: HashedVirtualFileRef): Path =
+    val normalizedBase = base.toAbsolutePath.normalize()
+    val normalizedTarget = target.toAbsolutePath.normalize()
+    if normalizedTarget.startsWith(normalizedBase) then target
+    else
+      throw new IOException(
+        s"Refusing to sync ${ref.id}: resolved path $normalizedTarget is outside $normalizedBase"
+      )
+
   private def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
     refs.flatMap: r =>
       try
@@ -341,9 +350,13 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
       result
-    val resolvedPath = converter.toPath(ref) match
-      case p if p.isAbsolute => p
-      case p                 => outputDirectory.resolve(p)
+    val resolvedPath = requireWithinBase(
+      outputDirectory,
+      converter.toPath(ref) match
+        case p if p.isAbsolute => p
+        case p                 => outputDirectory.resolve(p),
+      ref
+    )
     resolvedPath match
       case p if !Files.exists(p) =>
         // println(s"- syncFile: $p does not exist")
@@ -405,7 +418,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       // manifest contains the list of files in the dirzip, and their hashes
       val m = ActionCache.manifestFromFile(mPath)
       m.outputFiles.foreach: ref =>
-        val currentItem = converter.toPath(ref)
+        val currentItem = requireWithinBase(outputDirectory, converter.toPath(ref), ref)
         val shortPath = outputDirectory.relativize(currentItem).toString
         allPaths.remove(currentItem)
         val d = Digest(ref)
