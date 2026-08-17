@@ -211,48 +211,26 @@ object TestResultLogger:
 
     /**
      * Renders suite counts as a single line like `total 10, failed 2, errors
-     * 0, passed 8`.
+     * 0, passed 8`. Counts suites (classes/objects), not individual test examples.
      */
     private[sbt] def countsString(
         events: Iterable[SuiteResult],
         cachedCount: Int,
         alwaysShowCached: Boolean,
     ): String = {
-      val (
-        skippedCount,
-        errorsCount,
-        passedCount,
-        failuresCount,
-        ignoredCount,
-        canceledCount,
-        pendingCount,
-      ) =
-        events.foldLeft((0, 0, 0, 0, 0, 0, 0)) { case (acc, testEvent) =>
-          val (skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc) =
-            acc
-          (
-            skippedAcc + testEvent.skippedCount,
-            errorAcc + testEvent.errorCount,
-            passedAcc + testEvent.passedCount,
-            failureAcc + testEvent.failureCount,
-            ignoredAcc + testEvent.ignoredCount,
-            canceledAcc + testEvent.canceledCount,
-            pendingAcc + testEvent.pendingCount,
-          )
+      val (failuresCount, errorsCount, passedCount) =
+        events.foldLeft((0, 0, 0)) { case ((failureAcc, errorAcc, passedAcc), suite) =>
+          suite.result match
+            case TestResult.Failed                    => (failureAcc + 1, errorAcc, passedAcc)
+            case TestResult.Error                     => (failureAcc, errorAcc + 1, passedAcc)
+            case TestResult.Passed | TestResult.Empty => (failureAcc, errorAcc, passedAcc + 1)
         }
-      val totalCount = failuresCount + errorsCount + skippedCount + passedCount + cachedCount
+      val totalCount = failuresCount + errorsCount + passedCount + cachedCount
       val base =
         s"total $totalCount, failed $failuresCount, errors $errorsCount, passed ${passedCount + cachedCount}"
-      val otherCounts = Seq(
-        "skipped" -> skippedCount,
-        "ignored" -> ignoredCount,
-        "canceled" -> canceledCount,
-        "pending" -> pendingCount,
-      )
-      val extra = otherCounts.withFilter(_._2 > 0).map { (label, count) => s", $label $count" }
       val cachedField =
         if cachedCount > 0 || alwaysShowCached then s", cached $cachedCount" else ""
-      base + extra.mkString + cachedField
+      base + cachedField
     }
 
     val printFailures = TestResultLogger((log, results, _) => {
@@ -333,15 +311,9 @@ object TestResultLogger:
       ): Option[SummaryStatus] =
         val executed = entries.flatMap(_._1.events.values)
         val cached = entries.map(_._3.size).sum
-        val failed = executed.map(_.failureCount).sum
-        val errors = executed.map(_.errorCount).sum
-        val total = executed.map { s =>
-          s.passedCount + s.failureCount + s.errorCount + s.skippedCount +
-            s.ignoredCount + s.canceledCount + s.pendingCount
-        }.sum + cached
-        if total == 0 then None
-        else if errors > 0 then Some(SummaryStatus.Errored)
-        else if failed > 0 then Some(SummaryStatus.Failed)
+        if executed.isEmpty && cached == 0 then None
+        else if executed.exists(_.result == TestResult.Error) then Some(SummaryStatus.Errored)
+        else if executed.exists(_.result == TestResult.Failed) then Some(SummaryStatus.Failed)
         else Some(SummaryStatus.Passed)
 
       private def detail(

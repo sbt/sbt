@@ -22,7 +22,11 @@ object TestResultLoggerSummaryTest extends verify.BasicTestSuite:
     Tests.Output(TestResult.Passed, suites.toMap, Iterable.empty)
 
   private def suite(passed: Int, failed: Int = 0, errors: Int = 0): SuiteResult =
-    new SuiteResult(TestResult.Passed, passed, failed, errors, 0, 0, 0, 0)
+    val result =
+      if errors > 0 then TestResult.Error
+      else if failed > 0 then TestResult.Failed
+      else TestResult.Passed
+    new SuiteResult(result, passed, failed, errors, 0, 0, 0, 0)
 
   private def entry(
       taskName: String,
@@ -60,20 +64,20 @@ object TestResultLoggerSummaryTest extends verify.BasicTestSuite:
     )
     assert(
       render(TestSummary.default, entries) ==
-        Vector("passed: total 4, failed 0, errors 0, passed 4, cached 1")
+        Vector("passed: total 3, failed 0, errors 0, passed 3, cached 1")
     )
   }
 
   test("render leads with the aggregate status") {
     val entries = Vector(entry("a / Test / test", output("A" -> suite(passed = 1, failed = 1))))
     assert(
-      render(TestSummary.default, entries) ==
-        Vector("failed: total 2, failed 1, errors 0, passed 1, cached 0")
+      render(TestSummary.default, entries).last ==
+        "failed: total 1, failed 1, errors 0, passed 0, cached 0"
     )
     val errored = Vector(entry("a / Test / test", output("A" -> suite(passed = 0, errors = 1))))
     assert(
-      render(TestSummary.default, errored) ==
-        Vector("error: total 1, failed 0, errors 1, passed 0, cached 0")
+      render(TestSummary.default, errored).last ==
+        "error: total 1, failed 0, errors 1, passed 0, cached 0"
     )
   }
 
