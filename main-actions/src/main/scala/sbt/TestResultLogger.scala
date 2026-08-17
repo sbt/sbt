@@ -93,8 +93,8 @@ object TestResultLogger:
    * @param f The `TestResultLogger` to choose if the predicate fails.
    */
   def choose(cond: (Output, String) => Boolean, t: TestResultLogger, f: TestResultLogger) =
-    TestResultLogger((log, results, taskName) =>
-      (if (cond(results, taskName)) t else f).run(log, results, taskName)
+    TestResultLogger((log, results, taskName, cached) =>
+      (if cond(results, taskName) then t else f).run(log, results, taskName, cached)
     )
 
   /** Transforms the input to be completely silent when the subject module doesn't contain any tests. */

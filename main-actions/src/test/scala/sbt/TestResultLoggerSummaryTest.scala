@@ -254,4 +254,14 @@ object TestResultLoggerSummaryTest extends verify.BasicTestSuite:
       TestResultLogger.Default.run(log, output("A" -> suite(passed = 1)), "a / Test / test")
       assert(log.lines.exists(_._2 == "passed: total 1, failed 0, errors 0, passed 1, cached 0"))
 
+  test("choose (via SilentWhenNoTests) forwards the cached count to the chosen branch"):
+    withLog: log =>
+      TestResultLogger.SilentWhenNoTests.run(
+        log,
+        output("A" -> suite(passed = 1)),
+        "a / Test / test",
+        Vector("B", "C"),
+      )
+      assert(log.lines.exists(_._2 == "passed: total 3, failed 0, errors 0, passed 3, cached 2"))
+
 end TestResultLoggerSummaryTest
