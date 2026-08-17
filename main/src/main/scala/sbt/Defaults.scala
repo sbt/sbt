@@ -4013,7 +4013,7 @@ object Classpaths {
   def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
       sys.error(
-        "deliver/makeIvyXml requires the sbt-ivy plugin. Add IvyDependencyPlugin to your project."
+        "deliver/makeIvyXml requires an Ivy-based publishing plugin, which is not part of this sbt distribution."
       )
     }
 

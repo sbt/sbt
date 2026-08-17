@@ -14,7 +14,6 @@ import scala.xml.{ Elem, Node, NodeSeq }
 
 /**
  * Generates Maven POM XML from sbt's own types, without requiring Ivy.
- * This is used by the default publisher when the sbt-ivy plugin is not loaded.
  */
 private[sbt] object PomGenerator:
 

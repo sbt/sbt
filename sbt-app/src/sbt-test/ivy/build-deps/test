@@ -1,4 +1,0 @@
--> a/compile
-$ copy-file changes/b.sbt b/build.sbt
-> reload
-> a/compile

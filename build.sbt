@@ -817,21 +817,6 @@ lazy val mainProj = (project in file("main"))
   .dependsOn(lmCore, lmCoursierShadedPublishing)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
 
-lazy val sbtIvyProj = (project in file("sbt-ivy"))
-  .dependsOn(sbtProj, lmIvy)
-  .settings(
-    testedBaseSettings,
-    name := "sbt-ivy",
-    sbtPlugin := true,
-    pluginCrossBuild / sbtVersion := version.value,
-    libraryDependencies += {
-      // https://github.com/scala/scala3/issues/18487
-      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
-    },
-    mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
-  )
-  .configure(addSbtIO)
-
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
@@ -1100,7 +1085,6 @@ def allProjects =
     mainSettingsProj,
     zincLmIntegrationProj,
     mainProj,
-    sbtIvyProj,
     sbtProj,
     bundledLauncherProj,
     sbtClientProj,
@@ -1112,7 +1096,6 @@ def allProjects =
     coreMacrosProj,
     remoteCacheProj,
     lmCore,
-    lmIvy,
     lmCoursierDefinitions,
     lmCoursier,
     lmCoursierShaded,
@@ -1274,29 +1257,6 @@ lazy val lmCore = (project in file("lm-core"))
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
   .configure(addSbtIO, addSbtCompilerInterface)
-
-lazy val lmIvy = (project in file("lm-ivy"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(lmCore)
-  .settings(
-    exportJars := false,
-    commonSettings,
-    lmTestSettings,
-    name := "librarymanagement-ivy",
-    contrabandSjsonNewVersion := sjsonNewVersion,
-    libraryDependencies ++= Seq(
-      ivy,
-      sjsonNewScalaJson.value,
-      sjsonNewCore.value,
-      scalacheck % Test,
-      scalaVerify % Test,
-      hedgehog % Test,
-    ),
-    libraryDependencies ++= scalatest,
-    contrabandSettings,
-    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
-    mimaSettings,
-  )
 
 lazy val lmCoursierSettings: Seq[Setting[?]] = Def.settings(
   baseSettings,
