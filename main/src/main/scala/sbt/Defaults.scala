@@ -2319,13 +2319,21 @@ object Defaults extends BuildCommon with DefExtra {
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
       val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
-      val analysisOut = c.toVirtualFile(setup.cachePath())
-      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
-      store.set(contents)
-      Def.declareOutput(analysisOut)
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
-      val packedDir = Def.declareOutputDirectory(vfDir)
+      val dirZip = ActionCache.dirZipPath(dir)
+      // Zinc leaves the class directory alone when it invalidates nothing, so the zip the previous
+      // run left behind still describes it and re-packing only reproduces a blob the store has.
+      val packedDir =
+        if analysisResult.hasModified() || !Files.exists(dirZip) then
+          Def.declareOutputDirectory(vfDir)
+        else Def.declareOutput(c.toVirtualFile(dirZip))
+      val analysisOut = c.toVirtualFile(setup.cachePath())
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      // Packaging precedes this write so that a run interrupted in between leaves a stale analysis,
+      // which forces a recompile, rather than a current analysis paired with an outdated zip.
+      store.set(contents)
+      Def.declareOutput(analysisOut)
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
