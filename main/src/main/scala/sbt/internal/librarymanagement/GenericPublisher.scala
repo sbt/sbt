@@ -16,7 +16,7 @@ import java.util.regex.Matcher
 
 import gigahorse.AuthScheme
 import gigahorse.support.apachehttp.Gigahorse
-import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
+import sbt.internal.librarymanagement.mavenint.PomExtraAttributeKeys
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import sbt.io.IO
@@ -170,8 +170,8 @@ class GenericPublisher private[sbt] (
 
   private def pluginCrossPath: Seq[String] =
     val attrs = project.module.attributes
-    attrs.get(PomExtraDependencyAttributes.ScalaVersionKey).map("scala_" + _).toSeq ++
-      attrs.get(PomExtraDependencyAttributes.SbtVersionKey).map("sbt_" + _).toSeq
+    attrs.get(PomExtraAttributeKeys.ScalaVersionKey).map("scala_" + _).toSeq ++
+      attrs.get(PomExtraAttributeKeys.SbtVersionKey).map("sbt_" + _).toSeq
 
   private def typeToFolder(tpe: String): String = tpe match
     case "jar"                                   => "jars"
@@ -266,8 +266,8 @@ class GenericPublisher private[sbt] (
     else s = s.replace("(-[classifier])", "")
     // Substitute or drop optional Ivy pattern parts (scala/sbt version), remove branch for ivyless layout
     val attrs = project.module.attributes
-    val scalaV = attrs.get(PomExtraDependencyAttributes.ScalaVersionKey)
-    val sbtV = attrs.get(PomExtraDependencyAttributes.SbtVersionKey)
+    val scalaV = attrs.get(PomExtraAttributeKeys.ScalaVersionKey)
+    val sbtV = attrs.get(PomExtraAttributeKeys.SbtVersionKey)
     s = s.replaceAll(
       "\\(scala_[^)]+/\\)",
       scalaV.map(v => Matcher.quoteReplacement(s"scala_$v/")).getOrElse("")

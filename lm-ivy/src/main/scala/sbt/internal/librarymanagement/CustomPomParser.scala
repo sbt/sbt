@@ -25,6 +25,7 @@ import org.apache.ivy.util.extendable.ExtendableItem
 import java.io.{ File, InputStream }
 import java.net.URL
 import sbt.internal.librarymanagement.mavenint.{
+  PomExtraAttributeKeys,
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
@@ -103,8 +104,7 @@ object CustomPomParser {
   }
 
   // packagings that should be jars, but that Ivy doesn't handle as jars
-  // TODO - move this elsewhere.
-  val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit", "scala-jar")
+  val JarPackagings = PomExtraAttributeKeys.JarPackagings
   val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
   private val TransformedHashKey = "e:sbtTransformHash"

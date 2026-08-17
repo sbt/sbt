@@ -147,20 +147,17 @@ object RunFromSourceMain {
         log.info(s"""creating $scalaHome1 by downloading scala-compiler $scalaVersion""")
         IO.createDirectories(List(scalaHome1Lib, scalaHome1Temp))
         val lm = {
-          import sbt.internal.librarymanagement.ivy.{
-            InlineIvyConfiguration,
-            IvyDependencyResolution
-          }
-          val ivyConfig = InlineIvyConfiguration().withLog(log)
-          IvyDependencyResolution(ivyConfig)
+          import lmcoursier.{ CoursierConfiguration, CoursierDependencyResolution }
+          CoursierDependencyResolution(
+            CoursierConfiguration().withResolvers(Vector(Resolver.mavenCentral))
+          )
         }
         val Name = """(.*)(?:\-[\d.]+)\.jar""".r
         val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
         val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
-          case Left(w)  => throw w.resolveException
-          case Right(_) =>
-            val jars = (scalaHome1Temp ** "*.jar").get()
+          case Left(w)     => throw w.resolveException
+          case Right(jars) =>
             assert(jars.nonEmpty, s"no jars for scala $scalaVersion")
             jars.foreach { f =>
               val name = f.getName match {

@@ -30,10 +30,7 @@ import sbt.internal.*
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
-import sbt.internal.librarymanagement.mavenint.{
-  PomExtraDependencyAttributes,
-  SbtPomExtraProperties
-}
+import sbt.internal.librarymanagement.mavenint.{ PomExtraAttributeKeys, SbtPomExtraProperties }
 import sbt.internal.librarymanagement.*
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
@@ -265,7 +262,7 @@ object Defaults extends BuildCommon with DefExtra {
         "bundle",
         "maven-plugin",
         "test-jar"
-      ) ++ CustomPomParser.JarPackagings,
+      ) ++ PomExtraAttributeKeys.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
@@ -2607,8 +2604,8 @@ object Defaults extends BuildCommon with DefExtra {
     partialVersion(sbtV) match
       case Some((0, _)) | Some((1, _)) =>
         m.extra(
-          PomExtraDependencyAttributes.SbtVersionKey -> sbtV,
-          PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
+          PomExtraAttributeKeys.SbtVersionKey -> sbtV,
+          PomExtraAttributeKeys.ScalaVersionKey -> scalaV
         ).withCrossVersion(Disabled())
       case Some(_) =>
         // this produces a normal suffix like _sjs1_2.13

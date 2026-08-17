@@ -747,7 +747,6 @@ lazy val mainProj = (project in file("main"))
     runProj,
     commandProj,
     collectionProj,
-    lmIvy,
     zincLmIntegrationProj,
     utilLogging,
   )
@@ -847,6 +846,12 @@ lazy val sbtProj = (project in file("sbt-app"))
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    mimaBinaryIssueFilters ++= Vector(
+      // Dropped the top-level Ivy-specific UpdateOptions alias; use
+      // sbt.internal.librarymanagement.ivy.UpdateOptions directly if needed.
+      exclude[DirectMissingMethodProblem]("sbt.Import.UpdateOptions"),
+      exclude[DirectMissingMethodProblem]("sbt.package.UpdateOptions"),
+    ),
   )
   .settings(
     Test / run / connectInput := true,

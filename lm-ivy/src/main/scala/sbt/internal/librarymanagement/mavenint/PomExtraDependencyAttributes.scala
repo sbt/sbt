@@ -23,9 +23,9 @@ import org.apache.ivy.util.extendable.ExtendableItem
  */
 object PomExtraDependencyAttributes {
 
-  val ExtraAttributesKey = "extraDependencyAttributes"
-  val SbtVersionKey = "sbtVersion"
-  val ScalaVersionKey = "scalaVersion"
+  val ExtraAttributesKey = PomExtraAttributeKeys.ExtraAttributesKey
+  val SbtVersionKey = PomExtraAttributeKeys.SbtVersionKey
+  val ScalaVersionKey = PomExtraAttributeKeys.ScalaVersionKey
 
   /**
    * Reads the extra dependency attributes out of a maven property.

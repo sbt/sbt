@@ -357,8 +357,6 @@ trait Import {
   val URLRepository = sbt.librarymanagement.URLRepository
   type URLRepository = sbt.librarymanagement.URLRepository
   val UpdateLogging = sbt.librarymanagement.UpdateLogging
-  val UpdateOptions = sbt.internal.librarymanagement.ivy.UpdateOptions
-  type UpdateOptions = sbt.internal.librarymanagement.ivy.UpdateOptions
   val UpdateReport = sbt.librarymanagement.UpdateReport
   type UpdateReport = sbt.librarymanagement.UpdateReport
   val UpdateStats = sbt.librarymanagement.UpdateStats
