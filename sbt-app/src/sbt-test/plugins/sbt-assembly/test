@@ -1,0 +1,11 @@
+> assembly
+> recordDescriptorMtime
+> setAssemblyMtime
+> assembly
+> checkDescriptorMtime
+> checkAssemblyMtime
+
+$ copy-file changes/AdditionalPlugin.scala src/main/scala/example/AdditionalPlugin.scala
+> assembly
+> checkDescriptorRebuilt
+> checkAssemblyRebuilt
