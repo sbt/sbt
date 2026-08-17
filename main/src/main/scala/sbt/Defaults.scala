@@ -2852,6 +2852,15 @@ object Classpaths {
       exportedProductsNoTracking := ClasspathImpl
         .trackedExportedProducts(TrackLevel.NoTracking)
         .value,
+      exportedProductsVersioned := Def.uncached(
+        ClasspathImpl.trackedExportedProductsVersioned(TrackLevel.TrackAlways).value
+      ),
+      exportedProductsVersionedIfMissing := ClasspathImpl
+        .trackedExportedProductsVersioned(TrackLevel.TrackIfMissing)
+        .value,
+      exportedProductsVersionedNoTracking := ClasspathImpl
+        .trackedExportedProductsVersioned(TrackLevel.NoTracking)
+        .value,
       exportedProductJars := ClasspathImpl.trackedExportedJarProducts(TrackLevel.TrackAlways).value,
       exportedProductJarsIfMissing := ClasspathImpl
         .trackedExportedJarProducts(TrackLevel.TrackIfMissing)

@@ -1,0 +1,8 @@
+> app/checkClasspaths
+> app/run
+
+# bumping foo's version must not change which task backs each classpath:
+# Compile still packageInternal (version-free), Runtime still packageBin (versioned)
+> set foo / version := "0.2.0"
+> app/checkClasspaths
+> app/run
