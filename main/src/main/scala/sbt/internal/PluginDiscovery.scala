@@ -88,7 +88,10 @@ object PluginDiscovery {
       IO.delete(descriptor)
       None
     } else {
-      IO.writeLines(descriptor, names.distinct.sorted)
+      val lines = names.distinct.sorted
+      // Do not invalidate timestamp-based downstream caches when the descriptor content is unchanged.
+      if (!descriptor.exists || IO.readLines(descriptor) != lines)
+        IO.writeLines(descriptor, lines)
       Some(descriptor)
     }
   }

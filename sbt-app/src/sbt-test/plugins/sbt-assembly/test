@@ -1,0 +1,8 @@
+> assembly
+> setAssemblyMtime
+> assembly
+> checkAssemblyMtime
+
+$ copy-file changes/AdditionalPlugin.scala src/main/scala/example/AdditionalPlugin.scala
+> assembly
+> checkAssemblyRebuilt
