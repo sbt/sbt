@@ -15,36 +15,34 @@ lazy val app = project
   .settings(
     checkClasspaths := {
       val converter = fileConverter.value
-      val compileCp = (Compile / dependencyClasspath).value.map(a => converter.toPath(a.data))
-      val runtimeCp = (Runtime / dependencyClasspath).value.map(a => converter.toPath(a.data))
       val binPath = converter.toPath((foo / Compile / packageBin).value)
       val internalPath = converter.toPath((foo / Compile / packageInternal).value)
       val s = streams.value
 
       s.log.info(s"packageBin      = $binPath")
       s.log.info(s"packageInternal = $internalPath")
-      s.log.info(s"Compile classpath = $compileCp")
-      s.log.info(s"Runtime classpath = $runtimeCp")
-
       assert(binPath != internalPath, "packageBin and packageInternal unexpectedly produced the same path")
 
-      assert(
-        compileCp.contains(internalPath),
-        s"Compile classpath should contain packageInternal's jar ($internalPath), got: $compileCp"
-      )
-      assert(
-        !compileCp.contains(binPath),
-        s"Compile classpath should NOT contain packageBin's jar ($binPath), got: $compileCp"
-      )
+      def check(name: String, cp: Seq[HashedVirtualFileRef], expectVersioned: Boolean): Unit =
+        val paths = cp.map(converter.toPath)
+        s.log.info(s"$name = $paths")
+        val (expected, unexpected) = if expectVersioned then (binPath, internalPath) else (internalPath, binPath)
+        val expectedDesc = if expectVersioned then "packageBin's" else "packageInternal's"
+        val unexpectedDesc = if expectVersioned then "packageInternal's" else "packageBin's"
+        assert(paths.contains(expected), s"$name should contain $expectedDesc jar ($expected), got: $paths")
+        assert(!paths.contains(unexpected), s"$name should NOT contain $unexpectedDesc jar ($unexpected), got: $paths")
 
-      assert(
-        runtimeCp.contains(binPath),
-        s"Runtime classpath should contain packageBin's jar ($binPath), got: $runtimeCp"
-      )
-      assert(
-        !runtimeCp.contains(internalPath),
-        s"Runtime classpath should NOT contain packageInternal's jar ($internalPath), got: $runtimeCp"
-      )
+      check("Compile/dependencyClasspath", (Compile / dependencyClasspath).value.map(_.data), expectVersioned = false)
+      check("Runtime/dependencyClasspath", (Runtime / dependencyClasspath).value.map(_.data), expectVersioned = true)
+
+      check("Compile/internalDependencyAsJars", (Compile / internalDependencyAsJars).value.map(_.data), expectVersioned = false)
+      check("Runtime/internalDependencyAsJars", (Runtime / internalDependencyAsJars).value.map(_.data), expectVersioned = true)
+
+      check("Compile/dependencyClasspathAsJars", (Compile / dependencyClasspathAsJars).value.map(_.data), expectVersioned = false)
+      check("Runtime/dependencyClasspathAsJars", (Runtime / dependencyClasspathAsJars).value.map(_.data), expectVersioned = true)
+
+      check("Compile/fullClasspathAsJars", (Compile / fullClasspathAsJars).value.map(_.data), expectVersioned = false)
+      check("Runtime/fullClasspathAsJars", (Runtime / fullClasspathAsJars).value.map(_.data), expectVersioned = true)
     }
   )
 

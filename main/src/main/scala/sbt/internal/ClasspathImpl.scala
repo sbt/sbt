@@ -82,12 +82,21 @@ private[sbt] object ClasspathImpl {
     }
 
   def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
+    trackedExportedJarProductsFor(packageInternal, track)
+
+  def trackedExportedJarProductsVersioned(track: TrackLevel): Initialize[Task[Classpath]] =
+    trackedExportedJarProductsFor(packageBin, track)
+
+  private def trackedExportedJarProductsFor(
+      key: TaskKey[HashedVirtualFileRef],
+      track: TrackLevel
+  ): Initialize[Task[Classpath]] =
     Def.task {
       val _ = (packageBin / dynamicDependency).value
       val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
-      for (f, analysis) <- jarProductsForTask(packageInternal, track).value
+      for (f, analysis) <- jarProductsForTask(key, track).value
       yield APIMappings
         .store(Classpaths.analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
@@ -281,20 +290,36 @@ private[sbt] object ClasspathImpl {
       log: Logger
   ): Initialize[Task[Classpath]] =
     Def.value[Task[Classpath]] {
-      interDependencies[Attributed[HashedVirtualFileRef]](
-        projectRef,
-        deps,
-        conf,
-        self,
-        data,
-        track,
-        false,
-        log,
-      )(
-        exportedProductJarsNoTracking,
-        exportedProductJarsIfMissing,
-        exportedProductJars
-      ): Task[Classpath]
+      if self == Runtime then
+        interDependencies[Attributed[HashedVirtualFileRef]](
+          projectRef,
+          deps,
+          conf,
+          self,
+          data,
+          track,
+          false,
+          log,
+        )(
+          exportedProductJarsVersionedNoTracking,
+          exportedProductJarsVersionedIfMissing,
+          exportedProductJarsVersioned
+        ): Task[Classpath]
+      else
+        interDependencies[Attributed[HashedVirtualFileRef]](
+          projectRef,
+          deps,
+          conf,
+          self,
+          data,
+          track,
+          false,
+          log,
+        )(
+          exportedProductJarsNoTracking,
+          exportedProductJarsIfMissing,
+          exportedProductJars
+        ): Task[Classpath]
     }
 
   def unmanagedDependenciesTask: Initialize[Task[Classpath]] =

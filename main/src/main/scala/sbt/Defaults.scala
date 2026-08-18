@@ -2868,6 +2868,15 @@ object Classpaths {
       exportedProductJarsNoTracking := ClasspathImpl
         .trackedExportedJarProducts(TrackLevel.NoTracking)
         .value,
+      exportedProductJarsVersioned := ClasspathImpl
+        .trackedExportedJarProductsVersioned(TrackLevel.TrackAlways)
+        .value,
+      exportedProductJarsVersionedIfMissing := ClasspathImpl
+        .trackedExportedJarProductsVersioned(TrackLevel.TrackIfMissing)
+        .value,
+      exportedProductJarsVersionedNoTracking := ClasspathImpl
+        .trackedExportedJarProductsVersioned(TrackLevel.NoTracking)
+        .value,
       internalDependencyAsJars := Def.uncached(internalDependencyJarsTask.value),
       dependencyClasspathAsJars := Def.uncached(
         concat(
