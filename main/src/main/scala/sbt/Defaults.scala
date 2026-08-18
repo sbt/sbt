@@ -1797,7 +1797,7 @@ object Defaults extends BuildCommon with DefExtra {
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
       packageTaskSettings(packageDoc, packageDocMappings) ++
-      packageTaskSettings(packageInternal, packageBinMappings) ++
+      packageTaskSettings(packageInternal, packageBin / mappings) ++
       inTask(packageInternal)(Seq(artifactName :== Artifact.internalArtifactName)) ++
       Seq(Keys.`package` := packageBin.value)
 
