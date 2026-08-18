@@ -13,5 +13,5 @@ $ absent target/**/compile-clean/test-classes/B.class
 
 > Compile/clean
 $ exists target/**/compile-clean/classes/cant-touch-this
-# $ absent target/**/compile-clean/classes/A.class
+$ absent target/**/compile-clean/classes/A.class
 $ exists target/**/compile-clean/classes/X.class
