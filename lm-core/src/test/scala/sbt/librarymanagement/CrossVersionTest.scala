@@ -434,13 +434,11 @@ class CrossVersionTest extends UnitSpec {
     named("com.example" %% "foo" % "1.0", Some("jvm")) shouldBe Some("foo_2.13")
   }
   it should "put the platform suffix before the cross suffix" in {
-    // the platform is dropped: sbt 1 kept it inside the CrossVersion, sbt 2 keeps it in a field
-    // of its own and this overload never reads it
-    named("com.example" %% "foo" % "1.0", Some("sjs1")) shouldBe Some("foo_2.13")
+    named("com.example" %% "foo" % "1.0", Some("sjs1")) shouldBe Some("foo_sjs1_2.13")
   }
   it should "take the platform from the module over the project" in {
     val m = ("com.example" %% "foo" % "1.0").platform("native0.5")
-    named(m, Some("sjs1")) shouldBe Some("foo_2.13")
+    named(m, Some("sjs1")) shouldBe Some("foo_native0.5_2.13")
   }
   it should "add no platform suffix when there is no platform" in {
     named("com.example" %% "foo" % "1.0", None) shouldBe Some("foo_2.13")

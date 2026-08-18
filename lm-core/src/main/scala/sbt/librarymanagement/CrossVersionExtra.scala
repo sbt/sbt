@@ -139,9 +139,17 @@ private[librarymanagement] abstract class CrossVersionFunctions {
         append(c.prefix + compat + c.suffix)
     }
 
-  /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */
+  /**
+   * Constructs the cross-version function defined by `module` and `is`, if one is configured.
+   *
+   * The function names the artifact in full, platform suffix before cross suffix, matching the
+   * coordinate (sbt/sbt#9117). On sbt 1 the platform was a prefix inside the CrossVersion itself,
+   * so callers rebuilding a name from it got the platform for free; sbt 2 keeps the platform in a
+   * field of its own, and this is where the two are put back together.
+   */
   def apply(module: ModuleID, is: ScalaModuleInfo): Option[String => String] =
     CrossVersion(module.crossVersion, is.scalaFullVersion, is.scalaBinaryVersion)
+      .map(cross => name => cross(addPlatformSuffix(name, module.platformOpt, is.platform)))
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */
   def apply(module: ModuleID, is: Option[ScalaModuleInfo]): Option[String => String] =
