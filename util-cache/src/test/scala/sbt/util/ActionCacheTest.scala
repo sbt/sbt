@@ -44,6 +44,32 @@ object ActionCacheTest extends BasicTestSuite:
     val chain = new RuntimeException("boom", new IllegalStateException("unrelated"))
     assert(ActionCache.findMissingFile(chain) == None)
 
+  test("Distinct inputs that collide in the 32-bit murmur hash get distinct cache keys"):
+    import sjsonnew.BasicJsonProtocol.given
+    import sjsonnew.support.murmurhash.Hasher
+    // Find two distinct inputs whose 32-bit murmur hash collides (the old mkInput folded only
+    // that 32-bit value into the key, so these used to produce an identical cache key). The
+    // cache key must now distinguish them.
+    val seen = scala.collection.mutable.HashMap.empty[Int, String]
+    var a: String = null
+    var b: String = null
+    var i = 0
+    val cap = 5000000
+    while (b == null && i < cap) do
+      val key = s"input-$i"
+      Hasher.hashUnsafe[String](key) match
+        case h if seen.contains(h) => a = seen(h); b = key
+        case h                     => seen.update(h, key)
+      i += 1
+    assert(b != null, s"no 32-bit collision found within $cap inputs")
+    assert(a != b)
+    val ka = ActionCache.mkInput(a, Digest.zero, Digest.zero, 0L)
+    val kb = ActionCache.mkInput(b, Digest.zero, Digest.zero, 0L)
+    assert(
+      ka != kb,
+      s"distinct inputs '$a' and '$b' must not share a cache key, both hashed to $ka"
+    )
+
   test("Disk cache can hold a blob"):
     withDiskCache(testHoldBlob)
 
