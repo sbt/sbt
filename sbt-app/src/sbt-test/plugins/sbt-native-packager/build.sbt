@@ -3,6 +3,7 @@ ThisBuild / scalaVersion := "3.8.4"
 name := "hello"
 enablePlugins(JavaAppPackaging)
 
+@transient
 lazy val check = taskKey[Unit]("")
 
 check := {

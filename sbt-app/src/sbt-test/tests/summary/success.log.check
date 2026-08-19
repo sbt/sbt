@@ -1,0 +1,10 @@
+[info] Test summary (3 test tasks succeeded):
+[info]   a / Test / testQuick
+[info]         com.example.a.TestA      (cached) PASS
+[info]         com.example.a.TestAA     (cached) PASS
+[info]   b / Test / testQuick
+[info]         com.example.b.TestB      (cached) PASS
+[info]   c / Test / testQuick
+[info]         TestC                    (cached) PASS
+[info]  
+[info] passed: total 4, failed 0, errors 0, passed 4, cached 4

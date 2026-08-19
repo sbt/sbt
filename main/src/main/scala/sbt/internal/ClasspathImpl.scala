@@ -25,7 +25,7 @@ import sbt.librarymanagement.{
   TrackLevel,
   UpdateReport
 }
-import sbt.librarymanagement.Configurations.names
+import sbt.librarymanagement.Configurations.{ names, Runtime }
 import sbt.SlashSyntax0.*
 import sbt.std.TaskExtra.*
 import sbt.util.*
@@ -56,13 +56,24 @@ private[sbt] object ClasspathImpl {
       else exportedProducts.value
     }
 
+  // Compile/Test: version-free, so a dependency's version bump doesn't bust the cache.
   def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
+    trackedExportedProductsFor(packageInternal, track)
+
+  // Runtime: versioned, matching what `run` and sbt-native-packager-style tooling expect.
+  def trackedExportedProductsVersioned(track: TrackLevel): Initialize[Task[Classpath]] =
+    trackedExportedProductsFor(packageBin, track)
+
+  private def trackedExportedProductsFor(
+      key: TaskKey[HashedVirtualFileRef],
+      track: TrackLevel
+  ): Initialize[Task[Classpath]] =
     Def.task {
       val _ = (packageBin / dynamicDependency).value
       val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
-      for (f, analysis) <- trackedExportedProductsImplTask(track).value
+      for (f, analysis) <- trackedExportedProductsImplTask(key, track).value
       yield APIMappings
         .store(Classpaths.analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
@@ -71,12 +82,21 @@ private[sbt] object ClasspathImpl {
     }
 
   def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
+    trackedExportedJarProductsFor(packageInternal, track)
+
+  def trackedExportedJarProductsVersioned(track: TrackLevel): Initialize[Task[Classpath]] =
+    trackedExportedJarProductsFor(packageBin, track)
+
+  private def trackedExportedJarProductsFor(
+      key: TaskKey[HashedVirtualFileRef],
+      track: TrackLevel
+  ): Initialize[Task[Classpath]] =
     Def.task {
       val _ = (packageBin / dynamicDependency).value
       val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
-      for (f, analysis) <- trackedJarProductsImplTask(track).value
+      for (f, analysis) <- jarProductsForTask(key, track).value
       yield APIMappings
         .store(Classpaths.analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
@@ -85,13 +105,14 @@ private[sbt] object ClasspathImpl {
     }
 
   private def trackedExportedProductsImplTask(
+      key: TaskKey[HashedVirtualFileRef],
       track: TrackLevel
   ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     Def.taskIf {
       if {
         val _ = (packageBin / dynamicDependency).value
         exportJars.value
-      } then trackedJarProductsImplTask(track).value
+      } then jarProductsForTask(key, track).value
       else trackedNonJarProductsImplTask(track).value
     }
 
@@ -126,13 +147,14 @@ private[sbt] object ClasspathImpl {
           }
       }
 
-  private def trackedJarProductsImplTask(
+  private def jarProductsForTask(
+      key: TaskKey[HashedVirtualFileRef],
       track: TrackLevel
   ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     (Def
       .task {
         val converter = fileConverter.value
-        val vf = (packageBin / artifactPath).value
+        val vf = (key / artifactPath).value
         val jar = converter.toPath(vf)
         (TrackLevel.intersection(track, exportToInternal.value), vf, jar)
       })
@@ -141,13 +163,13 @@ private[sbt] object ClasspathImpl {
           Def.task {
             val converter = fileConverter.value
             val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
-            Seq((packageBin.value, analysisFile))
+            Seq((key.value, analysisFile))
           }
         case (TrackLevel.TrackIfMissing, _, jar) if !jar.toFile().exists =>
           Def.task {
             val converter = fileConverter.value
             val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
-            Seq((packageBin.value, analysisFile))
+            Seq((key.value, analysisFile))
           }
         case (_, vf, _) =>
           Def.task {
@@ -164,6 +186,9 @@ private[sbt] object ClasspathImpl {
           (exportedProductsNoTracking / transitiveClasspathDependency).value,
           (exportedProductsIfMissing / transitiveClasspathDependency).value,
           (exportedProducts / transitiveClasspathDependency).value,
+          (exportedProductsVersionedNoTracking / transitiveClasspathDependency).value,
+          (exportedProductsVersionedIfMissing / transitiveClasspathDependency).value,
+          (exportedProductsVersioned / transitiveClasspathDependency).value,
           (exportedProductJarsNoTracking / transitiveClasspathDependency).value,
           (exportedProductJarsIfMissing / transitiveClasspathDependency).value,
           (exportedProductJars / transitiveClasspathDependency).value
@@ -194,11 +219,18 @@ private[sbt] object ClasspathImpl {
       log: Logger
   ): Initialize[Task[Classpath]] =
     Def.value[Task[Classpath]] {
-      interDependencies(projectRef, deps, conf, self, data, track, false, log)(
-        exportedProductsNoTracking,
-        exportedProductsIfMissing,
-        exportedProducts
-      )
+      if self == Runtime then
+        interDependencies(projectRef, deps, conf, self, data, track, false, log)(
+          exportedProductsVersionedNoTracking,
+          exportedProductsVersionedIfMissing,
+          exportedProductsVersioned
+        )
+      else
+        interDependencies(projectRef, deps, conf, self, data, track, false, log)(
+          exportedProductsNoTracking,
+          exportedProductsIfMissing,
+          exportedProducts
+        )
     }
 
   def internalDependencyPicklePathTask: Initialize[Task[Classpath]] = {
@@ -258,20 +290,36 @@ private[sbt] object ClasspathImpl {
       log: Logger
   ): Initialize[Task[Classpath]] =
     Def.value[Task[Classpath]] {
-      interDependencies[Attributed[HashedVirtualFileRef]](
-        projectRef,
-        deps,
-        conf,
-        self,
-        data,
-        track,
-        false,
-        log,
-      )(
-        exportedProductJarsNoTracking,
-        exportedProductJarsIfMissing,
-        exportedProductJars
-      ): Task[Classpath]
+      if self == Runtime then
+        interDependencies[Attributed[HashedVirtualFileRef]](
+          projectRef,
+          deps,
+          conf,
+          self,
+          data,
+          track,
+          false,
+          log,
+        )(
+          exportedProductJarsVersionedNoTracking,
+          exportedProductJarsVersionedIfMissing,
+          exportedProductJarsVersioned
+        ): Task[Classpath]
+      else
+        interDependencies[Attributed[HashedVirtualFileRef]](
+          projectRef,
+          deps,
+          conf,
+          self,
+          data,
+          track,
+          false,
+          log,
+        )(
+          exportedProductJarsNoTracking,
+          exportedProductJarsIfMissing,
+          exportedProductJars
+        ): Task[Classpath]
     }
 
   def unmanagedDependenciesTask: Initialize[Task[Classpath]] =

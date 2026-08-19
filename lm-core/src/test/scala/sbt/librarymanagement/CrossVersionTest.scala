@@ -2,6 +2,7 @@ package sbt.librarymanagement
 
 import sbt.internal.librarymanagement.UnitSpec
 import CrossVersion.*
+import sbt.librarymanagement.syntax.*
 import scala.annotation.nowarn
 
 class CrossVersionTest extends UnitSpec {
@@ -412,5 +413,40 @@ class CrossVersionTest extends UnitSpec {
     CrossVersion(CrossVersion.for2_13Use3, "2.13.4", "2.13").map(_("artefact")) shouldBe Some(
       "artefact_3"
     )
+  }
+
+  private def scalaInfo(platform: Option[String]) = ScalaModuleInfo(
+    "2.13.15",
+    "2.13",
+    Vector.empty,
+    true,
+    false,
+    true,
+    "org.scala-lang",
+    Vector.empty,
+    platform,
+  )
+
+  private def named(module: ModuleID, platform: Option[String]) =
+    CrossVersion(module, scalaInfo(platform)).map(_(module.name))
+
+  "CrossVersion(module, scalaModuleInfo)" should "name a JVM artifact with the cross suffix" in {
+    named("com.example" %% "foo" % "1.0", Some("jvm")) shouldBe Some("foo_2.13")
+  }
+  it should "put the platform suffix before the cross suffix" in {
+    named("com.example" %% "foo" % "1.0", Some("sjs1")) shouldBe Some("foo_sjs1_2.13")
+  }
+  it should "take the platform from the module over the project" in {
+    val m = ("com.example" %% "foo" % "1.0").platform("native0.5")
+    named(m, Some("sjs1")) shouldBe Some("foo_native0.5_2.13")
+  }
+  it should "add no platform suffix when there is no platform" in {
+    named("com.example" %% "foo" % "1.0", None) shouldBe Some("foo_2.13")
+  }
+  it should "name nothing when the module is not cross-versioned" in {
+    named(
+      ("com.example" % "foo" % "1.0").withCrossVersion(CrossVersion.disabled),
+      Some("sjs1")
+    ) shouldBe None
   }
 }

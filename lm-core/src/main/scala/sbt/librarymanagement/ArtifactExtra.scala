@@ -112,6 +112,25 @@ private[librarymanagement] abstract class ArtifactFunctions {
     base + "-" + module.revision + classifierStr + "." + artifact.extension
   }
 
+  /**
+   * Like `artifactName`, but omits the module's version.
+   */
+  def internalArtifactName(
+      scalaVersion: ScalaVersion,
+      module: ModuleID,
+      artifact: Artifact
+  ): String =
+    import artifact.*
+    val classifierStr = classifier match
+      case None    => ""
+      case Some(c) => s"-${c}"
+    val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
+    val withPlatform = module.crossVersion match
+      case _: Disabled => artifact.name
+      case _           => CrossVersion.addPlatformSuffix(artifact.name, module.platformOpt, None)
+    val base = CrossVersion.applyCross(withPlatform, cross)
+    s"${base}${classifierStr}.${artifact.extension}"
+
   val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
   @deprecated("Configuration should not be decided from the classifier.", "1.0")
   def classifierConf(classifier: String): Configuration =

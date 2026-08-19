@@ -12,6 +12,7 @@ package protocol
 import java.io.{ File, InputStream, OutputStream }
 import java.net.{ InetAddress, Socket, StandardProtocolFamily, URI, UnixDomainSocketAddress }
 import java.nio.channels.{ Channels, SocketChannel }
+import scala.util.control.NonFatal
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
@@ -23,18 +24,26 @@ import org.scalasbt.ipcsocket.*
 object ClientSocket {
   private lazy val fileFormats = new BasicJsonProtocol with PortFileFormats with TokenFileFormats {}
 
+  /** Thrown when a server connection file can't be read or parsed as JSON. */
+  final class ConnectionFileReadException(file: File, cause: Throwable)
+      extends Exception(s"sbt connection file $file is corrupt or unreadable: $cause", cause)
+
   def socket(portfile: File): (Socket, Option[String]) = socket(portfile, false)
   def socket(portfile: File, useJNI: Boolean): (Socket, Option[String]) = {
     import fileFormats.given
-    val json: JValue = Parser.parseFromString(sbt.io.IO.read(portfile)).get
-    val p = Converter.fromJson[PortFile](json).get
+    val p =
+      try
+        val json: JValue = Parser.parseFromString(sbt.io.IO.read(portfile)).get
+        Converter.fromJson[PortFile](json).get
+      catch case NonFatal(e) => throw new ConnectionFileReadException(portfile, e)
     val uri = new URI(p.uri)
     // println(uri)
     val token = p.tokenfilePath map { tp =>
       val tokeFile = new File(tp)
-      val json: JValue = Parser.parseFromFile(tokeFile).get
-      val t = Converter.fromJson[TokenFile](json).get
-      t.token
+      try
+        val json: JValue = Parser.parseFromFile(tokeFile).get
+        Converter.fromJson[TokenFile](json).get.token
+      catch case NonFatal(e) => throw new ConnectionFileReadException(tokeFile, e)
     }
     val sk = uri.getScheme match {
       case "local" => localSocket(uri.getSchemeSpecificPart, useJNI)

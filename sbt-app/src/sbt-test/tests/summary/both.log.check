@@ -1,0 +1,10 @@
+[error] Test summary (2 test tasks failed):
+[error]   a / Test / testQuick
+[error]         com.example.a.TestA      FAIL
+[error]         com.example.a.TestAA     (cached) PASS
+[error]   b / Test / testQuick
+[error]         com.example.b.TestB      FAIL
+[error]   c / Test / testQuick
+[error]         TestC                    (cached) PASS
+[error]  
+[error] failed: total 4, failed 2, errors 0, passed 2, cached 2

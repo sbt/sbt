@@ -984,9 +984,10 @@ object Defaults extends BuildCommon with DefExtra {
         compileOptions := Def.uncached {
           val opts = (compile / compileOptions).value
           val cp0 = dependencyClasspath.value
-          val cp1 = backendOutput.value +: data(cp0)
           val converter = fileConverter.value
-          val cp = cp1.map(converter.toPath).map(converter.toVirtualFile)
+          // backendOutput is a settingKey: its listing is captured at project load, so re-convert
+          val cp = converter.toVirtualFile(converter.toPath(backendOutput.value)) +:
+            data(cp0).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
         },
         compileInputs2 := Def.uncached {
@@ -1230,7 +1231,9 @@ object Defaults extends BuildCommon with DefExtra {
         testListeners :== Nil,
         testOptions :== Nil,
         testOptionDigests :== Nil,
-        testResultLogger :== TestResultLogger.Default,
+        testResultLogger :== TestResultLogger.SilentWhenNoTests,
+        testSummary :== SysProp.testSummary,
+        testSummaryLogger := TestResultLogger.Defaults.Summary(testSummary.value),
         testOnly / testFilter :== (IncrementalTest.selectedFilter),
         testSelected / testFilter :== (IncrementalTest.selectedFilter),
         extraTestDigests :== Nil,
@@ -1298,9 +1301,10 @@ object Defaults extends BuildCommon with DefExtra {
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
       try
         val output = executeTests.value
+        TestSummary.append(taskName, output, cached = Vector.empty, adhocOptions = Vector.empty)
         trl.run(streams.value.log, output, taskName)
-        // Throw with task name + Output so the cross-project recap
-        // (TestRecap.collect) can surface them. The throw lives here
+        // Throw with task name + Output so the aggregation boundary
+        // (Aggregation.runTasks) can signal the failure. The throw lives here
         // rather than in TestResultLogger so user-overridden loggers
         // cannot accidentally suppress the failure signal.
         output.overall match
@@ -1312,7 +1316,7 @@ object Defaults extends BuildCommon with DefExtra {
         // Tag any no-detail TestsFailedException (legacy executeTests
         // adapters, third-party Tests.Setup actions, anything constructing
         // `new TestsFailedException()` via the back-compat ctor) with the
-        // task name on its way out so the recap doesn't render <unknown>.
+        // task name on its way out so error reporting has it to show.
         case e: TestsFailedException if e.taskName.isEmpty =>
           throw new TestsFailedException(taskName, e.testOutput)
       finally close(testLoader.value)
@@ -1466,8 +1470,9 @@ object Defaults extends BuildCommon with DefExtra {
     inputTests0.mapReferenced(Def.mapScope((s) => s.rescope(key.key)))
 
   private lazy val inputTests0: Initialize[InputTask[TestResult]] = {
-    val parser = loadForParser(definedTestNames)((s, i) => testOnlyParser(s, i getOrElse Nil))
-    ParserGen(parser).flatMapTask { (selected, frameworkOptions) =>
+    val parser =
+      loadForParser(definedTestNames)((s, i) => testOnlyParserWithOption(s, i getOrElse Nil))
+    ParserGen(parser).flatMapTask { (selected, frameworkOptions, adhocOptions) =>
       val s = streams.value
       val filter = testFilter.value
       val config = testExecution.value
@@ -1508,11 +1513,21 @@ object Defaults extends BuildCommon with DefExtra {
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
+      val digests = definedTestDigests.value
+      val cacheConfig = Def.cacheConfiguration.value
       (Def
         .value[Task[Tests.Output]] { output })
         .map: out =>
+          val cached = IncrementalTest.cachedTestNames(
+            digests,
+            cacheConfig,
+            out.events.keySet,
+            selected,
+            frameworkOptions,
+          )
+          TestSummary.append(taskName, out, cached, adhocOptions.toVector)
           try
-            trl.run(s.log, out, taskName)
+            trl.run(s.log, out, taskName, cached)
             out.overall match
               case TestResult.Error | TestResult.Failed =>
                 throw new TestsFailedException(taskName, Some(out))
@@ -1800,6 +1815,8 @@ object Defaults extends BuildCommon with DefExtra {
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
       packageTaskSettings(packageDoc, packageDocMappings) ++
+      packageTaskSettings(packageInternal, packageBin / mappings) ++
+      inTask(packageInternal)(Seq(artifactName :== Artifact.internalArtifactName)) ++
       Seq(Keys.`package` := packageBin.value)
 
   def packageBinMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
@@ -2322,13 +2339,21 @@ object Defaults extends BuildCommon with DefExtra {
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
       val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
-      val analysisOut = c.toVirtualFile(setup.cachePath())
-      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
-      store.set(contents)
-      Def.declareOutput(analysisOut)
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
-      val packedDir = Def.declareOutputDirectory(vfDir)
+      val dirZip = ActionCache.dirZipPath(dir)
+      // Zinc leaves the class directory alone when it invalidates nothing, so the zip the previous
+      // run left behind still describes it and re-packing only reproduces a blob the store has.
+      val packedDir =
+        if analysisResult.hasModified() || !Files.exists(dirZip) then
+          Def.declareOutputDirectory(vfDir)
+        else Def.declareOutput(c.toVirtualFile(dirZip))
+      val analysisOut = c.toVirtualFile(setup.cachePath())
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      // Packaging precedes this write so that a run interrupted in between leaves a stale analysis,
+      // which forces a recompile, rather than a current analysis paired with an outdated zip.
+      store.set(contents)
+      Def.declareOutput(analysisOut)
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
@@ -2450,8 +2475,8 @@ object Defaults extends BuildCommon with DefExtra {
       compileOptions := Def.uncached {
         val c = fileConverter.value
         val cp0 = classpathTask.value
-        val cp1 = backendOutput.value +: data(cp0)
-        val cp = cp1.map(c.toPath).map(c.toVirtualFile)
+        // backendOutput is a settingKey: its listing is captured at project load, so re-convert
+        val cp = c.toVirtualFile(c.toPath(backendOutput.value)) +: data(cp0).map(c.toVirtualFile)
         val vs0 = sourcesVF.value
         val vs = vs0.toVector.map: x =>
           c.toVirtualFile(c.toPath(x))
@@ -2623,6 +2648,17 @@ object Defaults extends BuildCommon with DefExtra {
     (state, mainClasses) =>
       Space ~> token(NotSpace.examples(mainClasses.toSet)) ~ spaceDelimited("<arg>")
   }
+
+  private def testOnlyParserWithOption
+      : (State, Seq[String]) => Parser[(Seq[String], Seq[String], Seq[Tests.AdhocOption])] =
+    (state, tests) =>
+      import DefaultParsers.*
+      val selectTests = distinctParser(tests.toSet, true)
+      val frameworkOpts = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
+      val options = (token(Space) ~> Tests.AdhocOption.parser).?
+      (options ~ selectTests ~ options ~ frameworkOpts).map { case o1 ~ t ~ o2 ~ f =>
+        (t, f, o1.toList ::: o2.toList)
+      }
 
   def testOnlyParser: (State, Seq[String]) => Parser[(Seq[String], Seq[String])] = {
     (state, tests) =>
@@ -2853,12 +2889,30 @@ object Classpaths {
       exportedProductsNoTracking := ClasspathImpl
         .trackedExportedProducts(TrackLevel.NoTracking)
         .value,
+      exportedProductsVersioned := Def.uncached(
+        ClasspathImpl.trackedExportedProductsVersioned(TrackLevel.TrackAlways).value
+      ),
+      exportedProductsVersionedIfMissing := ClasspathImpl
+        .trackedExportedProductsVersioned(TrackLevel.TrackIfMissing)
+        .value,
+      exportedProductsVersionedNoTracking := ClasspathImpl
+        .trackedExportedProductsVersioned(TrackLevel.NoTracking)
+        .value,
       exportedProductJars := ClasspathImpl.trackedExportedJarProducts(TrackLevel.TrackAlways).value,
       exportedProductJarsIfMissing := ClasspathImpl
         .trackedExportedJarProducts(TrackLevel.TrackIfMissing)
         .value,
       exportedProductJarsNoTracking := ClasspathImpl
         .trackedExportedJarProducts(TrackLevel.NoTracking)
+        .value,
+      exportedProductJarsVersioned := ClasspathImpl
+        .trackedExportedJarProductsVersioned(TrackLevel.TrackAlways)
+        .value,
+      exportedProductJarsVersionedIfMissing := ClasspathImpl
+        .trackedExportedJarProductsVersioned(TrackLevel.TrackIfMissing)
+        .value,
+      exportedProductJarsVersionedNoTracking := ClasspathImpl
+        .trackedExportedJarProductsVersioned(TrackLevel.NoTracking)
         .value,
       internalDependencyAsJars := Def.uncached(internalDependencyJarsTask.value),
       dependencyClasspathAsJars := Def.uncached(

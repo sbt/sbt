@@ -8,6 +8,7 @@
 
 package sbt
 
+import java.util.Locale
 import std.*
 import xsbt.api.{ Discovered, Discovery }
 import sbt.internal.inc.Analysis
@@ -38,10 +39,32 @@ import sbt.util.{ Digest, Logger }
 import sbt.protocol.testing.TestResult
 
 import scala.runtime.AbstractFunction3
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 
 sealed trait TestOption
 
 object Tests {
+
+  private[sbt] sealed trait AdhocOption
+  private[sbt] object AdhocOption:
+    case class Summary(summary: TestSummary) extends AdhocOption
+
+    private[sbt] def parser: Parser[AdhocOption] =
+      import DefaultParsers.*
+      val value = token("--test_summary=") ~> token(NotSpace.examples("none", "failure", "success"))
+      value.flatMap: v =>
+        Tests.parseTestSummary(v) match
+          case Some(ts) => Parser.success(Summary(ts))
+          case None     => Parser.failure(s"Invalid test_summary value: $v")
+  end AdhocOption
+
+  private[sbt] def parseTestSummary(value: String): Option[TestSummary] =
+    value.toLowerCase(Locale.ENGLISH) match
+      case "0" | "never" | "false" | "none" => Some(TestSummary.none)
+      case "1" | "always" | "true"          => Some(TestSummary.default)
+      case "failure"                        => Some(TestSummary.failure)
+      case "2" | "success" | "verbose"      => Some(TestSummary.success)
+      case _                                => None
 
   /**
    * The result of a test run.

@@ -384,6 +384,10 @@ object ActionCache:
     outputs += vf
     vf
 
+  /** The zip `packageDirectory` writes for `dirPath`, as a sibling of the directory itself. */
+  def dirZipPath(dirPath: Path): Path =
+    Paths.get(dirPath.toString + dirZipExt)
+
   def packageDirectory(
       dir: VirtualFileRef,
       conv: FileConverter,
@@ -411,7 +415,7 @@ object ActionCache:
     IO.withTemporaryDirectory: tempDir =>
       val mPath = (tempDir / manifestFileName).toPath()
       makeManifest(mPath)
-      val zipPath = Paths.get(dirPath.toString + dirZipExt)
+      val zipPath = dirZipPath(dirPath)
       val rebase: Path => Seq[(File, String)] =
         (p: Path) =>
           p match

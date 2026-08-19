@@ -176,7 +176,7 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach {
     )
     assert(complete("testOnly") == testOnlyExpected)
 
-    val testOnlyOptionsExpected = Vector("--", ";", "test.pkg.FooSpec")
+    val testOnlyOptionsExpected = Vector("--", "--test_summary=", ";", "test.pkg.FooSpec")
     assert(complete("testOnly ") == testOnlyOptionsExpected)
   }
   test("quote with semi") {
