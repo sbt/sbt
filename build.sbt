@@ -14,10 +14,11 @@ ThisBuild / version := {
   val v = "1.12.3-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
-// update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.0.0-731e6666"
 
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
+
+// update sbt.sh at root
+ThisBuild / Utils.sbtnVersion := "2.0.0-8753a981"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
