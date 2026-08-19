@@ -801,7 +801,7 @@ process_args () {
     case "$1" in
             -h|-help|--help) print_help=1 && shift ;;
       -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
-                         -V) if (( ${#residual_args[@]} == 0 )); then
+                         -V) if [[ ! "${residual_args[*]}" =~ [^[:space:]] ]]; then
                                print_version=1
                              else
                                addResidual "$1"
