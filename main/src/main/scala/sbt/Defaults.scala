@@ -1097,6 +1097,9 @@ object Defaults extends BuildCommon {
       consoleQuick / scalacOptions := Def.uncached {
         Compiler.toConsoleScalacOptions(scalacOptions.value)
       },
+      resolvedScalacOptions := Def.uncached {
+        Compiler.resolveVirtualizedScalacOptions(scalacOptions.value, rootPaths.value)
+      },
       consoleQuick / forkOptions := Def.uncached((console / forkOptions).value),
       discoveredMainClasses := compile
         .map(discoverMainClasses)

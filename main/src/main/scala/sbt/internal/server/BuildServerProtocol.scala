@@ -204,9 +204,11 @@ object BuildServerProtocol {
       val items = bspBuildTargetScalacOptionsItem.result.all(filter).value
       val appProvider = appConfiguration.value.provider()
       val sbtJars = appProvider.mainClasspath()
+      val rootPaths = Keys.rootPaths.value
       val buildItems = workspace.builds.map { build =>
         val plugins: LoadedPlugins = build._2.unit.plugins
-        val scalacOptions = plugins.pluginData.scalacOptions
+        val scalacOptions =
+          Compiler.resolveVirtualizedScalacOptions(plugins.pluginData.scalacOptions, rootPaths)
         val pluginClasspath = plugins.classpath
         val converter = plugins.pluginData.converter
         val classpath =
@@ -314,7 +316,7 @@ object BuildServerProtocol {
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := {
       val target = Keys.bspTargetIdentifier.value
-      val scalacOptions = Keys.scalacOptions.value.toVector
+      val scalacOptions = Keys.resolvedScalacOptions.value.toVector
       val classDirectory = Keys.classDirectory.value
       val classpath = classpathTask.value
       ScalacOptionsItem(target, scalacOptions, classpath, classDirectory.toURI)
