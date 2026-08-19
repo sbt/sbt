@@ -801,7 +801,13 @@ process_args () {
     case "$1" in
             -h|-help|--help) print_help=1 && shift ;;
       -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
-      -V|-version|--version) print_version=1 && shift ;;
+                         -V) if (( ${#residual_args[@]} == 0 )); then
+                               print_version=1
+                             else
+                               addResidual "$1"
+                             fi
+                             shift ;;
+         -version|--version) print_version=1 && shift ;;
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
                 shutdownall) shutdownall=1 && shift ;;

@@ -52,10 +52,34 @@ object ArgParser:
           .optional()
           .action((x, c) => c.copy(residual = c.residual :+ x)),
       )
+    val protectedResidualMarker = "\u0000sbt-residual:"
+    def protectResidual(arg: String): String =
+      if arg.startsWith("-J") || arg.startsWith("-X") || arg.startsWith("-D") then
+        protectedResidualMarker + arg
+      else arg
+    def restoreResidual(arg: String): String =
+      if arg.startsWith(protectedResidualMarker) then arg.stripPrefix(protectedResidualMarker)
+      else arg
+    def hasSbtCommand(opts: LauncherOptions): Boolean =
+      Runner
+        .splitResidual(opts.residual.map(restoreResidual))
+        ._2
+        .exists(arg => !arg.startsWith("-D") && !arg.startsWith("-XX"))
+
+    val taskVersionMarker = "\u0000sbt-task-version"
+    val protectedArgs = args.foldLeft(Vector.empty[String]): (acc, arg) =>
+      if arg == "-V" && OParser
+          .parse(parser, acc.toArray, LauncherOptions())
+          .exists(hasSbtCommand)
+      then acc :+ taskVersionMarker
+      else acc :+ protectResidual(arg)
     OParser
-      .parse(parser, args, LauncherOptions())
+      .parse(parser, protectedArgs.toArray, LauncherOptions())
       .map: opts =>
-        val sbtNew = opts.residual.contains("new") || opts.residual.contains("init")
-        val isScript = opts.residual.exists(_.startsWith("-Dsbt.main.class=sbt.ScriptMain"))
-        opts.copy(sbtNew = sbtNew, allowEmpty = opts.allowEmpty || isScript)
+        val residual = opts.residual.map:
+          case `taskVersionMarker` => "-V"
+          case arg                 => restoreResidual(arg)
+        val sbtNew = residual.contains("new") || residual.contains("init")
+        val isScript = residual.exists(_.startsWith("-Dsbt.main.class=sbt.ScriptMain"))
+        opts.copy(residual = residual, sbtNew = sbtNew, allowEmpty = opts.allowEmpty || isScript)
 end ArgParser

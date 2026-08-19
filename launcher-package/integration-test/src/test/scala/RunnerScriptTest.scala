@@ -154,6 +154,14 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assertVersionOutput(out)
     ()
 
+  testOutput("sbt -V should work")("-V"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt tasks -V forwards the tasks option")("tasks", "-V", "-v"): (out: List[String]) =>
+    assert(out.contains("-V"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
   testOutput(
     "sbt --version reports spaced sbt.version from project/build.properties (sbt 1.x)",
     citestVariant = "citest",
