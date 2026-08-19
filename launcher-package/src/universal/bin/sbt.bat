@@ -55,6 +55,7 @@ set sbt_args_client=-1
 set sbt_args_jvm_client=
 set sbt_args_no_server=
 set sbt_args_experimental_execution_log=
+set sbt_args_seen_command=
 set is_this_dir_sbt=0
 
 rem users can set SBT_OPTS via .sbtopts
@@ -183,7 +184,7 @@ if defined _verbose_arg (
   goto args_loop
 )
 
-if "%~0" == "-V" set _version_arg=true
+if "%~0" == "-V" if not defined sbt_args_seen_command set _version_arg=true
 if "%~0" == "-version" set _version_arg=true
 if "%~0" == "--version" set _version_arg=true
 
@@ -603,6 +604,7 @@ if defined sbt_new if "%g:~0,2%" == "--" (
 )
 
 rem the %0 (instead of %~0) preserves original argument quoting
+set sbt_args_seen_command=1
 set SBT_ARGS=!SBT_ARGS! %0
 
 goto args_loop

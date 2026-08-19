@@ -47,6 +47,12 @@ object ExtendedRunnerTest extends BasicTestSuite:
     ()
   }
 
+  test("sbt tasks -V lists verbose tasks") {
+    val out = sbtProcessInDir(IntegrationTestPaths.citestDir("citest2"))("tasks", "-V").!!
+    assert(out.linesIterator.exists(_.contains("allCredentials")))
+    assert(!out.linesIterator.exists(_.startsWith("sbt runner version:")))
+  }
+
   def testVersion(lines: List[String]): Unit = {
     assert(lines.size >= 2)
     val expected0 = s"(?m)^sbt version in this project: $versionRegEx(\\r)?"
