@@ -31,16 +31,4 @@ object ArgParserSpec extends verify.BasicTestSuite:
     assert(!options.version)
     assert(options.residual == Seq("tasks", "-V"))
   }
-
-  test("-V after a JVM argument requests the runner version") {
-    val options = ArgParser.parse(Array("-J-Xmx1G", "-V")).get
-    assert(options.version)
-    assert(options.residual == Seq("-J-Xmx1G"))
-  }
-
-  test("-V after a system property requests the runner version") {
-    val options = ArgParser.parse(Array("-Dfoo=bar", "-V")).get
-    assert(options.version)
-    assert(options.residual == Seq("-Dfoo=bar"))
-  }
 end ArgParserSpec

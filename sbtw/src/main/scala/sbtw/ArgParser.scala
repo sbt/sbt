@@ -14,7 +14,10 @@ object ArgParser:
         opt[Unit]('h', "help").action((_, c) => c.copy(help = true)),
         opt[Unit]('v', "verbose").action((_, c) => c.copy(verbose = true)),
         opt[Unit]('d', "debug").action((_, c) => c.copy(debug = true)),
-        opt[Unit]('V', "version").action((_, c) => c.copy(version = true)),
+        opt[Unit]('V', "version").action((_, c) =>
+          if c.residual.nonEmpty then c.copy(residual = c.residual :+ "-V")
+          else c.copy(version = true)
+        ),
         opt[Unit]("numeric-version").action((_, c) => c.copy(numericVersion = true)),
         opt[Unit]("script-version").action((_, c) => c.copy(scriptVersion = true)),
         opt[Unit]("shutdownall").action((_, c) => c.copy(shutdownAll = true)),
@@ -52,34 +55,10 @@ object ArgParser:
           .optional()
           .action((x, c) => c.copy(residual = c.residual :+ x)),
       )
-    val protectedResidualMarker = "\u0000sbt-residual:"
-    def protectResidual(arg: String): String =
-      if arg.startsWith("-J") || arg.startsWith("-X") || arg.startsWith("-D") then
-        protectedResidualMarker + arg
-      else arg
-    def restoreResidual(arg: String): String =
-      if arg.startsWith(protectedResidualMarker) then arg.stripPrefix(protectedResidualMarker)
-      else arg
-    def hasSbtCommand(opts: LauncherOptions): Boolean =
-      Runner
-        .splitResidual(opts.residual.map(restoreResidual))
-        ._2
-        .exists(arg => !arg.startsWith("-D") && !arg.startsWith("-XX"))
-
-    val taskVersionMarker = "\u0000sbt-task-version"
-    val protectedArgs = args.foldLeft(Vector.empty[String]): (acc, arg) =>
-      if arg == "-V" && OParser
-          .parse(parser, acc.toArray, LauncherOptions())
-          .exists(hasSbtCommand)
-      then acc :+ taskVersionMarker
-      else acc :+ protectResidual(arg)
     OParser
-      .parse(parser, protectedArgs.toArray, LauncherOptions())
+      .parse(parser, args, LauncherOptions())
       .map: opts =>
-        val residual = opts.residual.map:
-          case `taskVersionMarker` => "-V"
-          case arg                 => restoreResidual(arg)
-        val sbtNew = residual.contains("new") || residual.contains("init")
-        val isScript = residual.exists(_.startsWith("-Dsbt.main.class=sbt.ScriptMain"))
-        opts.copy(residual = residual, sbtNew = sbtNew, allowEmpty = opts.allowEmpty || isScript)
+        val sbtNew = opts.residual.contains("new") || opts.residual.contains("init")
+        val isScript = opts.residual.exists(_.startsWith("-Dsbt.main.class=sbt.ScriptMain"))
+        opts.copy(sbtNew = sbtNew, allowEmpty = opts.allowEmpty || isScript)
 end ArgParser
