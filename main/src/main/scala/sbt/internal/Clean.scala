@@ -228,13 +228,34 @@ private[sbt] object Clean {
           case _                       => ()
         val s2 = s.unsafeRunAggregated(LocalRootProject / clean)
         IO.delete(outputDirectory.toFile())
-        IO.delete(
-          s.configuration
-            .provider()
-            .scalaProvider()
-            .launcher()
-            .bootDirectory()
-        )
+        deleteBootCaches(s)
         s
     Command.command(CleanFull, h)(expunge andThen clearCachesFun)
+
+  /**
+   * Deletes cached artifacts in the launcher boot directory, keeping the jars the running
+   * sbt instance itself is loaded from. Deleting those breaks the live session: the next
+   * .sbt compilation fails with MissingCoreLibraryException and anything else resolving
+   * them by path fails until sbt is restarted by hand.
+   */
+  private def deleteBootCaches(s: State): Unit = {
+    val provider = s.configuration.provider
+    val scalaProvider = provider.scalaProvider
+    val bootDirectory = scalaProvider.launcher.bootDirectory.getCanonicalFile
+    if (bootDirectory.isDirectory) {
+      val keepDirs = (provider.mainClasspath ++ scalaProvider.jars)
+        .map(_.getCanonicalFile.getParentFile)
+        .filter(_.toPath.startsWith(bootDirectory.toPath))
+        .toSet
+      def loop(dir: File): Unit =
+        Option(dir.listFiles).toList.flatten.foreach { f =>
+          val cf = f.getCanonicalFile
+          if (cf.isDirectory) {
+            if (!keepDirs.exists(_.toPath.startsWith(cf.toPath))) IO.delete(cf)
+            else if (!keepDirs.contains(cf)) loop(cf)
+          } else if (dir != bootDirectory || f.getName != "sbt.boot.lock") IO.delete(f)
+        }
+      loop(bootDirectory)
+    }
+  }
 }
