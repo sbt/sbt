@@ -408,6 +408,89 @@ object ActionCacheTest extends BasicTestSuite:
       assert(v2 == 2)
       assert(called == 1, s"expected a success cache hit after the cure (called=$called)")
 
+  test("Changing the metabuild digest invalidates a cached value"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      var called = 0
+      val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+        called += 1
+        InternalActionResult(a + b, Nil)
+      }
+      IO.withTemporaryDirectory: tempDir =>
+        val digestA = Digest.sha256Hash("plugins-A".getBytes(StandardCharsets.UTF_8))
+        val digestB = Digest.sha256Hash("plugins-B".getBytes(StandardCharsets.UTF_8))
+        val configA = getCacheConfig(cache, tempDir, metaBuildDigest = digestA)
+        val configB = getCacheConfig(cache, tempDir, metaBuildDigest = digestB)
+
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, configA)(action)
+        assert(v1 == 2)
+        assert(called == 1)
+
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, configA)(action)
+        assert(v2 == 2)
+        assert(called == 1, s"expected a cache hit under the same digest (called=$called)")
+
+        val v3 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, configB)(action)
+        assert(v3 == 2)
+        assert(called == 2, s"a different metabuild digest must miss (called=$called)")
+
+  test("A cached failure is not replayed once the build definition digest changes"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      var called = 0
+      val problem = new Problem:
+        override def category(): String = "Test"
+        override def severity(): Severity = Severity.Error
+        override def message(): String = "Test error message"
+        override def position(): Position = new Position:
+          override def line(): Optional[Integer] = Optional.of(42)
+          override def lineContent(): String = "val x = 1"
+          override def offset(): Optional[Integer] = Optional.empty()
+          override def pointer(): Optional[Integer] = Optional.empty()
+          override def pointerSpace(): Optional[String] = Optional.empty()
+          override def sourcePath(): Optional[String] = Optional.of("/test/file.scala")
+          override def sourceFile(): Optional[java.io.File] = Optional.empty()
+      val exception = new CompileFailed:
+        override def arguments(): Array[String] = Array.empty
+        override def problems(): Array[Problem] = Array(problem)
+        override def getMessage(): String = "Compilation failed"
+      val failing: ((Int, Int)) => InternalActionResult[Int] = { (_, _) =>
+        called += 1
+        throw exception
+      }
+      val succeeding: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+        called += 1
+        InternalActionResult(a + b, Nil)
+      }
+      IO.withTemporaryDirectory: tempDir =>
+        val digestA = Digest.sha256Hash("build-def-A".getBytes(StandardCharsets.UTF_8))
+        val digestB = Digest.sha256Hash("build-def-B".getBytes(StandardCharsets.UTF_8))
+        val configA = getCacheConfig(cache, tempDir, buildDefinitionDigest = digestA)
+        val configB = getCacheConfig(cache, tempDir, buildDefinitionDigest = digestB)
+
+        try
+          ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, configA)(failing)
+          assert(false, "Expected CompileFailed to be thrown")
+        catch case _: CompileFailed => ()
+        assert(called == 1)
+
+        try
+          ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, configA)(failing)
+          assert(false, "Expected CompileFailed to be thrown")
+        catch case _: CompileFailed => ()
+        assert(
+          called == 1,
+          s"expected a cached-failure replay under the same digest (called=$called)"
+        )
+
+        // Same task inputs, but the build definition changed: the failure must not replay.
+        val v = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, configB)(succeeding)
+        assert(v == 2)
+        assert(
+          called == 2,
+          s"a stale failure must not replay after the build definition changed (called=$called)"
+        )
+
   test("A file vanishing after its blob is stored no longer breaks the cache write"):
     withDiskCache: cache =>
       import sjsonnew.BasicJsonProtocol.*
@@ -786,6 +869,8 @@ object ActionCacheTest extends BasicTestSuite:
       outputDir: File,
       cacheVersion: Long = 0L,
       converter: FileConverter = fileConverter,
+      metaBuildDigest: Digest = Digest.zero,
+      buildDefinitionDigest: Digest = Digest.zero,
   ): BuildWideCacheConfiguration =
     val logger = new Logger:
       override def trace(t: => Throwable): Unit = ()
@@ -799,6 +884,8 @@ object ActionCacheTest extends BasicTestSuite:
       CacheEventLog(),
       CacheImplicits.defaultLocalDigestCacheByteSize,
       cacheVersion,
+      metaBuildDigest,
+      buildDefinitionDigest,
     )
 
   // The String-based fileConverter mangles binary blobs (zips).

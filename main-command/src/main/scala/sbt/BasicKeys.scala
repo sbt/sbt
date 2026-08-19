@@ -135,6 +135,18 @@ object BasicKeys {
     10000
   )
 
+  private[sbt] val metaBuildClasspathDigest = AttributeKey[String](
+    "metaBuildClasspathDigest",
+    "Digest of the metabuild classpath (plugin jars and compiled build definition products), incorporated into every action cache key.",
+    10000
+  )
+
+  private[sbt] val buildDefinitionDigest = AttributeKey[String](
+    "buildDefinitionDigest",
+    "Digest of the full build definition (metabuild classpath and compiled .sbt file classes), incorporated into cached failure keys.",
+    10000
+  )
+
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
   private[sbt] val serverLogLevel =
