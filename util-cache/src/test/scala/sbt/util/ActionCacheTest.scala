@@ -767,6 +767,52 @@ object ActionCacheTest extends BasicTestSuite:
       assert(v4 == 2)
       assert(called == 2)
 
+  // Adversarial cache entries: a poisoned shared/remote cache must not escape the output
+  // directory (zip-slip / path traversal) or restore blobs whose bytes do not match their
+  // content address (cache poisoning).
+
+  private def poisonBlob(cache: DiskActionCacheStore, content: String): (String, Long) =
+    val bytes = content.getBytes(StandardCharsets.UTF_8)
+    val hashStr = Digest.sha256Hash(bytes).contentHashStr
+    val ref = HashedVirtualFileRef.of("blob", hashStr, bytes.length.toLong)
+    val casFile = cache.toCasFile(Digest(ref))
+    Files.write(casFile, bytes)
+    (hashStr, bytes.length.toLong)
+
+  test("Security (path traversal): a relative ref escaping the output dir is refused"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: outDir =>
+        val (hashStr, size) = poisonBlob(cache, "pwned")
+        val evil = HashedVirtualFileRef.of("../escape.txt", hashStr, size)
+        val escaped = outDir.toPath.resolveSibling("escape.txt")
+        intercept[IOException](cache.syncBlobs(Seq(evil), outDir.toPath))
+        assert(!Files.exists(escaped), s"path traversal wrote outside the output dir: $escaped")
+
+  test("Security (path traversal): an absolute ref outside the output dir is refused"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: outDir =>
+        IO.withTemporaryDirectory: elsewhere =>
+          val (hashStr, size) = poisonBlob(cache, "pwned")
+          val target = elsewhere.toPath.resolve("escape.txt")
+          val evil = HashedVirtualFileRef.of(target.toString, hashStr, size)
+          intercept[IOException](cache.syncBlobs(Seq(evil), outDir.toPath))
+          assert(!Files.exists(target), s"absolute path traversal wrote to $target")
+
+  test("Security (cache poisoning): a blob whose bytes mismatch its digest is not restored"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: outDir =>
+        val bytes = "expected".getBytes(StandardCharsets.UTF_8)
+        val hashStr = Digest.sha256Hash(bytes).contentHashStr
+        val ref = HashedVirtualFileRef.of("out.txt", hashStr, bytes.length.toLong)
+        // Write tampered content under the correct content-addressed name.
+        Files.write(cache.toCasFile(Digest(ref)), "tampered".getBytes(StandardCharsets.UTF_8))
+        assert(cache.findBlobs(Seq(ref)).isEmpty, "a digest-mismatched blob must not be found")
+        assert(
+          cache.syncBlobs(Seq(ref), outDir.toPath).isEmpty,
+          "a digest-mismatched blob must not be restored"
+        )
+        assert(!Files.exists(outDir.toPath.resolve("out.txt")))
+
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()
     f(cache)
