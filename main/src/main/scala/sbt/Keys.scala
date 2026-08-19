@@ -501,6 +501,7 @@ object Keys {
   val bspBuildTargetRun = inputKey[Unit]("Corresponds to buildTarget/run request").withRank(DTask)
   val bspBuildTargetCleanCache = inputKey[Unit]("Corresponds to buildTarget/cleanCache request").withRank(DTask)
   val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
+  @transient
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
   val bspBuildTargetJavacOptions = inputKey[Unit]("Implementation of buildTarget/javacOptions").withRank(DTask)
   val bspBuildTargetJavacOptionsItem = taskKey[JavacOptionsItem]("Item of buildTarget/javacOptions").withRank(DTask)
