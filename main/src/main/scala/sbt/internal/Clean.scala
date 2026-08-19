@@ -230,7 +230,24 @@ private[sbt] object Clean {
         IO.delete(outputDirectory.toFile())
         deleteBootCaches(s)
         s
-    Command.command(CleanFull, h)(expunge andThen clearCachesFun)
+    Command.command(CleanFull, h)(expunge andThen clearCachesFun andThen scheduleShutdown)
+
+  /**
+   * Queues a server shutdown after the current exec finishes and its result is reported,
+   * so the next invocation starts from a fresh JVM, boot directory and metabuild.
+   */
+  private def scheduleShutdown(s: State): State =
+    val exit = Exec(Shutdown, None)
+    def isShellLoop(e: Exec) = e.commandLine == Shell || e.commandLine == s"$IfLast $Shell"
+    val idx = s.remainingCommands.indexWhere(_.commandLine.startsWith(ReportResult)) match
+      case -1 => s.remainingCommands.indexWhere(isShellLoop)
+      case i  => i + 1
+    val cmds =
+      if idx < 0 then s.remainingCommands :+ exit
+      else
+        val (before, after) = s.remainingCommands.splitAt(idx)
+        before ::: exit :: after
+    s.copy(remainingCommands = cmds)
 
   /**
    * Deletes cached artifacts in the launcher boot directory, keeping the jars the running

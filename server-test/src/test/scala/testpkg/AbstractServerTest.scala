@@ -30,6 +30,7 @@ final class SbtServer(
     val baseDirectory: File,
     private val process: scala.sys.process.Process
 ) {
+  def isAlive: Boolean = process.isAlive()
   def close(): Unit = {
     val result = scala.util.Try(session.shutdown(process.isAlive(), () => process.destroy()).get)
     if (process.isAlive()) process.destroy()
@@ -71,7 +72,10 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     temp = base.toFile
     val buildDir = temp / testDirectory
     IO.copyDirectory(serverTestBase / testDirectory, buildDir)
+    svr = startServer(buildDir)
+  }
 
+  protected def startServer(buildDir: File): SbtServer = {
     val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
     val process = RunFromSourceMain.fork(
       ForkOptions()
@@ -95,7 +99,14 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     val session = ServerSession.connect(portfile)
     session.initialize(10.seconds, subscribeToAllForTest)
 
-    svr = new SbtServer(session, buildDir, process)
+    new SbtServer(session, buildDir, process)
+  }
+
+  /** Starts a fresh server for this suite's build after the previous one terminated. */
+  protected def restartServer(): Unit = {
+    svr.close()
+    IO.delete(testPath.resolve("project/target/active.json").toFile)
+    svr = startServer(testPath.toFile)
   }
 
   private object BlockingInputStream extends InputStream {

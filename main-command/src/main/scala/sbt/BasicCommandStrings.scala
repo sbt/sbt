@@ -258,7 +258,7 @@ $AliasCommand name=
 
   val CleanFull: String = "cleanFull"
   def cleanFullDetailed: String =
-    "Clears sbt's local caches, keeping only the boot artifacts the running sbt instance uses."
+    "Clears sbt's local caches, keeping only the boot artifacts the running sbt instance uses, and shuts the server down once remaining commands finish."
 
   private[sbt] val networkExecPrefix = "__"
   private[sbt] val DisconnectNetworkChannel = s"${networkExecPrefix}disconnectNetworkChannel"
