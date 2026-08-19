@@ -737,7 +737,7 @@ process_args () {
     case "$1" in
             -h|-help|--help) usage; exit 1 ;;
       -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
-      -V|-version|--version) print_version=1 && shift ;;
+      -V|-version|--version) print_version=1 && addResidual "$1" && shift ;;
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
                 shutdownall) shutdownall=1 && shift ;;
@@ -776,6 +776,19 @@ process_args () {
     residual_args=()
     process_my_args "${myargs[@]}"
   }
+
+  if [[ $print_version ]]; then
+    for arg in "${residual_args[@]}"; do
+      case "$arg" in
+        -V|-version|--version) ;;
+        *) if [[ "$arg" =~ [^[:space:]] ]]; then
+             print_version=
+             break
+           fi ;;
+      esac
+    done
+    [[ $print_version ]] && residual_args=()
+  fi
 }
 
 loadConfigFile() {

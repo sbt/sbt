@@ -153,6 +153,67 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     assertVersionOutput(out)
     ()
 
+  testOutput("sbt -V should work")("-V"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt -version should work")("-version"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt -V followed by a launcher option should work")("-V", "-v"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt launcher option followed by --version should work")("--no-colors", "--version"):
+    (out: List[String]) =>
+      assertVersionOutput(out)
+      ()
+
+  testOutput("sbt --version followed by an empty argument should work")("--version", ""):
+    (out: List[String]) =>
+      assertVersionOutput(out)
+      ()
+
+  testOutput("sbt tasks -V forwards the tasks option")("tasks", "-V", "-v"): (out: List[String]) =>
+    assert(out.contains("-V"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt tasks -version forwards the tasks option",
+    windowsSupport = false,
+  )("tasks", "-version", "-v"): (out: List[String]) =>
+    assert(out.contains("-version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt tasks --version forwards the tasks option",
+    windowsSupport = false,
+  )("tasks", "--version", "-v"): (out: List[String]) =>
+    assert(out.contains("--version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt -V tasks forwards the tasks option",
+    windowsSupport = false,
+  )("-V", "tasks", "-v"): (out: List[String]) =>
+    assert(out.contains("-V"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt -version tasks forwards the tasks option",
+    windowsSupport = false,
+  )("-version", "tasks", "-v"): (out: List[String]) =>
+    assert(out.contains("-version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt --version tasks forwards the tasks option",
+    windowsSupport = false,
+  )("--version", "tasks", "-v"): (out: List[String]) =>
+    assert(out.contains("--version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
   testOutput(
     "sbt --version reports spaced sbt.version from project/build.properties (sbt 1.x)",
     citestVariant = "citest",
