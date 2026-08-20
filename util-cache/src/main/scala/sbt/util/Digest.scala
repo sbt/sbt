@@ -1,7 +1,7 @@
 package sbt.util
 
 import sjsonnew.IsoString
-import sbt.io.Hash
+import sbt.io.{ Hash, IO }
 import sbt.internal.util.hashing.Hashing
 import xsbti.HashedVirtualFileRef
 import java.io.{ BufferedInputStream, InputStream }
@@ -100,6 +100,26 @@ object Digest:
 
   private[sbt] def md5Hash(bytes: Array[Byte]): Digest =
     apply(Md5, hashBytes(Md5, bytes), bytes.length)
+
+  /** Transfers `input` to `target` while computing the digest of the transferred bytes. */
+  private[sbt] def transferAndHash(input: InputStream, target: Path, algo: String): Digest =
+    algo match
+      case Md5 | Sha1 | Sha256 | Sha384 | Sha512 =>
+        val md = MessageDigest.getInstance(jvmAlgo(algo))
+        var size = 0L
+        Using.resource(Files.newOutputStream(target)) { out =>
+          val buffer = new Array[Byte](8192)
+          var readBytes = input.read(buffer)
+          while readBytes >= 0 do
+            md.update(buffer, 0, readBytes)
+            out.write(buffer, 0, readBytes)
+            size += readBytes
+            readBytes = input.read(buffer)
+        }
+        apply(algo, md.digest(), size)
+      case _ =>
+        Using.resource(Files.newOutputStream(target))(out => IO.transfer(input, out))
+        apply(algo, target)
 
   // first check the file size, then the hash
   def sameDigest(path: Path, digest: Digest): Boolean =
