@@ -813,6 +813,27 @@ object ActionCacheTest extends BasicTestSuite:
         )
         assert(!Files.exists(outDir.toPath.resolve("out.txt")))
 
+  test("Security (remote poisoning): putBlob rejects a stream whose bytes mismatch its digest"):
+    withDiskCache: cache =>
+      val digest = Digest.sha256Hash("expected".getBytes(StandardCharsets.UTF_8))
+      val casFile = cache.toCasFile(digest)
+      // A malicious/MITM'd cache server returns the requested digest but tampered bytes.
+      val tampered = new ByteArrayInputStream("tampered".getBytes(StandardCharsets.UTF_8))
+      intercept[IOException](cache.putBlob(tampered, digest))
+      assert(!Files.exists(casFile), "tampered bytes must not remain in the CAS")
+
+  test(
+    "Security (remote poisoning): putBlobInternal rejects a file whose bytes mismatch its digest"
+  ):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val digest = Digest.sha256Hash("expected".getBytes(StandardCharsets.UTF_8))
+        val casFile = cache.toCasFile(digest)
+        val downloaded = (tempDir / "downloaded").toPath
+        Files.write(downloaded, "tampered".getBytes(StandardCharsets.UTF_8))
+        intercept[IOException](cache.putBlobInternal(downloaded, digest))
+        assert(!Files.exists(casFile), "tampered bytes must not remain in the CAS")
+
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()
     f(cache)

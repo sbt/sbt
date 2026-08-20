@@ -255,14 +255,14 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.move(blob.toFile(), casFile.toFile())
-      casFile
+      verifiedBlob(casFile, digest)
 
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.transfer(input, casFile.toFile())
-      casFile
+      verifiedBlob(casFile, digest)
 
   def putBlob(input: ByteBuffer, digest: Digest): Path =
     val casFile = toCasFile(digest)
@@ -272,11 +272,25 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       val bytes = new Array[Byte](input.remaining())
       input.get(bytes)
       IO.transfer(new ByteArrayInputStream(bytes), casFile.toFile())
-      casFile
+      verifiedBlob(casFile, digest)
 
   private def isCompleteBlob(casFile: Path, digest: Digest): Boolean =
     try Files.exists(casFile) && Digest.sameDigest(casFile, digest)
     catch case _: NoSuchFileException => false
+
+  /**
+   * Verifies that a just-written CAS file matches its digest. These blobs come
+   * from a remote cache, so their bytes are untrusted until re-hashed; on
+   * mismatch the file is removed and the caller fails rather than syncing
+   * tampered content into the build.
+   */
+  private def verifiedBlob(casFile: Path, digest: Digest): Path =
+    if Digest.sameDigest(casFile, digest) then casFile
+    else
+      Files.deleteIfExists(casFile)
+      throw new IOException(
+        s"Refusing to cache blob for $digest: downloaded content does not match its digest"
+      )
 
   private def requireWithinBase(base: Path, target: Path, ref: HashedVirtualFileRef): Path =
     val normalizedBase = base.toAbsolutePath.normalize()

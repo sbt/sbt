@@ -19,6 +19,13 @@ object RemoteCachePlugin extends AutoPlugin:
           } match
             case Some(x) => x
             case None    => sys.error("disk store not found")
+          if remote.getScheme == "grpc" then
+            val headers = remoteCacheHeaders.value
+            val creds = if headers.nonEmpty then ", including credential headers," else ""
+            sLog.value.warn(
+              s"remoteCache $remote uses the plaintext grpc:// scheme; traffic$creds " +
+                "is not encrypted and can be read or altered in transit. Use grpcs:// for TLS."
+            )
           val r = GrpcActionCacheStore(
             uri = remote,
             rootCerts = remoteCacheTlsCertificate.value.map(_.toPath),
