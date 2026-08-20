@@ -822,6 +822,18 @@ object ActionCacheTest extends BasicTestSuite:
       intercept[IOException](cache.putBlob(tampered, digest))
       assert(!Files.exists(casFile), "tampered bytes must not remain in the CAS")
 
+  test("Disk cache recovers when the cache directory is deleted mid-session"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: outDir =>
+        val blob = StringVirtualFile1(s"$outDir/a.txt", "hello")
+        val ref: HashedVirtualFileRef = blob
+        cache.putBlobs(Seq(blob))
+        IO.delete(cache.casBase.toFile.getParentFile)
+        assert(cache.findBlobs(Seq(ref)).isEmpty)
+        cache.putBlobs(Seq(blob))
+        assert(cache.findBlobs(Seq(ref)) == Seq(ref))
+        assert(cache.syncBlobs(Seq(ref), outDir.toPath).nonEmpty)
+
   test(
     "Security (remote poisoning): putBlobInternal rejects a file whose bytes mismatch its digest"
   ):

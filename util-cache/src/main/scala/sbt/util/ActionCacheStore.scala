@@ -17,6 +17,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 import scala.collection.mutable
+import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.parallel.CollectionConverters.*
 import scala.util.control.NonFatal
 import sbt.internal.io.Retry
@@ -206,6 +207,11 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
   private val completeBlobStamps: Cache[Path, BlobStamp] =
     Caffeine.newBuilder().maximumSize(100000).build()
 
+  private def parBlobs[A](xs: Seq[A]): scala.collection.parallel.immutable.ParSeq[A] =
+    val par = xs.par
+    par.tasksupport = DiskActionCacheStore.blobTaskSupport
+    par
+
   override def storeName: String = "disk"
 
   def clear(): Unit =
@@ -240,15 +246,11 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     catch case e: IOException => Left(e)
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    blobs.par
-      .map:
-        case b: PathBasedFile =>
-          putBlob(b.toPath(), Digest(b))
-          (b: HashedVirtualFileRef)
-        case b: VirtualFile =>
-          Using.resource(b.input)(putBlob(_, Digest(b)))
-          (b: HashedVirtualFileRef)
-      .seq
+    val byDigest = blobs.map(b => Digest(b) -> b).distinctBy(_._1)
+    parBlobs(byDigest).foreach:
+      case (digest, b: PathBasedFile) => putBlob(b.toPath(), digest)
+      case (digest, b)                => Using.resource(b.input)(putBlob(_, digest))
+    blobs.map(b => (b: HashedVirtualFileRef))
 
   def toCasFile(digest: Digest): Path =
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
@@ -258,7 +260,8 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       stageAndMove(casFile, digest): tempFile =>
-        IO.copyFile(blob.toFile(), tempFile.toFile(), preserveLastModified = true)
+        Using.resource(Files.newInputStream(blob))(writeVerified(_, tempFile, digest))
+        Files.setLastModifiedTime(tempFile, Files.getLastModifiedTime(blob))
 
   /** Move blob directly to CAS. Internal use only. */
   private[sbt] def putBlobInternal(blob: Path, digest: Digest): Path =
@@ -269,29 +272,34 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       verifiedBlob(casFile, digest)
 
   /**
-   * Blobs from a remote cache are untrusted, so the digest is computed while the
-   * stream is written out; on mismatch the staged file is discarded and the caller
-   * fails rather than syncing tampered content into the build.
+   * Blobs may come from a remote cache and are untrusted, so the digest is computed
+   * while the stream is written out; on mismatch the staged file is discarded and the
+   * caller fails rather than syncing tampered content into the build.
    */
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)
     if isCompleteBlob(casFile, digest) then casFile
-    else
-      stageAndMove(casFile, digest): tempFile =>
-        val actual = Digest.transferAndHash(input, tempFile, digest.algo)
-        if actual != digest then
-          throw new IOException(
-            s"Refusing to cache blob for $digest: downloaded content does not match its digest"
-          )
+    else stageAndMove(casFile, digest)(writeVerified(input, _, digest))
 
   def putBlob(input: ByteBuffer, digest: Digest): Path =
-    input.flip()
-    val bytes = new Array[Byte](input.remaining())
-    input.get(bytes)
-    putBlob(new ByteArrayInputStream(bytes), digest)
+    val casFile = toCasFile(digest)
+    if isCompleteBlob(casFile, digest) then casFile
+    else
+      input.flip()
+      val bytes = new Array[Byte](input.remaining())
+      input.get(bytes)
+      stageAndMove(casFile, digest)(writeVerified(new ByteArrayInputStream(bytes), _, digest))
+
+  private def writeVerified(input: InputStream, tempFile: Path, digest: Digest): Unit =
+    val actual = Digest.transferAndHash(input, tempFile, digest.algo)
+    if actual != digest then
+      throw new IOException(
+        s"Refusing to cache blob for $digest: content does not match its digest"
+      )
 
   private def stageAndMove(casFile: Path, digest: Digest)(write: Path => Unit): Path =
-    val tempFile = Files.createTempFile(casBase, "blob", ".part")
+    Files.createDirectories(casBase)
+    val tempFile = casBase.resolve(s"${java.util.UUID.randomUUID()}.part")
     try
       write(tempFile)
       IO.move(tempFile.toFile(), casFile.toFile())
@@ -315,7 +323,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
           completeBlobStamps.put(casFile, stamp)
           true
         else false
-    catch case _: NoSuchFileException => false
+    catch case _: IOException => false
 
   private def markComplete(casFile: Path, digest: Digest): Unit =
     try
@@ -350,7 +358,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       )
 
   private def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
-    refs.par
+    parBlobs(refs)
       .flatMap: r =>
         try
           val digest = Digest(r)
@@ -367,7 +375,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       .seq
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    refs.par
+    parBlobs(refs)
       .flatMap: r =>
         // Only the blob-availability lookup may swallow NoSuchFileException (Digest(r) can throw it):
         // an absent blob is a cache miss for that entry. A write failure from syncFile, however, must
@@ -504,7 +512,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     dirPath
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
-    refs.par
+    parBlobs(refs)
       .flatMap: r =>
         try
           val digest = Digest(r)
@@ -514,4 +522,13 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         // Digest(r) can throw NoSuchFileException
         catch case _: NoSuchFileException => None
       .seq
+end DiskActionCacheStore
+
+object DiskActionCacheStore:
+  private val blobTaskSupport: ForkJoinTaskSupport =
+    ForkJoinTaskSupport(
+      java.util.concurrent.ForkJoinPool(
+        math.min(64, Runtime.getRuntime().availableProcessors() * 4)
+      )
+    )
 end DiskActionCacheStore
