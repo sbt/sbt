@@ -1,0 +1,22 @@
+# Regression for #9645: neither the traversal order of Compile / sources nor of
+# packageBin / mappings may take part in a cache key. When it does, a macOS developer and a
+# Linux CI runner hash an identical tree into different keys and neither can use the other's
+# entries.
+
+# Populate the cache with both input lists in filesystem traversal order.
+> compile
+> packageBin
+> saveJar
+
+# Reverse both lists. No key may move.
+$ touch reverse.marker
+
+> delClasses
+> compile
+> checkNoMiss
+> checkClasses
+
+> delJar
+> packageBin
+> checkNoMiss
+> checkJarMatches
