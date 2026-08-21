@@ -52,11 +52,19 @@ private[sbt] object InMemoryCacheStore {
   private class CacheStoreImpl(path: Path, store: InMemoryCacheStore, cacheStore: CacheStore)
       extends CacheStore {
     override def delete(): Unit = cacheStore.delete()
+
+    /**
+     * A miss populates the cache. `write` is otherwise the only thing that fills it, and a task whose stored
+     * output is already up to date never writes -- so it would re-deserialise that output on every invocation.
+     */
     override def read[T]()(using reader: JsonReader[T]): T = {
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
       store.get[T](path) match {
         case Some((value, `lastModified`)) => value
-        case _                             => cacheStore.read[T]()
+        case _                             =>
+          val value = cacheStore.read[T]()
+          store.put(path, value, lastModified)
+          value
       }
     }
     override def write[T](value: T)(using writer: JsonWriter[T]): Unit = {
