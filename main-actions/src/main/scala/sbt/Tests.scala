@@ -77,7 +77,17 @@ object Tests {
       overall: TestResult,
       events: Map[String, SuiteResult],
       summaries: Iterable[Summary]
-  )
+  ) {
+
+    /**
+     * Returns a copy with the throwables removed from every suite result.
+     *
+     * Use this before retaining test results beyond the lifetime of the test task.
+     * See [[SuiteResult.throwables]] for why retaining those exceptions can keep the test class loader alive.
+     */
+    def withoutThrowables: Output =
+      copy(events = events.view.mapValues(_.withoutThrowables).toMap)
+  }
 
   /**
    * Summarizes a test run.

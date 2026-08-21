@@ -12,7 +12,8 @@ testFrameworks += new TestFramework("verify.runner.Framework")
 
 Test / testResultLogger := new TestResultLogger:
   def run(log: Logger, results: Output, taskName: String): Unit =
-    val suiteResults: Iterable[SuiteResult] = results.events.values
+    val suiteResults: Iterable[SuiteResult] =
+      results.withoutThrowables.events.values.map(_.withoutThrowables)
     val suite = suiteResults.head
     IO.write(
       marker,

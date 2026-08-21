@@ -55,8 +55,9 @@ trait TestsListener extends TestReportListener {
  *   a `Class` strongly references its defining class loader. Holding a `SuiteResult` with a
  *   non-empty `throwables` therefore keeps the test class loader -- and every jar handle it has
  *   open -- alive. That is fine for the duration of the test task, which is where these are
- *   consumed, but anything that outlives the task must drop them first. `TestSummary.append` does
- *   exactly that before stashing a copy on `State.attributes`; see the note on `TestSummary.entriesKey`.
+ *   consumed, but anything that outlives the task must call [[withoutThrowables]] first.
+ *   `TestSummary.append` does exactly that before stashing a copy on `State.attributes`; see the
+ *   note on `TestSummary.entriesKey`.
  *   On Windows a leaked handle makes the underlying jar undeletable (e.g. by `clearCaches`).
  */
 final class SuiteResult(
@@ -91,6 +92,27 @@ final class SuiteResult(
       pendingCount,
       Nil
     )
+
+  /**
+   * Returns an equivalent result without retaining test-thrown exceptions.
+   *
+   * Use this before retaining test results beyond the lifetime of the test task. See
+   * `throwables` for why retaining those exceptions can keep the test class loader alive.
+   */
+  def withoutThrowables: SuiteResult =
+    if throwables.isEmpty then this
+    else
+      new SuiteResult(
+        result,
+        passedCount,
+        failureCount,
+        errorCount,
+        skippedCount,
+        ignoredCount,
+        canceledCount,
+        pendingCount,
+      )
+
   def +(other: SuiteResult): SuiteResult = {
     val combinedTestResult =
       (result, other.result) match {
