@@ -20,14 +20,14 @@ private[sbt] abstract class ProcessReact[A1](
   def processResponse(o: JsonObject): Unit
   override def apply(line: String): Unit =
     try
-      val o = JsonParser.parseString(line).getAsJsonObject()
+      val o = JsonParser.parseString(line).getAsJsonObject
       if o.has("id") then
-        val resId = o.getAsJsonPrimitive("id").getAsLong()
+        val resId = o.getAsJsonPrimitive("id").getAsLong
         if resId == id then
           if promise.isCompleted then ()
           else if o.has("error") then
             val err = o.getAsJsonObject("error")
-            val code = err.getAsJsonPrimitive("code").getAsLong()
+            val code = err.getAsJsonPrimitive("code").getAsLong
             val message = Option(err.getAsJsonPrimitive("message"))
               .map(_.getAsString())
               .getOrElse(s"worker error (code $code)")
@@ -40,7 +40,7 @@ private[sbt] abstract class ProcessReact[A1](
             catch case NonFatal(e) => promise.tryFailure(e)
         else ()
       else if o.has("re") && o.has("method") then
-        val resId = o.getAsJsonPrimitive("re").getAsLong()
+        val resId = o.getAsJsonPrimitive("re").getAsLong
         if resId == id then processNotification(o)
         else ()
       else ()

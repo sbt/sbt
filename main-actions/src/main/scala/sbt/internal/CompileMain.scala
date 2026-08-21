@@ -29,7 +29,7 @@ import xsbti.{ CompileFailed, HashedVirtualFileRef, Position, T2, VirtualFile }
 import xsbti.compile.{ ScalaInstance as _, * }
 
 object CompileMain:
-  lazy val zinc: IncrementalCompilerImpl = new IncrementalCompilerImpl
+  private lazy val zinc: IncrementalCompilerImpl = new IncrementalCompilerImpl
 
   def run(config: CompileConfig, id: Long, jsonOut: PrintStream): Unit =
     try
@@ -39,7 +39,7 @@ object CompileMain:
         true
       )
       val si = scalaInstance(config.scalaInstanceConfig)
-      val bridgeJars = config.bridgeJars.map(Paths.get(_))
+      val bridgeJars = config.bridgeJars.map(Paths.get)
       val scalac = analyzingCompiler(bridgeJars, si)
       val co = ClasspathOptionsUtil.noboot(config.scalaInstanceConfig.scalaVersion)
       val cs = ZincUtil.compilers(
@@ -59,7 +59,7 @@ object CompileMain:
         classpath = cpVf.toArray,
         sources = sources.toArray,
         classesDirectory = output,
-        earlyJarPath = config.earlyJarPath.map(Paths.get(_)),
+        earlyJarPath = config.earlyJarPath.map(Paths.get),
         scalacOptions = config.scalacOptions.toArray,
         javacOptions = config.javacOptions.toArray,
         maxErrors = config.maxErrors,
@@ -73,10 +73,10 @@ object CompileMain:
         stampReader = Stamps.timeWrapBinaryStamps(conv),
       )
       val r = zinc.compile(in, log)
-      val store = FileAnalysisStore.getDefault(analysisFile.toFile())
-      store.set(AnalysisContents.create(r.getAnalysis(), r.getMiniSetup()))
+      val store = FileAnalysisStore.getDefault(analysisFile.toFile)
+      store.set(AnalysisContents.create(r.getAnalysis, r.getMiniSetup))
       val response = CompileResponse(
-        hasModified = r.hasModified()
+        hasModified = r.hasModified
       )
       val resJson = Converter.toJson(response).get
       val json = CompactPrinter(resJson)
@@ -103,22 +103,23 @@ object CompileMain:
       .replace("\t", "\\t")
     s"""{ "jsonrpc": "2.0", "error": { "code": $code, "message": "$escaped" }, "id": $id }"""
 
-  def incSetup(config: CompileConfig): Setup =
+  private def incSetup(config: CompileConfig): Setup =
     val analysisFile = Paths.get(config.analysisFile)
     val analysisForCp: Map[HashedVirtualFileRef, Path] = Map((config.analysisMap.map: pair =>
       pair.name -> Paths.get(pair.value))*)
     val lookup: PerClasspathEntryLookup = new PerClasspathEntryLookup:
-      def read(p: Path) = FileAnalysisStore.getDefault(p.toFile).get().toOption.map(_.getAnalysis)
+      def read(p: Path): Option[CompileAnalysis] =
+        FileAnalysisStore.getDefault(p.toFile).get().toOption.map(_.getAnalysis)
       override def analysis(cpEntry: VirtualFile): Optional[CompileAnalysis] =
         analysisForCp.get(cpEntry).flatMap(read).toOptional
-      override def definesClass(cpEntry: VirtualFile) = Locate.definesClass(cpEntry)
+      override def definesClass(cpEntry: VirtualFile): DefinesClass = Locate.definesClass(cpEntry)
     val incOptions = IncOptions.of()
     val log = mkLogger(Level.Warn)
     val reporter = ManagedLoggedReporter(100, log)
     Setup.of(
       lookup,
       false,
-      analysisFile.toFile(),
+      analysisFile.toFile,
       CompilerCache.fresh(),
       incOptions,
       reporter,
@@ -129,18 +130,18 @@ object CompileMain:
   lazy val console = ConsoleOut.systemOut
   lazy val consoleAppender = MainAppender.defaultScreen(console)
   val generateId: AtomicInteger = new AtomicInteger
-  def mkLogger(level: Level.Value): ManagedLogger =
+  private def mkLogger(level: Level.Value): ManagedLogger =
     val loggerName = "compile-" + generateId.incrementAndGet
     val l = LoggerContext.globalContext.logger(loggerName, None, None)
     LoggerContext.globalContext.clearAppenders(loggerName)
     LoggerContext.globalContext.addAppender(loggerName, consoleAppender -> level)
     l
 
-  def none[A]: Option[A] = (None: Option[A])
+  def none[A]: Option[A] = None: Option[A]
   def jnone[A]: Optional[A] = none[A].toOptional
 
-  def analyzingCompiler(bridgeJars: Seq[Path], si: ScalaInstance): AnalyzingCompiler =
-    val bridgeProvider = ZincUtil.constantBridgeProvider(si, bridgeJars.head.toFile())
+  private def analyzingCompiler(bridgeJars: Seq[Path], si: ScalaInstance): AnalyzingCompiler =
+    val bridgeProvider = ZincUtil.constantBridgeProvider(si, bridgeJars.head.toFile)
     val classpathOptions = ClasspathOptionsUtil.auto()
     AnalyzingCompiler(
       si,
@@ -151,20 +152,20 @@ object CompileMain:
     )
 
   def scalaInstance(config: ScalaInstanceConfig): ScalaInstance =
-    val libraryJars = config.libraryJars.map(Paths.get(_)).sortBy(_.getFileName.toString())
+    val libraryJars = config.libraryJars.map(Paths.get).sortBy(_.getFileName.toString())
     val allCompilerJars =
       config.allCompilerJars
-        .map(Paths.get(_))
+        .map(Paths.get)
         .sortBy(_.getFileName.toString())
-    val jlineJars = allCompilerJars.filter(_.getFileName.toString().contains("jline"))
+    val jlineJars = allCompilerJars.filter(_.getFileName.toString.contains("jline"))
     val compilerJars =
       allCompilerJars.filterNot(x => libraryJars.contains(x) || jlineJars.contains(x)).distinct
-    val extraToolJars0 = config.extraToolJars.map(Paths.get(_)).sortBy(_.getFileName.toString())
+    val extraToolJars0 = config.extraToolJars.map(Paths.get).sortBy(_.getFileName.toString())
     val extraToolJars = extraToolJars0
       .filterNot(jar => libraryJars.contains(jar) || compilerJars.contains(jar))
       .distinct
     val allJars = libraryJars ++ compilerJars ++ extraToolJars
-    val topLoader = classOf[Compilers].getClassLoader()
+    val topLoader = classOf[Compilers].getClassLoader
     val libraryLoader = ClasspathUtil.toLoader(libraryJars, topLoader)
     val compilerLoader = ClasspathUtil.toLoader(compilerJars, libraryLoader)
     val fullLoader =
@@ -182,7 +183,7 @@ object CompileMain:
     )
 
   def previousResult(analysisFile: Path): PreviousResult =
-    val store = FileAnalysisStore.getDefault(analysisFile.toFile())
+    val store = FileAnalysisStore.getDefault(analysisFile.toFile)
     store.get().toOption match
       case Some(contents) =>
         val analysis = Option(contents.getAnalysis).toOptional
