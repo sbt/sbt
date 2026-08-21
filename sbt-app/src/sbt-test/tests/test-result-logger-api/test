@@ -1,2 +1,2 @@
 > test
-$ exists test-result-logger-ran
+$ must-mirror expected-result test-result-logger-ran
