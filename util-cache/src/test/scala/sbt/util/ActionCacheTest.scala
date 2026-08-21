@@ -8,6 +8,7 @@ import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUni
 
 import sbt.internal.util.CacheEventLog
 import sbt.internal.util.StringVirtualFile1
+import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
@@ -140,6 +141,7 @@ object ActionCacheTest extends BasicTestSuite:
         cache.syncBlobs(refs, outputDirectory)
         assert((dir / "a.txt").exists, "a.txt not re-extracted after the directory was deleted")
         assert((dir / "b.txt").exists, "b.txt not re-extracted after the directory was deleted")
+        assertMaterialized(cache, (dir / "a.txt").toPath)
 
   test("Disk cache does not re-extract a dirzip whose archive digest already matches"):
     withDiskCache: cache =>
@@ -160,7 +162,7 @@ object ActionCacheTest extends BasicTestSuite:
         cache.syncBlobs(refs, outputDirectory)
         assert(IO.read(dir / "a.txt") == "diverged")
 
-  test("Disk cache relinks a digest-matching dirzip to the CAS"):
+  test("Disk cache materializes a digest-matching dirzip from the CAS"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: tempDir =>
         val outputDirectory = tempDir.toPath()
@@ -176,7 +178,7 @@ object ActionCacheTest extends BasicTestSuite:
         assert(!Files.isSymbolicLink(zipPath), "packageDirectory should leave a regular file")
 
         cache.syncBlobs(refs, outputDirectory)
-        assert(Files.isSymbolicLink(zipPath), "digest-matching archive was not relinked to the CAS")
+        assertMaterialized(cache, zipPath)
 
   test("Disk cache re-extracts a dirzip whose archive digest differs"):
     withDiskCache: cache =>
@@ -873,6 +875,11 @@ object ActionCacheTest extends BasicTestSuite:
       },
       keepDirectory = false
     )
+
+  def assertMaterialized(cache: DiskActionCacheStore, p: Path): Unit =
+    if Util.isApfs(cache.casBase) then
+      assert(!Files.isSymbolicLink(p), s"$p was symlinked instead of copied")
+    else assert(Files.isSymbolicLink(p), s"$p was not symlinked into the CAS")
 
   def getCacheConfig(
       cache: ActionCacheStore,
