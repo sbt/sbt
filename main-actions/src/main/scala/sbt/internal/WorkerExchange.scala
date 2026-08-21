@@ -98,6 +98,10 @@ object WorkerExchange:
     synchronized:
       listeners.foreach: wl =>
         wl(line)
+
+  def notifyExit(p: Process): Unit =
+    synchronized:
+      listeners.foreach(_.notifyExit(p))
 end WorkerExchange
 
 class WorkerProxy(
@@ -121,7 +125,7 @@ class WorkerProxy(
 
   val watch = Thread(() => {
     while process.isAlive() do Thread.sleep(100)
-    WorkerExchange.listeners.foreach(_.notifyExit(process))
+    WorkerExchange.notifyExit(process)
   })
   watch.start()
 end WorkerProxy

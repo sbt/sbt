@@ -23,6 +23,7 @@ import sbt.internal.worker.codec.JsonProtocol.given
 import sbt.internal.util.{ ManagedLogger, ConsoleOut, MainAppender }
 import sbt.io.IO
 import sbt.util.{ LoggerContext, Level }
+import scala.util.control.NonFatal
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Parser, Converter }
 import xsbti.{ CompileFailed, HashedVirtualFileRef, Position, T2, VirtualFile }
 import xsbti.compile.{ ScalaInstance as _, * }
@@ -32,7 +33,6 @@ object CompileMain:
 
   def run(config: CompileConfig, id: Long, jsonOut: PrintStream): Unit =
     try
-      // println(s"config: $config")
       val conv = MappedFileConverter(
         Map((config.fileConverterConfig.rootPaths.map: x =>
           (x.name, Paths.get(x.value)))*),
@@ -64,7 +64,7 @@ object CompileMain:
         javacOptions = config.javacOptions.toArray,
         maxErrors = config.maxErrors,
         sourcePositionMappers = Array.empty[JavaFunction[Position, Optional[Position]]],
-        order = CompileOrder.Mixed,
+        order = CompileOrder.valueOf(config.compileOrder),
         compilers = cs,
         setup = setup,
         pr = previousResult(analysisFile),
@@ -84,15 +84,24 @@ object CompileMain:
       jsonOut.flush()
     catch
       case e: CompileFailed =>
-        jsonOut.println(jsonRpcError(id, "compilation failed"))
+        jsonOut.println(jsonRpcError(id, 1009, "compilation failed"))
         jsonOut.flush()
-        ()
+      case NonFatal(e) =>
+        e.printStackTrace()
+        jsonOut.println(jsonRpcError(id, 1, e.toString))
+        jsonOut.flush()
 
   private def jsonRpcResponse(id: Long, result: String): String =
     s"""{ "jsonrpc": "2.0", "result": $result, "id": $id }"""
 
-  private def jsonRpcError(id: Long, err: String): String =
-    s"""{ "jsonrpc": "2.0", "error": { "code": 1009, "message": "$err" }, "id": $id }"""
+  private def jsonRpcError(id: Long, code: Int, err: String): String =
+    val escaped = err
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+      .replace("\t", "\\t")
+    s"""{ "jsonrpc": "2.0", "error": { "code": $code, "message": "$escaped" }, "id": $id }"""
 
   def incSetup(config: CompileConfig): Setup =
     val analysisFile = Paths.get(config.analysisFile)
@@ -155,7 +164,6 @@ object CompileMain:
       .filterNot(jar => libraryJars.contains(jar) || compilerJars.contains(jar))
       .distinct
     val allJars = libraryJars ++ compilerJars ++ extraToolJars
-    val currentLoader = classOf[CompileMain.type].getClassLoader()
     val topLoader = classOf[Compilers].getClassLoader()
     val libraryLoader = ClasspathUtil.toLoader(libraryJars, topLoader)
     val compilerLoader = ClasspathUtil.toLoader(compilerJars, libraryLoader)

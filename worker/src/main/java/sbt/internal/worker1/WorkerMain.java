@@ -161,7 +161,13 @@ public final class WorkerMain {
       this.jsonOut.println(response);
       this.jsonOut.flush();
     } catch (Throwable e) {
-      WorkerError err = new WorkerError(1, e.getMessage());
+      Throwable cause = e;
+      while (cause instanceof java.lang.reflect.InvocationTargetException
+          && cause.getCause() != null) {
+        cause = cause.getCause();
+      }
+      String message = cause.getMessage() != null ? cause.getMessage() : cause.toString();
+      WorkerError err = new WorkerError(1, message);
       String errMessage = g.toJson(err, err.getClass());
       String errJson =
           String.format("{ \"jsonrpc\": \"2.0\", \"error\": %s, \"id\": %d }", errMessage, id);
@@ -177,7 +183,8 @@ public final class WorkerMain {
         throw new RuntimeException("missing jvmRunInfo element");
       }
       RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
-      try (URLClassLoader cl = createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader())) {
+      try (URLClassLoader cl =
+          createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader(), false)) {
         Class<?> mainClass = cl.loadClass(jvmRunInfo.mainClass);
         Method mainMethod = mainClass.getMethod("main", String[].class);
         String[] mainArgs = jvmRunInfo.args.stream().toArray(String[]::new);
@@ -195,7 +202,8 @@ public final class WorkerMain {
         throw new RuntimeException("missing jvmRunInfo element");
       }
       RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
-      try (URLClassLoader cl = createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader())) {
+      try (URLClassLoader cl =
+          createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader(), true)) {
         Class<?> mainClass = cl.loadClass(jvmRunInfo.mainClass);
         Method mainMethod =
             mainClass.getMethod("main", String[].class, Long.class, PrintStream.class);
@@ -215,7 +223,7 @@ public final class WorkerMain {
       if (jvmRunInfo.classpath.isEmpty()) {
         ForkTestMain.main(id, info, this.jsonOut, parent);
       } else {
-        try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent)) {
+        try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent, false)) {
           ForkTestMain.main(id, info, this.jsonOut, cl);
         }
       }
@@ -229,44 +237,43 @@ public final class WorkerMain {
     return;
   }
 
-  private URLClassLoader createClassLoader(RunInfo.JvmRunInfo info, ClassLoader parent) {
+  private URLClassLoader createClassLoader(
+      RunInfo.JvmRunInfo info, ClassLoader parent, boolean isolateCompilerInterface) {
+    if (!isolateCompilerInterface) {
+      return new URLClassLoader(toUrls(info.classpath), parent);
+    }
     Map<Boolean, List<FilePath>> groups =
         info.classpath.stream()
             .collect(
                 Collectors.partitioningBy(
-                    filePath ->
-                        Paths.get(filePath.path)
-                            .getFileName()
-                            .toString()
-                            .startsWith("compiler-interface")));
-    List<FilePath> xs0 = groups.get(true);
-    List<FilePath> xs1 = groups.get(false);
-    URL[] us1 =
-        xs1.stream()
-            .map(
-                filePath -> {
-                  try {
-                    return filePath.path.toURL();
-                  } catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
-                  }
-                })
-            .toArray(URL[]::new);
-    if (!xs0.equals(null) && xs0.size() >= 1) {
-      URL[] us0 =
-          xs0.stream()
-              .map(
-                  filePath -> {
-                    try {
-                      return filePath.path.toURL();
-                    } catch (MalformedURLException e) {
-                      throw new RuntimeException(e);
-                    }
-                  })
-              .toArray(URL[]::new);
-      return new URLClassLoader(us1, new URLClassLoader(us0, parent));
-    } else {
-      return new URLClassLoader(us1, parent);
+                    filePath -> fileNameOf(filePath.path).startsWith("compiler-interface")));
+    List<FilePath> interfaceJars = groups.get(true);
+    List<FilePath> rest = groups.get(false);
+    if (interfaceJars.isEmpty()) {
+      return new URLClassLoader(toUrls(rest), parent);
     }
+    return new URLClassLoader(toUrls(rest), new URLClassLoader(toUrls(interfaceJars), parent));
+  }
+
+  private static URL[] toUrls(List<FilePath> classpath) {
+    return classpath.stream()
+        .map(
+            filePath -> {
+              try {
+                return filePath.path.toURL();
+              } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .toArray(URL[]::new);
+  }
+
+  private static String fileNameOf(java.net.URI uri) {
+    String path = uri.getPath();
+    if (path == null) {
+      return "";
+    }
+    int idx = path.lastIndexOf('/');
+    return idx >= 0 ? path.substring(idx + 1) : path;
   }
 }

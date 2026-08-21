@@ -16,22 +16,23 @@ final class CompileConfig private (
   val scalacOptions: Vector[String],
   val javacOptions: Vector[String],
   val maxErrors: Int,
-  val analysisMap: Vector[sbt.internal.worker.HVFRURI]) extends Serializable {
+  val analysisMap: Vector[sbt.internal.worker.HVFRURI],
+  val compileOrder: String) extends Serializable {
   
   
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: CompileConfig => (this.fileConverterConfig == x.fileConverterConfig) && (this.scalaInstanceConfig == x.scalaInstanceConfig) && (this.bridgeJars == x.bridgeJars) && (this.sources == x.sources) && (this.externalDependencyJars == x.externalDependencyJars) && (this.output == x.output) && (this.analysisFile == x.analysisFile) && (this.earlyJarPath == x.earlyJarPath) && (this.scalacOptions == x.scalacOptions) && (this.javacOptions == x.javacOptions) && (this.maxErrors == x.maxErrors) && (this.analysisMap == x.analysisMap)
+    case x: CompileConfig => (this.fileConverterConfig == x.fileConverterConfig) && (this.scalaInstanceConfig == x.scalaInstanceConfig) && (this.bridgeJars == x.bridgeJars) && (this.sources == x.sources) && (this.externalDependencyJars == x.externalDependencyJars) && (this.output == x.output) && (this.analysisFile == x.analysisFile) && (this.earlyJarPath == x.earlyJarPath) && (this.scalacOptions == x.scalacOptions) && (this.javacOptions == x.javacOptions) && (this.maxErrors == x.maxErrors) && (this.analysisMap == x.analysisMap) && (this.compileOrder == x.compileOrder)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.worker.CompileConfig".##) + fileConverterConfig.##) + scalaInstanceConfig.##) + bridgeJars.##) + sources.##) + externalDependencyJars.##) + output.##) + analysisFile.##) + earlyJarPath.##) + scalacOptions.##) + javacOptions.##) + maxErrors.##) + analysisMap.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.worker.CompileConfig".##) + fileConverterConfig.##) + scalaInstanceConfig.##) + bridgeJars.##) + sources.##) + externalDependencyJars.##) + output.##) + analysisFile.##) + earlyJarPath.##) + scalacOptions.##) + javacOptions.##) + maxErrors.##) + analysisMap.##) + compileOrder.##)
   }
   override def toString: String = {
-    "CompileConfig(" + fileConverterConfig + ", " + scalaInstanceConfig + ", " + bridgeJars + ", " + sources + ", " + externalDependencyJars + ", " + output + ", " + analysisFile + ", " + earlyJarPath + ", " + scalacOptions + ", " + javacOptions + ", " + maxErrors + ", " + analysisMap + ")"
+    "CompileConfig(" + fileConverterConfig + ", " + scalaInstanceConfig + ", " + bridgeJars + ", " + sources + ", " + externalDependencyJars + ", " + output + ", " + analysisFile + ", " + earlyJarPath + ", " + scalacOptions + ", " + javacOptions + ", " + maxErrors + ", " + analysisMap + ", " + compileOrder + ")"
   }
-  private def copy(fileConverterConfig: sbt.internal.worker.FileConverterConfig = fileConverterConfig, scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig = scalaInstanceConfig, bridgeJars: Vector[java.net.URI] = bridgeJars, sources: Vector[String] = sources, externalDependencyJars: Vector[String] = externalDependencyJars, output: java.net.URI = output, analysisFile: java.net.URI = analysisFile, earlyJarPath: Option[java.net.URI] = earlyJarPath, scalacOptions: Vector[String] = scalacOptions, javacOptions: Vector[String] = javacOptions, maxErrors: Int = maxErrors, analysisMap: Vector[sbt.internal.worker.HVFRURI] = analysisMap): CompileConfig = {
-    new CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap)
+  private def copy(fileConverterConfig: sbt.internal.worker.FileConverterConfig = fileConverterConfig, scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig = scalaInstanceConfig, bridgeJars: Vector[java.net.URI] = bridgeJars, sources: Vector[String] = sources, externalDependencyJars: Vector[String] = externalDependencyJars, output: java.net.URI = output, analysisFile: java.net.URI = analysisFile, earlyJarPath: Option[java.net.URI] = earlyJarPath, scalacOptions: Vector[String] = scalacOptions, javacOptions: Vector[String] = javacOptions, maxErrors: Int = maxErrors, analysisMap: Vector[sbt.internal.worker.HVFRURI] = analysisMap, compileOrder: String = compileOrder): CompileConfig = {
+    new CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap, compileOrder)
   }
   def withFileConverterConfig(fileConverterConfig: sbt.internal.worker.FileConverterConfig): CompileConfig = {
     copy(fileConverterConfig = fileConverterConfig)
@@ -72,9 +73,12 @@ final class CompileConfig private (
   def withAnalysisMap(analysisMap: Vector[sbt.internal.worker.HVFRURI]): CompileConfig = {
     copy(analysisMap = analysisMap)
   }
+  def withCompileOrder(compileOrder: String): CompileConfig = {
+    copy(compileOrder = compileOrder)
+  }
 }
 object CompileConfig {
   
-  def apply(fileConverterConfig: sbt.internal.worker.FileConverterConfig, scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig, bridgeJars: Vector[java.net.URI], sources: Vector[String], externalDependencyJars: Vector[String], output: java.net.URI, analysisFile: java.net.URI, earlyJarPath: Option[java.net.URI], scalacOptions: Vector[String], javacOptions: Vector[String], maxErrors: Int, analysisMap: Vector[sbt.internal.worker.HVFRURI]): CompileConfig = new CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap)
-  def apply(fileConverterConfig: sbt.internal.worker.FileConverterConfig, scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig, bridgeJars: Vector[java.net.URI], sources: Vector[String], externalDependencyJars: Vector[String], output: java.net.URI, analysisFile: java.net.URI, earlyJarPath: java.net.URI, scalacOptions: Vector[String], javacOptions: Vector[String], maxErrors: Int, analysisMap: Vector[sbt.internal.worker.HVFRURI]): CompileConfig = new CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, Option(earlyJarPath), scalacOptions, javacOptions, maxErrors, analysisMap)
+  def apply(fileConverterConfig: sbt.internal.worker.FileConverterConfig, scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig, bridgeJars: Vector[java.net.URI], sources: Vector[String], externalDependencyJars: Vector[String], output: java.net.URI, analysisFile: java.net.URI, earlyJarPath: Option[java.net.URI], scalacOptions: Vector[String], javacOptions: Vector[String], maxErrors: Int, analysisMap: Vector[sbt.internal.worker.HVFRURI], compileOrder: String): CompileConfig = new CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap, compileOrder)
+  def apply(fileConverterConfig: sbt.internal.worker.FileConverterConfig, scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig, bridgeJars: Vector[java.net.URI], sources: Vector[String], externalDependencyJars: Vector[String], output: java.net.URI, analysisFile: java.net.URI, earlyJarPath: java.net.URI, scalacOptions: Vector[String], javacOptions: Vector[String], maxErrors: Int, analysisMap: Vector[sbt.internal.worker.HVFRURI], compileOrder: String): CompileConfig = new CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, Option(earlyJarPath), scalacOptions, javacOptions, maxErrors, analysisMap, compileOrder)
 }

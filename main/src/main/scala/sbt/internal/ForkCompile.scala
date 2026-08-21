@@ -45,58 +45,60 @@ private[sbt] object ForkCompile:
     val w = WorkerExchange.startWorker(fo, Nil, ct)
     val randomId = r.nextLong()
     val wl = ForkCompile.React(randomId, s.log, w.process)
-    val cpList = ArrayList[FilePath](
-      (currentClasspath
-        .map: p =>
-          FilePath(p.toUri(), ""))
-        .asJava
-    )
-    val fcConfig = FileConverterConfig(
-      rootPaths = rs.toSeq.toVector.map((k, v) => StringURI(k, v.toUri()))
-    )
-    val conv = in.options().converter().get()
-    val sources = in.options().sources().toVector.map(conv.toPath)
-    val cp = in.options().classpath().toVector.map(conv.toPath)
-    val earlyJarPath = for
-      o <- in.options().earlyOutput().asScala
-      single <- o.getSingleOutputAsPath().asScala
-    yield single
-    val analysisMap = for
-      entry <- acs.toVector
-      ref <- entry.metadata.get(Keys.analysis)
-    yield HVFRURI(entry.data, conv.toPath(VirtualFileRef.of(ref)).toUri())
-    // pseudo case class that is used to transport the server knowledge to the
-    // forked worker process.
-    val config = CompileConfig(
-      fileConverterConfig = fcConfig,
-      scalaInstanceConfig = sic,
-      bridgeJars = bridges.toVector.map(vf => conv.toPath(vf).toUri()),
-      sources = sources.map(_.toString()),
-      externalDependencyJars = cp.map(_.toString()),
-      output = in.options().classesDirectory().toUri(),
-      analysisFile = analysisFile.toUri(),
-      earlyJarPath = earlyJarPath.map(_.toUri()),
-      scalacOptions = in.options().scalacOptions().toVector,
-      javacOptions = in.options().javacOptions().toVector,
-      maxErrors = in.options().maxErrors(),
-      analysisMap = analysisMap,
-    )
-    val configJson = Converter.toJson[CompileConfig](config).get
-    IO.withTemporaryDirectory: tempDir =>
-      val params = tempDir.toPath().resolve("params.json")
-      IO.write(params.toFile(), CompactPrinter(configJson))
-      val param = RunInfo(
-        true,
-        RunInfo.JvmRunInfo(
-          ArrayList(List(s"@$params").asJava),
-          cpList,
-          "sbt.internal.CompileMain",
-          false,
-        ),
-        null
+    try
+      WorkerExchange.registerListener(wl)
+      wl.notifyExit(w.process)
+      val cpList = ArrayList[FilePath](
+        (currentClasspath
+          .map: p =>
+            FilePath(p.toUri(), ""))
+          .asJava
       )
-      try
-        WorkerExchange.registerListener(wl)
+      val fcConfig = FileConverterConfig(
+        rootPaths = rs.toSeq.toVector.map((k, v) => StringURI(k, v.toUri()))
+      )
+      val conv = in.options().converter().get()
+      val sources = in.options().sources().toVector.map(conv.toPath)
+      val cp = in.options().classpath().toVector.map(conv.toPath)
+      val earlyJarPath = for
+        o <- in.options().earlyOutput().asScala
+        single <- o.getSingleOutputAsPath().asScala
+      yield single
+      val analysisMap = for
+        entry <- acs.toVector
+        ref <- entry.metadata.get(Keys.analysis)
+      yield HVFRURI(entry.data, conv.toPath(VirtualFileRef.of(ref)).toUri())
+      // pseudo case class that is used to transport the server knowledge to the
+      // forked worker process.
+      val config = CompileConfig(
+        fileConverterConfig = fcConfig,
+        scalaInstanceConfig = sic,
+        bridgeJars = bridges.toVector.map(vf => conv.toPath(vf).toUri()),
+        sources = sources.map(_.toString()),
+        externalDependencyJars = cp.map(_.toString()),
+        output = in.options().classesDirectory().toUri(),
+        analysisFile = analysisFile.toUri(),
+        earlyJarPath = earlyJarPath.map(_.toUri()),
+        scalacOptions = in.options().scalacOptions().toVector,
+        javacOptions = in.options().javacOptions().toVector,
+        maxErrors = in.options().maxErrors(),
+        analysisMap = analysisMap,
+        compileOrder = in.options().order().name(),
+      )
+      val configJson = Converter.toJson[CompileConfig](config).get
+      IO.withTemporaryDirectory: tempDir =>
+        val params = tempDir.toPath().resolve("params.json")
+        IO.write(params.toFile(), CompactPrinter(configJson))
+        val param = RunInfo(
+          true,
+          RunInfo.JvmRunInfo(
+            ArrayList(List(s"@$params").asJava),
+            cpList,
+            "sbt.internal.CompileMain",
+            false,
+          ),
+          null
+        )
         val paramJson = g.toJson(param, param.getClass)
         val json = jsonRpcRequest(randomId, "compile", paramJson)
         w.println(json)
@@ -108,13 +110,21 @@ private[sbt] object ForkCompile:
           contents.getMiniSetup(),
           response.hasModified,
         )
-      finally WorkerExchange.unregisterListener(wl)
+    finally
+      WorkerExchange.unregisterListener(wl)
+      w.close()
 
   def currentClasspath: List[Path] =
-    val cl = classOf[CompileMain.type].getClassLoader() match
-      case cl: URLClassLoader => cl
-    val urls = cl.getURLs().toList
-    urls.map((u) => Paths.get(u.toURI())) ++ Vector(
+    val urls = classOf[CompileMain.type].getClassLoader() match
+      case cl: URLClassLoader => cl.getURLs().toList.map(u => Paths.get(u.toURI()))
+      case _                  =>
+        sys
+          .props("java.class.path")
+          .split(java.io.File.pathSeparator)
+          .toList
+          .filter(_.nonEmpty)
+          .map(Paths.get(_))
+    urls ++ Vector(
       IO.classLocationPath(classOf[xsbti.compile.ScalaInstance]),
       IO.classLocationPath(classOf[xsbti.Logger]),
       IO.classLocationPath(classOf[jline.Terminal]),
@@ -132,7 +142,5 @@ private[sbt] object ForkCompile:
       val result = Converter.fromJson[CompileResponse](json).get
       promise.success(result)
 
-    override def processNotification(o: JsonObject): Unit =
-      val params = o.getAsJsonObject("params")
-      // println(s"params: $params")
+    override def processNotification(o: JsonObject): Unit = ()
 end ForkCompile

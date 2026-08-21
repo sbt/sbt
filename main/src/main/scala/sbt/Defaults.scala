@@ -379,6 +379,7 @@ object Defaults extends BuildCommon with DefExtra {
       aggregate :== true,
       maxErrors :== 100,
       fork :== false,
+      forkCompile :== false,
       clientSide :== true,
       initialize :== {},
       templateResolverInfos :== Nil,
@@ -1161,10 +1162,6 @@ object Defaults extends BuildCommon with DefExtra {
       discoveredSbtPlugins := Def.uncached(discoverSbtPluginNames.value),
       // This fork options, scoped to the configuration is used for tests
       forkOptions := Def.uncached(forkOptionsTask.value),
-      extraIncOptions := {
-        val orig = extraIncOptions.value
-        orig
-      },
       selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
       run / mainClass := (run / selectMainClass).value,
       mainClass := Def.uncached {
@@ -2303,7 +2300,7 @@ object Defaults extends BuildCommon with DefExtra {
     Seq(
       TaskZero / compileIncremental := Def.uncached {
         val bspTask = (compile / bspCompileTask).value
-        val result = cachedCompileIncrementalTask.result.value
+        val result = selectCompileIncrementalTask.result.value
         val reporter = (compile / bspReporter).value
         val ci = (compile / compileInputs).value
         val c = fileConverter.value
@@ -2338,6 +2335,11 @@ object Defaults extends BuildCommon with DefExtra {
       case _                       => "root"
     }
 
+  private val selectCompileIncrementalTask = Def.taskDyn {
+    if forkCompile.value then forkedCompileIncrementalTask
+    else cachedCompileIncrementalTask
+  }
+
   private val cachedCompileIncrementalTask = Def
     .cachedTask {
       val s = streams.value
@@ -2350,27 +2352,8 @@ object Defaults extends BuildCommon with DefExtra {
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
-      val fk = (compile / fork).value
-      val jh = (compile / jdkVersion).value
-      val fo = ((compile / forkOptions).value: @nowarn("msg=transient"))
-      val sic = (scalaInstanceConfig.value: @nowarn("msg=transient"))
-      val bridges = (scalaCompilerBridgeJars.value: @nowarn("msg=transient"))
-      val rs = rootPaths.value
-      val pickles = dependencyPicklePath.value
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult =
-        if fk then
-          ForkCompile.compile(
-            s,
-            fo,
-            rs,
-            ci,
-            sic,
-            bridges,
-            compileAnalysisFile.value.toPath(),
-            pickles
-          )
-        else Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
       val dirZip = ActionCache.dirZipPath(dir)
@@ -2385,6 +2368,46 @@ object Defaults extends BuildCommon with DefExtra {
       // Packaging precedes this write so that a run interrupted in between leaves a stale analysis,
       // which forces a recompile, rather than a current analysis paired with an outdated zip.
       store.set(contents)
+      Def.declareOutput(analysisOut)
+      s.log.debug(s"wrote $vfDir")
+      (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
+    }
+    .tag(Tags.Compile, Tags.CPU)
+
+  private val forkedCompileIncrementalTask = Def
+    .cachedTask {
+      val s = streams.value
+      val ci = (compile / compileInputs).value
+      // This is a cacheable version
+      val ci2 = (compile / compileInputs2).value
+      val ping = (TaskZero / earlyOutputPing).value
+      val setup: Setup = (TaskZero / compileIncSetup).value
+      val c = fileConverter.value
+      val fo = ((compile / forkOptions).value: @nowarn("msg=transient"))
+      val sic = (scalaInstanceConfig.value: @nowarn("msg=transient"))
+      val bridges = (scalaCompilerBridgeJars.value: @nowarn("msg=transient"))
+      val rs = rootPaths.value
+      val pickles = dependencyPicklePath.value
+      val analysisFile = compileAnalysisFile.value.toPath()
+      def forkImpl(): xsbti.compile.CompileResult =
+        try ForkCompile.compile(s, fo, rs, ci, sic, bridges, analysisFile, pickles)
+        catch
+          case e: Throwable =>
+            if !ping.isCompleted then
+              ping.failure(e)
+              ConcurrentRestrictions.cancelAllSentinels()
+            throw e
+      val analysisResult = Retry.io(forkImpl())
+      val dir = ci.options.classesDirectory
+      val vfDir = c.toVirtualFile(dir)
+      val dirZip = ActionCache.dirZipPath(dir)
+      // Zinc leaves the class directory alone when it invalidates nothing, so the zip the previous
+      // run left behind still describes it and re-packing only reproduces a blob the store has.
+      val packedDir =
+        if analysisResult.hasModified() || !Files.exists(dirZip) then
+          Def.declareOutputDirectory(vfDir)
+        else Def.declareOutput(c.toVirtualFile(dirZip))
+      val analysisOut = c.toVirtualFile(setup.cachePath())
       Def.declareOutput(analysisOut)
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)

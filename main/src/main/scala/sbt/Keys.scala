@@ -356,7 +356,8 @@ object Keys {
   val trapExit = settingKey[Boolean]("If true, enables exit trapping and thread management for 'run'-like tasks. This was removed in sbt 1.6.0 due to JDK 17 deprecating Security Manager.").withRank(CSetting)
 
   val fork = settingKey[Boolean]("If true, forks a new JVM when running.  If false, runs in the same JVM as the build.").withRank(ASetting)
-  
+  val forkCompile = settingKey[Boolean]("If true, forks incremental compilation in a worker JVM.").withRank(BSetting)
+
   @transient
   val forkOptions = taskKey[ForkOptions]("Configures JVM forking.").withRank(DSetting)
   val outputStrategy = settingKey[Option[sbt.OutputStrategy]]("Selects how to log output when running a main class.").withRank(DSetting)

@@ -23,8 +23,9 @@ given CompileConfigFormat: JsonFormat[sbt.internal.worker.CompileConfig] = new J
       val javacOptions = unbuilder.readField[Vector[String]]("javacOptions")
       val maxErrors = unbuilder.readField[Int]("maxErrors")
       val analysisMap = unbuilder.readField[Vector[sbt.internal.worker.HVFRURI]]("analysisMap")
+      val compileOrder = unbuilder.readField[String]("compileOrder")
       unbuilder.endObject()
-      sbt.internal.worker.CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap)
+      sbt.internal.worker.CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap, compileOrder)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -43,6 +44,7 @@ given CompileConfigFormat: JsonFormat[sbt.internal.worker.CompileConfig] = new J
     builder.addField("javacOptions", obj.javacOptions)
     builder.addField("maxErrors", obj.maxErrors)
     builder.addField("analysisMap", obj.analysisMap)
+    builder.addField("compileOrder", obj.compileOrder)
     builder.endObject()
   }
 }

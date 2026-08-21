@@ -591,7 +591,6 @@ lazy val actionsProj = (project in file("main-actions"))
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
-    Compile / scalacOptions --= Seq("-Werror"),
   )
   .dependsOn(lmCore)
   .configure(
@@ -814,7 +813,6 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.GlobalPluginData.*"),
       exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.Compiler.*"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)

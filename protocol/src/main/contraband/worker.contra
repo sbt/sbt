@@ -86,6 +86,7 @@ type CompileConfig {
   javacOptions: [String]
   maxErrors: Int!
   analysisMap: [sbt.internal.worker.HVFRURI]
+  compileOrder: String!
 }
 
 type CompileResponse {
