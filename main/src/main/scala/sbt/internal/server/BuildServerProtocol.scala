@@ -17,7 +17,6 @@ import sbt.Def.*
 import sbt.Keys.*
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make.*
-import sbt.Scoped.richTaskSeq
 import sbt.SlashSyntax0.*
 import sbt.StandardMain.exchange
 import sbt.internal.bsp.*

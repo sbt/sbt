@@ -427,18 +427,32 @@ object Defaults extends BuildCommon with DefExtra {
     // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
     classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     fullServerHandlers := {
-      Seq(
-        LanguageServerProtocol.handler(fileConverter.value),
-        BuildServerProtocol.handler(
-          loadedBuild.value,
-          bspFullWorkspace.value,
-          sbtVersion.value,
-          semanticdbEnabled.value,
-          semanticdbVersion.value
-        ),
-        VirtualTerminal.handler,
-        CommandExchange.idleHandler,
-      ) ++ serverHandlers.value :+ ServerHandler.fallback
+      // BSP has no authentication, so over TCP its handlers would be reachable without the
+      // token handshake the other language-server calls require. Disable it there.
+      val bspSupported = serverConnectionType.value != ConnectionType.Tcp
+      if (!bspSupported)
+        sLog.value.warn(
+          "BSP is not supported when serverConnectionType is Tcp; disabling the Build Server " +
+            "Protocol handler for this session."
+        )
+      val bspHandler =
+        if (bspSupported)
+          Seq(
+            BuildServerProtocol.handler(
+              loadedBuild.value,
+              bspFullWorkspace.value,
+              sbtVersion.value,
+              semanticdbEnabled.value,
+              semanticdbVersion.value
+            )
+          )
+        else Nil
+      (Seq(LanguageServerProtocol.handler(fileConverter.value)) ++
+        bspHandler ++
+        Seq(
+          VirtualTerminal.handler,
+          CommandExchange.idleHandler,
+        )) ++ serverHandlers.value :+ ServerHandler.fallback
     },
     timeWrappedStamper := Stamps
       .timeWrapBinaryStamps(Stamps.uncachedStamps(fileConverter.value), fileConverter.value),
