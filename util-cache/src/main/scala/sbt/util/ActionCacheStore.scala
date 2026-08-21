@@ -255,13 +255,16 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
   def toCasFile(digest: Digest): Path =
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
 
+  /**
+   * Local blobs are trusted, so the content is copied to the CAS without hashing;
+   * the digest is verified lazily on the first lookup.
+   */
   def putBlob(blob: Path, digest: Digest): Path =
     val casFile = toCasFile(digest)
     if isCompleteBlob(casFile, digest) then casFile
     else
-      stageAndMove(casFile, digest): tempFile =>
-        Using.resource(Files.newInputStream(blob))(writeVerified(_, tempFile, digest))
-        Files.setLastModifiedTime(tempFile, Files.getLastModifiedTime(blob))
+      stageAndMove(casFile, digest, verified = false): tempFile =>
+        Files.copy(blob, tempFile, StandardCopyOption.COPY_ATTRIBUTES)
 
   /** Move blob directly to CAS. Internal use only. */
   private[sbt] def putBlobInternal(blob: Path, digest: Digest): Path =
@@ -279,7 +282,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)
     if isCompleteBlob(casFile, digest) then casFile
-    else stageAndMove(casFile, digest)(writeVerified(input, _, digest))
+    else stageAndMove(casFile, digest, verified = true)(writeVerified(input, _, digest))
 
   def putBlob(input: ByteBuffer, digest: Digest): Path =
     val casFile = toCasFile(digest)
@@ -288,7 +291,8 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       input.flip()
       val bytes = new Array[Byte](input.remaining())
       input.get(bytes)
-      stageAndMove(casFile, digest)(writeVerified(new ByteArrayInputStream(bytes), _, digest))
+      stageAndMove(casFile, digest, verified = true):
+        writeVerified(new ByteArrayInputStream(bytes), _, digest)
 
   private def writeVerified(input: InputStream, tempFile: Path, digest: Digest): Unit =
     val actual = Digest.transferAndHash(input, tempFile, digest.algo)
@@ -297,13 +301,15 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         s"Refusing to cache blob for $digest: content does not match its digest"
       )
 
-  private def stageAndMove(casFile: Path, digest: Digest)(write: Path => Unit): Path =
+  private def stageAndMove(casFile: Path, digest: Digest, verified: Boolean)(
+      write: Path => Unit
+  ): Path =
     Files.createDirectories(casBase)
     val tempFile = casBase.resolve(s"${java.util.UUID.randomUUID()}.part")
     try
       write(tempFile)
       IO.move(tempFile.toFile(), casFile.toFile())
-      markComplete(casFile, digest)
+      if verified then markComplete(casFile, digest)
       casFile
     finally Files.deleteIfExists(tempFile)
 
