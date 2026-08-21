@@ -457,7 +457,7 @@ private[sbt] object Continuous {
           // We only want to create one event per actual source file event. It doesn't matter
           // which of the config inputs triggers the event because they all will be used in
           // the onEvent callback above.
-          configs.find(_.inputs().exists(_.glob.matches(e.path))) match {
+          configs.find(_.matches(e.path)) match {
             case Some(config) =>
               val configLogger = logger.withPrefix(config.command)
               configLogger.debug(s"Accepted event for ${e.path}")
@@ -576,7 +576,7 @@ private[sbt] object Continuous {
         }.toSeq
       } else {
         val acceptedConfigParameters = configs.flatMap { config =>
-          config.inputs().flatMap {
+          config.dynamicInputs.iterator.flatMap {
             case i if i.glob.matches(path) =>
               Some((i.forceTrigger, i.fileStamper, config.watchSettings.onFileInputEvent))
             case _ => None
@@ -970,6 +970,7 @@ private[sbt] object Continuous {
       val dynamicInputs: mutable.Set[DynamicInput],
       val watchSettings: WatchSettings,
   ):
+    def matches(path: Path): Boolean = dynamicInputs.exists(_.glob.matches(path))
     def inputs() = dynamicInputs.toSeq.sorted
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs())
   end Config

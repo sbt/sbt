@@ -41,7 +41,12 @@ class ExecRequiresInitializeTest extends AnyFunSuite {
   }
 
   /** Forks a real sbt server for `testDirectory`, connects a raw (un-initialized) session. */
-  private def withUnauthenticatedSession(f: ServerSession => Unit): Unit = {
+  private def withUnauthenticatedSession(f: ServerSession => Unit): Unit =
+    withUnauthenticatedServer(Vector.empty)((session, _) => f(session))
+
+  private def withUnauthenticatedServer(
+      extraJvmOptions: Vector[String]
+  )(f: (ServerSession, scala.sys.process.Process) => Unit): Unit = {
     val base: Path = Files.createTempDirectory(Path.of("/tmp"), "sbt-tcp-poc")
     val buildDir = base.toFile / testDirectory
     IO.copyDirectory(serverTestBase / testDirectory, buildDir)
@@ -56,7 +61,7 @@ class ExecRequiresInitializeTest extends AnyFunSuite {
             "-Djline.terminal=none",
             "-Dsbt.io.virtual=false",
             "-Dsbt.banner=false",
-          )
+          ) ++ extraJvmOptions
         ),
       buildDir,
       TestProperties.scalaVersion,
@@ -72,7 +77,7 @@ class ExecRequiresInitializeTest extends AnyFunSuite {
       try
         // Deliberately do NOT call session.initialize(...): this simulates an
         // attacker who can reach the TCP socket but never authenticates.
-        f(session)
+        f(session, process)
       finally session.close()
     } finally {
       if (process.isAlive()) process.destroy()
@@ -127,6 +132,43 @@ class ExecRequiresInitializeTest extends AnyFunSuite {
     // ever completing the token handshake that sbt/exec itself requires.
     withUnauthenticatedSession { session =>
       assertRejected(session, "sbt/attach", Attach(interactive = true))
+    }
+  }
+
+  // BSP has no authentication, so its handlers are not registered over TCP. As a second layer,
+  // the central gate rejects every non-handshake request before authentication regardless of
+  // whether a handler is registered, so BSP methods (each of which would otherwise reach
+  // appendExec) and any plugin-provided method are refused just like sbt/exec.
+  for (
+    method <- Seq(
+      "build/initialize",
+      "workspace/buildTargets",
+      "workspace/reload",
+      "buildTarget/compile",
+      "buildTarget/test",
+      "buildTarget/run",
+      "buildTarget/cleanCache",
+      "buildTarget/scalacOptions",
+      "buildTarget/jvmRunEnvironment",
+      "com.example/customPluginMethod",
+    )
+  )
+    test(s"$method is rejected over TCP before a token-authenticated initialize") {
+      withUnauthenticatedSession { session =>
+        assertRejected(session, method, SbtExecParams(""))
+      }
+    }
+
+  test("sbt/dropIfIdle cannot drop the server before authentication") {
+    // Notifications are gated too, so an unauthenticated peer cannot drop an idle server.
+    // secondaryIdleTimeout=0 forces the idle branch, making the outcome depend on the gate.
+    withUnauthenticatedServer(Vector("-Dsbt.server.secondaryIdleTimeout=0")) { (session, process) =>
+      session.sendJsonRpcNotification(sbt.protocol.Serialization.dropIfIdle, SbtExecParams("")).get
+      Thread.sleep(5000)
+      assert(
+        process.isAlive(),
+        "server must not be dropped by an unauthenticated sbt/dropIfIdle notification"
+      )
     }
   }
 }
