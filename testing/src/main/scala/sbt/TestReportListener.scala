@@ -59,7 +59,7 @@ trait TestsListener extends TestReportListener {
  *   exactly that before stashing a copy on `State.attributes`; see the note on `TestSummary.entriesKey`.
  *   On Windows a leaked handle makes the underlying jar undeletable (e.g. by `clearCaches`).
  */
-private[sbt] final class SuiteResult(
+final class SuiteResult(
     val result: TestResult,
     val passedCount: Int,
     val failureCount: Int,
@@ -113,7 +113,7 @@ private[sbt] final class SuiteResult(
   }
 }
 
-private[sbt] object SuiteResult {
+object SuiteResult {
 
   /**
    * Computes the overall result and counts for a suite with individual test results in `events`.

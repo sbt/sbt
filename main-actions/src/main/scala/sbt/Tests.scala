@@ -73,7 +73,7 @@ object Tests {
    * @param events The result of each test group (suite) executed during this test run.
    * @param summaries Explicit summaries directly provided by test frameworks.  This may be empty, in which case a default summary will be generated.
    */
-  private[sbt] final case class Output(
+  final case class Output(
       overall: TestResult,
       events: Map[String, SuiteResult],
       summaries: Iterable[Summary]
