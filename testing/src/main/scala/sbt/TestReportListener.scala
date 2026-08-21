@@ -116,10 +116,12 @@ final class SuiteResult(
   def +(other: SuiteResult): SuiteResult = {
     val combinedTestResult =
       (result, other.result) match {
-        case (TestResult.Passed, TestResult.Passed) => TestResult.Passed: TestResult
-        case (_, TestResult.Error)                  => TestResult.Error: TestResult
-        case (TestResult.Error, _)                  => TestResult.Error: TestResult
-        case _                                      => TestResult.Failed: TestResult
+        case (TestResult.Empty, TestResult.Empty) => TestResult.Empty: TestResult
+        case (TestResult.Passed | TestResult.Empty, TestResult.Passed | TestResult.Empty) =>
+          TestResult.Passed: TestResult
+        case (_, TestResult.Error) => TestResult.Error: TestResult
+        case (TestResult.Error, _) => TestResult.Error: TestResult
+        case _                     => TestResult.Failed: TestResult
       }
     new SuiteResult(
       combinedTestResult,
