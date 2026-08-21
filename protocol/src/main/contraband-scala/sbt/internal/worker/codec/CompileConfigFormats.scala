@@ -18,6 +18,7 @@ given CompileConfigFormat: JsonFormat[sbt.internal.worker.CompileConfig] = new J
       val externalDependencyJars = unbuilder.readField[Vector[String]]("externalDependencyJars")
       val output = unbuilder.readField[java.net.URI]("output")
       val analysisFile = unbuilder.readField[java.net.URI]("analysisFile")
+      val earlyAnalysisFile = unbuilder.readField[Option[java.net.URI]]("earlyAnalysisFile")
       val earlyJarPath = unbuilder.readField[Option[java.net.URI]]("earlyJarPath")
       val scalacOptions = unbuilder.readField[Vector[String]]("scalacOptions")
       val javacOptions = unbuilder.readField[Vector[String]]("javacOptions")
@@ -25,7 +26,7 @@ given CompileConfigFormat: JsonFormat[sbt.internal.worker.CompileConfig] = new J
       val analysisMap = unbuilder.readField[Vector[sbt.internal.worker.HVFRURI]]("analysisMap")
       val compileOrder = unbuilder.readField[String]("compileOrder")
       unbuilder.endObject()
-      sbt.internal.worker.CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap, compileOrder)
+      sbt.internal.worker.CompileConfig(fileConverterConfig, scalaInstanceConfig, bridgeJars, sources, externalDependencyJars, output, analysisFile, earlyAnalysisFile, earlyJarPath, scalacOptions, javacOptions, maxErrors, analysisMap, compileOrder)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -39,6 +40,7 @@ given CompileConfigFormat: JsonFormat[sbt.internal.worker.CompileConfig] = new J
     builder.addField("externalDependencyJars", obj.externalDependencyJars)
     builder.addField("output", obj.output)
     builder.addField("analysisFile", obj.analysisFile)
+    builder.addField("earlyAnalysisFile", obj.earlyAnalysisFile)
     builder.addField("earlyJarPath", obj.earlyJarPath)
     builder.addField("scalacOptions", obj.scalacOptions)
     builder.addField("javacOptions", obj.javacOptions)

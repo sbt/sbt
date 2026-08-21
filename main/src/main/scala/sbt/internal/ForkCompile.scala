@@ -32,6 +32,7 @@ private[sbt] object ForkCompile:
       sic: ScalaInstanceConfig,
       bridges: Seq[HashedVirtualFileRef],
       analysisFile: Path,
+      earlyAnalysisFile: Option[Path],
       acs: Seq[Attributed[HashedVirtualFileRef]],
   ): CompileResult =
     val g = WorkerMain.mkGson()
@@ -42,8 +43,21 @@ private[sbt] object ForkCompile:
     try
       WorkerExchange.registerListener(wl)
       wl.notifyExit(w.process)
+      val allCp = currentClasspath
+      val parentCp =
+        (IO.classLocationPath(classOf[xsbti.compile.ScalaInstance]) ::
+          allCp.filter(p =>
+            Option(p.getFileName).exists(_.toString.startsWith("compiler-interface"))
+          )).distinct
+      val childCp = allCp.filterNot(parentCp.contains)
       val cpList = util.ArrayList[FilePath](
-        currentClasspath
+        childCp
+          .map: p =>
+            FilePath(p.toUri, "")
+          .asJava
+      )
+      val parentCpList = util.ArrayList[FilePath](
+        parentCp
           .map: p =>
             FilePath(p.toUri, "")
           .asJava
@@ -72,6 +86,7 @@ private[sbt] object ForkCompile:
         externalDependencyJars = cp.map(_.toString()),
         output = in.options().classesDirectory().toUri,
         analysisFile = analysisFile.toUri,
+        earlyAnalysisFile = earlyAnalysisFile.map(_.toUri),
         earlyJarPath = earlyJarPath.map(_.toUri()),
         scalacOptions = in.options().scalacOptions().toVector,
         javacOptions = in.options().javacOptions().toVector,
@@ -88,6 +103,7 @@ private[sbt] object ForkCompile:
           RunInfo.JvmRunInfo(
             util.ArrayList(List(s"@$params").asJava),
             cpList,
+            parentCpList,
             "sbt.internal.CompileMain",
             false,
           ),
@@ -97,7 +113,7 @@ private[sbt] object ForkCompile:
         val json = jsonRpcRequest(randomId, "compile", paramJson)
         w.println(json)
         val response = wl.blockForResponse()
-        val store = FileAnalysisStore.getDefault(analysisFile.toFile)
+        val store = FileAnalysisStore.getDefault(CompileMain.analysisTmpPath(analysisFile).toFile)
         val contents = store.get().get()
         CompileResult.of(
           contents.getAnalysis,

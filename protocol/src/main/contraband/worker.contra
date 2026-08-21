@@ -81,6 +81,7 @@ type CompileConfig {
   externalDependencyJars: [String]
   output: java.net.URI!
   analysisFile: java.net.URI!
+  earlyAnalysisFile: java.net.URI
   earlyJarPath: java.net.URI
   scalacOptions: [String]
   javacOptions: [String]

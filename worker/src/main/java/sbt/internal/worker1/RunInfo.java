@@ -15,6 +15,7 @@ public class RunInfo implements Serializable {
   public static class JvmRunInfo implements Serializable {
     public ArrayList<String> args;
     public ArrayList<FilePath> classpath;
+    public ArrayList<FilePath> parentClasspath;
     public String mainClass;
     public boolean connectInput;
 
@@ -23,8 +24,18 @@ public class RunInfo implements Serializable {
         ArrayList<FilePath> classpath,
         String mainClass,
         boolean connectInput) {
+      this(args, classpath, null, mainClass, connectInput);
+    }
+
+    public JvmRunInfo(
+        ArrayList<String> args,
+        ArrayList<FilePath> classpath,
+        ArrayList<FilePath> parentClasspath,
+        String mainClass,
+        boolean connectInput) {
       this.args = args;
       this.classpath = classpath;
+      this.parentClasspath = parentClasspath;
       this.mainClass = mainClass;
       this.connectInput = connectInput;
     }

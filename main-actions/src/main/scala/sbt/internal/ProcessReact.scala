@@ -4,8 +4,9 @@ package internal
 import org.scalasbt.shadedgson.com.google.gson.{ JsonObject, JsonParser, JsonSyntaxException }
 import sbt.internal.inc.CompileFailed
 import sbt.util.Logger
+import java.util.concurrent.TimeoutException
 import scala.concurrent.{ Await, Promise }
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{ Duration, DurationInt }
 import scala.sys.process.Process
 import scala.util.control.NonFatal
 
@@ -51,6 +52,9 @@ private[sbt] abstract class ProcessReact[A1](
   override def notifyExit(p: Process): Unit =
     if (p eq process) && !process.isAlive() && !promise.isCompleted then
       val exitCode = process.exitValue()
+      if exitCode == 0 then
+        try Await.ready(promise.future, 5.seconds)
+        catch case _: TimeoutException => ()
       promise.tryFailure(new RuntimeException(s"worker exited with code $exitCode"))
 
   def blockForResponse(): A1 =

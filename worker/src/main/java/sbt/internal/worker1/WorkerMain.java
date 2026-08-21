@@ -21,9 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -183,8 +181,7 @@ public final class WorkerMain {
         throw new RuntimeException("missing jvmRunInfo element");
       }
       RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
-      try (URLClassLoader cl =
-          createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader(), false)) {
+      try (URLClassLoader cl = createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader())) {
         Class<?> mainClass = cl.loadClass(jvmRunInfo.mainClass);
         Method mainMethod = mainClass.getMethod("main", String[].class);
         String[] mainArgs = jvmRunInfo.args.stream().toArray(String[]::new);
@@ -202,8 +199,7 @@ public final class WorkerMain {
         throw new RuntimeException("missing jvmRunInfo element");
       }
       RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
-      try (URLClassLoader cl =
-          createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader(), true)) {
+      try (URLClassLoader cl = createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader())) {
         Class<?> mainClass = cl.loadClass(jvmRunInfo.mainClass);
         Method mainMethod =
             mainClass.getMethod("main", String[].class, Long.class, PrintStream.class);
@@ -223,7 +219,7 @@ public final class WorkerMain {
       if (jvmRunInfo.classpath.isEmpty()) {
         ForkTestMain.main(id, info, this.jsonOut, parent);
       } else {
-        try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent, false)) {
+        try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent)) {
           ForkTestMain.main(id, info, this.jsonOut, cl);
         }
       }
@@ -237,22 +233,12 @@ public final class WorkerMain {
     return;
   }
 
-  private URLClassLoader createClassLoader(
-      RunInfo.JvmRunInfo info, ClassLoader parent, boolean isolateCompilerInterface) {
-    if (!isolateCompilerInterface) {
+  private URLClassLoader createClassLoader(RunInfo.JvmRunInfo info, ClassLoader parent) {
+    if (info.parentClasspath == null || info.parentClasspath.isEmpty()) {
       return new URLClassLoader(toUrls(info.classpath), parent);
     }
-    Map<Boolean, List<FilePath>> groups =
-        info.classpath.stream()
-            .collect(
-                Collectors.partitioningBy(
-                    filePath -> fileNameOf(filePath.path).startsWith("compiler-interface")));
-    List<FilePath> interfaceJars = groups.get(true);
-    List<FilePath> rest = groups.get(false);
-    if (interfaceJars.isEmpty()) {
-      return new URLClassLoader(toUrls(rest), parent);
-    }
-    return new URLClassLoader(toUrls(rest), new URLClassLoader(toUrls(interfaceJars), parent));
+    return new URLClassLoader(
+        toUrls(info.classpath), new URLClassLoader(toUrls(info.parentClasspath), parent));
   }
 
   private static URL[] toUrls(List<FilePath> classpath) {
@@ -266,14 +252,5 @@ public final class WorkerMain {
               }
             })
         .toArray(URL[]::new);
-  }
-
-  private static String fileNameOf(java.net.URI uri) {
-    String path = uri.getPath();
-    if (path == null) {
-      return "";
-    }
-    int idx = path.lastIndexOf('/');
-    return idx >= 0 ? path.substring(idx + 1) : path;
   }
 }

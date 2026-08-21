@@ -9,7 +9,7 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ Files, Path as NioPath }
+import java.nio.file.{ Files, Path as NioPath, StandardCopyOption }
 import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
 import lmcoursier.CoursierDependencyResolution
@@ -1434,18 +1434,26 @@ object Defaults extends BuildCommon with DefExtra {
     )
   }
 
+  private[sbt] def resolveForkJavaHome(
+      javaHome: Option[File],
+      jdkVersion: Option[String],
+      javaHomes: Map[String, File]
+  ): Option[File] =
+    javaHome.orElse(jdkVersion.map { j =>
+      javaHomes.getOrElse(
+        j,
+        sys.error(
+          s"jdkVersion \"$j\" was not found in fullJavaHomes: ${javaHomes.keys.toSeq.sorted.mkString(", ")}"
+        )
+      )
+    })
+
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
     Def.task {
       val canUseArgumentsFile = sys.props
         .getOrElse("java.vm.specification.version", "1")
         .toFloat >= 9.0
-      val jhs = fullJavaHomes.value
-      val jh = jdkVersion.value match
-        case Some(j) =>
-          jhs.get(j) match
-            case Some(value) => Some(value)
-            case None        => sys.error(s"jdkVersion \"$j\" was not found")
-        case None => javaHome.value
+      val jh = resolveForkJavaHome(javaHome.value, jdkVersion.value, fullJavaHomes.value)
       ForkOptions(
         javaHome = jh,
         outputStrategy = outputStrategy.value,
@@ -2321,7 +2329,8 @@ object Defaults extends BuildCommon with DefExtra {
             res
           case Result.Inc(cause) =>
             ping.tryComplete(Result.Value(false))
-            val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
+            val compileFailed =
+              Incomplete.allExceptions(cause).collectFirst { case c: CompileFailed => c }
             reporter.sendFailureReport(ci.options.sources, compileFailed)
             bspTask.notifyFailure(compileFailed)
             throw cause
@@ -2384,13 +2393,19 @@ object Defaults extends BuildCommon with DefExtra {
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
       val fo = ((compile / forkOptions).value: @nowarn("msg=transient"))
+      val jdkId = (compile / jdkVersion).value
+      val jhome = (compile / javaHome).value
       val sic = (scalaInstanceConfig.value: @nowarn("msg=transient"))
       val bridges = (scalaCompilerBridgeJars.value: @nowarn("msg=transient"))
       val rs = rootPaths.value
       val pickles = dependencyPicklePath.value
       val analysisFile = compileAnalysisFile.value.toPath()
+      val earlyAnalysis =
+        if exportPipelining.value then
+          Some((earlyCompileAnalysisFile.value: @nowarn("msg=transient")).toPath())
+        else None
       def forkImpl(): xsbti.compile.CompileResult =
-        try ForkCompile.compile(s, fo, rs, ci, sic, bridges, analysisFile, pickles)
+        try ForkCompile.compile(s, fo, rs, ci, sic, bridges, analysisFile, earlyAnalysis, pickles)
         catch
           case e: Throwable =>
             if !ping.isCompleted then
@@ -2407,6 +2422,11 @@ object Defaults extends BuildCommon with DefExtra {
         if analysisResult.hasModified() || !Files.exists(dirZip) then
           Def.declareOutputDirectory(vfDir)
         else Def.declareOutput(c.toVirtualFile(dirZip))
+      Files.move(
+        CompileMain.analysisTmpPath(analysisFile),
+        analysisFile,
+        StandardCopyOption.REPLACE_EXISTING
+      )
       val analysisOut = c.toVirtualFile(setup.cachePath())
       Def.declareOutput(analysisOut)
       s.log.debug(s"wrote $vfDir")

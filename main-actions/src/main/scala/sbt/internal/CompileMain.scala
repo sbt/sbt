@@ -73,7 +73,7 @@ object CompileMain:
         stampReader = Stamps.timeWrapBinaryStamps(conv),
       )
       val r = zinc.compile(in, log)
-      val store = FileAnalysisStore.getDefault(analysisFile.toFile)
+      val store = FileAnalysisStore.getDefault(analysisTmpPath(analysisFile).toFile)
       store.set(AnalysisContents.create(r.getAnalysis, r.getMiniSetup))
       val response = CompileResponse(
         hasModified = r.hasModified
@@ -116,16 +116,22 @@ object CompileMain:
     val incOptions = IncOptions.of()
     val log = mkLogger(Level.Warn)
     val reporter = ManagedLoggedReporter(100, log)
+    val earlyStore =
+      config.earlyAnalysisFile.map(u => FileAnalysisStore.getDefault(Paths.get(u).toFile))
     Setup.of(
       lookup,
       false,
-      analysisFile.toFile,
+      analysisFile,
       CompilerCache.fresh(),
       incOptions,
       reporter,
       jnone,
+      earlyStore.toOptional,
       Array[T2[String, String]](),
     )
+
+  def analysisTmpPath(analysisFile: Path): Path =
+    analysisFile.resolveSibling(analysisFile.getFileName.toString + ".tmp")
 
   lazy val console = ConsoleOut.systemOut
   lazy val consoleAppender = MainAppender.defaultScreen(console)
