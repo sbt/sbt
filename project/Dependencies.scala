@@ -93,6 +93,7 @@ object Dependencies {
   )
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
   val junit = "junit" % "junit" % "4.13.2"
+  val junitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
   val remoteapis =

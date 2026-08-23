@@ -1482,3 +1482,23 @@ lazy val launcherPackageIntegrationTest =
       },
       Test / parallelExecution := false
     )
+
+val prepareCommunityBuild = taskKey[Unit]("Publish local etc")
+lazy val `community-build` = (project in file("community-build"))
+  .settings(
+    scalaVersion := scala3,
+    libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
+    prepareCommunityBuild := {
+      val _ = (sbtRoot / publishLocalBinAll).value
+      IO.write(baseDirectory.value / "target" / "sbt.version", version.value)
+    },
+    (Test / testOptions) += Tests.Argument(
+      TestFrameworks.JUnit,
+      "--include-categories=sbt.internal.communitybuild.TestCategory",
+      "--run-listener=sbt.internal.communitybuild.FailureSummarizer",
+    ),
+    Compile / run := (Compile / run).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testOnly := (Test / testOnly).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testQuick := (Test / testQuick).dependsOn(prepareCommunityBuild).evaluated,
+    publish / skip := true,
+  )
