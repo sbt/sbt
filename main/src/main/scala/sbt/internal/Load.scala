@@ -1071,7 +1071,8 @@ private[sbt] object Load {
 
     // Excludes settings already scoped explicitly (ThisBuild, Global); those apply once (#9668).
     def thisProjectScoped(settings: Seq[Setting[?]]): Seq[Setting[?]] =
-      settings.filter(_.key.scope.project == This)
+      settings.filter: s =>
+        s.key.scope.project == This || s.key.scope.project == Select(ThisProject)
 
     // load all relevant configuration files (.sbt, as .scala already exists at this point)
     def discover(base: File): DiscoveredProjects = {
