@@ -248,11 +248,39 @@ object State {
     val app = state.configuration.provider
     new Reboot(
       app.scalaProvider.version,
-      state.remainingCommands map { case e: Exec => e.commandLine },
+      addPluginSbtFileArguments(state) ::: state.remainingCommands.map(_.commandLine),
       app.id,
       state.configuration.baseDirectory
     )
   }
+
+  /**
+   * Builds the `early(...)` commands that add the extra plugin sbt files back after a reboot.
+   * A reboot clears the state, so sbt forgets these files. The commands are passed to the new
+   * sbt as arguments, and they run before it loads the build.
+   *
+   * The `early(addPluginSbtFile=...)` form is used, not `--addPluginSbtFile=...`, because the
+   * `--` form loses the quotes around the path, and then a path with a space in it fails.
+   * A path with a space can be added using `addPluginSbtFile "<path>"`.
+   */
+  private[sbt] def addPluginSbtFileArguments(state: State): List[String] =
+    state.get(BasicKeys.extraMetaSbtFiles).toList.flatten.distinct.map { vf =>
+      val path = vf match {
+        case f: xsbti.PathBasedFile => f.toPath.toString
+        case f                      => f.id
+      }
+      val command = s"${BasicCommandStrings.AddPluginSbtFileCommand}=${quote(path)}"
+      s"${BasicCommandStrings.EarlyCommand}($command)"
+    }
+
+  /**
+   * Puts `path` in quotes so the new sbt session reads it back as one whole string. There the path goes
+   * through the `Parsers.StringBasic` in `BasicCommands.addPluginSbtFileParser`, which stops at
+   * the first space when there are no quotes. A path with a space can be added, so it also has
+   * to come back after a reboot.
+   */
+  private def quote(path: String): String =
+    s"\"${path.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
   @deprecated("Import State._ or State.StateOpsImpl to access state extension methods", "1.3.0")
   def stateOps(s: State): StateOps = new StateOpsImpl(s)
@@ -331,8 +359,9 @@ object State {
           StartServer :: remaining.dropWhile(!_.startsWith(ReportResult)).tail ::: "shell" :: Nil
         case _ => remaining
       }
-      if (currentOnly) throw new RebootCurrent(fullRemaining)
-      else throw new xsbti.FullReload(fullRemaining.toArray, full)
+      val arguments = State.addPluginSbtFileArguments(s) ::: fullRemaining
+      if (currentOnly) throw new RebootCurrent(arguments)
+      else throw new xsbti.FullReload(arguments.toArray, full)
     }
 
     def reload = runExitHooks().setNext(new Return(defaultReload(s)))
