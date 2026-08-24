@@ -12,7 +12,7 @@ package internal
 import org.scalasbt.shadedgson.com.google.gson.Gson
 import java.io.*
 import java.net.{ InetAddress, ServerSocket, StandardProtocolFamily, UnixDomainSocketAddress }
-import java.nio.channels.ServerSocketChannel
+import java.nio.channels.{ ServerSocketChannel, SocketChannel }
 import java.nio.file.{ Files, Path as NioPath }
 import java.util.Scanner
 import sbt.io.IO
@@ -67,8 +67,10 @@ object WorkerExchange:
           ch.bind(UnixDomainSocketAddress.of(path))
           ch
         }
+        @volatile var acceptedChannel: SocketChannel = null
         val accepter = Thread(() => {
           val channel = serverChannel.accept()
+          acceptedChannel = channel
           runAccepter(
             DuplexChannels.newOutputStream(channel),
             DuplexChannels.newInputStream(channel)
@@ -78,6 +80,7 @@ object WorkerExchange:
         accepter.setPriority(Thread.NORM_PRIORITY + 1)
         accepter.start()
         val closer: AutoCloseable = () => {
+          if acceptedChannel != null then acceptedChannel.close()
           serverChannel.close()
           Files.deleteIfExists(path)
         }

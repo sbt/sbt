@@ -152,7 +152,9 @@ private[sbt] object ForkTests:
           if wl.blockForResponse() != 0 then
             throw MessageOnlyException("Forked test harness failed")
           testOutputResult
-        finally WorkerExchange.unregisterListener(wl)
+        finally
+          w.close()
+          WorkerExchange.unregisterListener(wl)
       testListeners.foreach(_.doComplete(result.overall))
       result
     } // end task
