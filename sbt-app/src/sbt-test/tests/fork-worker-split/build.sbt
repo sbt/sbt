@@ -10,7 +10,7 @@ scalaVersion := "3.8.4"
 organization := "com.example"
 
 Test / fork := true
-testForkedWorker := expectedWorkers
+Global / testForkedWorker := expectedWorkers
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.0.4" % Test
 

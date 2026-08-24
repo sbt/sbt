@@ -1,7 +1,12 @@
-# Note: this test is meaningless on less than four cores
-
 > testFull
 > check
+> clean
+$ delete max-concurrent-tests_1
+$ delete max-concurrent-tests_2
+
+> set testForkedParallelism := Some(4)
+> testFull
+> checkAtLeast4
 > clean
 $ delete max-concurrent-tests_1
 $ delete max-concurrent-tests_2

@@ -1817,7 +1817,7 @@ object Defaults extends BuildCommon with DefExtra {
     Def.setting {
       val par = parallelExecution.value
       val max = EvaluateTask.SystemProcessors
-      val maxWorker = (LocalRootProject / Test / testForkedWorker).value
+      val maxWorker = testForkedWorker.value
       Tags.limitAll(if (par) max else 1) ::
         Tags.limit(Tags.ForkedTestGroup, maxWorker) ::
         Tags.exclusiveGroup(Tags.Clean) ::
