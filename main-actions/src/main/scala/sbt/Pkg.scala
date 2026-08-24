@@ -13,6 +13,7 @@ import java.time.OffsetDateTime
 import java.util.jar.{ Attributes, Manifest }
 import scala.jdk.CollectionConverters.*
 import sbt.io.IO
+import sbt.io.IO.Implicits.zipContext
 
 import sjsonnew.{
   :*:,
@@ -229,7 +230,7 @@ object Pkg:
       if (!jar.isFile)
         sys.error(path + " exists, but is not a regular file")
     log.debug(sourcesDebugString(sources))
-    IO.jar(sources, jar, manifest, time)
+    IO.jarParallel(sources, jar, manifest, time)
     log.debug("Done packaging.")
   }
   def sourcesDebugString(sources: Seq[(File, String)]): String =
