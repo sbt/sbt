@@ -475,7 +475,12 @@ lazy val workerProj = (project in file("worker"))
     libraryDependencies ++= Seq(gson, testInterface),
     libraryDependencies += "org.scala-lang" %% "scala3-library" % scalaVersion.value % Test,
     // run / fork := false,
-    Test / fork := true,
+    // Not forked. This project's own classes shadow WorkerMain on a forked worker's classpath, so a
+    // forked run pairs this worker with the older React of the sbt building us; that React drops
+    // every group notification, and a failing test here ends in `[success]` with no results at all.
+    // Note that WorkerMain.process calls System.exit on a request with no "jsonrpc" field, which
+    // unforked would take the sbt server with it, so tests here must only send well-formed requests.
+    Test / fork := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),

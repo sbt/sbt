@@ -8,7 +8,7 @@
 
 package sbt
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 
 import sbt.internal.util.AttributeKey
 import java.util.concurrent.atomic.AtomicBoolean
@@ -48,7 +48,7 @@ private[sbt] sealed trait CancelSentinels {
   def cancelSentinels(): Unit
 }
 
-import java.util.{ LinkedList, Queue }
+import java.util.{ Comparator, LinkedList, PriorityQueue, Queue }
 import java.util.concurrent.{ Executor, Executors, ExecutorCompletionService }
 import annotation.tailrec
 
@@ -136,6 +136,7 @@ object ConcurrentRestrictions {
     n.foldLeft(m) { case (acc, (a, b)) => update(acc, a, b)(f) }
 
   private val poolID = new AtomicInteger(1)
+  private val enqueueCount = new AtomicLong
 
   /**
    * Constructs a CompletionService suitable for backing task execution based on the provided
@@ -210,7 +211,16 @@ object ConcurrentRestrictions {
   ): CompletionService & CancelSentinels & AutoCloseable = {
 
     // Represents submitted work for a task.
-    final class Enqueue(val node: TaskId[?], val work: () => Completed)
+    final class Enqueue(val node: TaskId[?], val work: () => Completed):
+      val index: Long = enqueueCount.getAndIncrement()
+
+    // `index` breaks priority ties: a total order is required by PriorityQueue, and it is what makes
+    // equal-priority tasks come back out in the order they were held back.
+    val byPriority: Comparator[Enqueue] = (a, b) =>
+      a.node.priority.compareTo(b.node.priority) match {
+        case 0 => a.index.compareTo(b.index)
+        case n => n
+      }
 
     new CompletionService with CancelSentinels with AutoCloseable {
       completionServices.put(this, true)
@@ -231,9 +241,10 @@ object ConcurrentRestrictions {
 
       /**
        * Tasks that cannot be run yet because they cannot execute concurrently with the currently
-       * running tasks.
+       * running tasks. Ordered by [[TaskId.priority]], then by submission, so a task that says it
+       * matters more than the default gets the next free slot even if it asked for one later.
        */
-      private val pending = new LinkedList[Enqueue]
+      private val pending = new PriorityQueue[Enqueue](11, byPriority)
 
       private val sentinels: mutable.ListBuffer[JFuture[?]] = mutable.ListBuffer.empty
 

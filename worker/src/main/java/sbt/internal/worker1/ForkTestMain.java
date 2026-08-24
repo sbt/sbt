@@ -198,7 +198,13 @@ public class ForkTestMain {
 
   public static void main(long id, TestInfo info, PrintStream originalOut, ClassLoader classLoader)
       throws Exception {
-    new Run(originalOut, id).run(info, classLoader);
+    main(id, info, originalOut, classLoader, null);
+  }
+
+  public static void main(
+      long id, TestInfo info, PrintStream originalOut, ClassLoader classLoader, WorkerRpc rpc)
+      throws Exception {
+    new Run(originalOut, id, rpc).run(info, classLoader);
   }
 
   // ----------------------------------------------------------------------------------------------------------------
@@ -207,11 +213,13 @@ public class ForkTestMain {
     final PrintStream originalOut;
     final long id;
     final Gson gson;
+    final WorkerRpc rpc;
 
-    Run(PrintStream originalOut, long id) {
+    Run(PrintStream originalOut, long id, WorkerRpc rpc) {
       this.originalOut = originalOut;
       this.id = id;
       this.gson = WorkerMain.mkGson();
+      this.rpc = rpc;
     }
 
     private void run(TestInfo info, ClassLoader classLoader) {
@@ -358,8 +366,15 @@ public class ForkTestMain {
       this.originalOut.flush();
     }
 
-    private ExecutorService executorService(final boolean parallel, final Integer parallelism) {
-      if (parallel) {
+    private ExecutorService executorService(
+        final boolean parallel, final Integer parallelism, final boolean queueMode) {
+      if (queueMode) {
+        // Nothing submitted here waits on anything else submitted here, so a fixed pool cannot
+        // deadlock.
+        final int nbThreads = stealerCount(parallel, parallelism);
+        logDebug("Create a test executor with a thread pool of " + nbThreads + " threads.");
+        return Executors.newFixedThreadPool(nbThreads);
+      } else if (parallel) {
         final int nbThreads =
             (parallelism != null && parallelism > 0)
                 ? parallelism
@@ -374,12 +389,28 @@ public class ForkTestMain {
 
     private void runTests(TestInfo info, ClassLoader classLoader) throws Exception {
       Thread.currentThread().setContextClassLoader(classLoader);
-      final ExecutorService executor = executorService(info.parallel, info.parallelism);
+      final ExecutorService executor =
+          executorService(info.parallel, info.parallelism, info.queueMode);
       final TaskDef[] tests = info.taskDefs.toArray(new TaskDef[] {});
-      final int nFrameworks = info.testRunners.size();
       final Logger[] loggers = {remoteLogger(info.ansiCodesSupported)};
 
-      for (TestInfo.TestRunner testRunner : info.testRunners) {
+      try {
+        runFrameworks(info, classLoader, executor, tests, loggers);
+      } finally {
+        // The worker JVM exits at the end of a run, so only an in-process driver notices the pool.
+        executor.shutdown();
+      }
+    }
+
+    private void runFrameworks(
+        TestInfo info,
+        ClassLoader classLoader,
+        final ExecutorService executor,
+        final TaskDef[] tests,
+        final Logger[] loggers)
+        throws Exception {
+      for (int frameworkIndex = 0; frameworkIndex < info.testRunners.size(); frameworkIndex++) {
+        final TestInfo.TestRunner testRunner = info.testRunners.get(frameworkIndex);
         final String[] frameworkArgs = testRunner.mainRunnerArgs.toArray(new String[] {});
         final String[] remoteFrameworkArgs =
             testRunner.mainRunnerRemoteArgs.toArray(new String[] {});
@@ -397,41 +428,134 @@ public class ForkTestMain {
           }
         }
 
-        if (framework == null) continue;
+        // sbt only sends frameworks it loaded from this same classpath. Skipping one that fails to
+        // load here would run none of its classes and still exit 0.
+        if (framework == null)
+          throw new IllegalStateException(
+              "Could not load test framework "
+                  + testRunner.implClassNames
+                  + " in the forked JVM, so none of the test classes it matched would have run");
 
-        final LinkedHashSet<TaskDef> filteredTests = new LinkedHashSet<>();
-        for (final Fingerprint testFingerprint : framework.fingerprints()) {
-          for (final TaskDef test : tests) {
-            // TODO: To pass in correct explicitlySpecified and selectors
-            if (matches(testFingerprint, test.fingerprint()))
-              filteredTests.add(
-                  new TaskDef(
-                      test.fullyQualifiedName(),
-                      test.fingerprint(),
-                      test.explicitlySpecified(),
-                      test.selectors()));
-          }
-        }
         final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, classLoader);
-        final Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
-        logDebug(
-            "Runner for "
-                + framework.getClass().getName()
-                + " produced "
-                + tasks.length
-                + " initial tasks for "
-                + filteredTests.size()
-                + " tests.");
 
         Thread callDoneOnShutdown = new Thread(() -> runner.done());
         Runtime.getRuntime().addShutdownHook(callDoneOnShutdown);
 
-        runTestTasks(executor, tasks, loggers);
+        if (info.queueMode) {
+          logDebug(
+              "Runner for " + framework.getClass().getName() + " will steal from sbt's queue.");
+          // `tests`, not a filtered set: sbt hands out indices into the full taskDefs vector.
+          runStealing(
+              runner, tests, frameworkIndex, loggers, executor, info.parallel, info.parallelism);
+        } else {
+          final LinkedHashSet<TaskDef> filteredTests = new LinkedHashSet<>();
+          for (final Fingerprint testFingerprint : framework.fingerprints()) {
+            for (final TaskDef test : tests) {
+              // TODO: To pass in correct explicitlySpecified and selectors
+              if (matches(testFingerprint, test.fingerprint()))
+                filteredTests.add(
+                    new TaskDef(
+                        test.fullyQualifiedName(),
+                        test.fingerprint(),
+                        test.explicitlySpecified(),
+                        test.selectors()));
+            }
+          }
+          final Task[] tasks =
+              runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
+          logDebug(
+              "Runner for "
+                  + framework.getClass().getName()
+                  + " produced "
+                  + tasks.length
+                  + " initial tasks for "
+                  + filteredTests.size()
+                  + " tests.");
+          runTestTasks(executor, tasks, loggers);
+        }
 
         runner.done();
 
         Runtime.getRuntime().removeShutdownHook(callDoneOnShutdown);
       }
+    }
+
+    /**
+     * How many classes this worker runs at once in queue mode: one unless asked for more, since the
+     * JVM count is the parallelism dial. `parallel` off means one whatever the thread count.
+     */
+    private static int stealerCount(final boolean parallel, final Integer parallelism) {
+      if (!parallel) return 1;
+      return (parallelism != null && parallelism > 0) ? parallelism : 1;
+    }
+
+    private void runStealing(
+        final Runner runner,
+        final TaskDef[] all,
+        final int frameworkIndex,
+        final Logger[] loggers,
+        final ExecutorService executor,
+        final boolean parallel,
+        final Integer parallelism) {
+      // Queue mode over a transport with no reply channel; returning would run no tests at all.
+      if (this.rpc == null)
+        throw new IllegalStateException(
+            "sbt asked this worker to lease test classes but gave it no channel to ask on");
+      final int threads = stealerCount(parallel, parallelism);
+      // A pool of its own: each steal loop blocks on futures it submits to `executor`.
+      final ExecutorService stealerPool = Executors.newFixedThreadPool(threads);
+      final List<Future<?>> stealers = new ArrayList<>();
+      for (int t = 0; t < threads; t++) {
+        stealers.add(
+            stealerPool.submit(
+                () -> {
+                  // Each request acknowledges the class this thread just finished, so sbt can
+                  // tell a class that ran from one that was handed out and lost.
+                  String done = "null";
+                  while (true) {
+                    final String params =
+                        String.format(
+                            "{\"id\": %d, \"framework\": %d, \"done\": %s}",
+                            this.id, frameworkIndex, done);
+                    final Integer i = this.rpc.requestIndex("nextTest", params);
+                    if (i == null) {
+                      if (this.rpc.isBroken())
+                        throw new IllegalStateException(
+                            "Lost contact with sbt while asking for the next test class to run");
+                      return null;
+                    }
+                    if (i < 0 || i >= all.length)
+                      throw new IllegalStateException(
+                          "sbt handed out test index "
+                              + i
+                              + ", which is not one of the "
+                              + all.length
+                              + " test classes this worker was given");
+                    runTestTasks(executor, runner.tasks(new TaskDef[] {all[i]}), loggers);
+                    // Acknowledged only once the class and its nested tasks are finished.
+                    done = i.toString();
+                  }
+                }));
+      }
+      // Join every thread before failing, so none reports into a session sbt gave up on.
+      Throwable failure = null;
+      try {
+        for (final Future<?> s : stealers) {
+          try {
+            s.get();
+          } catch (final ExecutionException e) {
+            if (failure == null) failure = e.getCause() == null ? e : e.getCause();
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            if (failure == null) failure = e;
+          }
+        }
+      } finally {
+        stealerPool.shutdown();
+      }
+      // Exiting 0 would drop the failing thread's unacknowledged lease from the report.
+      if (failure != null)
+        throw new RuntimeException("A forked test worker thread failed: " + failure, failure);
     }
 
     private void runTestTasks(
@@ -446,13 +570,25 @@ public class ForkTestMain {
         // executes immediately the nested tasks
         //       At the moment, I'm especially interested in JUnit, which doesn't have nested tasks.
         final List<Task> nestedTasks = new ArrayList<>();
+        // Join every task before raising, so none of them reports into a run already given up on.
+        Throwable failure = null;
         for (final Future<Task[]> futureNestedTask : futureNestedTasks) {
           try {
             nestedTasks.addAll(Arrays.asList(futureNestedTask.get()));
-          } catch (final Exception e) {
-            logError("Failed to execute task " + futureNestedTask);
+          } catch (final ExecutionException e) {
+            final Throwable cause = e.getCause() == null ? e : e.getCause();
+            logError("Failed to execute a test task: " + cause);
+            if (failure == null) failure = cause;
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            if (failure == null) failure = e;
           }
         }
+        // A task can fail outside runTest's guard -- writing the group's start or end, or asking
+        // the
+        // task what it is. Swallowed, the class reported nothing while its lease was acknowledged.
+        if (failure != null)
+          throw new RuntimeException("A forked test task failed: " + failure, failure);
         runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers);
       }
     }

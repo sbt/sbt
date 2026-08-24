@@ -403,7 +403,8 @@ object Keys {
   @transient
   val testListeners = taskKey[Seq[TestReportListener]]("Defines test listeners.").withRank(DTask)
   val testForkedParallel = settingKey[Boolean]("Whether forked tests should be executed in parallel").withRank(CTask)
-  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors.").withRank(CTask)
+  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors, or to one for a group that testForkedWorkStealing spreads over several JVMs, since the JVM count is then the parallelism dial.").withRank(CTask)
+  val testForkedWorkStealing = settingKey[Boolean]("Spread a forked test group's classes over several JVMs, which lease them one at a time from a queue sbt serves. Off by default. Read at the test task's own scope, so a build can enable it globally and a project whose suites clobber shared external state can opt out with `Test / testForkedWorkStealing := false`. A group may use as many JVMs as concurrentRestrictions admits concurrent forked test groups: one by default, raised by replacing the default rule seq, since += only tightens.").withRank(CTask)
   val testExecution = taskKey[Tests.Execution]("Settings controlling test execution").withRank(DTask)
   val testFilter = taskKey[Seq[String] => Seq[String => Boolean]]("Filter controlling whether the test is executed").withRank(DTask)
   @transient

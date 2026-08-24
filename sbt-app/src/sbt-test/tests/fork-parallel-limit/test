@@ -1,0 +1,12 @@
+# Raising the ForkedTestGroup limit really does let that many forked groups overlap, which is the
+# same number work stealing uses as its fan-out ceiling. The barrier only passes if that many are
+# sitting in it together, so this is a fact about concurrency rather than about elapsed time.
+> set Global / concurrentRestrictions := Seq(Tags.limitAll(16), Tags.limit(Tags.ForkedTestGroup, 4))
+> testFull
+> checkPeak
+$ delete arrivals
+# And the same with work stealing on, which reads the ceiling from that rule rather than from a
+# setting.
+> set Global / testForkedWorkStealing := true
+> testFull
+> checkPeak
