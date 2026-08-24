@@ -127,7 +127,8 @@ object SysProp:
   def cacheTestResult: Boolean =
     getOrTrue("sbt.cache_test_result")
 
-  def testForkedWorker: Int = int("sbt.test_forked_worker", EvaluateTask.SystemProcessors / 3)
+  def testForkedWorker: Int =
+    int("sbt.test_forked_worker", math.max(EvaluateTask.SystemProcessors / 3, 1))
 
   /**
    * Indicates whether formatting has been disabled in environment variables.
