@@ -506,7 +506,8 @@ lazy val testingProj = (project in file("testing"))
       scalaXml.value,
       testInterface,
       launcherInterface,
-      sjsonNewScalaJson.value
+      sjsonNewScalaJson.value,
+      scalaVerify % Test
     ),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     Compile / managedSourceDirectories +=
