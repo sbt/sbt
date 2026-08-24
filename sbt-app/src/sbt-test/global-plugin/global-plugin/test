@@ -13,3 +13,9 @@ $ copy-file changes/global-plugins.sbt global/plugins/plugins.sbt
 $ copy-file changes/plugins.sbt project/plugins.sbt
 > reload
 > check
+
+# The tests of one scripted run share a directory, and `global` is the part of it that is kept between
+# them, so delete what this test installed there.
+$ delete global/plugins global/useGlobalAutoPlugin.sbt
+$ absent global/plugins global/useGlobalAutoPlugin.sbt
+> reload
