@@ -404,7 +404,8 @@ object Keys {
   @transient
   val testListeners = taskKey[Seq[TestReportListener]]("Defines test listeners.").withRank(DTask)
   val testForkedParallel = settingKey[Boolean]("Whether forked tests should be executed in parallel").withRank(CTask)
-  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors.").withRank(CTask)
+  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Default: 2.").withRank(CTask)
+  val testForkedWorker = settingKey[Int]("Maximum number of test workers. Default available processors / 3.")
   val testExecution = taskKey[Tests.Execution]("Settings controlling test execution").withRank(DTask)
   val testFilter = taskKey[Seq[String] => Seq[String => Boolean]]("Filter controlling whether the test is executed").withRank(DTask)
   @transient

@@ -193,6 +193,7 @@ object Defaults extends BuildCommon with DefExtra {
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== true,
       testForkedParallelism :== None,
+      testForkedWorker :== SysProp.testForkedWorker,
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
@@ -1404,7 +1405,7 @@ object Defaults extends BuildCommon with DefExtra {
       )
     ) ++ inScope(GlobalScope)(
       Seq(
-        derive(testGrouping := Def.uncached(singleTestGroupDefault.value))
+        derive(testGrouping := Def.uncached(splitTestGroupDefault.value))
       )
     )
 
@@ -1441,6 +1442,35 @@ object Defaults extends BuildCommon with DefExtra {
         Seq.empty
       )
     )
+  }
+
+  def splitTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] =
+    inTask(key, splitTestGroupDefault)
+
+  lazy val splitTestGroupDefault: Initialize[Task[Seq[Tests.Group]]] = Def.taskIf {
+    if {
+      val tests = definedTests.value
+      val byName = tests.groupBy(_.name).toVector.sortBy(_._1)
+      val n = math.max(
+        1,
+        math.min(testForkedWorker.value, byName.size)
+      )
+      fork.value && n > 1
+    } then
+      val tests = definedTests.value
+      val opts = forkOptions.value
+      val byName = tests.groupBy(_.name).toVector.sortBy(_._1)
+      val n = math.max(
+        1,
+        math.min(testForkedWorker.value, byName.size)
+      )
+      val buckets = Array.fill(n)(Vector.newBuilder[TestDefinition])
+      byName.zipWithIndex.foreach { case ((_, defs), i) => buckets(i % n) ++= defs }
+      buckets.toVector.zipWithIndex.collect {
+        case (b, i) if b.result().nonEmpty =>
+          new Tests.Group(s"<split-$i>", b.result(), Tests.SubProcess(opts), Seq.empty)
+      }
+    else singleTestGroupDefault.value
   }
 
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
@@ -1787,8 +1817,9 @@ object Defaults extends BuildCommon with DefExtra {
     Def.setting {
       val par = parallelExecution.value
       val max = EvaluateTask.SystemProcessors
+      val maxWorker = (LocalRootProject / Test / testForkedWorker).value
       Tags.limitAll(if (par) max else 1) ::
-        Tags.limit(Tags.ForkedTestGroup, 1) ::
+        Tags.limit(Tags.ForkedTestGroup, maxWorker) ::
         Tags.exclusiveGroup(Tags.Clean) ::
         Nil
     }

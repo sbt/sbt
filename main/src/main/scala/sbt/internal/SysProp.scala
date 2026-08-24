@@ -127,6 +127,8 @@ object SysProp:
   def cacheTestResult: Boolean =
     getOrTrue("sbt.cache_test_result")
 
+  def testForkedWorker: Int = int("sbt.test_forked_worker", EvaluateTask.SystemProcessors / 3)
+
   /**
    * Indicates whether formatting has been disabled in environment variables.
    * 1. -Dsbt.log.noformat=true means no formatting.

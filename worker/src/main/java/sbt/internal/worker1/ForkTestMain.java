@@ -358,12 +358,14 @@ public class ForkTestMain {
       this.originalOut.flush();
     }
 
+    private int defaultParallelism() {
+      return 2;
+    }
+
     private ExecutorService executorService(final boolean parallel, final Integer parallelism) {
       if (parallel) {
         final int nbThreads =
-            (parallelism != null && parallelism > 0)
-                ? parallelism
-                : Runtime.getRuntime().availableProcessors();
+            (parallelism != null && parallelism > 0) ? parallelism : defaultParallelism();
         logDebug("Create a test executor with a thread pool of " + nbThreads + " threads.");
         return Executors.newFixedThreadPool(nbThreads);
       } else {
