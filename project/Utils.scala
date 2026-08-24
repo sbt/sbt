@@ -4,7 +4,7 @@ import sbt.given
 import sbt.util.CacheImplicits.given
 import Keys.*
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafix
-
+import PublishBinPlugin.autoImport.publishLocalBin
 import sbt.internal.inc.Analysis
 
 object Utils {
@@ -20,6 +20,7 @@ object Utils {
   lazy val noPublish = Seq(
     publish := {},
     publish / skip := true,
+    publishLocalBin / skip := true,
   )
 
   lazy val javaOnlySettings: Seq[Setting[?]] = Seq(

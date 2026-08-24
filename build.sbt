@@ -408,7 +408,7 @@ lazy val hashBenchmark = (project in file("internal") / "hash-benchmark")
     Jmh / run / javaOptions ++= Seq("-Xmx1G", "-Dfile.encoding=UTF8"),
     libraryDependencies ++= Seq(blake3, zeroAllocationHashing),
     mimaSettings,
-    publish / skip := true,
+    Utils.noPublish,
   )
 
 // Builds on cache to provide caching for filesystem-related operations
@@ -489,7 +489,7 @@ lazy val exampleWorkProj = (project in file("internal") / "example-work")
   .settings(
     minimalSettings,
     name := "example work",
-    publish / skip := true,
+    Utils.noPublish,
   )
 
 // Basic task engine
@@ -901,6 +901,7 @@ lazy val serverTestProj = (project in file("server-test"))
       IO.write(file, content)
       Seq(file)
     },
+    Utils.noPublish,
   )
 
 val isWin = scala.util.Properties.isWin

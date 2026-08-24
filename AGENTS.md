@@ -9,7 +9,7 @@ Compiling with sbt
 ------------------
 
 ```bash
-sbt compile
+sbt --client --color=false --supershell=false --batch compile
 ```
 
 Pull request guideline
@@ -24,7 +24,7 @@ Coding style
 ------------
 
 ```bash
-sbt scalafmtAll
+sbt --client --color=false --supershell=false --batch scalafmtAll
 ```
 
 - Follow [Coding style and best practices](contributing-docs/03_coding_style.md)
@@ -40,6 +40,12 @@ For changes that require coordination with file changes and tasks, use scripted 
 - [contributing-docs/05_scripted_tests.md](contributing-docs/05_scripted_tests.md)
 - [contributing-docs/06_manual_tests.md](contributing-docs/06_manual_tests.md)
 
+For example, here's how to run "actions/compile" scripted test:
+
+```bash
+sbt --color=false --supershell=false --client --batch scripted actions/compile
+```
+
 Tech stack
 ----------
 
@@ -54,7 +60,7 @@ This means removing public method signature MUST be avoided.
 Use mima to check:
 
 ```bash
-sbt mimaReportBinaryIssues
+sbt --client --color=false --supershell=false --batch mimaReportBinaryIssues
 ```
 
 Copyright
