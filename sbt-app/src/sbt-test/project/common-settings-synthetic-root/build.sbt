@@ -5,6 +5,11 @@ scalaVersion := scala212
 val o = "com.example"
 organization := o
 
+lazy val aa = settingKey[Seq[String]]("")
+Global / aa := Seq("initial-value")
+// explicitly ThisBuild-scoped settings must apply exactly once, not once per project (#9668)
+ThisBuild / aa += "added-value"
+
 lazy val foo = project
 lazy val bar = project
   .settings(
@@ -24,5 +29,11 @@ check := {
   assert((bar / organization).value == "com.example.bar", s"unexpected bar / organization = {(bar / organization).value}")
   // Test that baz/build.sbt bare settings get loaded
   assert((baz / organization).value == "com.example.baz", s"unexpected baz/organization")
+
+  // Test that ThisBuild / aa += is applied exactly once, not once per project (#9668)
+  val expectedAa = Seq("initial-value", "added-value")
+  assert((foo / aa).value == expectedAa, s"(foo / aa).value: ${(foo / aa).value}")
+  assert((bar / aa).value == expectedAa, s"(bar / aa).value: ${(bar / aa).value}")
+  assert((baz / aa).value == expectedAa, s"(baz / aa).value: ${(baz / aa).value}")
 }
 check / aggregate := false
