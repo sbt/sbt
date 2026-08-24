@@ -15,20 +15,26 @@ import java.net.{ InetAddress, ServerSocket, StandardProtocolFamily, UnixDomainS
 import java.nio.channels.{ ServerSocketChannel, SocketChannel }
 import java.nio.file.{ Files, Path as NioPath }
 import java.util.Scanner
+import java.util.concurrent.ConcurrentLinkedQueue
 import sbt.io.IO
 import sbt.internal.io.Retry
 import sbt.internal.worker1.*
 import sbt.protocol.DuplexChannels
 import sbt.testing.Framework
 import scala.sys.process.{ BasicIO, Process, ProcessIO }
-import scala.collection.mutable
 import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ Await, Promise }
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 
 object WorkerExchange:
+  /**
+   * What makes two test runs interchangeable enough to reuse the same worker JVM
+   */
+  private case class WorkerKey(fo: ForkOptions)
+
   val listeners: mutable.ListBuffer[WorkerResponseListener] = ListBuffer.empty
   private val loopback = InetAddress.getByName(null)
   private val jdkIpcSupportCache = TrieMap.empty[Option[File], Boolean]
@@ -68,6 +74,15 @@ object WorkerExchange:
           catch case NonFatal(_) => false
     jdkIpcSupportCache.getOrElseUpdate(javaHome, doDetect)
 
+  // Idle checked-in workers, keyed by WorkerKey; outlives any single test task execution.
+  private val idleWorkers = TrieMap.empty[WorkerKey, ConcurrentLinkedQueue[WorkerProxy]]
+
+  // Global checkin order across all keys, oldest first, for LRU eviction under a pool cap.
+  private val idleOrder = new ConcurrentLinkedQueue[(WorkerKey, WorkerProxy)]()
+
+  // Best-effort cleanup: forked children outlive this JVM otherwise.
+  Runtime.getRuntime.addShutdownHook(new Thread(() => closeIdleWorkers()))
+
   /**
    * Start a worker process.
    */
@@ -75,6 +90,14 @@ object WorkerExchange:
       fo: ForkOptions,
       extraCp: Seq[File],
       connectionType: WorkerConnection,
+  ): WorkerProxy =
+    startWorker(fo, extraCp, connectionType, persistent = false)
+
+  def startWorker(
+      fo: ForkOptions,
+      extraCp: Seq[File],
+      connectionType: WorkerConnection,
+      persistent: Boolean,
   ): WorkerProxy =
     // put extraCp first so we can shadow the WorkerMain class
     val fullCp = extraCp ++ Seq(
@@ -128,7 +151,8 @@ object WorkerExchange:
       "-classpath",
       fullCp.mkString(File.pathSeparator),
       classOf[WorkerMain].getCanonicalName,
-    ) ++ connArgs
+    ) ++ connArgs ++
+      (if persistent then Seq("--persistent_worker") else Nil)
     val onStdoutLine: String => Unit = connectionType match
       case WorkerConnection.Stdio => notifyListeners
       case _                      => (line) => scala.Console.out.println(line)
@@ -156,6 +180,69 @@ object WorkerExchange:
     val path = Files.createTempFile(dir, "fork-", ".sock")
     Files.deleteIfExists(path)
     path
+
+  /**
+   * `maxPoolSize` bounds the total number of idle workers kept across every key combined (not
+   * per key); once a checkin would exceed it, the globally least-recently-used idle worker is
+   * closed to make room, regardless of which key it belongs to.
+   */
+  def withWorker[A1](fo: ForkOptions, extraCp: Seq[File], persistent: Boolean, maxPoolSize: Int)(
+      f: WorkerProxy => A1
+  ): A1 =
+    val ct =
+      if persistent then WorkerConnection.Tcp
+      else if supportsUnixDomainSockets(fo.javaHome) then WorkerConnection.Ipc(newIpcSocketPath())
+      else WorkerConnection.Stdio
+    val key = WorkerKey(fo)
+    def checkout: Option[WorkerProxy] =
+      idleWorkers
+        .get(key)
+        .flatMap: q =>
+          Iterator
+            .continually(Option(q.poll()))
+            .takeWhile(_.isDefined)
+            .flatten
+            .map: w =>
+              idleOrder.remove(key -> w); w
+            .find: w =>
+              val alive = w.process.isAlive()
+              if !alive then
+                try w.close()
+                catch case NonFatal(_) => ()
+              alive
+    def checkin(worker: WorkerProxy): Unit =
+      if worker.process.isAlive() then
+        idleWorkers.getOrElseUpdate(key, new ConcurrentLinkedQueue()).add(worker)
+        idleOrder.add(key -> worker)
+        evictExcess(maxPoolSize)
+    val w = (if persistent then checkout else None)
+      .getOrElse(startWorker(fo, extraCp, ct, persistent))
+    try f(w)
+    finally
+      if persistent && w.process.isAlive() then checkin(w)
+      else w.close()
+
+  /** Asks the worker to shut itself down before closing the connection and reaping the process. */
+  private def shutdownWorker(w: WorkerProxy): Unit =
+    try w.println("""{ "jsonrpc": "2.0", "method": "bye", "params": {}, "id": 0 }""")
+    catch case NonFatal(_) => ()
+    try w.close()
+    catch case NonFatal(_) => ()
+    w.process.destroy()
+
+  private def evictExcess(maxPoolSize: Int): Unit =
+    while idleOrder.size() > maxPoolSize do
+      Option(idleOrder.poll()).foreach { (k, w) =>
+        idleWorkers.get(k).foreach(_.remove(w))
+        shutdownWorker(w)
+      }
+
+  /** Close every idle worker. Workers currently checked out are unaffected. */
+  def closeIdleWorkers(): Unit =
+    idleWorkers.values.foreach { q =>
+      Iterator.continually(Option(q.poll())).takeWhile(_.isDefined).flatten.foreach(shutdownWorker)
+    }
+    idleOrder.clear()
 
   def registerListener(listener: WorkerResponseListener): Unit =
     synchronized:

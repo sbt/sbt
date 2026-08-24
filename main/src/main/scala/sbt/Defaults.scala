@@ -193,6 +193,7 @@ object Defaults extends BuildCommon with DefExtra {
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== true,
       testForkedParallelism :== None,
+      testPersistentWorker :== true,
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
@@ -1257,6 +1258,10 @@ object Defaults extends BuildCommon with DefExtra {
     testTaskOptions(testSelected),
     testTaskOptions(testQuick),
     testDefaults,
+    baseDirectory := {
+      if testPersistentWorker.value then (ThisBuild / baseDirectory).value
+      else baseDirectory.value
+    },
     testLoader := Def.uncached(ClassLoaders.testTask.value),
     loadedTestFrameworks := Def.uncached {
       val loader = testLoader.value
@@ -1277,6 +1282,11 @@ object Defaults extends BuildCommon with DefExtra {
     executeTests := Def.uncached(Def.taskDyn {
       import sbt.TupleSyntax.*
       val fpm = testForkedParallelism.value
+      val pw = testPersistentWorker.value
+      // Reuse the ForkedTestGroup concurrency limit as the persistent worker pool cap: never keep
+      // more idle worker JVMs around than the number of forked test groups allowed to run at once.
+      val pwMax =
+        Tags.effectiveLimit(concurrentRestrictions.value, Tags.ForkedTestGroup, 12)
       (
         test / streams,
         loadedTestFrameworks,
@@ -1302,7 +1312,9 @@ object Defaults extends BuildCommon with DefExtra {
           jo,
           clls,
           s"${Util.quoteIfNotScalaId(thisProj.id)} / ",
-          c
+          c,
+          pw,
+          pwMax,
         )
       }
     }.value),
@@ -1522,6 +1534,9 @@ object Defaults extends BuildCommon with DefExtra {
         classLoaderLayeringStrategy.value,
         projectId = s"${Util.quoteIfNotScalaId(thisProject.value.id)} / ",
         converter = fileConverter.value,
+        persistentWorker = testPersistentWorker.value,
+        persistentWorkerPoolMax =
+          Tags.effectiveLimit(concurrentRestrictions.value, Tags.ForkedTestGroup, 12),
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
@@ -1577,93 +1592,14 @@ object Defaults extends BuildCommon with DefExtra {
       groups: Seq[Tests.Group],
       config: Tests.Execution,
       cp: Classpath,
-      converter: FileConverter,
-  ): Task[Tests.Output] = {
-    allTestGroupsTask(
-      s,
-      frameworks,
-      loader,
-      groups,
-      config,
-      cp,
-      forkedParallelExecution = false,
-      forkedParallelism = None,
-      javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
-      projectId = "",
-      converter = converter,
-    )
-  }
-
-  private[sbt] def allTestGroupsTask(
-      s: TaskStreams,
-      frameworks: Map[TestFramework, Framework],
-      loader: ClassLoader,
-      groups: Seq[Tests.Group],
-      config: Tests.Execution,
-      cp: Classpath,
-      converter: FileConverter,
-      forkedParallelExecution: Boolean,
-  ): Task[Tests.Output] = {
-    allTestGroupsTask(
-      s,
-      frameworks,
-      loader,
-      groups,
-      config,
-      cp,
-      forkedParallelExecution,
-      forkedParallelism = None,
-      javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
-      projectId = "",
-      converter = converter,
-    )
-  }
-
-  // Binary compatibility overload for sbt 2.0.0-RC7
-  private[sbt] def allTestGroupsTask(
-      s: TaskStreams,
-      frameworks: Map[TestFramework, Framework],
-      loader: ClassLoader,
-      groups: Seq[Tests.Group],
-      config: Tests.Execution,
-      cp: Classpath,
-      forkedParallelExecution: Boolean,
-      javaOptions: Seq[String],
-      strategy: ClassLoaderLayeringStrategy,
-      projectId: String,
-      converter: FileConverter,
-  ): Task[Tests.Output] = {
-    allTestGroupsTask(
-      s,
-      frameworks,
-      loader,
-      groups,
-      config,
-      cp,
-      forkedParallelExecution,
-      forkedParallelism = None,
-      javaOptions,
-      strategy,
-      projectId,
-      converter,
-    )
-  }
-
-  private[sbt] def allTestGroupsTask(
-      s: TaskStreams,
-      frameworks: Map[TestFramework, Framework],
-      loader: ClassLoader,
-      groups: Seq[Tests.Group],
-      config: Tests.Execution,
-      cp: Classpath,
       forkedParallelExecution: Boolean,
       forkedParallelism: Option[Int],
       javaOptions: Seq[String],
       strategy: ClassLoaderLayeringStrategy,
       projectId: String,
       converter: FileConverter,
+      persistentWorker: Boolean,
+      persistentWorkerPoolMax: Int,
   ): Task[Tests.Output] = {
     val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
       groups
@@ -1701,6 +1637,8 @@ object Defaults extends BuildCommon with DefExtra {
             s.log,
             forkedParallelism,
             strategy != ClassLoaderLayeringStrategy.Raw,
+            persistentWorker,
+            persistentWorkerPoolMax,
             (Tags.ForkedTestGroup, 1) +: group.tags*
           )
         case Tests.InProcess =>

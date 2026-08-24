@@ -78,6 +78,14 @@ object Tags {
 
   def getInt(m: TagMap, tag: Tag): Int = m.getOrElse(tag, 0)
 
+  def effectiveLimit(rules: Seq[Rule], tag: Tag, bound: Int): Int =
+    val pred = predicate(rules)
+    @tailrec def loop(n: Int): Int =
+      if n > bound then bound
+      else if pred(Map(tag -> n, All -> n)) then loop(n + 1)
+      else n - 1
+    loop(1) max 1
+
   /**
    * Constructs a custom Rule from the predicate `f`.
    * The input represents the weighted tags of a set of tasks.

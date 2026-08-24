@@ -21,6 +21,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Scanner;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
@@ -72,10 +73,11 @@ public final class WorkerMain {
         WorkerMain app = new WorkerMain();
         app.argFileWork(Paths.get(args[0].substring(1)));
         System.exit(0);
-      } else if (args.length == 2 && args[0].equals("--tcp")) {
+      } else if (args.length >= 2 && args[0].equals("--tcp")) {
         WorkerMain app = new WorkerMain();
         int serverPort = Integer.parseInt(args[1]);
-        app.socketWork(serverPort);
+        boolean persistentWorker = Arrays.asList(args).contains("--persistent_worker");
+        app.socketWork(serverPort, persistentWorker);
         System.exit(0);
       } else if (args.length == 2 && args[0].equals("--ipc")) {
         WorkerMain app = new WorkerMain();
@@ -115,14 +117,18 @@ public final class WorkerMain {
     process(line);
   }
 
-  void socketWork(int serverPort) throws Exception {
+  void socketWork(int serverPort, boolean persistentWorker) throws Exception {
     InetAddress loopback = InetAddress.getByName(null);
     Socket client = new Socket(loopback, serverPort);
     this.jsonOut = new PrintStream(client.getOutputStream(), true, "UTF-8");
     this.inScanner = new Scanner(client.getInputStream(), "UTF-8");
-    if (this.inScanner.hasNextLine()) {
+    boolean keepGoing = true;
+    while (keepGoing && this.inScanner.hasNextLine()) {
       String line = this.inScanner.nextLine();
-      process(line);
+      keepGoing = process(line) && persistentWorker;
+      if (keepGoing) {
+        client.setSoTimeout(30 * 60 * 1000);
+      }
     }
   }
 
@@ -137,7 +143,7 @@ public final class WorkerMain {
   }
 
   /** This processes single request of supposed JSON line. */
-  void process(String json) throws Exception {
+  boolean process(String json) throws Exception {
     JsonElement elem = JsonParser.parseString(json);
     JsonObject o = elem.getAsJsonObject();
     if (!o.has("jsonrpc")) {
@@ -161,13 +167,14 @@ public final class WorkerMain {
         case "console":
           ConsoleInfo consoleInfo = g.fromJson(params, ConsoleInfo.class);
           console(id, consoleInfo);
-          return;
+          return false;
         case "bye":
           break;
       }
       String response = String.format("{ \"jsonrpc\": \"2.0\", \"result\": 0, \"id\": %d }", id);
       this.jsonOut.println(response);
       this.jsonOut.flush();
+      return !method.equals("bye");
     } catch (Throwable e) {
       WorkerError err = new WorkerError(1, e.getMessage());
       String errMessage = g.toJson(err, err.getClass());
@@ -176,6 +183,7 @@ public final class WorkerMain {
       this.jsonOut.println(errJson);
       this.jsonOut.flush();
       e.printStackTrace();
+      return false;
     }
   }
 
