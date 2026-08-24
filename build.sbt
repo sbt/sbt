@@ -476,6 +476,11 @@ lazy val workerProj = (project in file("worker"))
     libraryDependencies += "org.scala-lang" %% "scala3-library" % scalaVersion.value % Test,
     // run / fork := false,
     Test / fork := true,
+    // WorkerMain.java uses JDK 16+ Unix domain socket APIs (StandardProtocolFamily.UNIX,
+    // UnixDomainSocketAddress, SocketChannel); override the build-wide -source/-target 1.8.
+    compile / javacOptions ~= { opts =>
+      opts.filterNot(v => v == "-source" || v == "-target" || v == "1.8") ++ Seq("--release", "17")
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
@@ -590,6 +595,11 @@ lazy val actionsProj = (project in file("main-actions"))
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // WorkerConnection gained an Ipc(path) case; mixing a parameterized case into
+      // the enum drops the synthetic values()/valueOf() Java-enum forwarders. This is
+      // an internal (sbt.internal) type not meant for external consumption.
+      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.valueOf"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.values"),
     ),
   )
   .dependsOn(lmCore)

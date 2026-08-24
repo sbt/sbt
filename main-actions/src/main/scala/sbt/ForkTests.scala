@@ -141,7 +141,7 @@ private[sbt] object ForkTests:
       )
       testListeners.foreach(_.doInit())
       val result =
-        val ct = WorkerConnection.Tcp
+        val ct = WorkerConnection.Ipc(WorkerExchange.newIpcSocketPath())
         val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles, ct)
         val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
         try

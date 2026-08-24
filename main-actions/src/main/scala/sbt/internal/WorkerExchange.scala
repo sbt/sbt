@@ -11,11 +11,14 @@ package internal
 
 import org.scalasbt.shadedgson.com.google.gson.Gson
 import java.io.*
-import java.net.{ InetAddress, ServerSocket }
+import java.net.{ InetAddress, ServerSocket, StandardProtocolFamily, UnixDomainSocketAddress }
+import java.nio.channels.ServerSocketChannel
+import java.nio.file.{ Files, Path as NioPath }
 import java.util.Scanner
 import sbt.io.IO
 import sbt.internal.io.Retry
 import sbt.internal.worker1.*
+import sbt.protocol.DuplexChannels
 import sbt.testing.Framework
 import scala.sys.process.{ BasicIO, Process, ProcessIO }
 import scala.collection.mutable
@@ -42,28 +45,49 @@ object WorkerExchange:
       IO.classLocationPath(classOf[Gson]).toFile,
     )
     val inputRef = Promise[OutputStream]()
-    val socketOpt = connectionType match
+    def runAccepter(out: OutputStream, in: InputStream): Unit =
+      inputRef.success(out)
+      val scanner = Scanner(in, "UTF-8")
+      while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
+    val (connArgs, closer): (Seq[String], Option[AutoCloseable]) = connectionType match
       case WorkerConnection.Tcp =>
         val serverSocket = Retry(ServerSocket(0, 1, loopback))
         val accepter = Thread(() => {
           val socket = serverSocket.accept()
-          inputRef.success(socket.getOutputStream())
-          val scanner = Scanner(socket.getInputStream(), "UTF-8")
-          while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
+          runAccepter(socket.getOutputStream(), socket.getInputStream())
         })
         accepter.setName("sbt-fork-test-response-reader")
         accepter.setPriority(Thread.NORM_PRIORITY + 1)
         accepter.start()
-        Some(serverSocket)
-      case _ => None
+        (Seq("--tcp", serverSocket.getLocalPort().toString()), Some(serverSocket))
+      case WorkerConnection.Ipc(path) =>
+        val serverChannel = Retry {
+          Files.deleteIfExists(path)
+          val ch = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+          ch.bind(UnixDomainSocketAddress.of(path))
+          ch
+        }
+        val accepter = Thread(() => {
+          val channel = serverChannel.accept()
+          runAccepter(
+            DuplexChannels.newOutputStream(channel),
+            DuplexChannels.newInputStream(channel)
+          )
+        })
+        accepter.setName("sbt-fork-test-response-reader")
+        accepter.setPriority(Thread.NORM_PRIORITY + 1)
+        accepter.start()
+        val closer: AutoCloseable = () => {
+          serverChannel.close()
+          Files.deleteIfExists(path)
+        }
+        (Seq("--ipc", path.toString()), Some(closer))
+      case WorkerConnection.Stdio => (Nil, None)
     val options = Seq(
       "-classpath",
       fullCp.mkString(File.pathSeparator),
       classOf[WorkerMain].getCanonicalName,
-    ) ++
-      (socketOpt match
-        case Some(s) => Seq("--tcp", s.getLocalPort().toString())
-        case _       => Nil)
+    ) ++ connArgs
     val onStdoutLine: String => Unit = connectionType match
       case WorkerConnection.Stdio => notifyListeners
       case _                      => (line) => scala.Console.out.println(line)
@@ -80,7 +104,17 @@ object WorkerExchange:
     val p = Fork.java.fork(forkWithIo, options)
     val forkTimeout = fo.connectionTimeout.getOrElse(30.seconds)
     val input = Await.result(inputRef.future, forkTimeout)
-    WorkerProxy(input, p, options, socketOpt)
+    WorkerProxy(input, p, options, closer)
+
+  /** Generates a fresh path suitable for binding a `WorkerConnection.Ipc` socket. */
+  def newIpcSocketPath(): NioPath =
+    val dir = NioPath
+      .of(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir")))
+      .resolve(".sbt-fork-ipc")
+    Files.createDirectories(dir)
+    val path = Files.createTempFile(dir, "fork-", ".sock")
+    Files.deleteIfExists(path)
+    path
 
   def registerListener(listener: WorkerResponseListener): Unit =
     synchronized:
@@ -104,12 +138,12 @@ class WorkerProxy(
     input: OutputStream,
     val process: Process,
     val options: Seq[String],
-    serverSocket: Option[ServerSocket],
+    closer: Option[AutoCloseable],
 ) extends AutoCloseable:
   lazy val inputStream = PrintStream(input)
   def close(): Unit =
     input.close()
-    serverSocket.foreach(_.close())
+    closer.foreach(_.close())
   def blockForExitCode(): Int =
     if !process.isAlive() then process.exitValue()
     else Fork.blockForExitCode(process)
@@ -132,3 +166,4 @@ abstract class WorkerResponseListener extends Function1[String, Unit]:
 enum WorkerConnection:
   case Stdio
   case Tcp
+  case Ipc(path: NioPath)
