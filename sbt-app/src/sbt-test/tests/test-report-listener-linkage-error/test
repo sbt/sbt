@@ -1,0 +1,17 @@
+# Regression for #9666. Before rethrowing a suite's LinkageError, TestRunner must notify
+# testListeners with exactly one endGroup(name, throwable) callback. `->` keeps the expected
+# test command failure visible while the following check verifies the listener contract.
+
+# This complements testing/src/test/scala/sbt/TestRunnerSpec.scala: that unit test isolates
+# TestRunner, while this fixture verifies a listener configured through the public testListeners
+# build setting.
+
+# ScalaTest cannot construct this suite because the JVM wraps the singleton initializer's
+# NoSuchElementException in ExceptionInInitializerError. The callback check asserts both types.
+-> testOnly example.ImplicitInitializationFailure
+> checkImplicitCallback
+
+# ScalaTest also lets an ExceptionInInitializerError explicitly thrown by test code escape.
+# SBT must therefore close this started group with the throwable as well.
+-> testOnly example.ExplicitInitializationFailure
+> checkExplicitCallback

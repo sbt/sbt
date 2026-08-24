@@ -171,6 +171,9 @@ private[sbt] final class TestRunner(
       safeListenersCall(_.endGroup(name, suiteResult.result))
       (suiteResult, nestedTasks)
     } catch {
+      case e: LinkageError =>
+        safeListenersCall(_.endGroup(name, e))
+        throw e
       case NonFatal(e) =>
         safeListenersCall(_.endGroup(name, e))
         (SuiteResult.Error, Seq.empty[TestTask])
