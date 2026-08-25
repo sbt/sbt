@@ -15,10 +15,8 @@ import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.Socket;
-import java.net.StandardProtocolFamily;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.net.UnixDomainSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -129,8 +127,7 @@ public final class WorkerMain {
   }
 
   void ipcWork(Path socketPath) throws Exception {
-    SocketChannel client = SocketChannel.open(StandardProtocolFamily.UNIX);
-    client.connect(UnixDomainSocketAddress.of(socketPath));
+    SocketChannel client = JdkCompat.connectUnixSocket(socketPath);
     this.jsonOut = new PrintStream(DuplexChannels.newOutputStream(client), true, "UTF-8");
     this.inScanner = new Scanner(DuplexChannels.newInputStream(client), "UTF-8");
     if (this.inScanner.hasNextLine()) {
