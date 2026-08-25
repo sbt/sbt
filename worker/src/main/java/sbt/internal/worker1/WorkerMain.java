@@ -21,8 +21,13 @@ import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -212,13 +217,51 @@ public final class WorkerMain {
       if (jvmRunInfo.classpath.isEmpty()) {
         ForkTestMain.main(id, info, this.jsonOut, parent);
       } else {
-        try (URLClassLoader cl = createClassLoader(jvmRunInfo, parent)) {
-          ForkTestMain.main(id, info, this.jsonOut, cl);
-        }
+        ForkTestMain.main(id, info, this.jsonOut, classLoaderFor(jvmRunInfo, parent));
       }
     } else {
       throw new RuntimeException("only jvm is supported");
     }
+  }
+
+  private Set<FilePath> stableLayerEntries = Collections.emptySet();
+  private URLClassLoader stableLayer;
+
+  /** Caches non-build-output (library) entries as a parent layer; rebuilds only "target" output. */
+  private URLClassLoader classLoaderFor(RunInfo.JvmRunInfo info, ClassLoader parent) {
+    List<FilePath> stable = new ArrayList<>();
+    List<FilePath> changed = new ArrayList<>();
+    for (FilePath fp : info.classpath) {
+      (isBuildOutput(fp) ? changed : stable).add(fp);
+    }
+
+    Set<FilePath> stableSet = new HashSet<>(stable);
+    if (stableLayer == null || !stableLayerEntries.equals(stableSet)) {
+      stableLayer = urlClassLoaderOf(stable, parent);
+      stableLayerEntries = stableSet;
+    }
+
+    return changed.isEmpty() ? stableLayer : urlClassLoaderOf(changed, stableLayer);
+  }
+
+  private static boolean isBuildOutput(FilePath fp) {
+    String path = fp.path.getPath();
+    return path != null && (path.contains("/target/") || path.contains("\\target\\"));
+  }
+
+  private URLClassLoader urlClassLoaderOf(List<FilePath> entries, ClassLoader parent) {
+    URL[] urls =
+        entries.stream()
+            .map(
+                filePath -> {
+                  try {
+                    return filePath.path.toURL();
+                  } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .toArray(URL[]::new);
+    return new URLClassLoader(urls, parent);
   }
 
   void console(long id, ConsoleInfo info) throws Exception {
