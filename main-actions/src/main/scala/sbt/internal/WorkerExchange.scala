@@ -22,13 +22,51 @@ import sbt.protocol.DuplexChannels
 import sbt.testing.Framework
 import scala.sys.process.{ BasicIO, Process, ProcessIO }
 import scala.collection.mutable
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ Await, Promise }
 import scala.concurrent.duration.*
+import scala.util.control.NonFatal
 
 object WorkerExchange:
   val listeners: mutable.ListBuffer[WorkerResponseListener] = ListBuffer.empty
   private val loopback = InetAddress.getByName(null)
+  private val jdkIpcSupportCache = TrieMap.empty[Option[File], Boolean]
+
+  /**
+   * Start a worker process.
+   */
+  def startWorker(fo: ForkOptions, extraCp: Seq[File]): WorkerProxy =
+    val ct =
+      if supportsUnixDomainSockets(fo.javaHome) then WorkerConnection.Ipc(newIpcSocketPath())
+      else WorkerConnection.Stdio
+    startWorker(fo, extraCp, ct)
+
+  /**
+   * True if `javaHome` (None meaning the JDK currently running sbt) is JDK 16+.
+   */
+  private def supportsUnixDomainSockets(javaHome: Option[File]): Boolean =
+    def doDetect: Boolean =
+      javaHome match
+        case None       => true // the JDK running sbt itself, which requires 17+
+        case Some(home) =>
+          try
+            val releaseFile = File(home, "release")
+            val props = java.util.Properties()
+            val in = FileInputStream(releaseFile)
+            try props.load(in)
+            finally in.close()
+            val raw = Option(props.getProperty("JAVA_VERSION")).getOrElse("")
+            val version = raw.stripPrefix("\"").stripSuffix("\"")
+            val digits =
+              version.takeWhile(c => c.isDigit || c == '.').split('.').flatMap(_.toIntOption)
+            val major = digits match
+              case Array(1, minor, _*) => minor // legacy 1.8-style versioning
+              case Array(m, _*)        => m
+              case _                   => 0
+            major >= 16
+          catch case NonFatal(_) => false
+    jdkIpcSupportCache.getOrElseUpdate(javaHome, doDetect)
 
   /**
    * Start a worker process.

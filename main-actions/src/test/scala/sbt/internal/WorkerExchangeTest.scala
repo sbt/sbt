@@ -9,13 +9,18 @@ import scala.sys.process.Process
 
 object WorkerExchangeTest extends Properties:
   given Gen[WorkerConnection] =
-    Gen.choice1(Gen.constant(WorkerConnection.Stdio), Gen.constant(WorkerConnection.Tcp))
+    Gen.choice1(
+      Gen.constant(WorkerConnection.Stdio),
+      Gen.constant(WorkerConnection.Tcp),
+      Gen.constant(WorkerConnection.Ipc(WorkerExchange.newIpcSocketPath())),
+    )
 
   def gen[A1: Gen]: Gen[A1] = summon[Gen[A1]]
 
   override lazy val tests: List[Test] = List(
     propertyN("non-jsonrpc should return exit code 1", propBadInput, 10),
     propertyN("bye should return response json with a result", propBye, 10),
+    example("startWorker(fo, extraCp) auto-detects a working connection type", exampleAutoDetect),
   )
 
   def propertyN(name: String, result: => Property, n: Int): Test =
@@ -45,6 +50,17 @@ object WorkerExchangeTest extends Properties:
       Result
         .assert(exitCode == 0)
         .and(Result.assert(l.sb.toString() == s"""{ "jsonrpc": "2.0", "result": 0, "id": $i }"""))
+        .log(s"\"${l.sb.toString()}\"")
+
+  def exampleAutoDetect: Result =
+    val w = WorkerExchange.startWorker(ForkOptions(), Nil)
+    withListener: l =>
+      w.println("""{"jsonrpc": "2.0", "method": "bye", "params": {}, "id": 1}""")
+      val exitCode = w.blockForExitCode()
+      l.awaitResponse()
+      Result
+        .assert(exitCode == 0)
+        .and(Result.assert(l.sb.toString() == """{ "jsonrpc": "2.0", "result": 0, "id": 1 }"""))
         .log(s"\"${l.sb.toString()}\"")
 
   def withListener[A1](f: ConcreteListener => A1) =
