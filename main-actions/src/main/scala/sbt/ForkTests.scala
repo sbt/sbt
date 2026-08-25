@@ -57,26 +57,25 @@ private[sbt] object ForkTests:
       this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
     def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
 
-    val main =
-      if opts.tests.isEmpty then
-        // Nothing selected after filtering, so don't run setup/cleanup either.
-        constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
-      else
-        mainTestTask(
-          runners = runners,
-          opts = opts,
-          classpath = classpath,
-          converter = converter,
-          fork = fork,
-          log = log,
-          parallel = config.parallel,
-          parallelism = parallelism,
-          virtualClasspath = virtualClasspath,
-        ).tagw(config.tags*)
-          .dependsOn(all(opts.setup)*)
-          .flatMap: results =>
-            all(opts.cleanup).join.map(_ => results)
-    main.tagw(tags*)
+    if opts.tests.isEmpty then
+      // Nothing selected after filtering, so don't run setup/cleanup either.
+      constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
+    else
+      mainTestTask(
+        runners = runners,
+        opts = opts,
+        classpath = classpath,
+        converter = converter,
+        fork = fork,
+        log = log,
+        parallel = config.parallel,
+        parallelism = parallelism,
+        virtualClasspath = virtualClasspath,
+      ).tagw(config.tags*)
+        .tagw(tags*)
+        .dependsOn(all(opts.setup)*)
+        .flatMap: results =>
+          all(opts.cleanup).join.map(_ => results)
   }
 
   private def mainTestTask(
