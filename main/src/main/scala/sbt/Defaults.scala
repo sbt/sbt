@@ -1484,30 +1484,39 @@ object Defaults extends BuildCommon with DefExtra {
   private lazy val inputTests0: Initialize[InputTask[TestResult]] = {
     val parser =
       loadForParser(definedTestNames)((s, i) => testOnlyParserWithOption(s, i getOrElse Nil))
-    ParserGen(parser).flatMapTask { (selected, frameworkOptions, adhocOptions) =>
+    ParserGen(parser).flatMapTask { parsed =>
+      val (selected, frameworkOptions, adhocOptions) = parsed
       val s = streams.value
       val filter = testFilter.value
       val config = testExecution.value
+      val cacheTestResult = adhocOptions
+        .collectFirst { case Tests.AdhocOption.CacheTestResult(enabled) =>
+          enabled
+        }
+        .getOrElse(SysProp.cacheTestResult)
       val st = state.value
       given display: Show[ScopedKey[?]] = Project.showContextKey(st)
       val modifiedOpts =
         Tests.ExplicitlyRequestedNames(selected) +:
           Tests.Filters(
-            filter(
-              selected ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions else Nil)
+            IncrementalTest.withCacheTestResult(cacheTestResult)(
+              filter(
+                selected ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions
+                             else Nil)
+              )
             )
           ) +:
           Tests.Argument(frameworkOptions*) +: config.options
-      if frameworkOptions.nonEmpty then
-        modifiedOpts.foreach: opt =>
-          opt match
-            case Tests.Listeners(listeners) =>
-              listeners.toList.foreach: l =>
-                l match
-                  case r: TestStatusReporter =>
-                    r.setArguments(frameworkOptions)
-                  case _ => ()
-            case _ => ()
+      modifiedOpts.foreach: opt =>
+        opt match
+          case Tests.Listeners(listeners) =>
+            listeners.toList.foreach: l =>
+              l match
+                case r: TestStatusReporter =>
+                  r.setCacheTestResult(cacheTestResult)
+                  if frameworkOptions.nonEmpty then r.setArguments(frameworkOptions)
+                case _ => ()
+          case _ => ()
       val newConfig = config.copy(options = modifiedOpts)
       val output = allTestGroupsTask(
         s,
@@ -1536,6 +1545,7 @@ object Defaults extends BuildCommon with DefExtra {
             out.events.keySet,
             selected,
             frameworkOptions,
+            cacheTestResult,
           )
           TestSummary.append(taskName, out, cached, adhocOptions.toVector)
           try
