@@ -59,6 +59,7 @@ private[sbt] object ForkTests:
 
     val main =
       if opts.tests.isEmpty then
+        // Nothing selected after filtering, so don't run setup/cleanup either.
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
         mainTestTask(
@@ -72,9 +73,10 @@ private[sbt] object ForkTests:
           parallelism = parallelism,
           virtualClasspath = virtualClasspath,
         ).tagw(config.tags*)
-    main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
-      all(opts.cleanup).join.map(_ => results)
-    }
+          .dependsOn(all(opts.setup)*)
+          .flatMap: results =>
+            all(opts.cleanup).join.map(_ => results)
+    main.tagw(tags*)
   }
 
   private def mainTestTask(
