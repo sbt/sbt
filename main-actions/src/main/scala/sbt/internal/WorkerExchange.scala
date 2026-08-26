@@ -74,11 +74,8 @@ object WorkerExchange:
           catch case NonFatal(_) => false
     jdkIpcSupportCache.getOrElseUpdate(javaHome, doDetect)
 
-  // Idle checked-in workers, keyed by WorkerKey; outlives any single test task execution.
-  private val idleWorkers = TrieMap.empty[WorkerKey, ConcurrentLinkedQueue[WorkerProxy]]
-
-  // Global checkin order across all keys, oldest first, for LRU eviction under a pool cap.
-  private val idleOrder = new ConcurrentLinkedQueue[(WorkerKey, WorkerProxy)]()
+  // Idle checked-in workers, oldest first; outlives any single test task execution.
+  private val idleWorkers = new ConcurrentLinkedQueue[(WorkerKey, WorkerProxy)]()
 
   // Best-effort cleanup: forked children outlive this JVM otherwise.
   Runtime.getRuntime.addShutdownHook(new Thread(() => closeIdleWorkers()))
@@ -195,25 +192,23 @@ object WorkerExchange:
       else WorkerConnection.Stdio
     val key = WorkerKey(fo)
     def checkout: Option[WorkerProxy] =
-      idleWorkers
-        .get(key)
-        .flatMap: q =>
-          Iterator
-            .continually(Option(q.poll()))
-            .takeWhile(_.isDefined)
-            .flatten
-            .map: w =>
-              idleOrder.remove(key -> w); w
-            .find: w =>
-              val alive = w.process.isAlive()
-              if !alive then
-                try w.close()
-                catch case NonFatal(_) => ()
-              alive
+      val it = idleWorkers.iterator()
+      Iterator
+        .continually(if it.hasNext() then Some(it.next()) else None)
+        .takeWhile(_.isDefined)
+        .flatten
+        .filter((k, _) => k == key)
+        .map: (_, w) =>
+          it.remove(); w
+        .find: w =>
+          val alive = w.process.isAlive()
+          if !alive then
+            try w.close()
+            catch case NonFatal(_) => ()
+          alive
     def checkin(worker: WorkerProxy): Unit =
       if worker.process.isAlive() then
-        idleWorkers.getOrElseUpdate(key, new ConcurrentLinkedQueue()).add(worker)
-        idleOrder.add(key -> worker)
+        idleWorkers.add(key -> worker)
         evictExcess(maxPoolSize)
     val w = (if persistent then checkout else None)
       .getOrElse(startWorker(fo, extraCp, ct, persistent))
@@ -231,18 +226,16 @@ object WorkerExchange:
     w.process.destroy()
 
   private def evictExcess(maxPoolSize: Int): Unit =
-    while idleOrder.size() > maxPoolSize do
-      Option(idleOrder.poll()).foreach { (k, w) =>
-        idleWorkers.get(k).foreach(_.remove(w))
-        shutdownWorker(w)
-      }
+    while idleWorkers.size() > maxPoolSize do
+      Option(idleWorkers.poll()).foreach((_, w) => shutdownWorker(w))
 
   /** Close every idle worker. Workers currently checked out are unaffected. */
   def closeIdleWorkers(): Unit =
-    idleWorkers.values.foreach { q =>
-      Iterator.continually(Option(q.poll())).takeWhile(_.isDefined).flatten.foreach(shutdownWorker)
-    }
-    idleOrder.clear()
+    Iterator
+      .continually(Option(idleWorkers.poll()))
+      .takeWhile(_.isDefined)
+      .flatten
+      .foreach((_, w) => shutdownWorker(w))
 
   def registerListener(listener: WorkerResponseListener): Unit =
     synchronized:
