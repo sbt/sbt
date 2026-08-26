@@ -28,4 +28,13 @@ SET SBT_OPTS=-Xmx4g -Dfile.encoding=UTF8
 "freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true --version > version.txt
 "freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkVersion
 
+rem Regression test for https://github.com/sbt/sbt/issues/9660, run as a real
+rem .bat command (parsed by cmd.exe the same way as if typed at a prompt),
+rem rather than via a JVM-constructed command line.
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true "eval (\"bar\") ++ (\"qux\")" 1> evalOutput.txt 2> evalErr.txt
+
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true "eval (\"foo\") & echo INJECTED>injected.txt & rem (" 1> evalInjOutput.txt 2> evalInjErr.txt
+
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkEvalArgHandling
+
 ENDLOCAL
