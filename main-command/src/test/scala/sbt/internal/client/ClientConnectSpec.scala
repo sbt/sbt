@@ -19,7 +19,6 @@ import scala.util.Try
 
 import sbt.internal.server.{ Server, ServerConnection }
 import sbt.internal.util.Util.isWindows
-import sbt.protocol.ClientSocket
 import sbt.util.Level
 import verify.BasicTestSuite
 
@@ -79,6 +78,7 @@ object ClientConnectSpec extends BasicTestSuite:
         def connect() = client.connectOrStartServerAndConnect(false, retry = false)
         val connected = Try(connect())
         restore.join()
-        // the client reads the portfile once, so a whole one arriving later is too late
-        assert(connected.failed.get.isInstanceOf[ClientSocket.ConnectionFileReadException])
+        // the client reads again, so it meets the whole portfile and reaches the server
+        assert(connected.isSuccess)
+        connected.foreach((socket, _) => socket.close())
 end ClientConnectSpec

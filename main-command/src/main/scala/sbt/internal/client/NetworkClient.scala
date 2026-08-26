@@ -227,15 +227,19 @@ class NetworkClient(
         val res =
           try Some(mkSocket(portfile))
           catch {
-            // This catches a pipe busy exception which can happen if two windows clients
-            // attempt to connect in rapid succession
-            case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 =>
-              if (e.getMessage.contains("Access is denied") || e.getMessage.contains("(5)")) {
-                errorStream.println(s"Access denied for portfile $portfile")
-                throw new NetworkClient.AccessDeniedException
-              }
-              None
-            case e: IOException => throw new ConnectionRefusedException(e)
+            case _: ClientSocket.ConnectionFileReadException if attempt < 10 =>
+              None // server may be in the middle of writing the portfile
+            case e: IOException =>
+              if (attempt >= 10) throw new ConnectionRefusedException(e)
+              val msg = Option(e.getMessage).getOrElse("")
+              // This catches a pipe busy exception which can happen if two windows clients
+              // attempt to connect in rapid succession
+              if (msg.contains("Couldn't open"))
+                if (msg.contains("Access is denied") || msg.contains("(5)")) {
+                  errorStream.println(s"Access denied for portfile $portfile")
+                  throw new NetworkClient.AccessDeniedException
+                }
+              None // server could be busy, not down, so try again
           }
         res match {
           case Some(r) => r
