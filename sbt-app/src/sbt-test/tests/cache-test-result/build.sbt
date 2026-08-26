@@ -6,7 +6,7 @@ Test / testQuick / testFilter ~= { filter => args => filter(args) }
 
 commands ++= Seq(
   Command.command("disableTestResultCache") { state =>
-    System.setProperty("sbt.cache_test_result", "no")
+    System.setProperty("sbt.cache_test_result", "false")
     state
   },
   Command.command("enableTestResultCache") { state =>

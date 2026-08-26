@@ -3,14 +3,14 @@
 $ exists run-1
 $ absent run-2
 
-> test --cache_test_result=no
+> test --cache_test_result=false
 > test --cache_test_result=false
 $ exists run-2
 $ exists run-3
 
 $ copy-file changes/CacheTest.scala src/test/scala/CacheTest.scala
 > disableTestResultCache
-> test --cache_test_result=yes
+> test --cache_test_result=true
 > test --cache_test_result=true
 > enableTestResultCache
 > test
