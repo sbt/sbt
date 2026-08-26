@@ -679,7 +679,11 @@ if defined JVM_DEBUG_PORT (
 
 call :sync_preloaded
 
-call :run !SBT_ARGS!
+rem Do not append !SBT_ARGS! to this call: splicing it onto a `call` command
+rem line makes cmd.exe re-tokenize it, letting &, |, ( or ) inside a quoted
+rem user argument escape their quoting and run as shell operators (#9660).
+rem :run reads SBT_ARGS via delayed expansion instead.
+call :run
 
 if ERRORLEVEL 1 goto error
 goto end
@@ -796,14 +800,14 @@ if defined sbt_args_verbose (
   echo -cp
   echo "!sbt_jar!"
   echo xsbt.boot.Boot
-  if not "%~1" == "" ( call :echolist %* )
+  if defined SBT_ARGS ( call :echolist !SBT_ARGS! )
   echo.
 )
 
 rem one-hop marker: drop it before the server JVM
 set "SBT_EXPLICIT_JAVA_HOME="
 
-"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! %JAVA_TOOL_OPTIONS% %JDK_JAVA_OPTIONS% -cp "!sbt_jar!" xsbt.boot.Boot %*
+"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! %JAVA_TOOL_OPTIONS% %JDK_JAVA_OPTIONS% -cp "!sbt_jar!" xsbt.boot.Boot !SBT_ARGS!
 
 goto :eof
 

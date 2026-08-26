@@ -418,6 +418,44 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
       s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
     )
 
+  // Regression test for https://github.com/sbt/sbt/issues/9660
+  // A command-line argument containing shell metacharacters (&, parens, quotes)
+  // must reach the launched JVM verbatim, and must not be split out and executed
+  // as a separate command by cmd.exe.
+  testOutput(
+    "sbt with & and parens in a command-line argument"
+  )("""eval ("foo") & calc; @REM (""", "-v"): (out: List[String]) =>
+    assert(
+      out.contains[String]("""eval ("foo") & calc; @REM ("""),
+      s"Argument with & and parens should reach the JVM unmangled. out=${out.mkString("|")}"
+    )
+    val errorMessages = out.filter(line =>
+      line.contains("is not recognized as an internal or external command") ||
+        line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
+
+  // Regression test for https://github.com/sbt/sbt/issues/9660
+  testOutput(
+    "sbt with ++ and quoted parens in a command-line argument"
+  )("""eval ("bar") ++ ("qux")""", "-v"): (out: List[String]) =>
+    assert(
+      out.contains[String]("""eval ("bar") ++ ("qux")"""),
+      s"Argument with quoted parens should reach the JVM unmangled. out=${out.mkString("|")}"
+    )
+    val errorMessages = out.filter(line =>
+      line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
+
   // Test for issue #8755: Inline comments should be supported in .jvmopts
   testOutput(
     "sbt with inline comments in .jvmopts",
