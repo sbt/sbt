@@ -13,4 +13,4 @@
 [error]   |Defining types in *.sbt file is not supported
 [error]   |
 [error] 4 |  case B
-[error] an error in expression: class dotty.tools.dotc.reporting.Diagnostic$Error at BASE/build.sbt:[980..985..996] L3: Defining types in *.sbt file is not supported
+[error] an error in expression: class dotty.tools.dotc.reporting.Diagnostic$Error at BASE/build.sbt:[OFFSET] L3: Defining types in *.sbt file is not supported
