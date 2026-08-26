@@ -26,7 +26,7 @@ class PortfileTest extends AbstractServerTest {
 
   test("a portfile written by a server") {
     val id = """"serverId":"([^"]+)"""".r.findFirstMatchIn(IO.read(portfile)).map(_.group(1))
-    assert(id.isEmpty, s"the portfile does not name its writer: ${IO.read(portfile)}")
+    assert(id.exists(_.nonEmpty), s"the portfile names its writer: ${IO.read(portfile)}")
   }
 
   test("a portfile that names another server") {

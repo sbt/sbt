@@ -14,6 +14,9 @@ type PortFile {
   ## Whether sysProps is the whole story. Absent on a server no thin client started, whose
   ## options are its own business and unknown here.
   sysPropsRecorded: Boolean @since("2.0.7")
+  ## Identifies the server that wrote this file. A server that reads an id other than its own
+  ## has been replaced, and no client can reach it any more.
+  serverId: String @since("2.0.9")
 }
 
 type TokenFile {
