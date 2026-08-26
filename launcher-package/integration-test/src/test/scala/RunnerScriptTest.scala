@@ -44,7 +44,9 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assert(out.contains[String]("-Dsbt.task.timings=true"))
 
   testOutput("sbt -D arguments")("-Dsbt.supershell=false", "compile", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.supershell=false"))
+    // Note: the -v preview quotes CLI -D arguments (see #9660), so match by
+    // substring rather than exact line equality.
+    assert(out.exists(_.contains("-Dsbt.supershell=false")))
 
   testOutput("sbt --sbt-version")("--sbt-version", "1.3.13", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.version=1.3.13"))
@@ -449,6 +451,45 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     )
     val errorMessages = out.filter(line =>
       line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
+
+  // Regression test for https://github.com/sbt/sbt/issues/9660
+  // -D/-XX values go through their own reconstruction path (the '=' is split
+  // away by cmd.exe's tokenizer before sbt.bat sees it), separate from the
+  // plain-argument path above, and needs its own quoting.
+  testOutput(
+    "sbt with & and parens in a -D argument"
+  )("-Dfoo=()&calc", "-v"): (out: List[String]) =>
+    assert(
+      out.contains[String]("-Dfoo=()&calc"),
+      s"-D argument with & and parens should reach the JVM unmangled. out=${out.mkString("|")}"
+    )
+    val errorMessages = out.filter(line =>
+      line.contains("is not recognized as an internal or external command") ||
+        line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
+
+  // Regression test for https://github.com/sbt/sbt/issues/9660
+  testOutput(
+    "sbt with & and parens in a -XX argument"
+  )("-XXbar=()&charmap", "-v"): (out: List[String]) =>
+    assert(
+      out.contains[String]("-XXbar=()&charmap"),
+      s"-XX argument with & and parens should reach the JVM unmangled. out=${out.mkString("|")}"
+    )
+    val errorMessages = out.filter(line =>
+      line.contains("is not recognized as an internal or external command") ||
+        line.contains("was unexpected at this time") ||
         line.contains("syntax error")
     )
     assert(

@@ -548,7 +548,7 @@ if "%g:~0,2%" == "-D" (
     if "%g%" == "%%a" (
       if not "%~1" == "" (
         call :dlog [args_loop] -D argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
         shift
         goto args_loop
       ) else (
@@ -557,7 +557,7 @@ if "%g:~0,2%" == "-D" (
       )
     ) else (
       call :dlog [args_loop] -D argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
+      set SBT_ARGS=!SBT_ARGS! "%~0"
       goto args_loop
     )
   )
@@ -570,7 +570,7 @@ if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX"
     if "%g%" == "%%a" (
       if not "%~1" == "" (
         call :dlog [args_loop] -XX argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
         shift
         goto args_loop
       ) else (
@@ -579,7 +579,7 @@ if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX"
       )
     ) else (
       call :dlog [args_loop] -XX argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
+      set SBT_ARGS=!SBT_ARGS! "%~0"
       goto args_loop
     )
   )
@@ -588,7 +588,7 @@ if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX"
 rem handle -X JVM options (e.g., -Xmx1G, -Xms512M, -Xss4M) - fixes #5742
 if "%g:~0,2%" == "-X" (
   call :dlog [args_loop] -X JVM argument %~0
-  call :addJava %~0
+  call :addJava "%~0"
   goto args_loop
 )
 
@@ -599,7 +599,7 @@ if defined sbt_new if "%g:~0,2%" == "--" (
     if "%g%" == "%%a" (
       if not "%~1" == "" (
         call :dlog [args_loop] -- argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
         shift
         goto args_loop
       )
@@ -896,7 +896,7 @@ exit /B 0
 
 :addJava
   call :dlog [addJava] arg = '%*'
-  set "_JAVA_OPTS=!_JAVA_OPTS! %*"
+  set _JAVA_OPTS=!_JAVA_OPTS! %*
 exit /B 0
 
 :addMemory
