@@ -37,4 +37,11 @@ rem rather than via a JVM-constructed command line.
 
 "freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkEvalArgHandling
 
+rem "about" comes before the risky argument so sbt.bat always receives a real
+rem command and cannot fall into an interactive shell (which would hang this
+rem script) even if the & below does escape its quoting.
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true about "-Dfoo=()&copy nul injected2.txt"
+
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkDArgHandling
+
 ENDLOCAL

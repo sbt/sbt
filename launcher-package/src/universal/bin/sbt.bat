@@ -541,27 +541,32 @@ if "%~0" == "init" (
   )
 )
 
-if "%g:~0,2%" == "-D" (
-  rem special handling for -D since '=' gets parsed away
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -D argument %~0=%~1
-        set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
-        shift
-        goto args_loop
-      ) else (
-        echo %g% is missing a value
-        goto error
-      )
-    ) else (
-      call :dlog [args_loop] -D argument %~0
-      set SBT_ARGS=!SBT_ARGS! "%~0"
-      goto args_loop
-    )
-  )
-)
+rem NOTE: -D handling below is intentionally flat (goto-based, single-line
+rem `for` bodies) rather than nested if/for blocks. cmd.exe finds a multi-line
+rem block's closing paren by counting every literal ( and ) across the lines
+rem it spans, including ones arriving via variable substitution -- splicing an
+rem argument value (which may itself contain unbalanced-looking parens, see
+rem #9660) into a deeply nested multi-line construct risks miscounting that.
+rem A flat, single-line-per-command shape does not put cmd.exe in a position
+rem where it needs to hunt across multiple lines for a matching paren.
+if not "%g:~0,2%" == "-D" goto args_loop_after_D
+rem special handling for -D since '=' gets parsed away
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_D_has_value
+if "%~1" == "" goto args_loop_D_missing_value
+call :dlog [args_loop] -D argument %~0=%~1
+set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
+shift
+goto args_loop
+:args_loop_D_missing_value
+echo %g% is missing a value
+goto error
+:args_loop_D_has_value
+call :dlog [args_loop] -D argument %~0
+set SBT_ARGS=!SBT_ARGS! "%~0"
+goto args_loop
+:args_loop_after_D
 
 if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX" (
   rem special handling for -XX since '=' gets parsed away
