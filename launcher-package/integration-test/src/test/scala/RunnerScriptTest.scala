@@ -24,7 +24,8 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assert(out.contains[String]("-Dsbt.log.noformat=true"))
 
   testOutput("sbt --color=false")("compile", "--color=false", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.color=false"))
+    // Note: the -v preview quotes this (see #9660), so match by substring.
+    assert(out.exists(_.contains("-Dsbt.color=false")))
 
   testOutput("sbt --no-colors in SBT_OPTS", sbtOpts = "--no-colors")("compile", "-v"):
     (out: List[String]) =>
@@ -38,7 +39,9 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assert(out.contains[String]("-Dxsbt.inc.debug=true"))
 
   testOutput("sbt --supershell=never")("compile", "--supershell=never", "-v"):
-    (out: List[String]) => assert(out.contains[String]("-Dsbt.supershell=never"))
+    (out: List[String]) =>
+      // Note: the -v preview quotes this (see #9660), so match by substring.
+      assert(out.exists(_.contains("-Dsbt.supershell=never")))
 
   testOutput("sbt --timings")("compile", "--timings", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.task.timings=true"))
@@ -49,7 +52,8 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assert(out.exists(_.contains("-Dsbt.supershell=false")))
 
   testOutput("sbt --sbt-version")("--sbt-version", "1.3.13", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.version=1.3.13"))
+    // Note: the -v preview quotes this (see #9660), so match by substring.
+    assert(out.exists(_.contains("-Dsbt.version=1.3.13")))
 
   testOutput(
     name = "sbt with -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 in SBT_OPTS",
@@ -497,6 +501,44 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
       s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
     )
 
+  // Regression test for https://github.com/sbt/sbt/issues/9660
+  // --color/--supershell/-sbt-dir/etc. splice their value into _SBT_OPTS,
+  // a separate reconstruction path from SBT_ARGS, and needs its own quoting.
+  testOutput(
+    "sbt with & in a --color argument"
+  )("--color", "true&calc", "compile", "-v"): (out: List[String]) =>
+    assert(
+      out.contains[String]("-Dsbt.color=true&calc"),
+      s"--color value with & should reach the JVM unmangled. out=${out.mkString("|")}"
+    )
+    val errorMessages = out.filter(line =>
+      line.contains("is not recognized as an internal or external command") ||
+        line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
+
+  // Regression test for https://github.com/sbt/sbt/issues/9660
+  testOutput(
+    "sbt with & in a -sbt-dir argument"
+  )("-sbt-dir", "C:\\somewhere&calc", "compile", "-v"): (out: List[String]) =>
+    assert(
+      out.contains[String]("-Dsbt.global.base=C:\\somewhere&calc"),
+      s"-sbt-dir value with & should reach the JVM unmangled. out=${out.mkString("|")}"
+    )
+    val errorMessages = out.filter(line =>
+      line.contains("is not recognized as an internal or external command") ||
+        line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
+
   // Test for issue #8755: Inline comments should be supported in .jvmopts
   testOutput(
     "sbt with inline comments in .jvmopts",
@@ -543,7 +585,9 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     )
 
   testOutput("sbt --experimental_execution_log=true")("--experimental_execution_log=true", "-v"):
-    (out: List[String]) => assert(out.contains[String]("-Dsbt.experimental_execution_log=true"))
+    (out: List[String]) =>
+      // Note: the -v preview quotes this (see #9660), so match by substring.
+      assert(out.exists(_.contains("-Dsbt.experimental_execution_log=true")))
 
 end RunnerScriptTest
 

@@ -659,7 +659,11 @@ if !sbt_args_print_sbt_script_version! equ 1 (
 call :checkjava
 
 if !run_native_client! equ 1 if not defined sbt_args_print_version (
-  goto :runnative !SBT_ARGS!
+  rem Do not append !SBT_ARGS! here: `goto` ignores it, it is not a real
+  rem argument-passing mechanism, but the text is still spliced into this
+  rem line and re-scanned by cmd.exe, so it is live to shell operators ^(#9660^).
+  rem :runnative reads SBT_ARGS via delayed expansion instead.
+  goto :runnative
   goto :eof
 )
 
@@ -680,8 +684,8 @@ if defined JVM_DEBUG_PORT (
 call :sync_preloaded
 
 rem Do not append !SBT_ARGS! to this call: splicing it onto a `call` command
-rem line makes cmd.exe re-tokenize it, letting &, |, ( or ) inside a quoted
-rem user argument escape their quoting and run as shell operators (#9660).
+rem line makes cmd.exe re-tokenize it, letting shell operators inside a
+rem quoted user argument escape their quoting and run ^(#9660^).
 rem :run reads SBT_ARGS via delayed expansion instead.
 call :run
 
@@ -708,34 +712,38 @@ if defined sbt_args_no_share (
   set _SBT_OPTS=-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy !_SBT_OPTS!
 )
 
+rem NOTE: each user-supplied value below is wrapped in its own quotes before
+rem being appended to _SBT_OPTS. _SBT_OPTS is later spliced unquoted into
+rem exec lines ^(:copyrt, the final java invocation^), so an unquoted shell
+rem operator here would be live to cmd.exe at that point ^(#9660^).
 if defined sbt_args_supershell (
-  set _SBT_OPTS=-Dsbt.supershell=!sbt_args_supershell! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.supershell=!sbt_args_supershell!" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_version (
-  set _SBT_OPTS=-Dsbt.version=!sbt_args_sbt_version! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.version=!sbt_args_sbt_version!" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_dir (
-  set _SBT_OPTS=-Dsbt.global.base=!sbt_args_sbt_dir! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.global.base=!sbt_args_sbt_dir!" !_SBT_OPTS!
 ) else if defined LOCALAPPDATA (
-  set _SBT_OPTS=-Dsbt.global.base=!LOCALAPPDATA!\sbt !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.global.base=!LOCALAPPDATA!\sbt" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_boot (
-  set _SBT_OPTS=-Dsbt.boot.directory=!sbt_args_sbt_boot! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.boot.directory=!sbt_args_sbt_boot!" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_cache (
-  set _SBT_OPTS=-Dsbt.global.localcache=!sbt_args_sbt_cache! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.global.localcache=!sbt_args_sbt_cache!" !_SBT_OPTS!
 )
 
 if defined sbt_args_ivy (
-  set _SBT_OPTS=-Dsbt.ivy.home=!sbt_args_ivy! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.ivy.home=!sbt_args_ivy!" !_SBT_OPTS!
 )
 
 if defined sbt_args_color (
-  set _SBT_OPTS=-Dsbt.color=!sbt_args_color! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.color=!sbt_args_color!" !_SBT_OPTS!
 )
 
 if defined sbt_args_mem (
@@ -763,7 +771,7 @@ if not defined sbt_args_no_hide_jdk_warnings (
 )
 
 if defined sbt_args_experimental_execution_log (
-  set _SBT_OPTS=-Dsbt.experimental_execution_log=!sbt_args_experimental_execution_log! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.experimental_execution_log=!sbt_args_experimental_execution_log!" !_SBT_OPTS!
 )
 
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
@@ -815,14 +823,19 @@ goto :eof
 
 set "_SBTNCMD=!SBT_BIN_DIR!sbtn-x86_64-pc-win32.exe"
 
+rem NOTE: SBT_ARGS entries may carry their own embedded quotes, see the
+rem args_loop -D/-XX/catch-all handling above, to keep shell operators safe
+rem across the re-scan below. Do not wrap these set lines in an outer pair
+rem of quotes: that would pair up with an embedded quote instead of its
+rem match, breaking the quoting it is meant to preserve ^(#9660^).
 if defined sbt_args_verbose (
   echo # running native client
   if not "%~1" == "" ( call :echolist %* )
-  set "SBT_ARGS=-v !SBT_ARGS!"
+  set SBT_ARGS=-v !SBT_ARGS!
 )
 
 for %%I in ("!SBT_BIN_DIR!sbt.bat") do set "SBT_SCRIPT=%%~sI"
-set "SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%"
+set SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%
 
 rem Microsoft Visual C++ 2010 SP1 Redistributable Package (x64) is required
 rem https://www.microsoft.com/en-us/download/details.aspx?id=13523
