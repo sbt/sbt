@@ -9,6 +9,7 @@
 package sbt.internal.worker1;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
@@ -226,9 +227,11 @@ public final class WorkerMain {
 
   private Set<FilePath> stableLayerEntries = Collections.emptySet();
   private URLClassLoader stableLayer;
+  private URLClassLoader topLayer;
 
   /** Caches non-build-output (library) entries as a parent layer; rebuilds only "target" output. */
-  private URLClassLoader classLoaderFor(RunInfo.JvmRunInfo info, ClassLoader parent) {
+  private URLClassLoader classLoaderFor(RunInfo.JvmRunInfo info, ClassLoader parent)
+      throws IOException {
     List<FilePath> stable = new ArrayList<>();
     List<FilePath> changed = new ArrayList<>();
     for (FilePath fp : info.classpath) {
@@ -241,7 +244,9 @@ public final class WorkerMain {
       stableLayerEntries = stableSet;
     }
 
-    return changed.isEmpty() ? stableLayer : urlClassLoaderOf(changed, stableLayer);
+    if (topLayer != null) topLayer.close();
+    topLayer = changed.isEmpty() ? null : urlClassLoaderOf(changed, stableLayer);
+    return topLayer != null ? topLayer : stableLayer;
   }
 
   private static boolean isBuildOutput(FilePath fp) {
