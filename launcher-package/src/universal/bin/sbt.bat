@@ -568,27 +568,27 @@ set SBT_ARGS=!SBT_ARGS! "%~0"
 goto args_loop
 :args_loop_after_D
 
-if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX" (
-  rem special handling for -XX since '=' gets parsed away
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -XX argument %~0=%~1
-        set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
-        shift
-        goto args_loop
-      ) else (
-        echo %g% is missing a value
-        goto error
-      )
-    ) else (
-      call :dlog [args_loop] -XX argument %~0
-      set SBT_ARGS=!SBT_ARGS! "%~0"
-      goto args_loop
-    )
-  )
-)
+rem See the -D handling above for why this is flat rather than nested blocks.
+if "%g:~0,5%" == "-XX:+" goto args_loop_after_XX
+if "%g:~0,5%" == "-XX:-" goto args_loop_after_XX
+if not "%g:~0,3%" == "-XX" goto args_loop_after_XX
+rem special handling for -XX since '=' gets parsed away
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_XX_has_value
+if "%~1" == "" goto args_loop_XX_missing_value
+call :dlog [args_loop] -XX argument %~0=%~1
+set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
+shift
+goto args_loop
+:args_loop_XX_missing_value
+echo %g% is missing a value
+goto error
+:args_loop_XX_has_value
+call :dlog [args_loop] -XX argument %~0
+set SBT_ARGS=!SBT_ARGS! "%~0"
+goto args_loop
+:args_loop_after_XX
 
 rem handle -X JVM options (e.g., -Xmx1G, -Xms512M, -Xss4M) - fixes #5742
 if "%g:~0,2%" == "-X" (
@@ -597,20 +597,19 @@ if "%g:~0,2%" == "-X" (
   goto args_loop
 )
 
-if defined sbt_new if "%g:~0,2%" == "--" (
-  rem special handling for -- template arguments since '=' gets parsed away on Windows
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -- argument %~0=%~1
-        set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
-        shift
-        goto args_loop
-      )
-    )
-  )
-)
+rem See the -D handling above for why this is flat rather than nested blocks.
+if not defined sbt_new goto args_loop_after_dashdash
+if not "%g:~0,2%" == "--" goto args_loop_after_dashdash
+rem special handling for -- template arguments since '=' gets parsed away on Windows
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_after_dashdash
+if "%~1" == "" goto args_loop_after_dashdash
+call :dlog [args_loop] -- argument %~0=%~1
+set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
+shift
+goto args_loop
+:args_loop_after_dashdash
 
 rem the %0 (instead of %~0) preserves original argument quoting
 set sbt_args_seen_command=1

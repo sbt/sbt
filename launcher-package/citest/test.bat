@@ -44,4 +44,8 @@ rem script) even if the & below does escape its quoting.
 
 "freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkDArgHandling
 
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true about "-XXbar=()&copy nul injected3.txt"
+
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkXXArgHandling
+
 ENDLOCAL

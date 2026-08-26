@@ -2,6 +2,7 @@ lazy val check = taskKey[Unit]("")
 lazy val check2 = taskKey[Unit]("")
 lazy val checkEvalArgHandling = taskKey[Unit]("")
 lazy val checkDArgHandling = taskKey[Unit]("")
+lazy val checkXXArgHandling = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
   .settings(
@@ -52,6 +53,15 @@ lazy val root = (project in file("."))
       assert(
         !file("injected2.txt").exists,
         "the & in a -D argument value must not escape sbt.bat's quoting and run as a separate command"
+      )
+    },
+    // Regression check for https://github.com/sbt/sbt/issues/9660: the -XX
+    // handling in args_loop has the same shape as -D, so the same reporter-
+    // confirmed bypass applies to it.
+    checkXXArgHandling := {
+      assert(
+        !file("injected3.txt").exists,
+        "the & in a -XX argument value must not escape sbt.bat's quoting and run as a separate command"
       )
     }
   )
