@@ -8,26 +8,28 @@ package sbt.internal.protocol
  * This file should exist throughout the lifetime of the server.
  * It can be used to find out the transport protocol (port number etc).
  * @param uri URI of the sbt server.
+ * @param sysProps Space separated -D options the thin client passed to this server when it started it.
  */
 final class PortFile private (
   val uri: String,
   val tokenfilePath: Option[String],
-  val tokenfileUri: Option[String]) extends Serializable {
+  val tokenfileUri: Option[String],
+  val sysProps: Option[String]) extends Serializable {
   
-  
+  private def this(uri: String, tokenfilePath: Option[String], tokenfileUri: Option[String]) = this(uri, tokenfilePath, tokenfileUri, None)
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: PortFile => (this.uri == x.uri) && (this.tokenfilePath == x.tokenfilePath) && (this.tokenfileUri == x.tokenfileUri)
+    case x: PortFile => (this.uri == x.uri) && (this.tokenfilePath == x.tokenfilePath) && (this.tokenfileUri == x.tokenfileUri) && (this.sysProps == x.sysProps)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "sbt.internal.protocol.PortFile".##) + uri.##) + tokenfilePath.##) + tokenfileUri.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.protocol.PortFile".##) + uri.##) + tokenfilePath.##) + tokenfileUri.##) + sysProps.##)
   }
   override def toString: String = {
-    "PortFile(" + uri + ", " + tokenfilePath + ", " + tokenfileUri + ")"
+    "PortFile(" + uri + ", " + tokenfilePath + ", " + tokenfileUri + ", " + sysProps + ")"
   }
-  private def copy(uri: String = uri, tokenfilePath: Option[String] = tokenfilePath, tokenfileUri: Option[String] = tokenfileUri): PortFile = {
-    new PortFile(uri, tokenfilePath, tokenfileUri)
+  private def copy(uri: String = uri, tokenfilePath: Option[String] = tokenfilePath, tokenfileUri: Option[String] = tokenfileUri, sysProps: Option[String] = sysProps): PortFile = {
+    new PortFile(uri, tokenfilePath, tokenfileUri, sysProps)
   }
   def withUri(uri: String): PortFile = {
     copy(uri = uri)
@@ -44,9 +46,17 @@ final class PortFile private (
   def withTokenfileUri(tokenfileUri: String): PortFile = {
     copy(tokenfileUri = Option(tokenfileUri))
   }
+  def withSysProps(sysProps: Option[String]): PortFile = {
+    copy(sysProps = sysProps)
+  }
+  def withSysProps(sysProps: String): PortFile = {
+    copy(sysProps = Option(sysProps))
+  }
 }
 object PortFile {
   
   def apply(uri: String, tokenfilePath: Option[String], tokenfileUri: Option[String]): PortFile = new PortFile(uri, tokenfilePath, tokenfileUri)
   def apply(uri: String, tokenfilePath: String, tokenfileUri: String): PortFile = new PortFile(uri, Option(tokenfilePath), Option(tokenfileUri))
+  def apply(uri: String, tokenfilePath: Option[String], tokenfileUri: Option[String], sysProps: Option[String]): PortFile = new PortFile(uri, tokenfilePath, tokenfileUri, sysProps)
+  def apply(uri: String, tokenfilePath: String, tokenfileUri: String, sysProps: String): PortFile = new PortFile(uri, Option(tokenfilePath), Option(tokenfileUri), Option(sysProps))
 }

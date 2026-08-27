@@ -19,6 +19,7 @@ import java.math.BigInteger
 
 import scala.concurrent.{ Future, Promise }
 import scala.util.{ Failure, Success, Try }
+import sbt.internal.client.NetworkClient
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
@@ -212,13 +213,19 @@ private[sbt] object Server {
         import JsonProtocol.given
 
         val uri = connection.shortName
+        val sysProps = sys.env.get(NetworkClient.sysPropsEnv)
         val p =
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
               writeTokenfile()
-              PortFile(uri, Option(tokenfile.toString), Option(IO.toURI(tokenfile).toString))
+              PortFile(
+                uri,
+                Option(tokenfile.toString),
+                Option(IO.toURI(tokenfile).toString),
+                sysProps
+              )
             case _ =>
-              PortFile(uri, None, None)
+              PortFile(uri, None, None, sysProps)
           }
         val json = Converter.toJson(p).get
         IO.write(portfile, CompactPrinter(json))

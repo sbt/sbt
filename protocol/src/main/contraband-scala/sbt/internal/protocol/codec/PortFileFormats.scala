@@ -14,8 +14,9 @@ given PortFileFormat: JsonFormat[sbt.internal.protocol.PortFile] = new JsonForma
       val uri = unbuilder.readField[String]("uri")
       val tokenfilePath = unbuilder.readField[Option[String]]("tokenfilePath")
       val tokenfileUri = unbuilder.readField[Option[String]]("tokenfileUri")
+      val sysProps = unbuilder.readField[Option[String]]("sysProps")
       unbuilder.endObject()
-      sbt.internal.protocol.PortFile(uri, tokenfilePath, tokenfileUri)
+      sbt.internal.protocol.PortFile(uri, tokenfilePath, tokenfileUri, sysProps)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +26,7 @@ given PortFileFormat: JsonFormat[sbt.internal.protocol.PortFile] = new JsonForma
     builder.addField("uri", obj.uri)
     builder.addField("tokenfilePath", obj.tokenfilePath)
     builder.addField("tokenfileUri", obj.tokenfileUri)
+    builder.addField("sysProps", obj.sysProps)
     builder.endObject()
   }
 }
