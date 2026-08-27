@@ -199,15 +199,17 @@ class NetworkClient(
   /**
    * A running server was started with its own `-D` options, and the ones passed to this
    * invocation would be dropped on the floor. Restart the server so that they take effect.
+   * Completion queries never restart it: a client is not worth a server to someone
+   * pressing tab.
    */
-  private def restartServerIfSysPropsChanged(): Unit =
+  private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
     val checked = arguments.forwardsSysProps && !shutdownOnly && !arguments.bsp &&
-      arguments.completionArguments.isEmpty && serverAutoStart && serverAutoRestart
+      !promptCompleteUsers && serverAutoStart && serverAutoRestart
     if checked then
       val current = NetworkClient.serverSysProps(arguments.sbtArguments)
-      Try(ClientSocket.portFile(portfile).sysProps).toOption.flatten
-        .map(NetworkClient.splitSysProps) match
-        case Some(previous) if previous != current =>
+      Try(ClientSocket.portFile(portfile)).toOption match
+        case Some(pf) if pf.sysProps.map(NetworkClient.splitSysProps).exists(_ != current) =>
+          val previous = pf.sysProps.map(NetworkClient.splitSysProps).getOrElse(Nil)
           val dropped = previous.diff(current)
           val added = current.diff(previous)
           console.appendLog(
@@ -217,7 +219,7 @@ class NetworkClient(
           if dropped.nonEmpty then
             console.appendLog(Level.Info, s"dropped: ${dropped.mkString(" ")}")
           if added.nonEmpty then console.appendLog(Level.Info, s"added: ${added.mkString(" ")}")
-          if !shutdownRunningServer() then
+          if !shutdownRunningServer(pf.uri) then
             console.appendLog(
               Level.Warn,
               "the running sbt server did not shut down; its JVM options are used instead"
@@ -225,11 +227,21 @@ class NetworkClient(
         case _ => ()
 
   /**
-   * Asks the running server to shut down and waits for it to remove the portfile.
-   * Returns false if the server is still running when we give up on it.
+   * Asks the running server to shut down and waits for it to let go of its socket, so that
+   * the server started next doesn't run into the one it replaces. Returns false if the
+   * server is still there when we give up on it.
    */
-  private def shutdownRunningServer(): Boolean =
-    Try(mkSocket(portfile)).toOption match
+  private def shutdownRunningServer(uri: String): Boolean =
+    def gone = !portfile.exists && !ClientSocket.reachable(uri, useJNI)
+    @tailrec def socketOpt(attempt: Int): Option[(Socket, Option[String])] =
+      Try(mkSocket(portfile)).toOption match
+        case Some(sk)             => Some(sk)
+        case None if attempt < 10 =>
+          // the socket can be momentarily busy, as it can be when connecting for real
+          Thread.sleep(new java.util.Random().nextInt(20).toLong)
+          socketOpt(attempt + 1)
+        case None => None
+    socketOpt(0) match
       case None => true // unreachable server, the stale portfile is handled by the caller
       case Some((sk, tkn)) =>
         val session = new ServerSessionImpl(sk, "sbt-server-restart")
@@ -250,16 +262,19 @@ class NetworkClient(
           )
           session.sendCommand(ExecCommand(Shutdown, Option(UUID.randomUUID.toString)))
           val deadline = NetworkClient.serverShutdownTimeout.fromNow
+          // the server drops the portfile when it starts tearing down, and only then is it
+          // worth asking its socket whether it is still there
           while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
+          while (!gone && !deadline.isOverdue()) Thread.sleep(20)
         finally session.close()
-        !portfile.exists
+        gone
 
   private[sbt] def connectOrStartServerAndConnect(
       promptCompleteUsers: Boolean,
       retry: Boolean
   ): (Socket, Option[String]) =
     try
-      if (portfile.exists) restartServerIfSysPropsChanged()
+      if (portfile.exists) restartServerIfSysPropsChanged(promptCompleteUsers)
       if (!portfile.exists) {
         if (shutdownOnly) {
           console.appendLog(Level.Info, "no sbt server is running. ciao")
@@ -494,10 +509,12 @@ class NetworkClient(
             .redirectOutput(nullFile)
             .redirectError(stderrFile)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
-        processBuilder.environment.put(
-          NetworkClient.sysPropsEnv,
-          NetworkClient.serverSysProps(arguments.sbtArguments).mkString(" ")
-        )
+        if (arguments.forwardsSysProps)
+          processBuilder.environment.put(
+            NetworkClient.sysPropsEnv,
+            NetworkClient.serverSysProps(arguments.sbtArguments).mkString("\n")
+          )
+        else Util.ignoreResult(processBuilder.environment.remove(NetworkClient.sysPropsEnv))
         Try(processBuilder.start()) match {
           case Success(process) =>
             sbtProcess.set(process)
@@ -1341,7 +1358,10 @@ object NetworkClient {
   private[sbt] val sysPropsEnv = "SBT_SERVER_SYS_PROPS"
   private[sbt] val serverShutdownTimeout: FiniteDuration = 30.seconds
 
-  /** These are set per client invocation, so they don't describe the server JVM. */
+  /**
+   * These are set per client invocation, so they don't describe the server JVM.
+   * `sbt.io.virtual` belongs here because the client appends its own `=true` either way.
+   */
   private[client] val ignoredSysProps: Set[String] = Set(
     "sbt.banner",
     "sbt.client",
@@ -1363,7 +1383,7 @@ object NetworkClient {
       .sorted
 
   private[client] def splitSysProps(value: String): Seq[String] =
-    value.split(" ").toSeq.filter(_.nonEmpty)
+    value.split("\n").toSeq.filter(_.nonEmpty)
 
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"

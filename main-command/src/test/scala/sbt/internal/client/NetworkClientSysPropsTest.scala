@@ -51,7 +51,12 @@ object NetworkClientSysPropsTest extends BasicTestSuite:
 
   test("what is recorded in the portfile reads back"):
     val recorded = sysProps("-Dmy.prop=first", "-Dsbt.version=2.0.7")
-    assert(NetworkClient.splitSysProps(recorded.mkString(" ")) == recorded)
+    assert(NetworkClient.splitSysProps(recorded.mkString("\n")) == recorded)
+
+  test("a value containing a space reads back in one piece"):
+    val recorded = sysProps("-Dmy.prop=a b")
+    assert(recorded == Seq("-Dmy.prop=a b"))
+    assert(NetworkClient.splitSysProps(recorded.mkString("\n")) == recorded)
 
   test("a server started without -D options reads back as empty"):
     assert(NetworkClient.splitSysProps("") == Nil)

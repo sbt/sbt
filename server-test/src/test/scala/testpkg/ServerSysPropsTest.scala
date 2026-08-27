@@ -42,6 +42,7 @@ class ServerSysPropsTest extends AnyFunSuite {
     val f = Files.createTempFile("dead-sbt", ".sh")
     Files.writeString(f, "#!/usr/bin/env bash\necho dead-server >&2\nexit 1\n")
     f.toFile.setExecutable(true)
+    f.toFile.deleteOnExit()
     f.toString
   }
 
@@ -90,15 +91,21 @@ class ServerSysPropsTest extends AnyFunSuite {
   private def client(baseDirectory: File, args: String*): (Int, String) = {
     val cos = new CachingOutputStream
     val out = new PrintStream(cos, true)
-    val code = NetworkClient.client(
-      baseDirectory,
-      args.toArray,
-      new InputStream { override def read(): Int = -1 },
-      out,
-      out,
-      false
-    )
-    (code, cos.text)
+    try {
+      val code = NetworkClient.client(
+        baseDirectory,
+        args.toArray,
+        new InputStream { override def read(): Int = -1 },
+        out,
+        out,
+        false
+      )
+      (code, cos.text)
+    } finally
+      // the client sets every -D option it parses on its own JVM, which here is the test JVM
+      args.foreach { a =>
+        if (a.startsWith("-D")) System.clearProperty(a.drop(2).takeWhile(_ != '='))
+      }
   }
 
   private def exited(process: scala.sys.process.Process): Boolean = {
@@ -119,6 +126,22 @@ class ServerSysPropsTest extends AnyFunSuite {
       val (code, log) = client(buildDir, "-Dmy.prop=first", "willSucceed")
       assert(code == 0, log)
       assert(process.isAlive(), s"the server was restarted even though nothing changed: $log")
+    }
+  }
+
+  test("a completion query keeps the running server") {
+    withServer("-Dmy.prop=first") { (buildDir, process) =>
+      // completion args never carry the user's -D options, so they say nothing about
+      // the server and pressing tab must not take it down
+      val out = new PrintStream(new CachingOutputStream, true)
+      NetworkClient.complete(
+        buildDir,
+        Array("--completions=sbtn comp"),
+        false,
+        new InputStream { override def read(): Int = -1 },
+        out
+      )
+      assert(process.isAlive(), "a completion query shut the server down")
     }
   }
 
@@ -148,9 +171,7 @@ class ServerSysPropsTest extends AnyFunSuite {
           client(buildDir, "-Dsbt.server.autorestart=false", "-Dmy.prop=second", "willSucceed")
         assert(code == 0, log)
         assert(process.isAlive(), s"the server was restarted with autorestart turned off: $log")
-      } finally
-        // the client sets the -D options it parses on itself
-        System.clearProperty("sbt.server.autorestart")
+      } finally System.clearProperty("sbt.server.autorestart")
     }
   }
 }
