@@ -1,5 +1,5 @@
 // https://github.com/sbt/sbt/issues/8971
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 
 lazy val extLib = ProjectRef(file("ext/lib"), "lib")
 

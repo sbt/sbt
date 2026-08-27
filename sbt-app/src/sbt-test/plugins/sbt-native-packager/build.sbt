@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 
 name := "hello"
 enablePlugins(JavaAppPackaging)
@@ -10,7 +10,7 @@ enablePlugins(UniversalDeployPlugin)
 lazy val check = taskKey[Unit]("")
 
 check := {
-  val cmd = "target/out/jvm/scala-3.8.4/hello/universal/stage/bin/hello"
+  val cmd = "target/out/jvm/scala-3.9.0/hello/universal/stage/bin/hello"
   val cmd0 =
     if (sys.props("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows"))
       cmd + ".bat"

@@ -2,7 +2,7 @@ import sbt.*
 import sbt.Tests.Output
 import sbt.util.Logger
 
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 
 val marker = file("test-result-logger-ran")
 val verify = "com.eed3si9n.verify" %% "verify" % "1.0.0"

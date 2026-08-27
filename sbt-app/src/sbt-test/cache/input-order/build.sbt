@@ -14,7 +14,7 @@ Global / localCacheDirectory := baseDirectory.value / "diskcache"
 lazy val inputOrder = project
   .in(file("."))
   .settings(
-    scalaVersion := "3.8.4",
+    scalaVersion := "3.9.0",
     // Reversing stands in for a second filesystem's readdir order, which is the only part of
     // this that cannot be reproduced on a single machine.
     Compile / sources := {

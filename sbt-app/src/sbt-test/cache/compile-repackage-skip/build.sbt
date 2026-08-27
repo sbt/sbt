@@ -31,7 +31,7 @@ def recorded(kind: String) = Def.task {
 }
 
 Global / localCacheDirectory := (ThisBuild / baseDirectory).value / "diskcache"
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / exportJars := true
 
 lazy val a = project.in(file("a"))

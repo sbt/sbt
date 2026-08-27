@@ -1,3 +1,3 @@
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 case class A()

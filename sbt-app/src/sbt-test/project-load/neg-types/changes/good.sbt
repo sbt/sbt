@@ -1,7 +1,7 @@
 import complete.DefaultParsers.{ *, given }
 
 LocalRootProject / name := "hello"
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 autoScalaLibrary := false
 crossPaths := false
 
