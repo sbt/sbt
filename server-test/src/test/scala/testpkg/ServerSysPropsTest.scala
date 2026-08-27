@@ -27,6 +27,7 @@ import org.scalatest.funsuite.AnyFunSuite
 class ServerSysPropsTest extends AnyFunSuite {
   private val testDirectory = "client"
   private val sysPropsEnv = "SBT_SERVER_SYS_PROPS"
+  private val sysPropsPortfileEnv = "SBT_SERVER_SYS_PROPS_PORTFILE"
 
   private val serverTestBase: File = {
     val p0 = new File(".").getAbsoluteFile / "server-test" / "src" / "server-test"
@@ -46,9 +47,14 @@ class ServerSysPropsTest extends AnyFunSuite {
     f.toString
   }
 
-  /** Forks a server that recorded `sysProps` as the options a client gave it. */
+  /**
+   * Forks a server with the environment a client sets when it starts one. `optionsFor` is
+   * the build the recorded options claim to belong to, which is this one unless a test says
+   * otherwise, since the server only trusts options that name its own connection file.
+   */
   private def withServer(
-      sysProps: String
+      sysProps: String,
+      optionsFor: Option[File] = None
   )(f: (File, scala.sys.process.Process) => Unit): Unit = {
     val base: Path = Files.createTempDirectory("sbt-sysprops")
     val buildDir = base.toFile / testDirectory
@@ -65,7 +71,12 @@ class ServerSysPropsTest extends AnyFunSuite {
             "-Dsbt.banner=false",
           )
         )
-        .withEnvVars(Map(sysPropsEnv -> sysProps)),
+        .withEnvVars(
+          Map(
+            sysPropsEnv -> sysProps,
+            sysPropsPortfileEnv -> portfile(optionsFor.getOrElse(buildDir)).getCanonicalPath,
+          )
+        ),
       buildDir,
       TestProperties.scalaVersion,
       TestProperties.version,
@@ -142,6 +153,24 @@ class ServerSysPropsTest extends AnyFunSuite {
         out
       )
       assert(process.isAlive(), "a completion query shut the server down")
+    }
+  }
+
+  test("options inherited from another build are not recorded") {
+    // an sbt server passes its environment on to every sbt it starts itself
+    val otherBuild = Files.createTempDirectory("sbt-other-build").toFile
+    withServer("-Dmy.prop=first", optionsFor = Some(otherBuild)) { (buildDir, _) =>
+      val recorded = IO.read(portfile(buildDir))
+      assert(!recorded.contains("sysProps"), recorded)
+    }
+  }
+
+  test("a -D option written after the command keeps the running server") {
+    withServer("-Dmy.prop=first") { (buildDir, process) =>
+      // sbt parses it as part of the command, so the server is not missing anything
+      val (_, log) = client(buildDir, "compile", "-Dmy.prop=second")
+      assert(!log.contains("restarting it"), log)
+      assert(process.isAlive(), s"the server was restarted over a command argument: $log")
     }
   }
 

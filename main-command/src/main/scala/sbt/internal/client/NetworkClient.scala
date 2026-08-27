@@ -204,7 +204,10 @@ class NetworkClient(
    */
   private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
     val checked = arguments.forwardsSysProps && !shutdownOnly && !arguments.bsp &&
-      !promptCompleteUsers && serverAutoStart && serverAutoRestart
+      !promptCompleteUsers && serverAutoStart && serverAutoRestart &&
+      // a -D option written after the command is parsed as part of the command, so it
+      // isn't ours to compare and the server isn't missing it either
+      !arguments.commandArguments.exists(_.startsWith("-D"))
     if checked then
       val current = NetworkClient.serverSysProps(arguments.sbtArguments)
       Try(ClientSocket.portFile(portfile)).toOption match
@@ -221,9 +224,14 @@ class NetworkClient(
           if added.nonEmpty then console.appendLog(Level.Info, s"added: ${added.mkString(" ")}")
           if !shutdownRunningServer(pf.uri) then
             console.appendLog(
-              Level.Warn,
-              "the running sbt server did not shut down; its JVM options are used instead"
+              Level.Error,
+              "the sbt server did not shut down, it is most likely busy with another client"
             )
+            console.appendLog(
+              Level.Error,
+              "it shuts down once that is done; run this command again after it has"
+            )
+            System.exit(1)
         case _ => ()
 
   /**
@@ -252,22 +260,27 @@ class NetworkClient(
             canWork = Some(false),
             subscribeToAll = Some(false),
           )
-          session.sendCommand(
-            InitCommand(
-              token = tkn,
-              execId = Option(UUID.randomUUID.toString),
-              skipAnalysis = Some(true),
-              initializationOptions = Some(opts),
-            )
-          )
-          session.sendCommand(ExecCommand(Shutdown, Option(UUID.randomUUID.toString)))
-          val deadline = NetworkClient.serverShutdownTimeout.fromNow
-          // the server drops the portfile when it starts tearing down, and only then is it
-          // worth asking its socket whether it is still there
-          while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
-          while (!gone && !deadline.isOverdue()) Thread.sleep(20)
+          val asked =
+            for
+              _ <- session.sendCommand(
+                InitCommand(
+                  token = tkn,
+                  execId = Option(UUID.randomUUID.toString),
+                  skipAnalysis = Some(true),
+                  initializationOptions = Some(opts),
+                )
+              )
+              _ <- session.sendCommand(ExecCommand(Shutdown, Option(UUID.randomUUID.toString)))
+            yield ()
+          if asked.isFailure then true // the server dropped the connection, so it is on its way out
+          else
+            val deadline = NetworkClient.serverShutdownTimeout.fromNow
+            // the server drops the portfile when it starts tearing down, and only then is it
+            // worth asking its socket whether it is still there
+            while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
+            while (!gone && !deadline.isOverdue()) Thread.sleep(20)
+            gone
         finally session.close()
-        gone
 
   private[sbt] def connectOrStartServerAndConnect(
       promptCompleteUsers: Boolean,
@@ -509,12 +522,17 @@ class NetworkClient(
             .redirectOutput(nullFile)
             .redirectError(stderrFile)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
-        if (arguments.forwardsSysProps)
+        if (arguments.forwardsSysProps) {
           processBuilder.environment.put(
             NetworkClient.sysPropsEnv,
             NetworkClient.serverSysProps(arguments.sbtArguments).mkString("\n")
           )
-        else Util.ignoreResult(processBuilder.environment.remove(NetworkClient.sysPropsEnv))
+          processBuilder.environment
+            .put(NetworkClient.sysPropsPortfileEnv, portfile.getCanonicalPath)
+        } else {
+          Util.ignoreResult(processBuilder.environment.remove(NetworkClient.sysPropsEnv))
+          Util.ignoreResult(processBuilder.environment.remove(NetworkClient.sysPropsPortfileEnv))
+        }
         Try(processBuilder.start()) match {
           case Success(process) =>
             sbtProcess.set(process)
@@ -1356,6 +1374,12 @@ object NetworkClient {
 
   /** Carries the `-D` options a client forwards to the server it starts. */
   private[sbt] val sysPropsEnv = "SBT_SERVER_SYS_PROPS"
+
+  /**
+   * The connection file of the server [[sysPropsEnv]] is meant for. Both are inherited by
+   * everything the server itself starts, so a server only trusts them when they name it.
+   */
+  private[sbt] val sysPropsPortfileEnv = "SBT_SERVER_SYS_PROPS_PORTFILE"
   private[sbt] val serverShutdownTimeout: FiniteDuration = 30.seconds
 
   /**

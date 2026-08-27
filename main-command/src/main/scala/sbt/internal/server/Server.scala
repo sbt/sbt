@@ -213,7 +213,13 @@ private[sbt] object Server {
         import JsonProtocol.given
 
         val uri = connection.shortName
-        val sysProps = sys.env.get(NetworkClient.sysPropsEnv)
+        // both variables reach everything this server starts, so only record them when
+        // they name this build rather than the one whose client set them
+        val startedByThisBuild = sys.env
+          .get(NetworkClient.sysPropsPortfileEnv)
+          .map(new File(_).getCanonicalFile)
+          .contains(portfile.getCanonicalFile)
+        val sysProps = if (startedByThisBuild) sys.env.get(NetworkClient.sysPropsEnv) else None
         val p =
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
