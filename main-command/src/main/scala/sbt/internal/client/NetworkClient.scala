@@ -153,6 +153,7 @@ class NetworkClient(
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
     !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
   private def shutdownOnly = arguments.commandArguments == Seq(Shutdown)
+  private def exitOnly = arguments.commandArguments == Seq(TerminateAction)
   private lazy val serverAutoStart: Boolean =
     sys.props.get("sbt.server.autostart").forall(_.toLowerCase == "true")
   private lazy val serverAutoRestart: Boolean =
@@ -203,7 +204,7 @@ class NetworkClient(
    * pressing tab.
    */
   private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
-    val checked = arguments.forwardsSysProps && !shutdownOnly && !arguments.bsp &&
+    val checked = arguments.forwardsSysProps && !shutdownOnly && !exitOnly && !arguments.bsp &&
       !promptCompleteUsers && serverAutoStart && serverAutoRestart &&
       // a -D option written after the command is parsed as part of the command, so it
       // isn't ours to compare and the server isn't missing it either
@@ -231,7 +232,7 @@ class NetworkClient(
               Level.Error,
               "it shuts down once that is done; run this command again after it has"
             )
-            System.exit(1)
+            throw new ServerFailedException
         case _ => ()
 
   /**
@@ -250,7 +251,8 @@ class NetworkClient(
           socketOpt(attempt + 1)
         case None => None
     socketOpt(0) match
-      case None => true // unreachable server, the stale portfile is handled by the caller
+      // a server that stopped answering leaves a stale portfile, which the caller replaces
+      case None            => !ClientSocket.reachable(uri, useJNI)
       case Some((sk, tkn)) =>
         val session = new ServerSessionImpl(sk, "sbt-server-restart")
         try
@@ -272,13 +274,19 @@ class NetworkClient(
               )
               _ <- session.sendCommand(ExecCommand(Shutdown, Option(UUID.randomUUID.toString)))
             yield ()
-          if asked.isFailure then true // the server dropped the connection, so it is on its way out
+          if asked.isFailure && gone then true // it dropped the connection on its way out
           else
             val deadline = NetworkClient.serverShutdownTimeout.fromNow
             // the server drops the portfile when it starts tearing down, and only then is it
             // worth asking its socket whether it is still there
             while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
-            while (!gone && !deadline.isOverdue()) Thread.sleep(20)
+            // each of these asks costs a connection on a server that is still up, so they
+            // get further apart the longer it takes
+            var delay = 20L
+            while (!gone && !deadline.isOverdue()) {
+              Thread.sleep(delay)
+              if (delay < 500) delay = delay * 2
+            }
             gone
         finally session.close()
 

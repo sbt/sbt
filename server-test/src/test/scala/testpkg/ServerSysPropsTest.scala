@@ -174,6 +174,15 @@ class ServerSysPropsTest extends AnyFunSuite {
     }
   }
 
+  test("a bare exit keeps the running server") {
+    withServer("-Dmy.prop=first") { (buildDir, process) =>
+      // there is nothing to run, so a fresh server would be started only to say goodbye
+      val (code, log) = client(buildDir, "-Dmy.prop=second", "exit")
+      assert(code == 0, log)
+      assert(process.isAlive(), s"the server was restarted for an exit: $log")
+    }
+  }
+
   test("a client passing changed -D options restarts the server") {
     withServer("-Dmy.prop=first") { (buildDir, process) =>
       // the client stops the running server and then fails to start a new one,
