@@ -14,7 +14,7 @@ given PortFileFormat: JsonFormat[sbt.internal.protocol.PortFile] = new JsonForma
       val uri = unbuilder.readField[String]("uri")
       val tokenfilePath = unbuilder.readField[Option[String]]("tokenfilePath")
       val tokenfileUri = unbuilder.readField[Option[String]]("tokenfileUri")
-      val sysProps = unbuilder.readField[Option[String]]("sysProps")
+      val sysProps = unbuilder.readField[Vector[String]]("sysProps")
       unbuilder.endObject()
       sbt.internal.protocol.PortFile(uri, tokenfilePath, tokenfileUri, sysProps)
       case None =>

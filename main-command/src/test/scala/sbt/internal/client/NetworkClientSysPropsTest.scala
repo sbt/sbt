@@ -49,7 +49,7 @@ object NetworkClientSysPropsTest extends BasicTestSuite:
         Seq("-Dsbt.test.sysprops=first")
     )
 
-  test("what is recorded in the portfile reads back"):
+  test("what the server inherits reads back"):
     val recorded = sysProps("-Dmy.prop=first", "-Dsbt.version=2.0.7")
     assert(NetworkClient.splitSysProps(recorded.mkString("\n")) == recorded)
 
@@ -58,5 +58,5 @@ object NetworkClientSysPropsTest extends BasicTestSuite:
     assert(recorded == Seq("-Dmy.prop=a b"))
     assert(NetworkClient.splitSysProps(recorded.mkString("\n")) == recorded)
 
-  test("a server started without -D options reads back as empty"):
+  test("a server that inherits no -D options reads back as empty"):
     assert(NetworkClient.splitSysProps("") == Nil)

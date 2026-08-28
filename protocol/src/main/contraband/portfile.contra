@@ -9,7 +9,7 @@ type PortFile {
   uri: String!
   tokenfilePath: String
   tokenfileUri: String
-  ## Newline separated -D options the thin client passed to this server when it started it.
+  ## The -D options the thin client passed to this server when it started it.
   sysProps: [String] @since("2.0.7")
 }
 

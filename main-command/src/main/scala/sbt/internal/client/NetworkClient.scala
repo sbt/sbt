@@ -200,8 +200,9 @@ class NetworkClient(
   /**
    * A running server was started with its own `-D` options, and the ones passed to this
    * invocation would be dropped on the floor. Restart the server so that they take effect.
-   * Completion queries never restart it: a client is not worth a server to someone
-   * pressing tab.
+   * A server that recorded no options is one that runs without any, so a client that
+   * carries some restarts it too. Completion queries never restart it: a client is not
+   * worth a server to someone pressing tab.
    */
   private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
     val checked = arguments.forwardsSysProps && !shutdownOnly && !exitOnly && !arguments.bsp &&
@@ -212,10 +213,9 @@ class NetworkClient(
     if checked then
       val current = NetworkClient.serverSysProps(arguments.sbtArguments)
       Try(ClientSocket.portFile(portfile)).toOption match
-        case Some(pf) if pf.sysProps.map(NetworkClient.splitSysProps).exists(_ != current) =>
-          val previous = pf.sysProps.map(NetworkClient.splitSysProps).getOrElse(Nil)
-          val dropped = previous.diff(current)
-          val added = current.diff(previous)
+        case Some(pf) if pf.sysProps != current =>
+          val dropped = pf.sysProps.diff(current)
+          val added = current.diff(pf.sysProps)
           console.appendLog(
             Level.Info,
             "sbt server is running with different JVM options; restarting it"
@@ -1414,8 +1414,9 @@ object NetworkClient {
       .distinct
       .sorted
 
-  private[client] def splitSysProps(value: String): Seq[String] =
-    value.split("\n").toSeq.filter(_.nonEmpty)
+  /** Reads back the options [[sysPropsEnv]] carries to the server they were passed to. */
+  private[sbt] def splitSysProps(value: String): Vector[String] =
+    value.split("\n").toVector.filter(_.nonEmpty)
 
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"

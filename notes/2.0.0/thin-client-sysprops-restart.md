@@ -23,6 +23,9 @@ $ sbt -Dmy.prop=second showProp
 If the running server is busy and doesn't shut down, the invocation stops with an error
 instead of going ahead with the options it asked for and getting dropped mid-build.
 
+A server with no options recorded, one that something other than the thin client started,
+is a server running without any, so an invocation that carries some restarts it as well.
+
 Options that describe the client rather than the server (`sbt.color`, `sbt.banner`, ...)
 are left out of the comparison, and so is anything in `.sbtopts`, `.jvmopts` or
 `SBT_OPTS`, which the client never sees. Other clients attached to that server are

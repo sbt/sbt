@@ -128,7 +128,7 @@ class ServerSysPropsTest extends AnyFunSuite {
   test("the server records the -D options it was started with") {
     withServer("-Dmy.prop=first") { (buildDir, _) =>
       val recorded = IO.read(portfile(buildDir))
-      assert(recorded.contains(""""sysProps":"-Dmy.prop=first""""), recorded)
+      assert(recorded.contains(""""sysProps":["-Dmy.prop=first"]"""), recorded)
     }
   }
 
@@ -161,7 +161,7 @@ class ServerSysPropsTest extends AnyFunSuite {
     val otherBuild = Files.createTempDirectory("sbt-other-build").toFile
     withServer("-Dmy.prop=first", optionsFor = Some(otherBuild)) { (buildDir, _) =>
       val recorded = IO.read(portfile(buildDir))
-      assert(!recorded.contains("sysProps"), recorded)
+      assert(recorded.contains(""""sysProps":[]"""), recorded)
     }
   }
 
@@ -191,6 +191,17 @@ class ServerSysPropsTest extends AnyFunSuite {
         client(buildDir, s"--sbt-script=${deadScript()}", "-Dmy.prop=second", "compile")
       assert(log.contains("restarting it"), log)
       assert(exited(process), s"the server kept running with the options of an older client: $log")
+    }
+  }
+
+  test("a client passing -D options restarts a server that recorded none") {
+    // a server without any recorded options is running without them, so it is missing
+    // the ones this client carries
+    withServer("") { (buildDir, process) =>
+      val (_, log) =
+        client(buildDir, s"--sbt-script=${deadScript()}", "-Dmy.prop=first", "compile")
+      assert(log.contains("restarting it"), log)
+      assert(exited(process), s"the server kept running without the options it was passed: $log")
     }
   }
 

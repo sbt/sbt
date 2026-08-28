@@ -219,7 +219,8 @@ private[sbt] object Server {
           .get(NetworkClient.sysPropsPortfileEnv)
           .map(new File(_).getCanonicalFile)
           .contains(portfile.getCanonicalFile)
-        val sysProps = if (startedByThisBuild) sys.env.get(NetworkClient.sysPropsEnv) else None
+        val recorded = if (startedByThisBuild) sys.env.get(NetworkClient.sysPropsEnv) else None
+        val sysProps = recorded.toVector.flatMap(NetworkClient.splitSysProps)
         val p =
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
