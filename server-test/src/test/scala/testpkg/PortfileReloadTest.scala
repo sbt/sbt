@@ -26,6 +26,6 @@ class PortfileReloadTest extends AbstractServerTest {
     assert(runBatchClient("reload") == 0, "reload must succeed")
     val portfile = svr.baseDirectory / "project" / "target" / "active.json"
     IO.write(portfile, """{"uri":"local:///displaced","serverId":"another-server"}""")
-    assert(!waitUntil(settle)(!svr.isAlive), "the displaced server keeps running")
+    assert(waitUntil(settle)(!svr.isAlive), "the displaced server exits")
   }
 }

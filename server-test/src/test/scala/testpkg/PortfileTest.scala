@@ -32,7 +32,7 @@ class PortfileTest extends AbstractServerTest {
   test("a portfile that names another server") {
     val replacement = """{"uri":"local:///displaced","serverId":"another-server"}"""
     IO.write(portfile, replacement)
-    assert(!waitUntil(settle)(!svr.isAlive), "the displaced server keeps running")
+    assert(waitUntil(settle)(!svr.isAlive), "the displaced server exits")
     assert(IO.read(portfile) == replacement, "the displaced server does not delete the portfile")
   }
 }

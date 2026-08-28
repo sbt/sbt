@@ -30,6 +30,8 @@ import sbt.internal.util.*
 import sbt.io.syntax.*
 import sbt.io.{ Hash, IO }
 import sbt.nio.Watch.NullLogger
+import sbt.internal.nio.FileTreeRepository
+import sbt.nio.file.FileAttributes
 import sbt.protocol.Serialization.attach
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
 import sbt.util.Logger
@@ -53,6 +55,8 @@ private[sbt] final class CommandExchange {
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
+  private val watchedRepository = new AtomicReference[AnyRef]
+  private val portfileWatch = AtomicCloseable[AutoCloseable]()
   private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
@@ -307,7 +311,52 @@ private[sbt] final class CommandExchange {
         case _ =>
       }
     }
+    server.foreach { instance =>
+      s.get(sbt.nio.Keys.globalFileTreeRepository).foreach { repo =>
+        if (watchedRepository.get ne repo) watchPortfile(instance, portfile, repo)
+      }
+    }
     s.remove(Keys.bootServerSocket)
+  }
+
+  /**
+   * Registers a watch on the portfile. A project load closes the file tree repository, so the
+   * caller registers again on the one that replaced it, and this reads the file once because no
+   * event arrived while the old watch was closed.
+   */
+  private def watchPortfile(
+      instance: ServerInstance,
+      portfile: File,
+      repo: FileTreeRepository[FileAttributes]
+  ): Unit = {
+    def check(): Unit = Server.serverIdOf(portfile) match {
+      case Success(id) if !id.contains(instance.serverId) =>
+        exitServer("another sbt server took over this build")
+      case _ =>
+    }
+    if (replaceWatch(portfile, repo, portfileWatch)(_.addObserver(_ => check())))
+      watchedRepository.set(repo)
+    check()
+  }
+
+  private def replaceWatch[A](
+      portfile: File,
+      repo: nio.Registerable[A],
+      watch: AtomicCloseable[AutoCloseable]
+  )(setUp: nio.Observable[A] => Unit): Boolean = {
+    watch.close()
+    // a repository that a failed load left closed throws instead of returning a Left
+    Try(repo.register(sbt.nio.file.Glob(portfile))).flatMap(_.toTry) match {
+      case Success(o) => setUp(o); watch.set(o); true
+      case Failure(e) =>
+        Terminal.consoleLog(s"sbt server cannot watch $portfile: $e")
+        false
+    }
+  }
+
+  private def exitServer(reason: String): Unit = {
+    Terminal.consoleLog(s"$reason; exiting")
+    shutdown(ConsoleChannel.defaultName)
   }
 
   def shutdown(): Unit = {
@@ -318,6 +367,7 @@ private[sbt] final class CommandExchange {
     }
     procFile = None
     fastTrackThread.close()
+    portfileWatch.close()
     channels.foreach(c => Util.ignoreTry(c.shutdown(true)))
     // interrupt and kill the thread
     server.foreach(s => Util.ignoreTry(s.shutdown()))
@@ -520,10 +570,8 @@ private[sbt] final class CommandExchange {
       case nc: NetworkChannel => nc.isInitialized
       case _                  => false
     }
-    if (idle && !hasClients) {
-      Terminal.consoleLog("dropping idle server (requested by another sbt instance)")
-      commandQueue.add(Exec(TerminateAction, Some(CommandSource(ConsoleChannel.defaultName))))
-    }
+    if (idle && !hasClients)
+      exitServer("dropping idle server (requested by another sbt instance)")
   }
 
   /** Notify other sbt servers to drop if idle. Runs on a daemon thread to avoid blocking. */

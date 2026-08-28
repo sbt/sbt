@@ -28,6 +28,7 @@ import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
 import org.scalasbt.ipcsocket.*
 import sbt.internal.bsp.BuildServerConnection
+import sbt.protocol.ClientSocket
 import xsbti.AppConfiguration
 
 private[sbt] sealed trait ServerInstance {
@@ -43,6 +44,10 @@ private[sbt] object Server {
       with PortFileFormats
       with TokenFileFormats
   object JsonProtocol extends JsonProtocol
+
+  /** The id the portfile names, None when it names none, and a failure when unreadable. */
+  private[sbt] def serverIdOf(portfile: File): Try[Option[String]] =
+    ClientSocket.loadPortFile(portfile).map(_.serverId)
 
   def start(
       connection: ServerConnection,
@@ -159,12 +164,8 @@ private[sbt] object Server {
       }
 
       override def shutdown(): Unit = {
-        if (portfile.exists) {
-          IO.delete(portfile)
-        }
-        if (tokenfile.exists) {
-          IO.delete(tokenfile)
-        }
+        if (serverIdOf(portfile).getOrElse(None).contains(serverId)) IO.delete(portfile)
+        IO.delete(tokenfile)
         running.set(false)
         serverSocketHolder.close()
         log.info("shutting down sbt server")
