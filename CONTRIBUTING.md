@@ -86,7 +86,7 @@ Before you submit a Pull Request (PR) from your forked repo, check that it meets
 - Include tests, either as scripted test or unit tests to your pull request, or screenshots from a manual test.
 - Follow our project's [Commit message guideline](#commit).
 - Follow our project's [Coding style and best practices][03].
-- Sign the [Scala Contributor License Agreement](https://contribute.akka.io/contribute/cla/scala).
+- Sign the [Scala Contributor License Agreement](https://cla.scala-lang.org/sbt/sbt).
 - Make sure your PR is small and focused on one change only - avoid adding unrelated changes, mixing adding features and refactoring. Keeping to that rule will make it easier to review your PR and will make it easier for core devs if they decide that your change should be cherry-picked to release it in a stable release of sbt.
 - Maintainers will not merge a PR that regresses linting or does not pass CI tests (unless you have good justification that it a transient error or something that is being fixed in other PR).
 - Maintainers will not merge a PR that breaks binary compatibility ("bincompat"). Run `mimaReportBinaryIssues` from the sbt shell.

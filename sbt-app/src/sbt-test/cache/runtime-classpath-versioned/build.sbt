@@ -1,6 +1,6 @@
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 // packageInternal is used for the Compile/Test-time internal classpath (what app compiles
 // against), so a dependency's version bump alone doesn't bust downstream compile caches.

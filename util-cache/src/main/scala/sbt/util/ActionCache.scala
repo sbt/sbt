@@ -28,6 +28,7 @@ import sbt.internal.util.{
 }
 import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.io.IO.Implicits.zipContext
 import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
@@ -423,7 +424,7 @@ object ActionCache:
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
       // Create the zip in a temp directory to avoid overwriting the cache if `zipPath` is a symlink to the CAS
       val tempZipPath = (tempDir / (dirPath.getFileName.toString + dirZipExt)).toPath()
-      IO.zip(
+      IO.zipParallel(
         (allPaths ++ Seq(mPath)).flatMap(rebase),
         tempZipPath.toFile(),
         Some(default2010Timestamp)

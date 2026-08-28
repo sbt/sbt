@@ -1,7 +1,7 @@
 import complete.DefaultParsers.{ *, given }
 
 LocalRootProject / name := "hello"
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 autoScalaLibrary := false
 crossPaths := false
 
@@ -36,7 +36,11 @@ exportFailedSessionLog := Def.uncached {
     logLines(lastLog :: Nil)
       .foldLeft(List(List.empty[String])) { (acc, line) =>
         if line.contains("welcome to sbt") then Nil :: acc
-        else (line.replace(b, "BASE").replaceAll(" -{4,}$", "") :: acc.head) :: acc.tail
+        else
+          (line
+            .replace(b, "BASE")
+            .replaceAll(" -{4,}$", "")
+            .replaceAll("""\[\d+\.\.\d+\.\.\d+\]""", "[OFFSET]") :: acc.head) :: acc.tail
       }
       .map(_.reverse)
       .reverse

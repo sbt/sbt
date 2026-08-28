@@ -48,14 +48,23 @@ object Tests {
   private[sbt] sealed trait AdhocOption
   private[sbt] object AdhocOption:
     case class Summary(summary: TestSummary) extends AdhocOption
+    case class CacheTestResult(enabled: Boolean) extends AdhocOption
 
     private[sbt] def parser: Parser[AdhocOption] =
       import DefaultParsers.*
       val value = token("--test_summary=") ~> token(NotSpace.examples("none", "failure", "success"))
-      value.flatMap: v =>
+      val summary = value.flatMap: v =>
         Tests.parseTestSummary(v) match
           case Some(ts) => Parser.success(Summary(ts))
           case None     => Parser.failure(s"Invalid test_summary value: $v")
+      val cacheValue =
+        token("--cache_test_result=") ~> token(NotSpace.examples("true", "false"))
+      val cache = cacheValue.flatMap: v =>
+        v.toLowerCase(Locale.ENGLISH) match
+          case "true"  => Parser.success(CacheTestResult(true))
+          case "false" => Parser.success(CacheTestResult(false))
+          case _       => Parser.failure(s"Invalid cache_test_result value: $v")
+      summary | cache
   end AdhocOption
 
   private[sbt] def parseTestSummary(value: String): Option[TestSummary] =

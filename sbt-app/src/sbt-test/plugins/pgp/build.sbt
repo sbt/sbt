@@ -3,7 +3,7 @@ Global / pgpSecretRing := baseDirectory.value / "secring.pgp"
 Global / pgpPublicRing := baseDirectory.value / "pubring.pgp"
 Global / useGpg := false
 
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 organization := "com.example"
 name := "app"
 version := "1.0"

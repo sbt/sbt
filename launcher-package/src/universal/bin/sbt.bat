@@ -541,71 +541,75 @@ if "%~0" == "init" (
   )
 )
 
-if "%g:~0,2%" == "-D" (
-  rem special handling for -D since '=' gets parsed away
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -D argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-        shift
-        goto args_loop
-      ) else (
-        echo %g% is missing a value
-        goto error
-      )
-    ) else (
-      call :dlog [args_loop] -D argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
-      goto args_loop
-    )
-  )
-)
+rem NOTE: -D handling below is intentionally flat (goto-based, single-line
+rem `for` bodies) rather than nested if/for blocks. cmd.exe finds a multi-line
+rem block's closing paren by counting every literal ( and ) across the lines
+rem it spans, including ones arriving via variable substitution -- splicing an
+rem argument value (which may itself contain unbalanced-looking parens, see
+rem #9660) into a deeply nested multi-line construct risks miscounting that.
+rem A flat, single-line-per-command shape does not put cmd.exe in a position
+rem where it needs to hunt across multiple lines for a matching paren.
+if not "%g:~0,2%" == "-D" goto args_loop_after_D
+rem special handling for -D since '=' gets parsed away
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_D_has_value
+if "%~1" == "" goto args_loop_D_missing_value
+call :dlog [args_loop] -D argument %~0=%~1
+set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
+shift
+goto args_loop
+:args_loop_D_missing_value
+echo %g% is missing a value
+goto error
+:args_loop_D_has_value
+call :dlog [args_loop] -D argument %~0
+set SBT_ARGS=!SBT_ARGS! "%~0"
+goto args_loop
+:args_loop_after_D
 
-if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX" (
-  rem special handling for -XX since '=' gets parsed away
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -XX argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-        shift
-        goto args_loop
-      ) else (
-        echo %g% is missing a value
-        goto error
-      )
-    ) else (
-      call :dlog [args_loop] -XX argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
-      goto args_loop
-    )
-  )
-)
+rem See the -D handling above for why this is flat rather than nested blocks.
+if "%g:~0,5%" == "-XX:+" goto args_loop_after_XX
+if "%g:~0,5%" == "-XX:-" goto args_loop_after_XX
+if not "%g:~0,3%" == "-XX" goto args_loop_after_XX
+rem special handling for -XX since '=' gets parsed away
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_XX_has_value
+if "%~1" == "" goto args_loop_XX_missing_value
+call :dlog [args_loop] -XX argument %~0=%~1
+set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
+shift
+goto args_loop
+:args_loop_XX_missing_value
+echo %g% is missing a value
+goto error
+:args_loop_XX_has_value
+call :dlog [args_loop] -XX argument %~0
+set SBT_ARGS=!SBT_ARGS! "%~0"
+goto args_loop
+:args_loop_after_XX
 
 rem handle -X JVM options (e.g., -Xmx1G, -Xms512M, -Xss4M) - fixes #5742
 if "%g:~0,2%" == "-X" (
   call :dlog [args_loop] -X JVM argument %~0
-  call :addJava %~0
+  call :addJava "%~0"
   goto args_loop
 )
 
-if defined sbt_new if "%g:~0,2%" == "--" (
-  rem special handling for -- template arguments since '=' gets parsed away on Windows
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -- argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-        shift
-        goto args_loop
-      )
-    )
-  )
-)
+rem See the -D handling above for why this is flat rather than nested blocks.
+if not defined sbt_new goto args_loop_after_dashdash
+if not "%g:~0,2%" == "--" goto args_loop_after_dashdash
+rem special handling for -- template arguments since '=' gets parsed away on Windows
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_after_dashdash
+if "%~1" == "" goto args_loop_after_dashdash
+call :dlog [args_loop] -- argument %~0=%~1
+set SBT_ARGS=!SBT_ARGS! "%~0=%~1"
+shift
+goto args_loop
+:args_loop_after_dashdash
 
 rem the %0 (instead of %~0) preserves original argument quoting
 set sbt_args_seen_command=1
@@ -659,7 +663,11 @@ if !sbt_args_print_sbt_script_version! equ 1 (
 call :checkjava
 
 if !run_native_client! equ 1 if not defined sbt_args_print_version (
-  goto :runnative !SBT_ARGS!
+  rem Do not append !SBT_ARGS! here: `goto` ignores it, it is not a real
+  rem argument-passing mechanism, but the text is still spliced into this
+  rem line and re-scanned by cmd.exe, so it is live to shell operators ^(#9660^).
+  rem :runnative reads SBT_ARGS via delayed expansion instead.
+  goto :runnative
   goto :eof
 )
 
@@ -679,7 +687,11 @@ if defined JVM_DEBUG_PORT (
 
 call :sync_preloaded
 
-call :run !SBT_ARGS!
+rem Do not append !SBT_ARGS! to this call: splicing it onto a `call` command
+rem line makes cmd.exe re-tokenize it, letting shell operators inside a
+rem quoted user argument escape their quoting and run ^(#9660^).
+rem :run reads SBT_ARGS via delayed expansion instead.
+call :run
 
 if ERRORLEVEL 1 goto error
 goto end
@@ -704,34 +716,38 @@ if defined sbt_args_no_share (
   set _SBT_OPTS=-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy !_SBT_OPTS!
 )
 
+rem NOTE: each user-supplied value below is wrapped in its own quotes before
+rem being appended to _SBT_OPTS. _SBT_OPTS is later spliced unquoted into
+rem exec lines ^(:copyrt, the final java invocation^), so an unquoted shell
+rem operator here would be live to cmd.exe at that point ^(#9660^).
 if defined sbt_args_supershell (
-  set _SBT_OPTS=-Dsbt.supershell=!sbt_args_supershell! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.supershell=!sbt_args_supershell!" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_version (
-  set _SBT_OPTS=-Dsbt.version=!sbt_args_sbt_version! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.version=!sbt_args_sbt_version!" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_dir (
-  set _SBT_OPTS=-Dsbt.global.base=!sbt_args_sbt_dir! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.global.base=!sbt_args_sbt_dir!" !_SBT_OPTS!
 ) else if defined LOCALAPPDATA (
-  set _SBT_OPTS=-Dsbt.global.base=!LOCALAPPDATA!\sbt !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.global.base=!LOCALAPPDATA!\sbt" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_boot (
-  set _SBT_OPTS=-Dsbt.boot.directory=!sbt_args_sbt_boot! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.boot.directory=!sbt_args_sbt_boot!" !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_cache (
-  set _SBT_OPTS=-Dsbt.global.localcache=!sbt_args_sbt_cache! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.global.localcache=!sbt_args_sbt_cache!" !_SBT_OPTS!
 )
 
 if defined sbt_args_ivy (
-  set _SBT_OPTS=-Dsbt.ivy.home=!sbt_args_ivy! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.ivy.home=!sbt_args_ivy!" !_SBT_OPTS!
 )
 
 if defined sbt_args_color (
-  set _SBT_OPTS=-Dsbt.color=!sbt_args_color! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.color=!sbt_args_color!" !_SBT_OPTS!
 )
 
 if defined sbt_args_mem (
@@ -759,7 +775,7 @@ if not defined sbt_args_no_hide_jdk_warnings (
 )
 
 if defined sbt_args_experimental_execution_log (
-  set _SBT_OPTS=-Dsbt.experimental_execution_log=!sbt_args_experimental_execution_log! !_SBT_OPTS!
+  set _SBT_OPTS="-Dsbt.experimental_execution_log=!sbt_args_experimental_execution_log!" !_SBT_OPTS!
 )
 
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
@@ -796,14 +812,14 @@ if defined sbt_args_verbose (
   echo -cp
   echo "!sbt_jar!"
   echo xsbt.boot.Boot
-  if not "%~1" == "" ( call :echolist %* )
+  if defined SBT_ARGS ( call :echolist !SBT_ARGS! )
   echo.
 )
 
 rem one-hop marker: drop it before the server JVM
 set "SBT_EXPLICIT_JAVA_HOME="
 
-"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! %JAVA_TOOL_OPTIONS% %JDK_JAVA_OPTIONS% -cp "!sbt_jar!" xsbt.boot.Boot %*
+"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! %JAVA_TOOL_OPTIONS% %JDK_JAVA_OPTIONS% -cp "!sbt_jar!" xsbt.boot.Boot !SBT_ARGS!
 
 goto :eof
 
@@ -811,14 +827,19 @@ goto :eof
 
 set "_SBTNCMD=!SBT_BIN_DIR!sbtn-x86_64-pc-win32.exe"
 
+rem NOTE: SBT_ARGS entries may carry their own embedded quotes, see the
+rem args_loop -D/-XX/catch-all handling above, to keep shell operators safe
+rem across the re-scan below. Do not wrap these set lines in an outer pair
+rem of quotes: that would pair up with an embedded quote instead of its
+rem match, breaking the quoting it is meant to preserve ^(#9660^).
 if defined sbt_args_verbose (
   echo # running native client
   if not "%~1" == "" ( call :echolist %* )
-  set "SBT_ARGS=-v !SBT_ARGS!"
+  set SBT_ARGS=-v !SBT_ARGS!
 )
 
 for %%I in ("!SBT_BIN_DIR!sbt.bat") do set "SBT_SCRIPT=%%~sI"
-set "SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%"
+set SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%
 
 rem Microsoft Visual C++ 2010 SP1 Redistributable Package (x64) is required
 rem https://www.microsoft.com/en-us/download/details.aspx?id=13523
@@ -892,7 +913,7 @@ exit /B 0
 
 :addJava
   call :dlog [addJava] arg = '%*'
-  set "_JAVA_OPTS=!_JAVA_OPTS! %*"
+  set _JAVA_OPTS=!_JAVA_OPTS! %*
 exit /B 0
 
 :addMemory

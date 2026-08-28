@@ -23,9 +23,15 @@ import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
+import scala.util.DynamicVariable
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 
 object IncrementalTest:
+  private val cacheTestResultOverride = DynamicVariable[Option[Boolean]](None)
+
+  private[sbt] def withCacheTestResult[A](enabled: Boolean)(f: => A): A =
+    cacheTestResultOverride.withValue(Some(enabled))(f)
+
   def filterTask: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
     Def.task {
       val cp = (Keys.test / fullClasspath).value
@@ -34,11 +40,16 @@ object IncrementalTest:
       def hasCachedSuccess(ts: Digest, options: Seq[String]): Boolean =
         val input = cacheInput(ts, options)
         ActionCache.exists(input._1, input._2, input._3, config)
-      def hasSucceeded(className: String, options: Seq[String]): Boolean =
-        digests.get(className) match
+      def hasSucceeded(
+          className: String,
+          options: Seq[String],
+          cacheTestResult: Boolean
+      ): Boolean =
+        cacheTestResult && (digests.get(className) match
           case None     => false
-          case Some(ts) => hasCachedSuccess(ts, options)
+          case Some(ts) => hasCachedSuccess(ts, options))
       args =>
+        val cacheTestResult = cacheTestResultOverride.value.getOrElse(SysProp.cacheTestResult)
         val (pattern, options) =
           args.indexOf("--") match
             case idx if idx >= 0 =>
@@ -46,7 +57,7 @@ object IncrementalTest:
               (s1, s2.drop(1))
             case _ => (args, Nil)
         for filter <- selectedFilter(pattern)
-        yield (test: String) => filter(test) && !hasSucceeded(test, options)
+        yield (test: String) => filter(test) && !hasSucceeded(test, options, cacheTestResult)
     }
 
   // cache the test digests against the fullClasspath.
@@ -110,11 +121,13 @@ object IncrementalTest:
       executed: Set[String],
       selected: Seq[String],
       frameworkOptions: Seq[String],
+      cacheTestResult: Boolean,
   ): Vector[String] =
     val filters = selectedFilter(selected)
     digests.iterator
       .collect {
-        case (name, ts) if !executed.contains(name) && filters.exists(_(name)) && {
+        case (name, ts)
+            if cacheTestResult && !executed.contains(name) && filters.exists(_(name)) && {
               val input = cacheInput(ts, frameworkOptions)
               ActionCache.exists(input._1, input._2, input._3, config)
             } =>
@@ -132,9 +145,12 @@ private[sbt] case class TestStatusReporter(
   // int value to represent success
   private final val successfulTest = 0
   private var _args: Seq[String] = Nil
+  private var _cacheTestResult: Boolean = SysProp.cacheTestResult
   def getArgs: Seq[String] = _args
   def setArguments(args: Seq[String]): Unit =
     _args = args
+  def setCacheTestResult(enabled: Boolean): Unit =
+    _cacheTestResult = enabled
   def doInit(): Unit = ()
   def startGroup(name: String): Unit = ()
   def testEvent(event: TestEvent): Unit = ()
@@ -145,7 +161,7 @@ private[sbt] case class TestStatusReporter(
    * using its unique digest, so we can skip the test later.
    */
   def endGroup(name: String, result: TestResult): Unit =
-    if result == TestResult.Passed then
+    if result == TestResult.Passed && _cacheTestResult then
       digests.get(name) match
         case Some(ts) =>
           // treat each test suite as a successful action that returns 0

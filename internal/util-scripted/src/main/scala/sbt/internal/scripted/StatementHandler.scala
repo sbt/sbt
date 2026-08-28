@@ -19,7 +19,7 @@ trait StatementHandler {
 
 trait BasicStatementHandler extends StatementHandler {
   final type State = Unit
-  final def initialState = ()
+  final def initialState: State = ()
 
   final def apply(command: String, arguments: List[String], state: Unit): Unit =
     apply(command, arguments)
