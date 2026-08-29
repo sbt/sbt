@@ -221,7 +221,7 @@ private[sbt] object Server {
               PortFile(uri, None, None)
           }
         val json = Converter.toJson(p).get
-        IO.write(portfile, CompactPrinter(json))
+        IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
       }
 
       private[sbt] def prepareSocketfile(): Unit = {
