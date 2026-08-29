@@ -12,6 +12,7 @@ package server
 
 import java.io.File
 import java.net.Socket
+import java.util.concurrent.atomic.AtomicReference
 import java.nio.file.{ Files, Paths }
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -24,7 +25,7 @@ import verify.BasicTestSuite
 
 object ServerAcceptSpec extends BasicTestSuite:
   private def withServer(
-      onIncomingSocket: (Socket, ServerInstance) => Unit
+      onIncomingSocket: (AtomicReference[Socket], ServerInstance) => Unit
   )(f: (ServerInstance, File) => Unit): Unit =
     // the socket path has a length limit, so keep the directory short
     val dir = Files.createTempDirectory(Paths.get("/tmp"), "sbtsrv").toFile
@@ -57,13 +58,39 @@ object ServerAcceptSpec extends BasicTestSuite:
   test("a client that the server fails to serve"):
     if !isWindows then
       val served = new AtomicInteger
-      val handler: (Socket, ServerInstance) => Unit = (_, _) =>
+      val handler: (AtomicReference[Socket], ServerInstance) => Unit = (_, _) =>
         served.incrementAndGet()
         throw new RuntimeException("this client cannot be served")
       withServer(handler): (_, socketfile) =>
         new UnixDomainSocket(socketfile.getAbsolutePath, false)
         assert(waitUntil(served.get == 1))
         new UnixDomainSocket(socketfile.getAbsolutePath, false)
-        // the exception ended the loop, so the second client is never served
-        assert(!waitUntil(served.get == 2))
+        // the loop accepted a second client, so the first one did not end it
+        assert(waitUntil(served.get == 2))
+
+  test("a socket the callback takes over"):
+    if !isWindows then
+      val served = new AtomicInteger
+      val first = new AtomicReference[Socket]
+      val handler: (AtomicReference[Socket], ServerInstance) => Unit = (socket, _) =>
+        if served.getAndIncrement == 0 then
+          first.set(socket.get)
+          AtomicCloseable.release(socket)
+      withServer(handler): (_, socketfile) =>
+        new UnixDomainSocket(socketfile.getAbsolutePath, false)
+        new UnixDomainSocket(socketfile.getAbsolutePath, false)
+        // the second client proves the loop went round, so it has passed its close
+        assert(waitUntil(served.get == 2))
+        assert(!first.get.isClosed)
+
+  test("a socket the callback leaves"):
+    if !isWindows then
+      val left = new AtomicReference[Socket]
+      val handler: (AtomicReference[Socket], ServerInstance) => Unit =
+        (socket, _) => left.set(socket.get)
+      withServer(handler): (_, socketfile) =>
+        new UnixDomainSocket(socketfile.getAbsolutePath, false)
+        assert(waitUntil(left.get ne null))
+        assert(waitUntil(left.get.isClosed))
+
 end ServerAcceptSpec

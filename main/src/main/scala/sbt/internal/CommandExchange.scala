@@ -207,19 +207,20 @@ private[sbt] final class CommandExchange {
     lazy val enableBsp = s.get(bspEnabled).getOrElse(true)
     lazy val portfile = s.baseDir / "project" / "target" / "active.json"
 
-    def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
+    def onIncomingSocket(socket: AtomicReference[Socket], instance: ServerInstance): Unit = {
       val name = newNetworkName
       Terminal.consoleLog(s"new client connected: $name")
       val channel =
         new NetworkChannel(
           name,
-          socket,
+          socket.get,
           auth,
           instance,
           handlers,
           mkAskUser(name),
         )
       subscribe(channel)
+      AtomicCloseable.release(socket) // i took over
     }
     if (server.isEmpty && firstInstance.get) {
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
