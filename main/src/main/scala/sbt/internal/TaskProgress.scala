@@ -33,7 +33,7 @@ private[sbt] class TaskProgress(
     with ExecuteProgress
     with AutoCloseable {
   private val lastTaskCount = new AtomicInteger(0)
-  private val reportLoop = new AtomicReference[AutoCloseable]
+  private val reportLoop = AtomicCloseable[AutoCloseable]()
   private val active = new ConcurrentHashMap[TaskId[?], AutoCloseable]
   private val nextReport = new AtomicReference(Deadline.now)
   private val scheduler =
@@ -69,7 +69,7 @@ private[sbt] class TaskProgress(
   private val executor =
     Executors.newSingleThreadExecutor(r => new Thread(r, "sbt-task-progress-report-thread"))
   override def close(): Unit = if (closed.compareAndSet(false, true)) {
-    Option(reportLoop.getAndSet(null)).foreach(_.close())
+    reportLoop.close()
     pending.forEach(f => Util.ignoreResult(f.cancel(true)))
     pending.clear()
     scheduler.shutdownNow()
@@ -97,17 +97,7 @@ private[sbt] class TaskProgress(
   override def beforeWork(task: TaskId[?]): Unit =
     if (!closed.get) {
       super.beforeWork(task)
-      reportLoop.get match {
-        case null =>
-          val loop = schedule(sleepDuration, recurring = true)(doReport())
-          reportLoop.getAndSet(loop) match {
-            case null =>
-            case l    =>
-              reportLoop.set(l)
-              loop.close()
-          }
-        case s =>
-      }
+      reportLoop.setIfEmpty(schedule(sleepDuration, recurring = true)(doReport()))
     } else {
       logger.debug(s"called beforeWork for ${taskName(task)} after task progress was closed")
     }
@@ -137,10 +127,7 @@ private[sbt] class TaskProgress(
     }
 
   override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = {
-    reportLoop.getAndSet(null) match {
-      case null =>
-      case l    => l.close()
-    }
+    reportLoop.close()
     // send an empty progress report to clear out the previous report
     appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
   }

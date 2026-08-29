@@ -19,6 +19,7 @@ import sbt.Scope.Global
 import sbt.internal.CommandStrings.LoadProject
 import sbt.internal.SysProp
 import sbt.internal.server.BuildServerProtocol
+import sbt.internal.AtomicCloseable
 import sbt.internal.util.{ AttributeKey, Terminal }
 import sbt.io.syntax.*
 import sbt.nio.FileChanges
@@ -46,7 +47,7 @@ import scala.io.AnsiColor
  * the build files if the poll interval has elapsed.
  */
 private[sbt] class CheckBuildSources extends AutoCloseable {
-  private val repository = new AtomicReference[FileTreeRepository[FileAttributes]]
+  private val repository = AtomicCloseable[FileTreeRepository[FileAttributes]]()
   private val pollingPeriod = new AtomicReference[FiniteDuration]
   private val sources = new AtomicReference[Seq[Glob]](Nil)
   private val needUpdate = new AtomicBoolean(true)
@@ -71,7 +72,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
       .getOrElse(CheckBuildSources.defaultPollInterval)
     val newSources = extracted.get(Global / checkBuildSources / fileInputs).distinct
     if (interval >= 0.seconds || "polling" == SysProp.watchMode) {
-      Option(repository.getAndSet(null)).foreach(_.close())
+      repository.close()
       pollingPeriod.set(interval)
     } else {
       pollingPeriod.set(0.seconds)
