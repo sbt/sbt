@@ -13,7 +13,6 @@ package server
 import java.io.{ File, IOException }
 import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
-import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
 import java.security.SecureRandom
 import java.math.BigInteger
 
@@ -22,7 +21,6 @@ import scala.util.{ Failure, Success, Try }
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
-import sbt.io.syntax.*
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec.*
 import sbt.internal.util.ErrorHandling
@@ -171,31 +169,9 @@ private[sbt] object Server {
         val t = TokenFile(uri, token)
         val jsonToken = Converter.toJson(t).get
 
-        if (tokenfile.exists) {
-          IO.delete(tokenfile)
-        }
-        IO.touch(tokenfile)
-        ownerOnly(tokenfile)
-        IO.write(tokenfile, CompactPrinter(jsonToken), IO.utf8, true)
-      }
-
-      /** Set the permission of the file such that the only the owner can read/write it. */
-      private def ownerOnly(file: File): Unit = {
-        def acl(owner: UserPrincipal) = {
-          val builder = AclEntry.newBuilder
-          builder.setPrincipal(owner)
-          builder.setPermissions(AclEntryPermission.values()*)
-          builder.setType(AclEntryType.ALLOW)
-          builder.build
-        }
-        file match {
-          case _ if IO.isPosix =>
-            IO.chmod("rw-------", file)
-          case _ if IO.hasAclFileAttributeView =>
-            val view = file.aclFileAttributeView
-            view.setAcl(java.util.Collections.singletonList(acl(view.getOwner)))
-          case _ => ()
-        }
+        IO.writeFileAtomically(tokenfile, ownerOnly = true)(tmp =>
+          IO.write(tmp, CompactPrinter(jsonToken), IO.utf8, false)
+        )
       }
 
       // This file exists through the lifetime of the server.

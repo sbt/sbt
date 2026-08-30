@@ -77,6 +77,6 @@ object ServerTokenSpec extends BasicTestSuite:
           rotations += 1
         stop.set(true)
         reader.join()
-        // the server deletes the file and writes it again, so a reader finds it gone
-        assert(broken.get > 0)
+        // the rename puts the whole file in place at once, so a reader sees all of it
+        assert(broken.get == 0)
 end ServerTokenSpec
