@@ -76,25 +76,8 @@ object TestSummary:
       cached: Vector[String],
       adhocOptions: Vector[Tests.AdhocOption]
   ): Unit =
-    entries.add(Entry(taskName, dropThrowables(output), cached, adhocOptions))
+    entries.add(Entry(taskName, output.withoutThrowables, cached, adhocOptions))
     ()
-
-  private def dropThrowables(o: Tests.Output): Tests.Output =
-    o.copy(events = o.events.view.mapValues(dropThrowables).toMap)
-
-  private def dropThrowables(s: SuiteResult): SuiteResult =
-    if s.throwables.isEmpty then s
-    else
-      new SuiteResult(
-        s.result,
-        s.passedCount,
-        s.failureCount,
-        s.errorCount,
-        s.skippedCount,
-        s.ignoredCount,
-        s.canceledCount,
-        s.pendingCount,
-      )
 
   private[sbt] def clear(): Unit = entries.clear()
 

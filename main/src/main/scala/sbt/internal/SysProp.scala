@@ -124,6 +124,9 @@ object SysProp:
   def testSummary: TestSummary =
     strOpt("sbt.test_summary").flatMap(Tests.parseTestSummary).getOrElse(TestSummary.default)
 
+  def cacheTestResult: Boolean =
+    getOrTrue("sbt.cache_test_result")
+
   /**
    * Indicates whether formatting has been disabled in environment variables.
    * 1. -Dsbt.log.noformat=true means no formatting.

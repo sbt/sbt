@@ -28,6 +28,7 @@ import sbt.internal.util.{
 }
 import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.io.IO.Implicits.zipContext
 import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
@@ -36,7 +37,6 @@ import scala.annotation.{ meta, tailrec, StaticAnnotation }
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import sjsonnew.{ HashWriter, JsonFormat }
-import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser, PrettyPrinter }
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
 import xsbti.{ CompileFailed, FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
@@ -309,8 +309,8 @@ object ActionCache:
   ): Digest =
     // Hashing serializes every task input; surface a missing input file directly rather than as an
     // opaque serialization failure that buries it.
-    val inputHash =
-      try Hasher.hashUnsafe[I](key)
+    val inputDigest =
+      try DigestHasher.hashUnsafe[I](key)
       catch
         case NonFatal(t) =>
           findMissingFile(t) match
@@ -320,7 +320,7 @@ object ActionCache:
     Digest.sha256Hash(
       (Vector(
         codeContentHash,
-        Digest.dummy(inputHash),
+        inputDigest,
         extraHash
       ) ++ {
         if cacheVersion == 0 then Vector.empty
@@ -424,7 +424,7 @@ object ActionCache:
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
       // Create the zip in a temp directory to avoid overwriting the cache if `zipPath` is a symlink to the CAS
       val tempZipPath = (tempDir / (dirPath.getFileName.toString + dirZipExt)).toPath()
-      IO.zip(
+      IO.zipParallel(
         (allPaths ++ Seq(mPath)).flatMap(rebase),
         tempZipPath.toFile(),
         Some(default2010Timestamp)

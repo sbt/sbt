@@ -9,9 +9,9 @@
 package sbt
 package protocol
 
-import java.io.{ File, InputStream, OutputStream }
+import java.io.File
 import java.net.{ InetAddress, Socket, StandardProtocolFamily, URI, UnixDomainSocketAddress }
-import java.nio.channels.{ Channels, SocketChannel }
+import java.nio.channels.SocketChannel
 import scala.util.control.NonFatal
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter }
@@ -59,11 +59,5 @@ object ClientSocket {
   def bootSocket(path: String): Socket =
     val ch = SocketChannel.open(StandardProtocolFamily.UNIX)
     ch.connect(UnixDomainSocketAddress.of(path))
-    new Socket:
-      private val in = Channels.newInputStream(ch)
-      private val out = Channels.newOutputStream(ch)
-      override def getInputStream: InputStream = in
-      override def getOutputStream: OutputStream = out
-      override def close(): Unit = ch.close()
-      override def isClosed: Boolean = !ch.isOpen
+    DuplexChannels.newSocket(ch)
 }

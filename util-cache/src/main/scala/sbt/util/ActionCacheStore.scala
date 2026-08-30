@@ -200,7 +200,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     dir
   }
 
-  private val symlinkSupported: AtomicBoolean = AtomicBoolean(true)
+  // Files.copy clones on APFS, so a real file costs no extra disk while sparing every later
+  // directory walk the CAS inode lookup that resolving a symlink pays.
+  private lazy val symlinkSupported: AtomicBoolean = AtomicBoolean(!Util.isApfs(casBase))
 
   private case class BlobStamp(digest: Digest, lastModified: FileTime, fileKey: Object)
 

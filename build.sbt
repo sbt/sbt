@@ -7,6 +7,7 @@ import java.util.Locale
 import sbt.internal.inc.Analysis
 import sbt.Tags
 import com.eed3si9n.jarjarabrams.ModuleCoordinate
+import Utils.JDK17
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -409,7 +410,7 @@ lazy val hashBenchmark = (project in file("internal") / "hash-benchmark")
     Jmh / run / javaOptions ++= Seq("-Xmx1G", "-Dfile.encoding=UTF8"),
     libraryDependencies ++= Seq(blake3, zeroAllocationHashing),
     mimaSettings,
-    publish / skip := true,
+    Utils.noPublish,
   )
 
 // Builds on cache to provide caching for filesystem-related operations
@@ -436,6 +437,13 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
     name := "Util Scripted",
     libraryDependencies += scalaParsers,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.scripted.BasicStatementHandler.initialState"
+      ),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.scripted.CommentHandler.initialState"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.scripted.FileCommands.initialState"),
+    ),
   )
   .configure(addSbtIO)
 /* **** Intermediate-level Modules **** */
@@ -466,8 +474,10 @@ lazy val testingProj = (project in file("testing"))
 
 lazy val workerProj = (project in file("worker"))
   .dependsOn(exampleWorkProj % Test)
+  .configs(JDK17)
   .settings(
     name := "worker",
+    inConfig(JDK17)(Defaults.compileSettings),
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
     testedBaseSettings,
     Compile / doc / javacOptions := Nil,
@@ -475,8 +485,23 @@ lazy val workerProj = (project in file("worker"))
     autoScalaLibrary := false,
     libraryDependencies ++= Seq(gson, testInterface),
     libraryDependencies += "org.scala-lang" %% "scala3-library" % scalaVersion.value % Test,
-    // run / fork := false,
     Test / fork := true,
+    Compile / javacOptions := Seq("--release", "8"),
+    JDK17 / javacOptions := Seq("--release", "17"),
+    Compile / packageBin / packageOptions += Pkg.ManifestAttributes("Multi-Release" -> "true"),
+    Compile / packageBin / mappings ++= {
+      val _ = (JDK17 / compile).value
+      val conv = fileConverter.value
+      val dir = (Utils.JDK17 / classDirectory).value
+      fileTreeView.value
+        .list(Glob(dir) / **)
+        .map(_._1)
+        .map(_.toFile())
+        .pair(Path.rebase(dir, "META-INF/versions/17"))
+        .map: (file, rel) =>
+          val vf: xsbti.HashedVirtualFileRef = conv.toVirtualFile(file.toPath())
+          vf -> rel
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
@@ -490,7 +515,7 @@ lazy val exampleWorkProj = (project in file("internal") / "example-work")
   .settings(
     minimalSettings,
     name := "example work",
-    publish / skip := true,
+    Utils.noPublish,
   )
 
 // Basic task engine
@@ -591,6 +616,11 @@ lazy val actionsProj = (project in file("main-actions"))
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // WorkerConnection gained an Ipc(path) case; mixing a parameterized case into
+      // the enum drops the synthetic values()/valueOf() Java-enum forwarders. This is
+      // an internal (sbt.internal) type not meant for external consumption.
+      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.valueOf"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.values"),
     ),
   )
   .dependsOn(lmCore)
@@ -748,7 +778,6 @@ lazy val mainProj = (project in file("main"))
     runProj,
     commandProj,
     collectionProj,
-    lmIvy,
     zincLmIntegrationProj,
     utilLogging,
   )
@@ -819,21 +848,6 @@ lazy val mainProj = (project in file("main"))
   .dependsOn(lmCore, lmCoursierShadedPublishing)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
 
-lazy val sbtIvyProj = (project in file("sbt-ivy"))
-  .dependsOn(sbtProj, lmIvy)
-  .settings(
-    testedBaseSettings,
-    name := "sbt-ivy",
-    sbtPlugin := true,
-    pluginCrossBuild / sbtVersion := version.value,
-    libraryDependencies += {
-      // https://github.com/scala/scala3/issues/18487
-      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
-    },
-    mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
-  )
-  .configure(addSbtIO)
-
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
@@ -848,6 +862,12 @@ lazy val sbtProj = (project in file("sbt-app"))
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    mimaBinaryIssueFilters ++= Vector(
+      // Dropped the top-level Ivy-specific UpdateOptions alias; use
+      // sbt.internal.librarymanagement.ivy.UpdateOptions directly if needed.
+      exclude[DirectMissingMethodProblem]("sbt.Import.UpdateOptions"),
+      exclude[DirectMissingMethodProblem]("sbt.package.UpdateOptions"),
+    ),
   )
   .settings(
     Test / run / connectInput := true,
@@ -902,6 +922,7 @@ lazy val serverTestProj = (project in file("server-test"))
       IO.write(file, content)
       Seq(file)
     },
+    Utils.noPublish,
   )
 
 val isWin = scala.util.Properties.isWin
@@ -1096,7 +1117,6 @@ def allProjects =
     mainSettingsProj,
     zincLmIntegrationProj,
     mainProj,
-    sbtIvyProj,
     sbtProj,
     bundledLauncherProj,
     sbtClientProj,
@@ -1108,7 +1128,6 @@ def allProjects =
     coreMacrosProj,
     remoteCacheProj,
     lmCore,
-    lmIvy,
     lmCoursierDefinitions,
     lmCoursier,
     lmCoursierShaded,
@@ -1270,29 +1289,6 @@ lazy val lmCore = (project in file("lm-core"))
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
   .configure(addSbtIO, addSbtCompilerInterface)
-
-lazy val lmIvy = (project in file("lm-ivy"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(lmCore)
-  .settings(
-    exportJars := false,
-    commonSettings,
-    lmTestSettings,
-    name := "librarymanagement-ivy",
-    contrabandSjsonNewVersion := sjsonNewVersion,
-    libraryDependencies ++= Seq(
-      ivy,
-      sjsonNewScalaJson.value,
-      sjsonNewCore.value,
-      scalacheck % Test,
-      scalaVerify % Test,
-      hedgehog % Test,
-    ),
-    libraryDependencies ++= scalatest,
-    contrabandSettings,
-    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
-    mimaSettings,
-  )
 
 lazy val lmCoursierSettings: Seq[Setting[?]] = Def.settings(
   baseSettings,
@@ -1483,3 +1479,24 @@ lazy val launcherPackageIntegrationTest =
       },
       Test / parallelExecution := false
     )
+
+val prepareCommunityBuild = taskKey[Unit]("Publish local etc")
+lazy val `community-build` = (project in file("community-build"))
+  .settings(
+    scalaVersion := scala3,
+    libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
+    prepareCommunityBuild := {
+      val _ = (sbtRoot / publishLocalBinAll).value
+      IO.write(baseDirectory.value / "target" / "sbt.version", version.value)
+    },
+    (Test / testOptions) += Tests.Argument(
+      TestFrameworks.JUnit,
+      "--include-categories=sbt.internal.communitybuild.TestCategory",
+      "--run-listener=sbt.internal.communitybuild.FailureSummarizer",
+    ),
+    Compile / run := (Compile / run).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testOnly := (Test / testOnly).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testQuick := (Test / testQuick).dependsOn(prepareCommunityBuild).evaluated,
+    publish / skip := true,
+    publishLocalBin / skip := true,
+  )

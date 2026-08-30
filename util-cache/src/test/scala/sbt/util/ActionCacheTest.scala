@@ -8,6 +8,7 @@ import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUni
 
 import sbt.internal.util.CacheEventLog
 import sbt.internal.util.StringVirtualFile1
+import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
@@ -43,6 +44,32 @@ object ActionCacheTest extends BasicTestSuite:
   test("findMissingFile returns None when no file is missing"):
     val chain = new RuntimeException("boom", new IllegalStateException("unrelated"))
     assert(ActionCache.findMissingFile(chain) == None)
+
+  test("Distinct inputs that collide in the 32-bit murmur hash get distinct cache keys"):
+    import sjsonnew.BasicJsonProtocol.given
+    import sjsonnew.support.murmurhash.Hasher
+    // Find two distinct inputs whose 32-bit murmur hash collides (the old mkInput folded only
+    // that 32-bit value into the key, so these used to produce an identical cache key). The
+    // cache key must now distinguish them.
+    val seen = scala.collection.mutable.HashMap.empty[Int, String]
+    var a: String = null
+    var b: String = null
+    var i = 0
+    val cap = 5000000
+    while (b == null && i < cap) do
+      val key = s"input-$i"
+      Hasher.hashUnsafe[String](key) match
+        case h if seen.contains(h) => a = seen(h); b = key
+        case h                     => seen.update(h, key)
+      i += 1
+    assert(b != null, s"no 32-bit collision found within $cap inputs")
+    assert(a != b)
+    val ka = ActionCache.mkInput(a, Digest.zero, Digest.zero, 0L)
+    val kb = ActionCache.mkInput(b, Digest.zero, Digest.zero, 0L)
+    assert(
+      ka != kb,
+      s"distinct inputs '$a' and '$b' must not share a cache key, both hashed to $ka"
+    )
 
   test("Disk cache can hold a blob"):
     withDiskCache(testHoldBlob)
@@ -114,6 +141,7 @@ object ActionCacheTest extends BasicTestSuite:
         cache.syncBlobs(refs, outputDirectory)
         assert((dir / "a.txt").exists, "a.txt not re-extracted after the directory was deleted")
         assert((dir / "b.txt").exists, "b.txt not re-extracted after the directory was deleted")
+        assertMaterialized(cache, (dir / "a.txt").toPath)
 
   test("Disk cache does not re-extract a dirzip whose archive digest already matches"):
     withDiskCache: cache =>
@@ -134,7 +162,7 @@ object ActionCacheTest extends BasicTestSuite:
         cache.syncBlobs(refs, outputDirectory)
         assert(IO.read(dir / "a.txt") == "diverged")
 
-  test("Disk cache relinks a digest-matching dirzip to the CAS"):
+  test("Disk cache materializes a digest-matching dirzip from the CAS"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: tempDir =>
         val outputDirectory = tempDir.toPath()
@@ -150,7 +178,7 @@ object ActionCacheTest extends BasicTestSuite:
         assert(!Files.isSymbolicLink(zipPath), "packageDirectory should leave a regular file")
 
         cache.syncBlobs(refs, outputDirectory)
-        assert(Files.isSymbolicLink(zipPath), "digest-matching archive was not relinked to the CAS")
+        assertMaterialized(cache, zipPath)
 
   test("Disk cache re-extracts a dirzip whose archive digest differs"):
     withDiskCache: cache =>
@@ -869,6 +897,11 @@ object ActionCacheTest extends BasicTestSuite:
       },
       keepDirectory = false
     )
+
+  def assertMaterialized(cache: DiskActionCacheStore, p: Path): Unit =
+    if Util.isApfs(cache.casBase) then
+      assert(!Files.isSymbolicLink(p), s"$p was symlinked instead of copied")
+    else assert(Files.isSymbolicLink(p), s"$p was not symlinked into the CAS")
 
   def getCacheConfig(
       cache: ActionCacheStore,

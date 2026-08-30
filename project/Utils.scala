@@ -4,10 +4,12 @@ import sbt.given
 import sbt.util.CacheImplicits.given
 import Keys.*
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafix
-
+import PublishBinPlugin.autoImport.publishLocalBin
 import sbt.internal.inc.Analysis
 
 object Utils {
+  val JDK17 = config("jdk17")
+
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
   val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")
@@ -20,6 +22,7 @@ object Utils {
   lazy val noPublish = Seq(
     publish := {},
     publish / skip := true,
+    publishLocalBin / skip := true,
   )
 
   lazy val javaOnlySettings: Seq[Setting[?]] = Seq(

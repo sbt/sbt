@@ -142,38 +142,37 @@ object RunFromSourceMain {
       val scalaHome1 = fakeboot / s"scala-$scalaVersion"
       val scalaHome1Lib = scalaHome1 / "lib"
       val scalaHome1Temp = scalaHome1 / "temp"
-      if (scalaHome1Lib.exists) log.info(s"""using $scalaHome1 that was found""")
+      if scalaHome1Lib.exists then log.info(s"""using $scalaHome1 that was found""")
       else {
         log.info(s"""creating $scalaHome1 by downloading scala-compiler $scalaVersion""")
         IO.createDirectories(List(scalaHome1Lib, scalaHome1Temp))
         val lm = {
-          import sbt.internal.librarymanagement.ivy.{
-            InlineIvyConfiguration,
-            IvyDependencyResolution
-          }
-          val ivyConfig = InlineIvyConfiguration().withLog(log)
-          IvyDependencyResolution(ivyConfig)
+          import lmcoursier.{ CoursierConfiguration, CoursierDependencyResolution }
+          CoursierDependencyResolution(CoursierConfiguration())
         }
-        val Name = """(.*)(?:\-[\d.]+)\.jar""".r
-        val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
         val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
-        lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
-          case Left(w)  => throw w.resolveException
-          case Right(_) =>
-            val jars = (scalaHome1Temp ** "*.jar").get()
+        lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match
+          case Left(w)     => throw w.resolveException
+          case Right(jars) =>
             assert(jars.nonEmpty, s"no jars for scala $scalaVersion")
-            jars.foreach { f =>
-              val name = f.getName match {
-                case Name(name)   => name
-                case BinPre(name) => name
-              }
+            jars.foreach: f =>
+              val name = jarName(f.getName)
               IO.copyFile(f, scalaHome1Lib / s"$name.jar")
-            }
-        }
       }
       scalaHome1
     }
   }
+
+  private val Name = """(.*)(?:\-[\d.]+)\.jar""".r
+  private val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
+  private val RC = """(.*)(?:\-[\d.]+)-(?:RC\d+)\.jar""".r
+
+  private[sbt] def jarName(value: String): String =
+    value match {
+      case Name(name)   => name
+      case BinPre(name) => name
+      case RC(name)     => name
+    }
 
   private def errorAndExit(msg: String): Nothing = { System.err.println(msg); exit(1) }
   private def exit(code: Int): Nothing = System.exit(code).asInstanceOf[Nothing]

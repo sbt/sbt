@@ -15,7 +15,7 @@ import sbt.Keys.*
 import sbt.Project.inScope
 import sbt.ProjectExtra.{ prefixConfigs, setProject, showLoadingKey, structure }
 import sbt.Scope.GlobalScope
-import sbt.ScopeAxis.{ Select, Zero }
+import sbt.ScopeAxis.{ Select, This, Zero }
 import sbt.SlashSyntax0.*
 import sbt.internal.BuildStreams.*
 import sbt.internal.inc.classpath.ClasspathUtil
@@ -1069,6 +1069,11 @@ private[sbt] object Load {
         log = log,
       )
 
+    // Excludes settings already scoped explicitly (ThisBuild, Global); those apply once (#9668).
+    def thisProjectScoped(settings: Seq[Setting[?]]): Seq[Setting[?]] =
+      settings.filter: s =>
+        s.key.scope.project == This || s.key.scope.project == Select(ThisProject)
+
     // load all relevant configuration files (.sbt, as .scala already exists at this point)
     def discover(base: File): DiscoveredProjects = {
       val auto =
@@ -1132,7 +1137,9 @@ private[sbt] object Load {
       val newAcc = acc :+ finalRoot
       val newGenerated = generated ++ generatedConfigClassFiles
       // only root-level settings are build-wide; a submodule's own settings must not leak to siblings (#9517).
-      val cs = if isRootPath(p.base, buildBase) then finalRoot.commonSettings else commonSettings
+      val cs =
+        if isRootPath(p.base, buildBase) then thisProjectScoped(finalRoot.commonSettings)
+        else commonSettings
       loadTransitive1(newProjects, newAcc, newGenerated, cs)
     }
 
@@ -1168,7 +1175,9 @@ private[sbt] object Load {
                   acc = acc,
                   generated = Nil,
                   commonSettings0 = commonSettings
-                    ++ expandCommonSettingsPerBase1(buildBase.getCanonicalFile()),
+                    ++ thisProjectScoped(
+                      expandCommonSettingsPerBase1(buildBase.getCanonicalFile())
+                    ),
                 )
               val existingIds = otherProjects.projects.map(_.id)
               val refs = existingIds.map(id => ProjectRef(buildUri, id))
@@ -1181,7 +1190,12 @@ private[sbt] object Load {
         val newAcc = finalRoot +: (acc ++ otherProjects.projects)
         val newGenerated =
           generated ++ otherProjects.generatedConfigClassFiles ++ generatedConfigClassFiles
-        loadTransitive1(newProjects, newAcc, newGenerated, finalRoot.commonSettings)
+        loadTransitive1(
+          newProjects,
+          newAcc,
+          newGenerated,
+          thisProjectScoped(finalRoot.commonSettings)
+        )
       case Nil =>
         val projectIds = acc.map(_.id).mkString("(", ", ", ")")
         log.debug(s"[Loading] Done in $buildBase, returning: $projectIds")

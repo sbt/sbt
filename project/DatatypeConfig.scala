@@ -23,10 +23,6 @@ object DatatypeConfig {
       "sbt.internal.librarymanagement.formats.NodeSeqFormat" :: Nil
     }
 
-    case "org.apache.ivy.plugins.resolver.DependencyResolver" => { _ =>
-      "sbt.internal.librarymanagement.formats.DependencyResolverFormat" :: Nil
-    }
-
     case "xsbti.GlobalLock" => { _ =>
       "sbt.internal.librarymanagement.formats.GlobalLockFormat" :: Nil
     }
@@ -36,10 +32,6 @@ object DatatypeConfig {
 
     case "sbt.librarymanagement.IvyPaths" => { _ =>
       "sbt.librarymanagement.IvyPathsFormats" :: Nil
-    }
-
-    case "sbt.internal.librarymanagement.ivy.UpdateOptions" => { _ =>
-      "sbt.internal.librarymanagement.ivy.formats.UpdateOptionsFormat" :: Nil
     }
 
     case "sbt.librarymanagement.LogicalClock" => { _ =>

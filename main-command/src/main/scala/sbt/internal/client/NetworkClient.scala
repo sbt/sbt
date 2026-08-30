@@ -143,7 +143,7 @@ class NetworkClient(
   private val pendingCompletions = new ConcurrentHashMap[String, CompletionResponse => Unit]
   private val attached = new AtomicBoolean(false)
   private val attachUUID = new AtomicReference[String](null)
-  private val connectionHolder = new AtomicReference[ServerSession]
+  private val connectionHolder = AtomicCloseable[ServerSession]()
   private val batchMode = new AtomicBoolean(false)
   private val interactiveThread = new AtomicReference[Thread](null)
   private val rebooting = new AtomicBoolean(false)
@@ -163,11 +163,9 @@ class NetworkClient(
 
   private def portfile = arguments.baseDirectory / "project" / "target" / "active.json"
 
-  def connection: ServerSession = connectionHolder.synchronized {
-    connectionHolder.get match {
-      case null => init(promptCompleteUsers = false, retry = true)
-      case c    => c
-    }
+  // initImpl may start a server, which no later discard can undo, so one caller at a time
+  def connection: ServerSession = connectionHolder.ref.synchronized {
+    connectionHolder.setIfEmpty(initImpl(promptCompleteUsers = false, retry = true))
   }
 
   private val stdinBytes = new LinkedBlockingQueue[Integer]
@@ -256,7 +254,7 @@ class NetworkClient(
   end connectOrStartServerAndConnect
 
   // Open server connection based on the portfile
-  def init(promptCompleteUsers: Boolean, retry: Boolean): ServerSession = {
+  private def initImpl(promptCompleteUsers: Boolean, retry: Boolean): ServerSession = {
     val (sk, tkn) = connectOrStartServerAndConnect(promptCompleteUsers, retry)
     val conn = new ServerSessionImpl(sk, s"sbt-serverconnection-${sk.getPort}") {
       override protected def onNotification(msg: JsonRpcNotificationMessage): Unit = {
@@ -272,10 +270,7 @@ class NetworkClient(
             if (rebootCommands.nonEmpty) {
               rebooting.set(true)
               attached.set(false)
-              connectionHolder.getAndSet(null) match {
-                case null =>
-                case c    => c.close()
-              }
+              connectionHolder.close()
               waitForServer(portfile, true, false)
               init(promptCompleteUsers = false, retry = false)
               attachUUID.set(sendJson(attach, s"""{"interactive": ${!batchMode.get}}"""))
@@ -318,7 +313,7 @@ class NetworkClient(
       override protected def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
       override protected def onResponse(msg: JsonRpcResponseMessage): Unit = self.onResponse(msg)
       override protected def onClose(): Unit = if (!rebooting.get) {
-        if (exitClean.get != false) {
+        if (exitClean.get) {
           val serverDropped = running.get
           exitClean.set(!serverDropped)
           if (serverDropped && !shutdownOnly)
@@ -344,6 +339,11 @@ class NetworkClient(
       initializationOptions = Some(opts),
     )
     conn.sendCommand(initCommand)
+    conn
+  }
+
+  def init(promptCompleteUsers: Boolean, retry: Boolean): ServerSession = {
+    val conn = initImpl(promptCompleteUsers = promptCompleteUsers, retry = retry)
     connectionHolder.set(conn)
     conn
   }
@@ -1139,12 +1139,9 @@ class NetworkClient(
       stdinBytes.offer(-1)
       val mainThread = interactiveThread.getAndSet(null)
       if (mainThread != null && mainThread != Thread.currentThread) mainThread.interrupt
-      connectionHolder.get match {
-        case null =>
-        case c    =>
-          try sendExecCommand("exit")
-          finally c.close()
-      }
+      if (connectionHolder.get ne null)
+        try sendExecCommand("exit")
+        finally connectionHolder.close()
       inputThread.close()
     } catch {
       case t: Throwable => t.printStackTrace(); throw t

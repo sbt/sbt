@@ -63,14 +63,17 @@ lazy val root = (project in file("."))
         "org.scala-lang:scala3-library_3",
         "org.scala-lang:tasty-core_3",
         "org.scala-sbt.ipcsocket:ipcsocket",
-        "org.scala-sbt.ivy:ivy",
         "org.scala-sbt.jline:jline",
         "org.scala-sbt.gson:shaded-gson",
         "org.slf4j:slf4j-api",
       )
       def assertCollectionsEqual(message: String, expected: Seq[String], actual: Seq[String]): Unit =
         // using the new line for a more readable comparison failure output
-        assert(expected.mkString("\n") == actual.mkString("\n"), message + ": " + actual)
+        val diff = ((expected.toVector diff actual.toVector)
+          .map("-" + _) ++
+          (actual.toVector diff expected.toVector).map("+" + _))
+          .mkString("\n")
+        assert(expected.mkString("\n") == actual.mkString("\n"), message + ": " + diff)
 
       assertCollectionsEqual(
         "Unexpected module ids in updateSbtClassifiers",

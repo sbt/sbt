@@ -55,11 +55,12 @@ trait TestsListener extends TestReportListener {
  *   a `Class` strongly references its defining class loader. Holding a `SuiteResult` with a
  *   non-empty `throwables` therefore keeps the test class loader -- and every jar handle it has
  *   open -- alive. That is fine for the duration of the test task, which is where these are
- *   consumed, but anything that outlives the task must drop them first. `TestSummary.append` does
- *   exactly that before stashing a copy on `State.attributes`; see the note on `TestSummary.entriesKey`.
+ *   consumed, but anything that outlives the task must call [[withoutThrowables]] first.
+ *   `TestSummary.append` does exactly that before stashing a copy on `State.attributes`; see the
+ *   note on `TestSummary.entriesKey`.
  *   On Windows a leaked handle makes the underlying jar undeletable (e.g. by `clearCaches`).
  */
-private[sbt] final class SuiteResult(
+final class SuiteResult(
     val result: TestResult,
     val passedCount: Int,
     val failureCount: Int,
@@ -91,13 +92,36 @@ private[sbt] final class SuiteResult(
       pendingCount,
       Nil
     )
+
+  /**
+   * Returns an equivalent result without retaining test-thrown exceptions.
+   *
+   * Use this before retaining test results beyond the lifetime of the test task. See
+   * `throwables` for why retaining those exceptions can keep the test class loader alive.
+   */
+  def withoutThrowables: SuiteResult =
+    if throwables.isEmpty then this
+    else
+      new SuiteResult(
+        result,
+        passedCount,
+        failureCount,
+        errorCount,
+        skippedCount,
+        ignoredCount,
+        canceledCount,
+        pendingCount,
+      )
+
   def +(other: SuiteResult): SuiteResult = {
     val combinedTestResult =
       (result, other.result) match {
-        case (TestResult.Passed, TestResult.Passed) => TestResult.Passed: TestResult
-        case (_, TestResult.Error)                  => TestResult.Error: TestResult
-        case (TestResult.Error, _)                  => TestResult.Error: TestResult
-        case _                                      => TestResult.Failed: TestResult
+        case (TestResult.Empty, TestResult.Empty) => TestResult.Empty: TestResult
+        case (TestResult.Passed | TestResult.Empty, TestResult.Passed | TestResult.Empty) =>
+          TestResult.Passed: TestResult
+        case (_, TestResult.Error) => TestResult.Error: TestResult
+        case (TestResult.Error, _) => TestResult.Error: TestResult
+        case _                     => TestResult.Failed: TestResult
       }
     new SuiteResult(
       combinedTestResult,
@@ -113,7 +137,7 @@ private[sbt] final class SuiteResult(
   }
 }
 
-private[sbt] object SuiteResult {
+object SuiteResult {
 
   /**
    * Computes the overall result and counts for a suite with individual test results in `events`.

@@ -1,0 +1,2 @@
+> test
+$ must-mirror expected-result test-result-logger-ran

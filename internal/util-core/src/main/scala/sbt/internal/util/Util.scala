@@ -8,12 +8,13 @@
 
 package sbt.internal.util
 
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{ Files, Path, Paths }
 import java.util.Locale
 
 import scala.collection.concurrent.TrieMap
 import scala.reflect.Selectable.reflectiveSelectable
-import scala.util.Properties
+import scala.util.{ Properties, Try }
+import scala.util.control.NonFatal
 
 object Util:
   def makeList[T](size: Int, value: T): List[T] = List.fill(size)(value)
@@ -58,6 +59,8 @@ object Util:
     ()
   }
 
+  def ignoreTry[A](f: => A): Unit = ignoreResult(Try(f))
+
   lazy val isMac: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
 
@@ -76,6 +79,10 @@ object Util:
   lazy val isCygwinWindows: Boolean = isWindows && isCygwin
 
   lazy val isEmacs: Boolean = sys.env.contains("INSIDE_EMACS")
+
+  def isApfs(path: Path): Boolean =
+    try Files.getFileStore(path).`type`().equalsIgnoreCase("apfs")
+    catch case NonFatal(_) => false
 
   def nil[A]: List[A] = List.empty[A]
   def nilSeq[A]: Seq[A] = Seq.empty[A]

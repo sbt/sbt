@@ -1,5 +1,5 @@
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 val denyClassDir = taskKey[Unit]("Remove write permission from the compile output dir")
 denyClassDir := {

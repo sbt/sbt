@@ -3,14 +3,14 @@ import Keys.*
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala3 = "3.8.4"
+  val scala3 = "3.9.0"
   val scala212 = "2.12.21"
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  val ioVersion = nightlyVersion.getOrElse("1.12.2")
+  val ioVersion = nightlyVersion.getOrElse("1.13.0")
   val zincVersion = nightlyVersion.getOrElse("2.0.4")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -93,6 +93,7 @@ object Dependencies {
   )
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
   val junit = "junit" % "junit" % "4.13.2"
+  val junitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
   val remoteapis =
@@ -113,7 +114,6 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-f686954b0021a5c3245766ced0cdaeca8ba2fd7a"
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()

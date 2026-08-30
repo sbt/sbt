@@ -28,7 +28,6 @@ import scala.util.Random
 import scala.util.control.NonFatal
 import scala.jdk.CollectionConverters.*
 import scala.sys.process.Process
-import sbt.internal.WorkerConnection
 
 /**
  * This implements forked testing, in cooperation with the worker CLI,
@@ -141,8 +140,7 @@ private[sbt] object ForkTests:
       )
       testListeners.foreach(_.doInit())
       val result =
-        val ct = WorkerConnection.Tcp
-        val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles, ct)
+        val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles)
         val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
         try
           WorkerExchange.registerListener(wl)
@@ -152,7 +150,9 @@ private[sbt] object ForkTests:
           if wl.blockForResponse() != 0 then
             throw MessageOnlyException("Forked test harness failed")
           testOutputResult
-        finally WorkerExchange.unregisterListener(wl)
+        finally
+          w.close()
+          WorkerExchange.unregisterListener(wl)
       testListeners.foreach(_.doComplete(result.overall))
       result
     } // end task

@@ -3,7 +3,7 @@ import complete.DefaultParsers.*
 
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 lazy val checkMiss = inputKey[Unit]("Assert the exact onsite/miss count of the previous run")
 

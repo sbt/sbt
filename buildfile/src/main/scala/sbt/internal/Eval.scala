@@ -108,8 +108,9 @@ class Eval(
         val header =
           imports.strings.mkString("\n") +
             s"""
-               |object $moduleName {
-               |  def $WrapValName${returnType} = {""".stripMargin
+               |@scala.annotation.nowarn("name=IllegalIdentifier")
+               |object `$moduleName` {
+               |  def `$WrapValName`${returnType} = {""".stripMargin
         val contents = s"""$header
           |$expression
           |  }
@@ -171,7 +172,8 @@ class Eval(
         val header =
           imports.strings.mkString("\n") +
             s"""
-               |object $moduleName {""".stripMargin
+               |@scala.annotation.nowarn("name=IllegalIdentifier")
+               |object `$moduleName` {""".stripMargin
         val contents =
           s"""$header
           |${definitions.map(_._1).mkString("\n")}
