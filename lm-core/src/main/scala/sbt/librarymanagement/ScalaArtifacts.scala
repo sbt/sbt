@@ -18,6 +18,11 @@ object ScalaArtifacts {
   final val Scala3TastyInspectorID = "scala3-tasty-inspector"
   final val Scala3ReplID = "scala3-repl"
   final val Scala3_8Artifacts = Vector(LibraryID, Scala3LibraryID)
+
+  // scala-compiler, scala-reflect, scala-actors and scalap have never been published for
+  // the 3.x line, unlike scala-library, so they must never be unified with it - only with
+  // each other. See https://github.com/sbt/sbt/issues/9698
+  final val Scala2ToolArtifacts = Vector(CompilerID, ReflectID, ActorsID, ScalapID)
   final val scala2SbtBridgeStart = "2.13.12"
 
   private[sbt] final val Scala3LibraryPrefix = Scala3LibraryID + "_"

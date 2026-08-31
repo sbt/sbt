@@ -3378,11 +3378,20 @@ object Classpaths {
           ScalaArtifacts.Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
-        // Scala 3.0-3.7 uses the Scala 2.13 standard library, so align all Scala 2 artifacts
+        // Scala 3.0-3.7 uses the Scala 2.13 standard library, so align scala-library with
+        // scala3-library, and separately keep the rest of the Scala 2 tooling in lockstep
+        // with itself. These two groups must stay separate: scala-library can transitively
+        // resolve to a 3.8+ version pulled in by a dependency even on a pre-3.8 project, but
+        // scala-compiler/scala-reflect/scala-actors/scalap have never been published for the
+        // 3.x line, so unifying them with scala-library can force them onto a version that
+        // doesn't exist. See https://github.com/sbt/sbt/issues/9698
         case Some((3, minor)) if minor < 8 =>
-          ScalaArtifacts.Artifacts
+          ScalaArtifacts.Scala3_8Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
-            .toSet :: Nil
+            .toSet ::
+            ScalaArtifacts.Scala2ToolArtifacts
+              .map(a => InclExclRule(scalaOrganization.value, a))
+              .toSet :: Nil
         // Scala 3.8+ has its own scala-library, only align library artifacts
         // See https://github.com/sbt/sbt/issues/8224
         case Some((3, _)) =>
