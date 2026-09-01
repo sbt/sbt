@@ -9,7 +9,7 @@
 package sbt.util
 
 import com.github.benmanes.caffeine.cache.{ Cache as CCache, Caffeine, Weigher }
-import java.nio.file.{ Files, NoSuchFileException }
+import java.nio.file.{ Files, FileSystemException, NoSuchFileException }
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 import sjsonnew.BasicJsonProtocol
@@ -119,24 +119,28 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
               val sizeBytes = attrs.size()
               val fileKey = Option(attrs.fileKey())
               getOrElseUpdate(ref, lastModified, sizeBytes, fileKey)(fallback)
-          catch case e: NoSuchFileException => throw e
+          catch
+            case e: NoSuchFileException => throw e
+            case _: FileSystemException => fallback
         case _ => fallback
 
   def virtualFileRefToDigest(vf: VirtualFileRef)(converter: FileConverter): Digest =
     vf match
       case pbf: PathBasedFile =>
         val path = pbf.toPath
-        val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
         def fallback: Digest = Digest.sha256Hash(path)
-        if attrs.isDirectory then sys.error(s"$vf is a directory")
-        else
-          val lastModified = attrs.lastModifiedTime().toMillis()
-          val sizeBytes = attrs.size()
-          val fileKey = Option(attrs.fileKey())
-          vf match
-            case h: HashedVirtualFileRef =>
-              getOrElseUpdate(vf, lastModified, sizeBytes, fileKey)(Digest(h))
-            case _ =>
-              getOrElseUpdate(vf, lastModified, sizeBytes, fileKey)(fallback)
+        try
+          val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+          if attrs.isDirectory then sys.error(s"$vf is a directory")
+          else
+            val lastModified = attrs.lastModifiedTime().toMillis()
+            val sizeBytes = attrs.size()
+            val fileKey = Option(attrs.fileKey())
+            vf match
+              case h: HashedVirtualFileRef =>
+                getOrElseUpdate(vf, lastModified, sizeBytes, fileKey)(Digest(h))
+              case _ =>
+                getOrElseUpdate(vf, lastModified, sizeBytes, fileKey)(fallback)
+        catch case _: FileSystemException => fallback
       case _ => Digest.sha256Hash(converter.toPath(vf))
 end CacheImplicits

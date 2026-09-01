@@ -448,17 +448,20 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         writeFileAndNotify(p)
       case p =>
         try
-          if Digest.sameDigest(p, d) then
-            val result =
-              if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
-            afterFileUpToDate(ref, result, outputDirectory)
-            result
-          else
-            // println(s"- syncFile: $p has different digest")
-            IO.delete(p.toFile())
-            writeFileAndNotify(p)
+          Retry(
+            if Digest.sameDigest(p, d) then
+              val result =
+                if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
+              afterFileUpToDate(ref, result, outputDirectory)
+              result
+            else
+              IO.delete(p.toFile())
+              writeFileAndNotify(p)
+            ,
+            classOf[NoSuchFileException],
+          )
         catch
-          // in theory, Fies.exists(...) should have caught this,
+          // in theory, Files.exists(...) should have caught this,
           // but in practice, NoSuchFileException is thrown often
           case _: NoSuchFileException =>
             writeFileAndNotify(p)
@@ -511,9 +514,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         currentItem match
           case p if !Files.exists(p)        => doSync(ref, tempPath)
           case p if Digest.sameDigest(p, d) => ()
-          case p                            =>
-            IO.delete(p.toFile())
-            doSync(ref, tempPath)
+          case _                            => doSync(ref, tempPath)
     // sync deleted files
     allPaths.foreach: path =>
       IO.delete(path.toFile())
