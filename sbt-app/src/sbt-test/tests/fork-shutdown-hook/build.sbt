@@ -2,6 +2,7 @@ Global / localCacheDirectory := baseDirectory.value / "diskcache"
 scalaVersion := "3.9.0"
 
 Test / fork := true
+testPersistentWorker := false
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.0.4" % Test
 
