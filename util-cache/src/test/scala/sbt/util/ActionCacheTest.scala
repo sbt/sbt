@@ -681,6 +681,56 @@ object ActionCacheTest extends BasicTestSuite:
         assert(Files.size(zipPath) > 0L)
       finally pool.shutdown()
 
+  // Windows refuses to rename onto a file that is open elsewhere: a concurrent install
+  // still reading the zip it just published (digest, CAS copy, extraction) fails the
+  // next install with AccessDeniedException. Seen in the wild as sbt/zinc CI failures
+  // on `compileIncremental` for a Java-only subproject, which packages its classes
+  // directory twice concurrently.
+  test("packageDirectory tolerates readers of the installed zip during a concurrent install"):
+    IO.withTemporaryDirectory: tmp =>
+      val root = tmp.toPath
+      val classesDir = root.resolve("classes")
+      Files.createDirectories(classesDir)
+      Files.writeString(classesDir.resolve("A.class"), "compiled")
+      val dirRef = VirtualFileRef.of(classesDir.toString)
+      val conv = new FileConverter:
+        override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+        override def toVirtualFile(path: Path): VirtualFile =
+          val content =
+            if Files.isRegularFile(path) then
+              new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
+            else ""
+          StringVirtualFile1(path.toString, content)
+      val zipPath = Paths.get(classesDir.toString + ActionCache.dirZipExt)
+      ActionCache.packageDirectory(dirRef, conv, root)
+      assert(Files.isRegularFile(zipPath))
+      val writers = 4
+      val readers = 4
+      val stop = new java.util.concurrent.atomic.AtomicBoolean(false)
+      val barrier = new CyclicBarrier(writers + readers)
+      val pool: ExecutorService = Executors.newFixedThreadPool(writers + readers)
+      try
+        val readerTasks =
+          for _ <- 1 to readers yield pool.submit: () =>
+            barrier.await(30, TimeUnit.SECONDS)
+            while !stop.get() do
+              try Files.readAllBytes(zipPath)
+              catch case _: IOException => () // reading is incidental; only installs must not fail
+            true
+        val writerTasks =
+          for _ <- 1 to writers yield pool.submit: () =>
+            barrier.await(30, TimeUnit.SECONDS)
+            for _ <- 1 to 5 do ActionCache.packageDirectory(dirRef, conv, root)
+            true
+        writerTasks.foreach(_.get(60, TimeUnit.SECONDS))
+        stop.set(true)
+        readerTasks.foreach(_.get(60, TimeUnit.SECONDS))
+        assert(Files.isRegularFile(zipPath))
+        assert(Files.size(zipPath) > 0L)
+      finally
+        stop.set(true)
+        pool.shutdown()
+
   // See https://github.com/sbt/sbt/issues/9349. With a warm cache, deleting the output tree
   // out-of-band must not break the next build: restore recreates the missing parent directories.
   test("Restore recreates a deleted output directory (direct blob)"):
