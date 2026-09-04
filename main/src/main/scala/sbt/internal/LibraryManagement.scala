@@ -188,7 +188,7 @@ private[sbt] object LibraryManagement {
     // This is lm-engine specific input hashed into Long
     val extraInputHash = module.extraInputHash
     val settings = module.moduleSettings
-    val outStore = cacheStoreFactory.make("output")
+    val outStore = cacheStoreFactory.makeCompressed("output")
     val handler = if (skip && !force) skipResolve(outStore)(_) else doResolve(outStore)
     // Remove clock for caching purpose
     val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)

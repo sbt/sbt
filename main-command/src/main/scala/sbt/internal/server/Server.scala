@@ -12,8 +12,7 @@ package server
 
 import java.io.{ File, IOException }
 import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
+import java.util.concurrent.atomic.AtomicBoolean
 import java.security.SecureRandom
 import java.math.BigInteger
 
@@ -22,7 +21,6 @@ import scala.util.{ Failure, Success, Try }
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
-import sbt.io.syntax.*
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec.*
 import sbt.internal.util.ErrorHandling
@@ -56,7 +54,7 @@ private[sbt] object Server {
       val ready: Future[Unit] = p.future
       private val rand = new SecureRandom
       private var token: String = nextToken
-      private val serverSocketHolder = new AtomicReference[ServerSocket]
+      private val serverSocketHolder = AtomicCloseable[ServerSocket]()
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -93,10 +91,7 @@ private[sbt] object Server {
             case Failure(e)            => p.failure(e)
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
-              serverSocketHolder.getAndSet(serverSocket) match {
-                case null =>
-                case s    => s.close()
-              }
+              serverSocketHolder.set(serverSocket)
               log.debug(s"sbt server started at ${connection.shortName}")
               writePortfile()
               if (connection.bspEnabled) {
@@ -118,10 +113,7 @@ private[sbt] object Server {
                   case _: SocketException if !running.get => // the server is shutting down
                 }
               }
-              serverSocketHolder.get match {
-                case null =>
-                case s    => s.close()
-              }
+              serverSocketHolder.close()
           }
         }
       }
@@ -166,10 +158,7 @@ private[sbt] object Server {
           IO.delete(tokenfile)
         }
         running.set(false)
-        serverSocketHolder.getAndSet(null) match {
-          case null =>
-          case s    => s.close()
-        }
+        serverSocketHolder.close()
         log.info("shutting down sbt server")
       }
 
@@ -180,31 +169,9 @@ private[sbt] object Server {
         val t = TokenFile(uri, token)
         val jsonToken = Converter.toJson(t).get
 
-        if (tokenfile.exists) {
-          IO.delete(tokenfile)
-        }
-        IO.touch(tokenfile)
-        ownerOnly(tokenfile)
-        IO.write(tokenfile, CompactPrinter(jsonToken), IO.utf8, true)
-      }
-
-      /** Set the permission of the file such that the only the owner can read/write it. */
-      private def ownerOnly(file: File): Unit = {
-        def acl(owner: UserPrincipal) = {
-          val builder = AclEntry.newBuilder
-          builder.setPrincipal(owner)
-          builder.setPermissions(AclEntryPermission.values()*)
-          builder.setType(AclEntryType.ALLOW)
-          builder.build
-        }
-        file match {
-          case _ if IO.isPosix =>
-            IO.chmod("rw-------", file)
-          case _ if IO.hasAclFileAttributeView =>
-            val view = file.aclFileAttributeView
-            view.setAcl(java.util.Collections.singletonList(acl(view.getOwner)))
-          case _ => ()
-        }
+        IO.writeFileAtomically(tokenfile, ownerOnly = true)(tmp =>
+          IO.write(tmp, CompactPrinter(jsonToken), IO.utf8, false)
+        )
       }
 
       // This file exists through the lifetime of the server.
@@ -221,7 +188,7 @@ private[sbt] object Server {
               PortFile(uri, None, None)
           }
         val json = Converter.toJson(p).get
-        IO.write(portfile, CompactPrinter(json))
+        IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
       }
 
       private[sbt] def prepareSocketfile(): Unit = {

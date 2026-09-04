@@ -30,6 +30,34 @@ private[sbt] object JsonUtil {
     CacheStore(graphPath).write(updateReportLite)
   }
 
+  /** The per-module normalization `toLite` applies; anything stored alongside it must match. */
+  private[sbt] def withFilteredCallers(mr: ModuleReport): ModuleReport = {
+    val callers = filterOutArtificialCallers(mr.callers)
+    // Reuse the instance when filtering changed nothing, so interning is not undone here.
+    if (callers eq mr.callers) mr
+    else
+      ModuleReport(
+        mr.module,
+        mr.artifacts,
+        mr.missingArtifacts,
+        mr.status,
+        mr.publicationDate,
+        mr.resolver,
+        mr.artifactResolver,
+        mr.evicted,
+        mr.evictedData,
+        mr.evictedReason,
+        mr.problem,
+        mr.homepage,
+        mr.extraAttributes,
+        mr.isDefault,
+        mr.branch,
+        mr.configurations,
+        mr.licenses,
+        callers
+      )
+  }
+
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
       val details0 = if (cr.details.nonEmpty) cr.details else modulesToDetails(cr.modules)
@@ -39,32 +67,7 @@ private[sbt] object JsonUtil {
           OrganizationArtifactReport(
             oar.organization,
             oar.name,
-            oar.modules map { mr =>
-              val callers = filterOutArtificialCallers(mr.callers)
-              // Reuse the instance when filtering changed nothing, so interning is not undone here.
-              if (callers eq mr.callers) mr
-              else
-                ModuleReport(
-                  mr.module,
-                  mr.artifacts,
-                  mr.missingArtifacts,
-                  mr.status,
-                  mr.publicationDate,
-                  mr.resolver,
-                  mr.artifactResolver,
-                  mr.evicted,
-                  mr.evictedData,
-                  mr.evictedReason,
-                  mr.problem,
-                  mr.homepage,
-                  mr.extraAttributes,
-                  mr.isDefault,
-                  mr.branch,
-                  mr.configurations,
-                  mr.licenses,
-                  callers
-                )
-            }
+            oar.modules.map(withFilteredCallers)
           )
         }
       )

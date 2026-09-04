@@ -174,4 +174,59 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       .run(iterations = 1, warmupIterations = -1)
       .shouldBe(Left("warmupIterations must be non-negative"))
 
+  def moduleFor(baseDir: File, org: String, name: String, version: String): ModuleReport =
+    val modId = ModuleID(org, name, version)
+    val artifact = Artifact(name, "jar", "jar", None, Vector.empty, None, Map.empty, None)
+    val jarFile = new File(baseDir, s"$org-$name-$version.jar")
+    IO.touch(jarFile)
+    ModuleReport(
+      modId,
+      Vector((artifact, jarFile)),
+      Vector.empty,
+      None,
+      None,
+      Some("maven-central"),
+      Some("maven-central"),
+      false,
+      None,
+      None,
+      None,
+      None,
+      Map.empty,
+      Some(true),
+      None,
+      Vector(ConfigRef("compile")),
+      Vector.empty,
+      Vector.empty
+    )
+
+  // `managedJars` derives the managed classpath's order from `ConfigurationReport.modules`, and that
+  // order is part of the compile task's cache key.
+  it should "preserve the resolver's module order, not the order details are grouped in" in:
+    IO.withTemporaryDirectory: baseDir =>
+      val a1 = moduleFor(baseDir, "org.a", "a", "1.0.0")
+      val a2 = moduleFor(baseDir, "org.a", "a", "2.0.0")
+      val b1 = moduleFor(baseDir, "org.b", "b", "1.0.0")
+      val details = Vector(
+        OrganizationArtifactReport("org.a", "a", Vector(a1, a2)),
+        OrganizationArtifactReport("org.b", "b", Vector(b1))
+      )
+      // The resolver interleaves the two organizations; flattening `details` would yield a1, a2, b1.
+      val resolved = Vector(a1, b1, a2)
+      val configReport = ConfigurationReport(ConfigRef("compile"), resolved, details)
+      val cachedDescriptor = new File(baseDir, "ivy.xml")
+      IO.touch(cachedDescriptor)
+      val original = UpdateReport(
+        cachedDescriptor,
+        Vector(configReport),
+        UpdateStats(0L, 0L, 0L, false),
+        Map.empty
+      )
+
+      val restored = UpdateReportPersistence.fromCache(UpdateReportPersistence.toCache(original))
+
+      restored.configurations.head.modules
+        .map(_.module)
+        .shouldBe(resolved.map(_.module))
+
 end UpdateReportPersistenceSpec

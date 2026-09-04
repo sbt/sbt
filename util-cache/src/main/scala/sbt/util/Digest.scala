@@ -101,6 +101,38 @@ object Digest:
   private[sbt] def md5Hash(bytes: Array[Byte]): Digest =
     apply(Md5, hashBytes(Md5, bytes), bytes.length)
 
+  /** Transfers `input` to `target` while computing the digest of the transferred bytes. */
+  private[sbt] def transferAndHash(input: InputStream, target: Path, algo: String): Digest =
+    def transfer(update: (Array[Byte], Int) => Unit): Long =
+      var size = 0L
+      Using.resource(Files.newOutputStream(target)) { out =>
+        val buffer = new Array[Byte](8192)
+        var readBytes = input.read(buffer)
+        while readBytes >= 0 do
+          update(buffer, readBytes)
+          out.write(buffer, 0, readBytes)
+          size += readBytes
+          readBytes = input.read(buffer)
+      }
+      size
+    algo match
+      case Xx64 | Wy64 =>
+        val hasher =
+          if algo == Xx64 then Hashing.newStreamingXXHash64(0)
+          else Hashing.newStreamingWyHash64(0)
+        val size = transfer((buf, n) => hasher.update(buf, 0, n))
+        val h = hasher.getValue
+        hasher.close()
+        apply(algo, longsToBytes(Array(h)), size)
+      case Imoxx64 | Imowy64 =>
+        // sampling algos need random access, so hash after the write
+        transfer((_, _) => ())
+        apply(algo, target)
+      case _ =>
+        val md = MessageDigest.getInstance(jvmAlgo(algo))
+        val size = transfer((buf, n) => md.update(buf, 0, n))
+        apply(algo, md.digest(), size)
+
   // first check the file size, then the hash
   def sameDigest(path: Path, digest: Digest): Boolean =
     if Files.size(path) != digest.sizeBytes then false
