@@ -29,8 +29,11 @@ instead of going ahead with the options it asked for and getting dropped mid-bui
 alone, and the invocation says which options it won't pick up rather than passing them on
 in silence.
 
-A server with no options recorded, one that something other than the thin client started,
-is a server running without any, so an invocation that carries some restarts it as well.
+A server the client itself started with no options at all is a server running without any,
+so an invocation that carries some restarts it as well. A server no client started, the one
+an editor keeps or a `sbt --server` in another terminal, is left alone: its options were
+never written down, it may well have these already, and the invocation only says they might
+not be in effect.
 
 Options that describe the client rather than the server (`sbt.color`, `sbt.banner`, ...)
 are left out of the comparison, and so is anything in `.sbtopts`, `.jvmopts` or

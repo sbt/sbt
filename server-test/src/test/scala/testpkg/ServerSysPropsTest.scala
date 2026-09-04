@@ -129,6 +129,7 @@ class ServerSysPropsTest extends AnyFunSuite {
     withServer(Seq("-Dmy.prop=hunter2")) { (buildDir, _) =>
       val recorded = IO.read(portfile(buildDir))
       assert(recorded.contains(""""sysProps":["my.prop="""), recorded)
+      assert(recorded.contains(""""sysPropsRecorded":true"""), recorded)
       assert(!recorded.contains("hunter2"), recorded)
     }
   }
@@ -163,6 +164,20 @@ class ServerSysPropsTest extends AnyFunSuite {
     withServer(Seq("-Dmy.prop=first"), optionsFor = Some(otherBuild)) { (buildDir, _) =>
       val recorded = IO.read(portfile(buildDir))
       assert(recorded.contains(""""sysProps":[]"""), recorded)
+      assert(recorded.contains(""""sysPropsRecorded":false"""), recorded)
+    }
+  }
+
+  test("a server no client started keeps the options it has") {
+    // an editor's server, or one from sbt --server, records nothing, and it may well have
+    // been started with the very options this client carries
+    val otherBuild = Files.createTempDirectory("sbt-other-build").toFile
+    withServer(Seq("-Dmy.prop=first"), optionsFor = Some(otherBuild)) { (buildDir, process) =>
+      val (code, log) = client(buildDir, "-Dmy.prop=first", "willSucceed")
+      assert(code == 0, log)
+      assert(process.isAlive(), s"a server the client never started was shut down: $log")
+      assert(log.contains("started by something other than the thin client"), log)
+      assert(log.contains("added: my.prop"), log)
     }
   }
 

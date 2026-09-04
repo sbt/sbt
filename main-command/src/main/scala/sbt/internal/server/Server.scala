@@ -188,6 +188,10 @@ private[sbt] object Server {
           .contains(portfile.getCanonicalFile)
         val recorded = if (startedByThisBuild) sys.env.get(NetworkClient.sysPropsEnv) else None
         val sysProps = recorded.toVector.flatMap(NetworkClient.decodeSysProps)
+        // an empty list of options and no idea what the options are read the same, so say
+        // which of the two this is: a client can restart a server over the first but has no
+        // business taking down one whose options it never saw
+        val sysPropsRecorded = Option(startedByThisBuild)
         val p =
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
@@ -196,10 +200,11 @@ private[sbt] object Server {
                 uri,
                 Option(tokenfile.toString),
                 Option(IO.toURI(tokenfile).toString),
-                sysProps
+                sysProps,
+                sysPropsRecorded
               )
             case _ =>
-              PortFile(uri, None, None, sysProps)
+              PortFile(uri, None, None, sysProps, sysPropsRecorded)
           }
         val json = Converter.toJson(p).get
         IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
