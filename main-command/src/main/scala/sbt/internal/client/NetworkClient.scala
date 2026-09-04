@@ -210,15 +210,22 @@ class NetworkClient(
    */
   private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
     val checked = arguments.forwardsSysProps && !shutdownOnly && !exitOnly && !arguments.bsp &&
-      !promptCompleteUsers &&
-      // a -D option written after the command is parsed as part of the command, so it
-      // isn't ours to compare and the server isn't missing it either
-      !arguments.commandArguments.exists(_.startsWith("-D"))
+      !promptCompleteUsers
     if checked then
+      // a -D option written after the command is parsed as part of the command, so it isn't
+      // ours to compare and the server isn't missing it either. Only the name it defines is
+      // left out: everything after the first command lands in commandArguments, so letting
+      // one of these turn the whole comparison off would drop the options written before it,
+      // which is the very thing #9682 is about.
+      val deferred = arguments.commandArguments
+        .filter(_.startsWith("-D"))
+        .map(NetworkClient.sysPropName)
+        .toSet
       val current = NetworkClient.serverSysProps(arguments.sbtArguments)
       Try(ClientSocket.portFile(portfile)).toOption match
         case Some(pf) =>
-          val (dropped, added, changed) = NetworkClient.sysPropsDiff(pf.sysProps, current)
+          val (dropped, added, changed) =
+            NetworkClient.sysPropsDiff(pf.sysProps, current, deferred)
           if (dropped ++ added ++ changed).nonEmpty then
             val restarts = serverAutoStart && serverAutoRestart
             val level = if restarts then Level.Info else Level.Warn
@@ -284,20 +291,25 @@ class NetworkClient(
               )
               _ <- session.sendCommand(ExecCommand(Shutdown, Option(UUID.randomUUID.toString)))
             yield ()
-          if asked.isFailure && gone then true // it dropped the connection on its way out
-          else
-            val deadline = NetworkClient.serverShutdownTimeout.fromNow
-            // the server drops the portfile when it starts tearing down, and only then is it
-            // worth asking its socket whether it is still there
-            while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
-            // each of these asks costs a connection on a server that is still up, so they
-            // get further apart the longer it takes
-            var delay = 20L
-            while (!gone && !deadline.isOverdue()) {
-              Thread.sleep(delay)
-              if (delay < 500) delay = delay * 2
-            }
-            gone
+          // a send that fails either lost the connection to a server that is already on its
+          // way out, which settles in a moment, or never reached one that is still up and
+          // never will, and waiting the full timeout on that second case says nothing that
+          // the first second didn't
+          val waitFor =
+            if asked.isFailure then NetworkClient.serverShutdownGrace
+            else NetworkClient.serverShutdownTimeout
+          val deadline = waitFor.fromNow
+          // the server drops the portfile when it starts tearing down, and only then is it
+          // worth asking its socket whether it is still there
+          while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
+          // each of these asks costs a connection on a server that is still up, so they
+          // get further apart the longer it takes
+          var delay = 20L
+          while (!gone && !deadline.isOverdue()) {
+            Thread.sleep(delay)
+            if (delay < 500) delay = delay * 2
+          }
+          gone
         finally session.close()
 
   private[sbt] def connectOrStartServerAndConnect(
@@ -1400,6 +1412,9 @@ object NetworkClient {
   private[sbt] val sysPropsPortfileEnv = "SBT_SERVER_SYS_PROPS_PORTFILE"
   private[sbt] val serverShutdownTimeout: FiniteDuration = 30.seconds
 
+  /** How long a server that never took the shutdown request is given to disappear anyway. */
+  private[sbt] val serverShutdownGrace: FiniteDuration = 2.seconds
+
   /**
    * These are set per client invocation, so they don't describe the server JVM.
    * `sbt.io.virtual` belongs here because the client appends its own `=true` either way.
@@ -1472,14 +1487,19 @@ object NetworkClient {
 
   /**
    * How the options a server recorded and the ones a client carries differ: the names the
-   * client no longer passes, the ones it adds, and the ones it gives another value.
+   * client no longer passes, the ones it adds, and the ones it gives another value. Names in
+   * `deferred` are nobody's to answer for and are left out of all three.
    */
   private[client] def sysPropsDiff(
       recorded: Seq[String],
-      current: Seq[String]
+      current: Seq[String],
+      deferred: Set[String] = Set.empty
   ): (Seq[String], Seq[String], Seq[String]) =
-    val was = recorded.map(r => r.takeWhile(_ != '=') -> r.dropWhile(_ != '=').drop(1)).toMap
-    val now = current.map(o => sysPropName(o) -> o).toMap
+    val was = recorded
+      .map(r => r.takeWhile(_ != '=') -> r.dropWhile(_ != '=').drop(1))
+      .toMap
+      .removedAll(deferred)
+    val now = current.map(o => sysPropName(o) -> o).toMap.removedAll(deferred)
     val changed = (was.keySet & now.keySet).filter { name =>
       val digest = was(name)
       sysPropDigest(digest.takeWhile(_ != ':'), now(name)) != digest

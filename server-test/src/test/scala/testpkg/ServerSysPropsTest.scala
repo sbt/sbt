@@ -175,6 +175,22 @@ class ServerSysPropsTest extends AnyFunSuite {
     }
   }
 
+  test("a -D option written after the command doesn't hide the ones before it") {
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
+      // everything after the first command is a command argument, so a trailing option
+      // must not take the leading ones out of the comparison (sbt/sbt#9682)
+      val (_, log) = client(
+        buildDir,
+        s"--sbt-script=${deadScript()}",
+        "-Dmy.prop=second",
+        "compile",
+        "-Dother.prop=x"
+      )
+      assert(log.contains("restarting it"), log)
+      assert(exited(process), s"the server kept running with the options of an older client: $log")
+    }
+  }
+
   test("a bare exit keeps the running server") {
     withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       // there is nothing to run, so a fresh server would be started only to say goodbye

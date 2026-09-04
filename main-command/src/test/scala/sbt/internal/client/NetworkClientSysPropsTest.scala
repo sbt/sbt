@@ -69,6 +69,21 @@ object NetworkClientSysPropsTest extends BasicTestSuite:
   test("adding an option is a different server"):
     assert(diff(Nil, "-Dmy.prop=first") == (Nil, Seq("my.prop"), Nil))
 
+  test("a name given after the command is nobody's to answer for"):
+    val was = NetworkClient.digestSysProps(sysProps("-Dmy.prop=first"))
+    assert(
+      NetworkClient.sysPropsDiff(was, sysProps("-Dmy.prop=second"), Set("my.prop")) ==
+        (Nil, Nil, Nil)
+    )
+    assert(NetworkClient.sysPropsDiff(was, Nil, Set("my.prop")) == (Nil, Nil, Nil))
+
+  test("a name given after the command doesn't hide the ones given before it"):
+    val was = NetworkClient.digestSysProps(sysProps("-Dmy.prop=first"))
+    assert(
+      NetworkClient.sysPropsDiff(was, sysProps("-Dmy.prop=second"), Set("other.prop")) ==
+        (Nil, Nil, Seq("my.prop"))
+    )
+
   test("what is recorded doesn't give the value away"):
     val entries = recorded("-Dmy.prop=hunter2")
     assert(entries.size == 1, entries.mkString(" "))
