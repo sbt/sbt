@@ -35,6 +35,11 @@ an editor keeps or a `sbt --server` in another terminal, is left alone: its opti
 never written down, it may well have these already, and the invocation only says they might
 not be in effect.
 
+Two invocations that both want the server restarted take their turn rather than the second
+one taking down the replacement the first just started. The second reads the connection
+file again once the first is done, so a server that already has the options it carries is
+left running.
+
 Options that describe the client rather than the server (`sbt.color`, `sbt.banner`, ...)
 are left out of the comparison, and so is anything in `.sbtopts`, `.jvmopts` or
 `SBT_OPTS`, which the client never sees. Other clients attached to that server are

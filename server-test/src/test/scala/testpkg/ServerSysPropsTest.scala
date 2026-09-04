@@ -9,7 +9,8 @@
 package testpkg
 
 import java.io.{ File, InputStream, OutputStream, PrintStream }
-import java.nio.file.{ Files, Path }
+import java.nio.channels.FileChannel
+import java.nio.file.{ Files, Path, StandardOpenOption }
 import scala.collection.mutable
 
 import sbt.internal.client.NetworkClient
@@ -233,6 +234,29 @@ class ServerSysPropsTest extends AnyFunSuite:
         client(buildDir, s"--sbt-script=${deadScript()}", "-Dmy.prop=first", "compile")
       assert(log.contains("restarting it"), log)
       assert(exited(process), s"the server kept running without the options it was passed: $log")
+    }
+  }
+
+  test("a restart lets go of the lock it takes") {
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
+      // a lock left behind would make every later client wait out the restart timeout
+      val (_, log) =
+        client(buildDir, s"--sbt-script=${deadScript()}", "-Dmy.prop=second", "compile")
+      assert(exited(process), log)
+      val lockfile = buildDir / "project" / "target" / "active.json.lock"
+      assert(lockfile.exists, s"the restart took no lock: $log")
+      val channel = FileChannel.open(lockfile.toPath, StandardOpenOption.WRITE)
+      try assert(channel.tryLock() != null, "the client kept the restart lock")
+      finally channel.close()
+    }
+  }
+
+  test("a client that matches the running server takes no lock") {
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, _) =>
+      val (code, log) = client(buildDir, "-Dmy.prop=first", "willSucceed")
+      assert(code == 0, log)
+      val lockfile = buildDir / "project" / "target" / "active.json.lock"
+      assert(!lockfile.exists, s"a matching client locked the connection file: $log")
     }
   }
 
