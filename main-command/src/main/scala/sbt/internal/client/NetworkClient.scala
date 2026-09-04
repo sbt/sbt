@@ -13,8 +13,10 @@ package client
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
 import java.net.{ Socket, SocketException }
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
-import java.util.UUID
+import java.security.{ MessageDigest, SecureRandom }
+import java.util.{ Base64, UUID }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, Semaphore, TimeUnit }
 
@@ -31,7 +33,7 @@ import sbt.internal.util.{
   Terminal,
   Util
 }
-import sbt.io.IO
+import sbt.io.{ Hash, IO }
 import sbt.io.syntax.*
 import sbt.protocol.*
 import sbt.util.{ HashUtil, Level, Logger }
@@ -40,6 +42,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JObject, JValue }
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.annotation.tailrec
+import scala.collection.immutable.TreeMap
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
@@ -199,40 +202,47 @@ class NetworkClient(
 
   /**
    * A running server was started with its own `-D` options, and the ones passed to this
-   * invocation would be dropped on the floor. Restart the server so that they take effect.
-   * A server that recorded no options is one that runs without any, so a client that
-   * carries some restarts it too. Completion queries never restart it: a client is not
-   * worth a server to someone pressing tab.
+   * invocation would be dropped on the floor. Restart the server so that they take effect,
+   * or, when this client isn't the one to do that, say which options it is missing rather
+   * than let them go by unmentioned. A server that recorded no options is one that runs
+   * without any, so a client that carries some restarts it too. Completion queries never
+   * restart it: a client is not worth a server to someone pressing tab.
    */
   private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
     val checked = arguments.forwardsSysProps && !shutdownOnly && !exitOnly && !arguments.bsp &&
-      !promptCompleteUsers && serverAutoStart && serverAutoRestart &&
+      !promptCompleteUsers &&
       // a -D option written after the command is parsed as part of the command, so it
       // isn't ours to compare and the server isn't missing it either
       !arguments.commandArguments.exists(_.startsWith("-D"))
     if checked then
       val current = NetworkClient.serverSysProps(arguments.sbtArguments)
       Try(ClientSocket.portFile(portfile)).toOption match
-        case Some(pf) if pf.sysProps != current =>
-          val dropped = pf.sysProps.diff(current)
-          val added = current.diff(pf.sysProps)
-          console.appendLog(
-            Level.Info,
-            "sbt server is running with different JVM options; restarting it"
-          )
-          if dropped.nonEmpty then
-            console.appendLog(Level.Info, s"dropped: ${dropped.mkString(" ")}")
-          if added.nonEmpty then console.appendLog(Level.Info, s"added: ${added.mkString(" ")}")
-          if !shutdownRunningServer(pf.uri) then
+        case Some(pf) =>
+          val (dropped, added, changed) = NetworkClient.sysPropsDiff(pf.sysProps, current)
+          if (dropped ++ added ++ changed).nonEmpty then
+            val restarts = serverAutoStart && serverAutoRestart
+            val level = if restarts then Level.Info else Level.Warn
+            // the values are what a credential would be hiding in, so only the names of
+            // the options are worth saying out loud
             console.appendLog(
-              Level.Error,
-              "the sbt server did not shut down, it is most likely busy with another client"
+              level,
+              if restarts then "sbt server is running with different JVM options; restarting it"
+              else "sbt server is running with different JVM options, which it cannot pick up"
             )
-            console.appendLog(
-              Level.Error,
-              "it shuts down once that is done; run this command again after it has"
-            )
-            throw new ServerFailedException
+            if dropped.nonEmpty then console.appendLog(level, s"dropped: ${dropped.mkString(" ")}")
+            if added.nonEmpty then console.appendLog(level, s"added: ${added.mkString(" ")}")
+            if changed.nonEmpty then console.appendLog(level, s"changed: ${changed.mkString(" ")}")
+            if !restarts then console.appendLog(level, "run 'sbt shutdown' for them to take effect")
+            else if !shutdownRunningServer(pf.uri) then
+              console.appendLog(
+                Level.Error,
+                "the sbt server did not shut down, it is most likely busy with another client"
+              )
+              console.appendLog(
+                Level.Error,
+                "it shuts down once that is done; run this command again after it has"
+              )
+              throw new ServerFailedException
         case _ => ()
 
   /**
@@ -533,7 +543,7 @@ class NetworkClient(
         if (arguments.forwardsSysProps) {
           processBuilder.environment.put(
             NetworkClient.sysPropsEnv,
-            NetworkClient.serverSysProps(arguments.sbtArguments).mkString("\n")
+            NetworkClient.recordedSysProps(arguments.sbtArguments)
           )
           processBuilder.environment
             .put(NetworkClient.sysPropsPortfileEnv, portfile.getCanonicalPath)
@@ -1406,17 +1416,79 @@ object NetworkClient {
     "sbt.supershell",
   )
 
+  /** The name a `-D` option defines, which is everything up to the first `=`. */
+  private[client] def sysPropName(option: String): String =
+    option.drop(2).takeWhile(_ != '=')
+
   /** The `-D` options that make up the identity of a server started with `sbtArguments`. */
   private[client] def serverSysProps(sbtArguments: Seq[String]): Seq[String] =
     sbtArguments
       .filter(_.startsWith("-D"))
-      .filterNot(a => ignoredSysProps(a.drop(2).takeWhile(_ != '=')))
-      .distinct
-      .sorted
+      .filterNot(a => ignoredSysProps(sysPropName(a)))
+      // a name given twice is whatever the JVM ends up with, which is the last definition
+      .foldLeft(TreeMap.empty[String, String])((acc, a) => acc.updated(sysPropName(a), a))
+      .values
+      .toVector
+
+  private lazy val random = new SecureRandom
+
+  /** The digest a connection file records `option` as, under a salt of its own. */
+  private def sysPropDigest(salt: String, option: String): String =
+    val md = MessageDigest.getInstance("SHA-256")
+    md.update(salt.getBytes(UTF_8))
+    md.update(option.getBytes(UTF_8))
+    s"$salt:${Hash.toHex(md.digest)}"
+
+  /**
+   * The `-D` options as they are written down: the name each defines, and a salted digest
+   * of the option itself. A value can carry a credential, and a name is enough to tell one
+   * server from another and to say which options changed.
+   */
+  private[sbt] def digestSysProps(props: Seq[String]): Vector[String] =
+    props.toVector.map { p =>
+      val salt = new Array[Byte](8)
+      random.nextBytes(salt)
+      s"${sysPropName(p)}=${sysPropDigest(Hash.toHex(salt), p)}"
+    }
+
+  /**
+   * Carries the recorded options to the server one per line. They are encoded because a
+   * value is free to contain a newline, which would otherwise read back as two options.
+   */
+  private[sbt] def encodeSysProps(recorded: Seq[String]): String =
+    recorded.map(r => Base64.getEncoder.encodeToString(r.getBytes(UTF_8))).mkString("\n")
 
   /** Reads back the options [[sysPropsEnv]] carries to the server they were passed to. */
-  private[sbt] def splitSysProps(value: String): Vector[String] =
-    value.split("\n").toVector.filter(_.nonEmpty)
+  private[sbt] def decodeSysProps(value: String): Vector[String] =
+    value
+      .split("\n")
+      .toVector
+      .filter(_.nonEmpty)
+      .flatMap(r => Try(new String(Base64.getDecoder.decode(r), UTF_8)).toOption)
+
+  /** What [[sysPropsEnv]] carries to a server started with `sbtArguments`. */
+  def recordedSysProps(sbtArguments: Seq[String]): String =
+    encodeSysProps(digestSysProps(serverSysProps(sbtArguments)))
+
+  /**
+   * How the options a server recorded and the ones a client carries differ: the names the
+   * client no longer passes, the ones it adds, and the ones it gives another value.
+   */
+  private[client] def sysPropsDiff(
+      recorded: Seq[String],
+      current: Seq[String]
+  ): (Seq[String], Seq[String], Seq[String]) =
+    val was = recorded.map(r => r.takeWhile(_ != '=') -> r.dropWhile(_ != '=').drop(1)).toMap
+    val now = current.map(o => sysPropName(o) -> o).toMap
+    val changed = (was.keySet & now.keySet).filter { name =>
+      val digest = was(name)
+      sysPropDigest(digest.takeWhile(_ != ':'), now(name)) != digest
+    }
+    (
+      (was.keySet -- now.keySet).toSeq.sorted,
+      (now.keySet -- was.keySet).toSeq.sorted,
+      changed.toSeq.sorted
+    )
 
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"

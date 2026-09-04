@@ -15,13 +15,19 @@ $ sbt -Dmy.prop=first showProp
 [info] my.prop = first
 $ sbt -Dmy.prop=second showProp
 [info] sbt server is running with different JVM options; restarting it
-[info] dropped: -Dmy.prop=first
-[info] added: -Dmy.prop=second
+[info] changed: my.prop
 [info] my.prop = second
 ```
 
+A value can be a credential, so it is neither written down nor printed: the connection
+file keeps the name of each option and a salted digest of it, which is all the comparison
+needs.
+
 If the running server is busy and doesn't shut down, the invocation stops with an error
-instead of going ahead with the options it asked for and getting dropped mid-build.
+instead of going ahead with the options it asked for and getting dropped mid-build. With
+`-Dsbt.server.autorestart=false` or `-Dsbt.server.autostart=false` the server is left
+alone, and the invocation says which options it won't pick up rather than passing them on
+in silence.
 
 A server with no options recorded, one that something other than the thin client started,
 is a server running without any, so an invocation that carries some restarts it as well.
@@ -29,8 +35,7 @@ is a server running without any, so an invocation that carries some restarts it 
 Options that describe the client rather than the server (`sbt.color`, `sbt.banner`, ...)
 are left out of the comparison, and so is anything in `.sbtopts`, `.jvmopts` or
 `SBT_OPTS`, which the client never sees. Other clients attached to that server are
-disconnected, the same as with `sbt shutdown`, and `-Dsbt.server.autorestart=false` turns
-the restart off.
+disconnected, the same as with `sbt shutdown`.
 
 This addresses [#9682][i9682].
 

@@ -53,7 +53,7 @@ class ServerSysPropsTest extends AnyFunSuite {
    * otherwise, since the server only trusts options that name its own connection file.
    */
   private def withServer(
-      sysProps: String,
+      sysProps: Seq[String],
       optionsFor: Option[File] = None
   )(f: (File, scala.sys.process.Process) => Unit): Unit = {
     val base: Path = Files.createTempDirectory("sbt-sysprops")
@@ -73,7 +73,7 @@ class ServerSysPropsTest extends AnyFunSuite {
         )
         .withEnvVars(
           Map(
-            sysPropsEnv -> sysProps,
+            sysPropsEnv -> NetworkClient.recordedSysProps(sysProps),
             sysPropsPortfileEnv -> portfile(optionsFor.getOrElse(buildDir)).getCanonicalPath,
           )
         ),
@@ -125,15 +125,16 @@ class ServerSysPropsTest extends AnyFunSuite {
     !process.isAlive()
   }
 
-  test("the server records the -D options it was started with") {
-    withServer("-Dmy.prop=first") { (buildDir, _) =>
+  test("the server records the -D options it was started with, without their values") {
+    withServer(Seq("-Dmy.prop=hunter2")) { (buildDir, _) =>
       val recorded = IO.read(portfile(buildDir))
-      assert(recorded.contains(""""sysProps":["-Dmy.prop=first"]"""), recorded)
+      assert(recorded.contains(""""sysProps":["my.prop="""), recorded)
+      assert(!recorded.contains("hunter2"), recorded)
     }
   }
 
   test("a client passing the same -D options keeps the running server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       val (code, log) = client(buildDir, "-Dmy.prop=first", "willSucceed")
       assert(code == 0, log)
       assert(process.isAlive(), s"the server was restarted even though nothing changed: $log")
@@ -141,7 +142,7 @@ class ServerSysPropsTest extends AnyFunSuite {
   }
 
   test("a completion query keeps the running server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       // completion args never carry the user's -D options, so they say nothing about
       // the server and pressing tab must not take it down
       val out = new PrintStream(new CachingOutputStream, true)
@@ -159,14 +160,14 @@ class ServerSysPropsTest extends AnyFunSuite {
   test("options inherited from another build are not recorded") {
     // an sbt server passes its environment on to every sbt it starts itself
     val otherBuild = Files.createTempDirectory("sbt-other-build").toFile
-    withServer("-Dmy.prop=first", optionsFor = Some(otherBuild)) { (buildDir, _) =>
+    withServer(Seq("-Dmy.prop=first"), optionsFor = Some(otherBuild)) { (buildDir, _) =>
       val recorded = IO.read(portfile(buildDir))
       assert(recorded.contains(""""sysProps":[]"""), recorded)
     }
   }
 
   test("a -D option written after the command keeps the running server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       // sbt parses it as part of the command, so the server is not missing anything
       val (_, log) = client(buildDir, "compile", "-Dmy.prop=second")
       assert(!log.contains("restarting it"), log)
@@ -175,7 +176,7 @@ class ServerSysPropsTest extends AnyFunSuite {
   }
 
   test("a bare exit keeps the running server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       // there is nothing to run, so a fresh server would be started only to say goodbye
       val (code, log) = client(buildDir, "-Dmy.prop=second", "exit")
       assert(code == 0, log)
@@ -184,7 +185,7 @@ class ServerSysPropsTest extends AnyFunSuite {
   }
 
   test("a client passing changed -D options restarts the server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       // the client stops the running server and then fails to start a new one,
       // because the script it would start it with is a dead end
       val (_, log) =
@@ -197,7 +198,7 @@ class ServerSysPropsTest extends AnyFunSuite {
   test("a client passing -D options restarts a server that recorded none") {
     // a server without any recorded options is running without them, so it is missing
     // the ones this client carries
-    withServer("") { (buildDir, process) =>
+    withServer(Nil) { (buildDir, process) =>
       val (_, log) =
         client(buildDir, s"--sbt-script=${deadScript()}", "-Dmy.prop=first", "compile")
       assert(log.contains("restarting it"), log)
@@ -206,20 +207,46 @@ class ServerSysPropsTest extends AnyFunSuite {
   }
 
   test("a client that drops a -D option restarts the server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       val (_, log) = client(buildDir, s"--sbt-script=${deadScript()}", "compile")
       assert(log.contains("restarting it"), log)
       assert(exited(process), s"the server kept running with the options of an older client: $log")
     }
   }
 
-  test("sbt.server.autorestart=false keeps the running server") {
-    withServer("-Dmy.prop=first") { (buildDir, process) =>
+  test("sbt.server.autorestart=false keeps the running server and says what it is missing") {
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
       try {
         val (code, log) =
           client(buildDir, "-Dsbt.server.autorestart=false", "-Dmy.prop=second", "willSucceed")
         assert(code == 0, log)
         assert(process.isAlive(), s"the server was restarted with autorestart turned off: $log")
+        assert(log.contains("cannot pick up"), log)
+        assert(log.contains("changed: my.prop"), log)
+      } finally System.clearProperty("sbt.server.autorestart")
+    }
+  }
+
+  test("sbt.server.autostart=false keeps the running server and says what it is missing") {
+    withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
+      try {
+        val (code, log) =
+          client(buildDir, "-Dsbt.server.autostart=false", "-Dmy.prop=second", "willSucceed")
+        assert(code == 0, log)
+        assert(process.isAlive(), s"the server was restarted with autostart turned off: $log")
+        assert(log.contains("cannot pick up"), log)
+        assert(log.contains("changed: my.prop"), log)
+      } finally System.clearProperty("sbt.server.autostart")
+    }
+  }
+
+  test("what a client is missing doesn't include the values") {
+    withServer(Seq("-Dmy.prop=hunter2")) { (buildDir, process) =>
+      try {
+        val (_, log) =
+          client(buildDir, "-Dsbt.server.autorestart=false", "-Dmy.prop=hunter3", "willSucceed")
+        assert(process.isAlive(), log)
+        assert(!log.contains("hunter2") && !log.contains("hunter3"), log)
       } finally System.clearProperty("sbt.server.autorestart")
     }
   }

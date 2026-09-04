@@ -8,7 +8,7 @@ package sbt.internal.protocol
  * This file should exist throughout the lifetime of the server.
  * It can be used to find out the transport protocol (port number etc).
  * @param uri URI of the sbt server.
- * @param sysProps The -D options the thin client passed to this server when it started it.
+ * @param sysProps The -D options the thin client passed to this server, as names and salted digests.
  */
 final class PortFile private (
   val uri: String,
