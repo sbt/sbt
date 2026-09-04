@@ -127,6 +127,15 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
       assert(out.contains[String]("-Dsbt.boot.directory=project/.boot"))
       assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
 
+  testOutput("sbt does not set sbt.global.base without --sbt-dir", citestVariant = "citest")(
+    "-v"
+  ): (out: List[String]) =>
+    val globalBaseArgs = out.filter(_.contains("-Dsbt.global.base"))
+    assert(
+      globalBaseArgs.isEmpty,
+      s"-Dsbt.global.base should not be set: ${globalBaseArgs.mkString(", ")}"
+    )
+
   testOutput("accept `--ivy` in `SBT_OPTS`", sbtOpts = "--ivy /ivy/dir")("-v"):
     (out: List[String]) =>
       if (isWindows) cancel("Test not supported on windows")

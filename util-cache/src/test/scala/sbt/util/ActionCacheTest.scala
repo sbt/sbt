@@ -841,6 +841,16 @@ object ActionCacheTest extends BasicTestSuite:
         )
         assert(!Files.exists(outDir.toPath.resolve("out.txt")))
 
+  test("Local path puts are not verified, but a digest-mismatched blob is never served"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val digest = Digest.sha256Hash("expected".getBytes(StandardCharsets.UTF_8))
+        val local = (tempDir / "out.txt").toPath
+        Files.write(local, "tampered".getBytes(StandardCharsets.UTF_8))
+        cache.putBlob(local, digest)
+        val ref = HashedVirtualFileRef.of("out.txt", digest.contentHashStr, digest.sizeBytes)
+        assert(cache.findBlobs(Seq(ref)).isEmpty, "an unverified put must not be stamped complete")
+
   test("Security (remote poisoning): putBlob rejects a stream whose bytes mismatch its digest"):
     withDiskCache: cache =>
       val digest = Digest.sha256Hash("expected".getBytes(StandardCharsets.UTF_8))
@@ -849,6 +859,18 @@ object ActionCacheTest extends BasicTestSuite:
       val tampered = new ByteArrayInputStream("tampered".getBytes(StandardCharsets.UTF_8))
       intercept[IOException](cache.putBlob(tampered, digest))
       assert(!Files.exists(casFile), "tampered bytes must not remain in the CAS")
+
+  test("Disk cache recovers when the cache directory is deleted mid-session"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: outDir =>
+        val blob = StringVirtualFile1(s"$outDir/a.txt", "hello")
+        val ref: HashedVirtualFileRef = blob
+        cache.putBlobs(Seq(blob))
+        IO.delete(cache.casBase.toFile.getParentFile)
+        assert(cache.findBlobs(Seq(ref)).isEmpty)
+        cache.putBlobs(Seq(blob))
+        assert(cache.findBlobs(Seq(ref)) == Seq(ref))
+        assert(cache.syncBlobs(Seq(ref), outDir.toPath).nonEmpty)
 
   test(
     "Security (remote poisoning): putBlobInternal rejects a file whose bytes mismatch its digest"

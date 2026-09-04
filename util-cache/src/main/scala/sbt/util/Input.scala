@@ -8,7 +8,9 @@
 
 package sbt.util
 
-import java.io.{ Closeable, File, InputStream }
+import java.io.{ BufferedInputStream, Closeable, File, InputStream }
+import java.nio.ByteBuffer
+import java.nio.file.Files
 
 import scala.util.control.NonFatal
 import sjsonnew.{ IsoString, JsonReader, SupportConverter }
@@ -57,4 +59,58 @@ class FileInput(file: File) extends Input {
   }
 
   def close() = ()
+}
+
+/** Sniffs the framing rather than trusting the name, so a cache written uncompressed still loads. */
+private[sbt] class GzipFileInput(file: File) extends Input {
+
+  override def read[T: JsonReader](): T = {
+    val json = Using.fileInputStream(file) { raw =>
+      val buffered = new BufferedInputStream(raw)
+      buffered.mark(2)
+      val gzipped = buffered.read() == 0x1f && buffered.read() == 0x8b
+      buffered.reset()
+      val bytes =
+        if (gzipped) Using.gzipInputStream(buffered)(IO.readBytes)
+        else IO.readBytes(buffered)
+      if (bytes.isEmpty) throw new EmptyCacheError()
+      sjsonnew.support.scalajson.unsafe.Parser.parseFromByteArray(bytes).get
+    }
+    sjsonnew.support.scalajson.unsafe.Converter.fromJson(json).get
+  }
+
+  def close() = ()
+}
+
+private[sbt] object GzipFileInput {
+
+  /**
+   * What `file` holds once inflated: gzip records it in the last four bytes of the member. Anything
+   * that is not a whole gzip member weighs what it occupies on disk instead.
+   */
+  def uncompressedSize(file: File): Long = {
+    val channel = Files.newByteChannel(file.toPath)
+    try {
+      val size = channel.size
+      // Shorter than an empty gzip member, so there is no trailer to read.
+      if (size < 18) size
+      else {
+        def readAt(position: Long, n: Int): Option[ByteBuffer] = {
+          val buffer = ByteBuffer.allocate(n)
+          channel.position(position)
+          while (buffer.hasRemaining && channel.read(buffer) > 0) ()
+          // A short read leaves zeros behind, which would pass for a valid ISIZE.
+          if (buffer.hasRemaining) None else Some(buffer)
+        }
+        val isize =
+          for
+            magic <- readAt(0, 2)
+            if (magic.get(0) & 0xff) == 0x1f && (magic.get(1) & 0xff) == 0x8b
+            trailer <- readAt(size - 4, 4)
+          yield (0 until 4).foldLeft(0L)((acc, i) => acc | ((trailer.get(i) & 0xffL) << (8 * i)))
+        // ISIZE is the payload length modulo 2^32, so it is only a floor above that.
+        isize.filter(_ > 0).getOrElse(size)
+      }
+    } finally channel.close()
+  }
 }

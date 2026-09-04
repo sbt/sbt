@@ -33,6 +33,9 @@ object CacheStore {
 
   /** Returns file-based CacheStore using standard JSON converter. */
   def file(cacheFile: File): CacheStore = new FileBasedStore(cacheFile)
+
+  /** Returns a file-based CacheStore that gzips what it writes. */
+  private[sbt] def gzipFile(cacheFile: File): CacheStore = new GzipFileBasedStore(cacheFile)
 }
 
 /** Factory that can make new stores. */
@@ -40,6 +43,9 @@ abstract class CacheStoreFactory {
 
   /** Create a new store. */
   def make(identifier: String): CacheStore
+
+  /** Like `make`, but the store compresses what it writes. */
+  def makeCompressed(identifier: String): CacheStore = make(identifier)
 
   /** Create a new `CacheStoreFactory` from this factory. */
   def sub(identifier: String): CacheStoreFactory
@@ -65,6 +71,9 @@ class DirectoryStoreFactory[J](base: File) extends CacheStoreFactory {
 
   def make(identifier: String): CacheStore = new FileBasedStore(base / identifier)
 
+  override def makeCompressed(identifier: String): CacheStore =
+    new GzipFileBasedStore(base / identifier)
+
   def sub(identifier: String): CacheStoreFactory =
     new DirectoryStoreFactory(base / identifier)
 }
@@ -78,6 +87,20 @@ class FileBasedStore[J](file: File) extends CacheStore {
 
   def write[T: JsonWriter](value: T) =
     new FileOutput(file).write(value)
+
+  def delete() = IO.delete(file)
+  def close() = ()
+}
+
+/** A `CacheStore` that persists information in `file`, gzip-framed. */
+private[sbt] class GzipFileBasedStore(file: File) extends CacheStore {
+  IO.touch(file, setModified = false)
+
+  def read[T: JsonReader]() =
+    new GzipFileInput(file).read()
+
+  def write[T: JsonWriter](value: T) =
+    new GzipFileOutput(file).write(value)
 
   def delete() = IO.delete(file)
   def close() = ()

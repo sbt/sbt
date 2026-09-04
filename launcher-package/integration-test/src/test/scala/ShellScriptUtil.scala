@@ -197,9 +197,11 @@ trait ShellScriptUtil extends BasicTestSuite {
           val cmd =
             LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath, isGitBashTest) ++ args
           val lines = mutable.ListBuffer.empty[String]
-          def processLine(line: String): Unit =
+          def processLine(line: String): Unit = lines.synchronized {
             Console.err.println(line)
             lines.append(line)
+            ()
+          }
           val p = Process(cmd, workingDirectory, envVars.toSeq*)
             .run(
               new ProcessIO(

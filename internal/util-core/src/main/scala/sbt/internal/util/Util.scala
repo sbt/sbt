@@ -13,7 +13,7 @@ import java.util.Locale
 
 import scala.collection.concurrent.TrieMap
 import scala.reflect.Selectable.reflectiveSelectable
-import scala.util.Properties
+import scala.util.{ Properties, Try }
 import scala.util.control.NonFatal
 
 object Util:
@@ -58,6 +58,8 @@ object Util:
     val _ = f
     ()
   }
+
+  def ignoreTry[A](f: => A): Unit = ignoreResult(Try(f))
 
   lazy val isMac: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("mac")

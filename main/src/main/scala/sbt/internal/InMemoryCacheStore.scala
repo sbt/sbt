@@ -10,13 +10,12 @@ package sbt.internal
 
 import java.io.IOException
 import java.lang.Math.toIntExact
-import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{ Files, Path }
+import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
 import com.github.benmanes.caffeine.cache.{ Cache, Caffeine, Weigher }
 import sbt.io.IO
-import sbt.util.{ CacheStore, CacheStoreFactory, DirectoryStoreFactory }
+import sbt.util.{ CacheStore, CacheStoreFactory, DirectoryStoreFactory, GzipFileInput }
 import sjsonnew.{ JsonReader, JsonWriter }
 
 private[sbt] object InMemoryCacheStore {
@@ -34,8 +33,7 @@ private[sbt] object InMemoryCacheStore {
     def put(path: Path, value: Any, lastModified: Long): Unit = {
       try {
         if (lastModified > 0) {
-          val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-          files.put(path, (value, lastModified, toIntExact(attributes.size)))
+          files.put(path, (value, lastModified, toIntExact(weightOf(path))))
         }
       } catch {
         case _: IOException | _: ArithmeticException => files.invalidate(path)
@@ -48,6 +46,12 @@ private[sbt] object InMemoryCacheStore {
       files.cleanUp()
     }
   }
+
+  /**
+   * An entry costs its serialized size, uncompressed -- the unit the budget was denominated in before
+   * the update store started gzipping, not a measure of the retained graph.
+   */
+  private def weightOf(path: Path): Long = GzipFileInput.uncompressedSize(path.toFile)
 
   private class CacheStoreImpl(path: Path, store: InMemoryCacheStore, cacheStore: CacheStore)
       extends CacheStore {
@@ -90,6 +94,7 @@ private[sbt] object InMemoryCacheStore {
       cacheStore.close()
     }
   }
+
   private def factory(
       store: InMemoryCacheStore,
       path: Path
@@ -98,6 +103,9 @@ private[sbt] object InMemoryCacheStore {
     new CacheStoreFactory {
       override def make(identifier: String): CacheStore =
         new CacheStoreImpl(path.resolve(identifier), store, delegate.make(identifier))
+      // Without this the inherited default calls `make`, wrapping an uncompressed delegate.
+      override def makeCompressed(identifier: String): CacheStore =
+        new CacheStoreImpl(path.resolve(identifier), store, delegate.makeCompressed(identifier))
       override def sub(identifier: String): CacheStoreFactory =
         factory(store, path.resolve(identifier))
     }

@@ -385,6 +385,7 @@ lazy val utilCache = project
     libraryDependencies ++=
       Seq(
         caffeine,
+        scalaPar,
         sjsonNewCore.value,
         sjsonNewScalaJson.value,
         sjsonNewMurmurhash.value
@@ -1042,6 +1043,7 @@ lazy val sbtBig = (project in file(".big"))
 lazy val lowerUtils = (project in (file("internal") / "lower"))
   .aggregate(lowerUtilProjects.map(p => LocalProject(p.id))*)
   .settings(
+    scalaVersion := scala3,
     Utils.noPublish
   )
 
@@ -1051,6 +1053,7 @@ lazy val upperModules = (project in (file("internal") / "upper"))
       diff Seq(bundledLauncherProj, lmCoursierShaded)).map(p => LocalProject(p.id))*
   )
   .settings(
+    scalaVersion := scala3,
     Utils.noPublish
   )
 
