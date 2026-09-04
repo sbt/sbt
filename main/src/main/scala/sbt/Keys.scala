@@ -266,6 +266,7 @@ object Keys {
   val semanticdbIncludeInJar = settingKey[Boolean]("Include *.semanticdb files in published artifacts").withRank(CSetting)
   val semanticdbTargetRoot = settingKey[File]("The output directory to produce META-INF/semanticdb/**/*.semanticdb files").withRank(CSetting)
   val semanticdbOptions = settingKey[Seq[String]]("The Scalac options introduced for SemanticDB").withRank(CSetting)
+  val bestEffortEnabled = settingKey[Boolean]("Enables Scala 3 Best Effort compilation to produce .betasty files").withRank(CSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
   val console = taskKey[Unit]("Starts the Scala interpreter with the project classes on the classpath.").withRank(APlusTask)

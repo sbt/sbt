@@ -97,6 +97,7 @@ object SysProp:
   def allowRootDir: Boolean = getOrFalse("sbt.rootdir")
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
   def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
+  def bestEffort: Boolean = getOrFalse("sbt.bestEffort")
   def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
   def serverAutoStart: Boolean = getOrTrue("sbt.server.autostart")
   def remoteCache: Option[URI] = sys.props
