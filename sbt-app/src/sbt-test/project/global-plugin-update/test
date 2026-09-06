@@ -1,0 +1,33 @@
+# sbt/sbt#1084: the global plugin's dependencies are resolved once and then served from
+# the update cache. The marker library comes from an ivy-style repository under global/repo,
+# so a newer release lives at a new path while the cached report still points at the old one.
+
+> marker/publish
+$ exists global/repo/com.example/marker_3/0.1.0/jars/marker_3.jar
+
+# A build with a project/ directory compiles its definition against the meta-build
+# classpath, which in 2.x does not include the global plugin's library dependencies.
+# Without one, the definition classpath is the global plugin classpath itself, which is
+# what this test observes. sbt writes project/build.properties on boot, after the first
+# sbt command has synchronised with it, and a project/ directory holding only target/
+# does not count as a definition.
+$ delete project/build.properties
+
+# depend on latest.integration from the global plugin and load it
+$ copy-file changes/plugins.sbt global/plugins/plugins.sbt
+> reload
+> eval assert(Marker.version == "0.1.0")
+# in 2.x the global plugin's update cache lives under the current build's output directory
+$ exists target/out/jvm/*/global-plugins/update/*/output
+
+# publish a newer release; a plain reload keeps serving the cached 0.1.0
+$ copy-file changes/Marker-0.2.0.scala marker/src/main/scala/Marker.scala
+> set marker / version := "0.2.0"
+> marker/publish
+$ exists global/repo/com.example/marker_3/0.2.0/jars/marker_3.jar
+> reload
+> eval assert(Marker.version == "0.1.0")
+
+# the batch runner preserves global/ between tests, so drop the definition again
+$ delete global/plugins/plugins.sbt
+> reload
