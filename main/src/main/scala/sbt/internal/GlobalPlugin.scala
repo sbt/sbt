@@ -67,12 +67,16 @@ object GlobalPlugin {
     GlobalPlugin(data, structure, inject(data), base)
   }
 
+  /** Referencing `update` directly makes it an execution root, which forces resolution. */
+  private[sbt] def updateReportInit(force: Boolean): Def.Initialize[Task[UpdateReport]] =
+    if force then Def.task { update.value }
+    else (Def.task { () }).flatMapTask { case _ => Def.task { update.value } }
+
   def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) = {
     import structure.{ data, root, rootProject }
     val p: Scope = Scope.GlobalScope.rescope(ProjectRef(root, rootProject(root)))
-
-    // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
-    val updateReport = (Def.task { () }).flatMapTask { case _ => Def.task { update.value } }
+    val force = state.get(forceGlobalPluginUpdate).getOrElse(false)
+    val updateReport = updateReportInit(force)
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
