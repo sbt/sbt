@@ -14,6 +14,7 @@ import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.quoted.*
 import scala.reflect.ClassTag
+import scala.util.Sorting
 import scala.util.Try
 
 /**
@@ -64,6 +65,12 @@ sealed trait ProjectMatrix extends CompositeProject {
 
   /** Appends settings to the current settings sequence for this project. */
   def settings(ss: Def.SettingsDefinition*): ProjectMatrix
+
+  /**
+   * Sets `crossProjectSources := true` for every row of this matrix.
+   * @see [[sbt.Keys.crossProjectSources]] for more information.
+   */
+  def crossProjectSources: ProjectMatrix = settings(Keys.crossProjectSources := true)
 
   /**
    * Sets the [[sbt.AutoPlugin]]s of this project.
@@ -395,8 +402,94 @@ object ProjectMatrix {
         else Seq.empty,
         ProjectExtra.inConfig(Compile)(makeSources(nonScalaDirSuffix, scalaDirSuffix)),
         ProjectExtra.inConfig(Test)(makeSources(nonScalaDirSuffix, scalaDirSuffix)),
+        ProjectExtra.inConfig(Compile)(crossProjectSourceDirs(r, "main")),
+        ProjectExtra.inConfig(Test)(crossProjectSourceDirs(r, "test")),
         virtualAxes := axes,
       )
+
+    private def platformOf(r: ProjectRow): Option[String] =
+      r.axisValues.collectFirst { case a: VirtualAxis.PlatformAxis => a.value }
+
+    /**
+     * The trees sbt reads for each platform this matrix builds for: the platform's own, `shared`,
+     * and one per group of platforms that share code. A group of every platform is
+     * left out, because `shared` is that group.
+     *
+     * Keyed by platform rather than computed per row, because every row of a platform reads the
+     * same trees, and a lookup that came from `rows` cannot miss.
+     */
+    private lazy val crossProjectSourceSubdirs: Map[String, Seq[String]] = {
+      val platforms = {
+        val distinct = Set.newBuilder[String]
+        rows.foreach(platformOf(_).foreach(distinct += _))
+        distinct.result().toArray
+      }
+      Sorting.quickSort(platforms)
+      val pend = platforms.length - 1
+      val fullMask = (1 << pend) - 1 // will exclude it, corresponds to "shared"
+      val map = Map.newBuilder[String, Seq[String]]
+      var pidx = 0
+      while (pidx < platforms.length) {
+        val platform = platforms(pidx)
+        val subdirs = Seq.newBuilder[String]
+        subdirs += platform
+        subdirs += "shared"
+        var mask = 1 // at least one bit must be set
+        while (mask < fullMask) {
+          val subdir = new StringBuilder
+          var i = 0
+          // the bits are consumed from the bottom, so a zero `remmask` has no members left
+          var remmask = mask
+          while (i < pidx && remmask != 0) {
+            if ((remmask & 1) != 0) subdir.append(platforms(i)).append('-')
+            remmask >>>= 1
+            i += 1
+          }
+          subdir.append(platform)
+          while (i < pend && remmask != 0) {
+            i += 1
+            if ((remmask & 1) != 0) subdir.append('-').append(platforms(i))
+            remmask >>>= 1
+          }
+          subdirs += subdir.result()
+          mask += 1
+        }
+        map += platform -> subdirs.result()
+        pidx += 1
+      }
+      map.result()
+    }
+
+    private def crossProjectEnabled =
+      Def.setting(Keys.crossProjectSources.?.value.contains(true))
+
+    private def crossProjectSourceDirs(r: ProjectRow, conf: String): Seq[Def.Setting[?]] = {
+      val platformOpt = platformOf(r)
+      val trees = platformOpt.fold(Seq.empty[String])(crossProjectSourceSubdirs)
+      // the axis, not `scalaBinaryVersion`, so a row that names 3.9 gets a tree of its own
+      val version = r.axisValues.collectFirst { case a: VirtualAxis.ScalaVersionAxis => a.value }
+      Def.settings(
+        unmanagedSourceDirectories ++= (platformOpt match {
+          case Some(platform) if crossProjectEnabled.value =>
+            val res = Seq.newBuilder[File]
+            val dir = projectMatrixBaseDirectory.value
+            def append(tree: String, subdir: String) = res += dir / tree / "src" / conf / subdir
+            // the shared trees carry Scala alone; the platform's own tree gets Java too
+            append(platform, "java")
+            val variants = crossProjectScalaDirs(version, crossPaths.value)
+            trees.foreach(tree => variants.foreach(append(tree, _)))
+            res.result()
+          case _ => Nil
+        }),
+        unmanagedResourceDirectories ++= {
+          if !crossProjectEnabled.value then Nil
+          else {
+            val dir = projectMatrixBaseDirectory.value
+            trees.map(dir / _ / "src" / conf / "resources")
+          }
+        },
+      )
+    }
 
     private def resolveMatrixAggregate(
         other: ProjectMatrix,
@@ -850,6 +943,21 @@ object ProjectMatrix {
     allMatrices(id) = matrix
     matrix
   }
+
+  /** `scala-2.13.18`, then every shorter prefix of it, then `scala`. */
+  private def crossProjectScalaDirs(version: Option[String], crossPaths: Boolean): List[String] =
+    version match {
+      case Some(v) if crossPaths =>
+        val res = List.newBuilder[String]
+        var end = v.length
+        while (end > 0) {
+          res += s"scala-${v.substring(0, end)}"
+          end = v.lastIndexOf('.', end - 1)
+        }
+        res += "scala"
+        res.result()
+      case _ => "scala" :: Nil
+    }
 
   private[sbt] def unresolved(
       id: String,

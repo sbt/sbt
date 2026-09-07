@@ -1,6 +1,7 @@
 lazy val check = taskKey[Unit]("")
 
 lazy val core = (projectMatrix in file("core"))
+  .crossProjectSources
   .settings(
     // Def.uncached: Seq[VirtualAxis] has no HashWriter, so the task cannot be cached
     check := Def.uncached {
@@ -22,19 +23,19 @@ lazy val core = (projectMatrix in file("core"))
         // the shared trees carry Scala alone; only the row's own platform tree carries java
         Seq("jvm", "src", "main", "java"),
       )
-      wanted.foreach(p => assert(!srcs(dir(p*)), s"unexpected ${dir(p*)} in $srcs"))
+      wanted.foreach(p => assert(srcs(dir(p*)), s"missing ${dir(p*)} in $srcs"))
       // the default layout
       val defaults = Seq(Seq("src", "main", "scala"), Seq("src", "main", "scalajvm"))
       defaults.foreach(p => assert(srcs(dir(p*)), s"missing ${dir(p*)} in $srcs"))
       val sharedMain = dir("shared", "src", "main")
       val shared = srcs.filter(_.getParentFile == sharedMain).map(_.getName)
-      assert(shared.isEmpty, s"$shared under $sharedMain")
+      assert(shared == variants, s"$shared under $sharedMain")
       // the group of every platform is what shared is
       assert(!srcs(dir("js-jvm-native", "src", "main", "scala")), "no all-platform group")
       val res = (Compile / unmanagedResourceDirectories).value.toSet
-      assert(!res(dir("shared", "src", "main", "resources")), s"unexpected resources in $res")
+      assert(res(dir("shared", "src", "main", "resources")), s"missing resources in $res")
       val tests = (Test / unmanagedSourceDirectories).value.toSet
-      assert(!tests(dir("shared", "src", "test", "scala")), s"unexpected test tree in $tests")
+      assert(tests(dir("shared", "src", "test", "scala")), s"missing test tree in $tests")
     },
   )
   .jvmPlatform(scalaVersions = Seq("2.13.18", "3.9.0"))

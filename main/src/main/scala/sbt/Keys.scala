@@ -101,6 +101,23 @@ object Keys {
 
   // Project Matrix
   val virtualAxes = settingKey[Seq[VirtualAxis]]("Virtual axes for the project")
+  /**
+   * If set, sbt expands the set of source directories to include those laid out compatibly with
+   * the `sbt-crossproject` plugin: `<platform_part>/src/main/<language_part>` where:
+   *  - `<platform_part>` is one of:
+   *    - `shared`
+   *    - each of the configured platform axes, such as `jvm`, `js`, or `native`
+   *    - each [sorted] sub-group of platforms, such as `js-jvm`, allowing them to share code.
+   *  - `<language_part>` is one of:
+   *    - `scala`
+   *    - `scala-<version_prefix>`, one for each prefix of the row's Scala version axis
+   *      (e.g. `scala-2.13.18`, `scala-2.13`, `scala-2`)
+   *    - `java` (only under the named platform)
+   *
+   * Set this when you move a build from `crossProject` to `projectMatrix`, or simply need the
+   * extra flexibility.
+   */
+  val crossProjectSources = settingKey[Boolean]("Whether to read a source layout compatible with sbt-crossproject")
   val projectMatrixBaseDirectory = settingKey[File]("Base directory of the current project matrix")
 
   // Command keys
