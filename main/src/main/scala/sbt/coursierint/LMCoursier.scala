@@ -32,6 +32,11 @@ import sbt.io.syntax.*
 import xsbti.AppConfiguration
 
 object LMCoursier {
+
+  /** Drops the JVM-wide memoized resolutions so that a forced update resolves again. */
+  private[sbt] def clearResolutionCache(): Unit =
+    lmcoursier.internal.SbtCoursierCache.default.clear()
+
   private val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 

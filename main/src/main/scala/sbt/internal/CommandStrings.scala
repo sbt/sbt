@@ -306,6 +306,19 @@ $LoadProject return
 
 \t(Re)loads the root project (and leaves the plugins project)."""
 
+  def UpdateGlobalPlugins = "updateGlobalPlugins"
+  def UpdateGlobalPluginsBrief =
+    "Forces dependency resolution of the global plugin project and reloads."
+  def UpdateGlobalPluginsDetailed =
+    s"""$UpdateGlobalPlugins
+
+\tForces one dependency resolution of the global plugin project (the global plugins
+\tdirectory, `~/.sbt/2/plugins` by default) and then reloads the build.
+
+\tA plain `$LoadProject` reuses the cached resolution, so a newer snapshot or a newer
+\tmatch of a dynamic version is not picked up until this command runs. Remote snapshots
+\tare still subject to coursier's TTL (COURSIER_TTL)."""
+
   def InitCommand = "initialize"
   def InitBrief = (InitCommand, "Initializes command processing.")
   def InitDetailed =

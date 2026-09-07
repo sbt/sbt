@@ -28,6 +28,18 @@ $ exists global/repo/com.example/marker_3/0.2.0/jars/marker_3.jar
 > reload
 > eval assert(Marker.version == "0.1.0")
 
+# updateGlobalPlugins forces one resolution of the global plugin project and reloads
+> updateGlobalPlugins
+> eval assert(Marker.version == "0.2.0")
+
+# the refreshed report is cached in turn: a plain reload does not resolve again
+$ copy-file changes/Marker-0.3.0.scala marker/src/main/scala/Marker.scala
+> set marker / version := "0.3.0"
+> marker/publish
+$ exists global/repo/com.example/marker_3/0.3.0/jars/marker_3.jar
+> reload
+> eval assert(Marker.version == "0.2.0")
+
 # the batch runner preserves global/ between tests, so drop the definition again
 $ delete global/plugins/plugins.sbt
 > reload
