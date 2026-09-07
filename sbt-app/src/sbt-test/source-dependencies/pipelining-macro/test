@@ -1,0 +1,7 @@
+# core defines a macro, so app must compile against core's classes directory
+> app/compile
+
+# core is up to date, so its compile hits the action cache; app must still see
+# the classes directory rather than the TASTy-only early jar
+$ copy-file changes/Use2.scala app/src/main/scala/app/Use.scala
+> app/compile
