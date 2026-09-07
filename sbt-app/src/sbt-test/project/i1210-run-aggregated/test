@@ -1,0 +1,29 @@
+# Checkpoint: an appender bound to the global logger observes state.log
+# warnings. The assertion lives inside the command, which errors if the
+# captured file is missing the probe text.
+> probeWarn
+
+# An explicit project axis still decides where aggregation starts. projA
+# aggregates nothing, so only its marker appears. This must run before the
+# unscoped case below, while the two markers are still distinguishable.
+> runAggScoped
+$ exists projA/marker.txt
+$ absent projB/marker.txt
+
+# Reset so the unscoped run below has to write this marker itself, rather than
+# passing on the file the scoped run already left behind.
+$ delete projA/marker.txt
+
+# runAggregated with a key that has no project axis must aggregate from the
+# current project. Before sbt/sbt#1210 was fixed it resolved the axis to Zero,
+# selected no tasks, and silently did nothing.
+> runAgg
+$ exists projA/marker.txt
+$ exists projB/marker.txt
+
+# An aggregated run that selects nothing warns instead of silently succeeding.
+# The command asserts the warning text was actually emitted to state.log.
+> runAggOrphan
+
+# runTask on an undefined key names the key it resolved.
+> runTaskUndefined

@@ -9,7 +9,6 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, Act, Aggregation, SessionSettings }
-import Scope.GlobalScope
 import sbt.ScopeAxis.This
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.complete.Parser
@@ -109,11 +108,16 @@ final case class Extracted(
    * If the project axis is not defined for the key, it is resolved to be the current project.
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
+   *
+   * Warns and runs nothing if the key selects no tasks.
    */
   def runAggregated[A1](key: TaskKey[A1], state: State): State =
     val rkey = resolve(key)
     val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
     val tasks = Act.keyValues(structure)(keys)
+    if tasks.isEmpty then
+      val shown = showKey.show(rkey.scopedKey)
+      state.log.warn(s"$shown selected no tasks to aggregate; nothing was run")
     Aggregation.runTasks(
       state,
       tasks,
@@ -122,7 +126,8 @@ final case class Extracted(
     )
 
   private def resolve[K <: Scoped.ScopingSetting[K] & Scoped](key: K): K =
-    Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope) / key
+    val current = Load.projectScope(currentRef)
+    Scope.resolveScope(current, currentRef.build, rootProject)(key.scope) / key
 
   private def getOrError[T](key: ScopedKey[?], value: Option[T])(using
       display: Show[ScopedKey[?]]
