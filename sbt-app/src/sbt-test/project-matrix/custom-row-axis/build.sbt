@@ -8,6 +8,6 @@ lazy val root = (project in file("."))
   .settings(
     check := {
       val ids = core.allProjects().map(_._1.id)
-      assert(ids == Seq(), s"rows: $ids")
+      assert(ids == Seq("core"), s"rows: $ids")
     },
   )

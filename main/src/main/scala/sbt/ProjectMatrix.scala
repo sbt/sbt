@@ -736,7 +736,10 @@ object ProjectMatrix {
       val process1 = crossVersion match
         case Some(cv) => (p: Project) => process(p.settings(Keys.crossVersion := cv))
         case None     => process
-      if autoScalaLibrary then
+      if scalaVersions.isEmpty && autoScalaLibrary then
+        // there is no version to add, so the axes must already carry one
+        customRow(autoScalaLibrary, axisValues, process1)
+      else if autoScalaLibrary then
         scalaVersions.foldLeft(this: ProjectMatrix): (acc, sv) =>
           val scalaAxis =
             if crossVersion == Some(CrossVersion.full) then VirtualAxis.scalaVersionAxis(sv, sv)
