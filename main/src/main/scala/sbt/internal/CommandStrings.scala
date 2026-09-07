@@ -312,8 +312,9 @@ $LoadProject return
   def UpdateGlobalPluginsDetailed =
     s"""$UpdateGlobalPlugins
 
-\tForces one dependency resolution of the global plugin project (the global plugins
-\tdirectory, `~/.sbt/2/plugins` by default) and then reloads the build.
+\tForces one dependency resolution of the global plugin project (the `plugins`
+\tdirectory under the global base, `~/.config/sbt/2/plugins` by default) and then
+\treloads the build.
 
 \tA plain `$LoadProject` reuses the cached resolution, so a newer snapshot or a newer
 \tmatch of a dynamic version is not picked up until this command runs. Remote snapshots

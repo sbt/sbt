@@ -965,7 +965,9 @@ object BuiltinCommands {
 
   def updateGlobalPlugins: Command =
     Command.command(UpdateGlobalPlugins, UpdateGlobalPluginsBrief, UpdateGlobalPluginsDetailed) {
-      s => loadProjectCommands("") ::: s.put(Keys.forceGlobalPluginUpdate, true)
+      s =>
+        sbt.coursierint.LMCoursier.clearResolutionCache()
+        loadProjectCommands("") ::: s.put(Keys.forceGlobalPluginUpdate, true)
     }
 
   private def loadProjectParser: State => Parser[String] =
@@ -1020,8 +1022,6 @@ object BuiltinCommands {
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
     val s2 = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
-    if s2.get(Keys.forceGlobalPluginUpdate).getOrElse(false) then
-      sbt.coursierint.LMCoursier.clearResolutionCache()
     val (eval, structure) =
       try Load.defaultLoad(s2, base, s2.log, Project.inPluginProject(s2), Project.extraBuilds(s2))
       catch {
