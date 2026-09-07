@@ -12,6 +12,8 @@ package internal
 import java.io.IOException
 import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 
+import scala.util.control.NonFatal
+
 import sbt.BasicCommandStrings.*
 import sbt.Def.*
 import sbt.Keys.*
@@ -250,10 +252,10 @@ private[sbt] object Clean {
     s.copy(remainingCommands = cmds)
 
   /**
-   * Deletes cached artifacts in the launcher boot directory, keeping the jars the running
-   * sbt instance itself is loaded from. Deleting those breaks the live session: the next
-   * .sbt compilation fails with MissingCoreLibraryException and anything else resolving
-   * them by path fails until sbt is restarted by hand.
+   * Deletes cached artifacts in the launcher boot directory. The jars the running sbt instance
+   * itself is loaded from are deleted on JVM exit instead: removing them while the server runs
+   * breaks the live session, since the next .sbt compilation fails with
+   * MissingCoreLibraryException and anything else resolving them by path fails until restart.
    */
   private def deleteBootCaches(s: State): Unit = {
     val provider = s.configuration.provider
@@ -273,6 +275,11 @@ private[sbt] object Clean {
           } else if (dir != bootDirectory || f.getName != "sbt.boot.lock") IO.delete(f)
         }
       loop(bootDirectory)
+      ShutdownHooks.add(() => deleteQuietly(bootDirectory))
     }
   }
+
+  private def deleteQuietly(dir: File): Unit =
+    try IO.delete(dir)
+    catch { case NonFatal(_) => () }
 }
