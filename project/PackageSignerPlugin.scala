@@ -1,7 +1,6 @@
 import sbt.*
 import Keys.*
 import sbt.util.CacheImplicits.given
-import sbt.internal.librarymanagement.IvyActions
 import com.jsuereth.sbtpgp.SbtPgp
 import com.typesafe.sbt.packager.universal.{ UniversalPlugin, UniversalDeployPlugin }
 import com.typesafe.sbt.packager.debian.{ DebianPlugin, DebianDeployPlugin }
@@ -18,7 +17,8 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
   import RpmPlugin.autoImport.*
 
   override def projectSettings: Seq[Setting[?]] =
-    inConfig(Universal)(packageSignerSettings) ++
+    Seq(otherResolvers ~= (_.distinct)) ++
+      inConfig(Universal)(packageSignerSettings) ++
       inConfig(Debian)(packageSignerSettings) ++
       inConfig(Rpm)(packageSignerSettings)
 
@@ -79,14 +79,22 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
       val config = publishSignedConfiguration.value
       val s = streams.value
       Def.task {
-        IvyActions.publish(ivyModule.value, config, s.log)
+        val p = publisher.value
+        val module = p.moduleDescriptor(
+          moduleSettings.value.asInstanceOf[sbt.librarymanagement.ModuleDescriptorConfiguration]
+        )
+        p.publish(module, config, s.log)
       }
     }.value,
     publishLocalSigned := Def.taskDyn {
       val config = publishLocalSignedConfiguration.value
       val s = streams.value
       Def.task {
-        IvyActions.publish(ivyModule.value, config, s.log)
+        val p = publisher.value
+        val module = p.moduleDescriptor(
+          moduleSettings.value.asInstanceOf[sbt.librarymanagement.ModuleDescriptorConfiguration]
+        )
+        p.publish(module, config, s.log)
       }
     }.value
   )
