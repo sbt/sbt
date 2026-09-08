@@ -173,16 +173,13 @@ private[sbt] final class CommandExchange {
     channelBufferLock.synchronized {
       Util.ignoreResult(channelBuffer -= c)
     }
-    commandQueue.removeIf { e =>
-      e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
-    }
-    currentExec.withFilter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
-    }
+    def isFromChannel(e: Exec): Boolean = e.source.exists(_.channelName == c.name)
+    commandQueue.removeIf { e => isFromChannel(e) && e.commandLine != Shutdown }
+    currentExec.foreach { e => if (isFromChannel(e)) doCancel(e, force = false) }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
     // Notify other servers to drop if idle when a real client disconnects
-    if (wasInitialized && !shuttingDown.get) notifyOtherServers()
+    if (wasInitialized && !isShuttingDown) notifyOtherServers()
   }
 
   private def mkAskUser(
@@ -320,9 +317,9 @@ private[sbt] final class CommandExchange {
     }
     procFile = None
     fastTrackThread.close()
-    channels.foreach(c => Util.ignoreResult(Try(c.shutdown(true))))
+    channels.foreach(c => Util.ignoreTry(c.shutdown(true)))
     // interrupt and kill the thread
-    server.foreach(s => Util.ignoreResult(Try(s.shutdown())))
+    server.foreach(s => Util.ignoreTry(s.shutdown()))
     server = None
     EvaluateTask.onShutdown()
   }
@@ -503,9 +500,15 @@ private[sbt] final class CommandExchange {
       terminal.write(13, 13, 13, 4)
       terminal.printStream.println("\nconsole session killed by remote sbt client")
     } else {
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = true))
+      doCancel(e, force = true)
     }
   }
+
+  private def doCancel(e: Exec, force: Boolean): Unit = {
+    Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = force))
+  }
+
+  private def isShuttingDown: Boolean = shuttingDown.get
 
   /** Handle a dropIfIdle notification from another server. */
   private[sbt] def handleDropIfIdle(): Unit = {
