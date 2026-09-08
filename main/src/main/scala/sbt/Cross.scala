@@ -148,7 +148,8 @@ object Cross {
 
   private def crossBuildCommandImpl(state: State, args: CrossArgs): State = {
     val extracted = Project.extract(state)
-    val parser = Act.aggregatedKeyParser(extracted) ~ matched(any.*)
+    val parser = Act.aggregatedKeyParser(extracted) ~
+      (matched(Space ~ any.*) | Parser.success(""))
     val verbose = if (args.verbose) "-v" else ""
     val allCommands = Parser.parse(args.command, parser) match {
       case Left(_) =>
