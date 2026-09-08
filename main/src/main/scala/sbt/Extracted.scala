@@ -118,12 +118,14 @@ final case class Extracted(
     if tasks.isEmpty then
       val shown = showKey.show(rkey.scopedKey)
       state.log.warn(s"$shown selected no tasks to aggregate; nothing was run")
-    Aggregation.runTasks(
-      state,
-      tasks,
-      DummyTaskMap(Nil),
-      show = Aggregation.defaultShow(state, false),
-    )
+      state
+    else
+      Aggregation.runTasks(
+        state,
+        tasks,
+        DummyTaskMap(Nil),
+        show = Aggregation.defaultShow(state, false),
+      )
 
   private def resolve[K <: Scoped.ScopingSetting[K] & Scoped](key: K): K =
     val current = Load.projectScope(currentRef)

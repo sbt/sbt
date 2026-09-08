@@ -26,18 +26,20 @@ object Commands {
    * per-appender removal. Unbinding here would silence the rest of the session,
    * and for the same reason `pw` is left open rather than closed.
    */
-  private def capturingWarnings(st: State, file: File)(f: State => State): (State, String) =
+  private def capturingLog(st: State, file: File, level: Level.Value)(
+      f: State => State
+  ): (State, String) =
     val pw = new PrintWriter(new FileWriter(file), true)
     val appender: Appender =
       ConsoleAppender(s"i1210-${file.getName}", ConsoleOut.printWriterOut(pw), false)
-    LogExchange.bindLoggerAppenders(st.globalLogging.full.name, Seq(appender -> Level.Warn))
+    LogExchange.bindLoggerAppenders(st.globalLogging.full.name, Seq(appender -> level))
     val st1 = f(st)
     pw.flush()
     (st1, IO.read(file))
 
   val probeWarn = Command.command("probeWarn"): (st: State) =>
     val probe = "i1210 probe warning"
-    val (st1, captured) = capturingWarnings(st, st.baseDir / "captured.log"): s =>
+    val (st1, captured) = capturingLog(st, st.baseDir / "captured.log", Level.Warn): s =>
       s.log.warn(probe)
       s
     if !captured.contains(probe) then
@@ -45,10 +47,12 @@ object Commands {
     st1
 
   val runAggOrphan = Command.command("runAggOrphan"): (st: State) =>
-    val (st1, captured) = capturingWarnings(st, st.baseDir / "orphan.log"): s =>
+    val (st1, captured) = capturingLog(st, st.baseDir / "orphan.log", Level.Info): s =>
       Project.extract(s).runAggregated(orphanTask, s)
     if !captured.contains("selected no tasks to aggregate") then
       sys.error(s"expected a no-tasks warning; captured: [$captured]")
+    if captured.contains("elapsed time") then
+      sys.error(s"an empty aggregated run should not report success; captured: [$captured]")
     st1
 
   val runTaskUndefined = Command.command("runTaskUndefined"): (st: State) =>
