@@ -193,7 +193,7 @@ object Defaults extends BuildCommon with DefExtra {
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== true,
       testForkedParallelism :== None,
-      testForkedWorker :== SysProp.testForkedWorker,
+      workerMaxInstances :== SysProp.workerMaxInstances,
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
@@ -1453,7 +1453,7 @@ object Defaults extends BuildCommon with DefExtra {
       val byName = tests.groupBy(_.name).toVector.sortBy(_._1)
       val n = math.max(
         1,
-        math.min(testForkedWorker.value, byName.size)
+        math.min((GlobalScope / workerMaxInstances).value, byName.size)
       )
       fork.value && n > 1
     } then
@@ -1462,7 +1462,7 @@ object Defaults extends BuildCommon with DefExtra {
       val byName = tests.groupBy(_.name).toVector.sortBy(_._1)
       val n = math.max(
         1,
-        math.min(testForkedWorker.value, byName.size)
+        math.min((GlobalScope / workerMaxInstances).value, byName.size)
       )
       val buckets = Array.fill(n)(Vector.newBuilder[TestDefinition])
       byName.zipWithIndex.foreach { case ((_, defs), i) => buckets(i % n) ++= defs }
@@ -1817,7 +1817,7 @@ object Defaults extends BuildCommon with DefExtra {
     Def.setting {
       val par = parallelExecution.value
       val max = EvaluateTask.SystemProcessors
-      val maxWorker = testForkedWorker.value
+      val maxWorker = workerMaxInstances.value
       Tags.limitAll(if (par) max else 1) ::
         Tags.limit(Tags.ForkedTestGroup, maxWorker) ::
         Tags.exclusiveGroup(Tags.Clean) ::

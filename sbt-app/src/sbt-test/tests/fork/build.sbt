@@ -14,7 +14,7 @@ def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 scalaVersion := "3.9.0"
 organization := "com.example"
-Global / testForkedWorker := 2
+Global / workerMaxInstances := 2
 
 lazy val root = rootProject
   .settings(

@@ -12,11 +12,11 @@ val checkAtLeast4 = taskKey[Unit]("Check that testForkedParallelism raises concu
 libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
 Test / fork := true
 // Pin to one JVM at the subproject-level
-testForkedWorker := 1
+Global / workerMaxInstances := 1
 
 check := {
   // testForkedParallelism unset: the default is a flat 2 threads per worker JVM, not
-  // availableProcessors -- JVM count (testForkedWorker) is the parallelism dial now, not in-JVM
+  // availableProcessors -- JVM count (workerMaxInstances) is the parallelism dial now, not in-JVM
   // threads. So we expect concurrency of exactly 2, never more.
   if !file("max-concurrent-tests_2").exists() then
     sys.error("Forked tests were not executed in parallel at the default of 2!")
