@@ -413,6 +413,7 @@ object Keys {
   val testSummary = settingKey[TestSummary]("The style of the test summary displayed after an aggregated test run.").withRank(CSetting)
   @transient
   val testSummaryLogger = settingKey[TestResultLogger]("Logs test summary after an aggregated test completes.").withRank(DTask)
+  val testTopology = settingKey[TestTopology]("The topology of how test classes are grouped.").withRank(CSetting)
   val testGrouping = taskKey[Seq[Tests.Group]]("Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.").withRank(BMinusTask)
   val isModule = AttributeKey[Boolean]("isModule", "True if the target is a module.", DSetting)
   val extraTestDigests = taskKey[Seq[Digest]]("Extra digests that would invalidate test caching").withRank(DTask)

@@ -12,7 +12,7 @@ val checkAtLeast4 = taskKey[Unit]("Check that testForkedParallelism raises concu
 libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
 Test / fork := true
 // Pin to one JVM at the subproject-level
-Global / workerMaxInstances := 1
+testTopology := TestTopology.subprojectExclusive
 
 check := {
   // testForkedParallelism unset: the default is a flat 2 threads per worker JVM, not

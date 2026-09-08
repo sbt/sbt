@@ -11,6 +11,7 @@ organization := "com.example"
 
 Test / fork := true
 Global / workerMaxInstances := expectedWorkers
+Test / testTopology := TestTopology.subprojectSplit(expectedWorkers)
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.0.4" % Test
 

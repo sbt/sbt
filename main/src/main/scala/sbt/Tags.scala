@@ -30,6 +30,7 @@ object Tags {
   val Disk = Tag("disk")
 
   val ForkedTestGroup = Tag("forked-test-group")
+  val ExclusiveTestGroup = Tag("exclusive-test-group")
 
   /**
    * Describes a restriction on concurrently executing tasks.

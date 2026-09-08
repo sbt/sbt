@@ -1,8 +1,8 @@
 import Tests._
 import Defaults._
 
-// 4 classes, 4 workers: splitTestGroupDefault puts one class per group, so testOnly selecting a
-// single class leaves the other 3 groups empty after Tests.processOptions filters them down.
+// 4 classes, 4 workers: TestTopology.subprojectSplit(classCount) puts one class per group,
+// so testOnly selecting a single class leaves the other 3 groups empty after Tests.processOptions filters them down.
 val classCount = 4
 
 val checkOne = TaskKey[Unit]("checkOne", "Check setup/cleanup ran exactly once, then reset.")
@@ -16,6 +16,7 @@ organization := "com.example"
 
 Test / fork := true
 Global / workerMaxInstances := classCount
+Test / testTopology := TestTopology.subprojectSplit(classCount)
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.0.4" % Test
 

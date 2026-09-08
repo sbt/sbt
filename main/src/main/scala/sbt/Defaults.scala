@@ -1247,6 +1247,7 @@ object Defaults extends BuildCommon with DefExtra {
         testResultLogger :== TestResultLogger.SilentWhenNoTests,
         testSummary :== SysProp.testSummary,
         testSummaryLogger := TestResultLogger.Defaults.Summary(testSummary.value),
+        testTopology :== TestTopology.default,
         testOnly / testFilter :== (IncrementalTest.selectedFilter),
         testSelected / testFilter :== (IncrementalTest.selectedFilter),
         extraTestDigests :== Nil,
@@ -1405,7 +1406,14 @@ object Defaults extends BuildCommon with DefExtra {
       )
     ) ++ inScope(GlobalScope)(
       Seq(
-        derive(testGrouping := Def.uncached(splitTestGroupDefault.value))
+        derive(testGrouping := Def.uncached {
+          if TestTopology.isSingleGroup(
+              testTopology.value,
+              fork.value
+            ) || !parallelExecution.value || !testForkedParallel.value
+          then singleTestGroupDefault.value
+          else splitTestGroupDefault.value
+        })
       )
     )
 
@@ -1451,18 +1459,20 @@ object Defaults extends BuildCommon with DefExtra {
     if {
       val tests = definedTests.value
       val byName = tests.groupBy(_.name).toVector.sortBy(_._1)
+      val reqSplit = TestTopology.requestedSplit(testTopology.value)
       val n = math.max(
         1,
-        math.min((GlobalScope / workerMaxInstances).value, byName.size)
+        math.min(math.min(workerMaxInstances.value, byName.size), reqSplit)
       )
       fork.value && n > 1
     } then
       val tests = definedTests.value
       val opts = forkOptions.value
       val byName = tests.groupBy(_.name).toVector.sortBy(_._1)
+      val reqSplit = TestTopology.requestedSplit(testTopology.value)
       val n = math.max(
         1,
-        math.min((GlobalScope / workerMaxInstances).value, byName.size)
+        math.min(math.min(workerMaxInstances.value, byName.size), reqSplit)
       )
       val buckets = Array.fill(n)(Vector.newBuilder[TestDefinition])
       byName.zipWithIndex.foreach { case ((_, defs), i) => buckets(i % n) ++= defs }
@@ -1501,10 +1511,14 @@ object Defaults extends BuildCommon with DefExtra {
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
     Def.task {
+      val topo = (task / testTopology).value
       new Tests.Execution(
         (task / testOptions).value,
         (task / parallelExecution).value,
-        (task / tags).value
+        (topo match
+          case TestTopology.SubprojectExclusive => Vector((Tags.ExclusiveTestGroup, 1))
+          case _                                => Vector()
+        ) ++ (task / tags).value
       )
     }
 
@@ -1741,7 +1755,7 @@ object Defaults extends BuildCommon with DefExtra {
             s.log,
             forkedParallelism,
             strategy != ClassLoaderLayeringStrategy.Raw,
-            (Tags.ForkedTestGroup, 1) +: group.tags*
+            Vector((Tags.ForkedTestGroup, 1)) ++ config.tags ++ group.tags*
           )
         case Tests.InProcess =>
           if (javaOptions.nonEmpty) {
@@ -1820,6 +1834,7 @@ object Defaults extends BuildCommon with DefExtra {
       val maxWorker = workerMaxInstances.value
       Tags.limitAll(if (par) max else 1) ::
         Tags.limit(Tags.ForkedTestGroup, maxWorker) ::
+        Tags.exclusiveGroup(Tags.ExclusiveTestGroup) ::
         Tags.exclusiveGroup(Tags.Clean) ::
         Nil
     }
