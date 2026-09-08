@@ -1834,7 +1834,7 @@ object Defaults extends BuildCommon with DefExtra {
       val maxWorker = workerMaxInstances.value
       Tags.limitAll(if (par) max else 1) ::
         Tags.limit(Tags.ForkedTestGroup, maxWorker) ::
-        Tags.exclusiveGroup(Tags.ExclusiveTestGroup) ::
+        Tags.exclusiveWithin(Tags.ExclusiveTestGroup, Tags.Test) ::
         Tags.exclusiveGroup(Tags.Clean) ::
         Nil
     }

@@ -55,7 +55,11 @@ private[sbt] object ForkTests:
     import std.TaskExtra.*
     val dummyLoader =
       this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
-    def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
+    // Tag setup/cleanup the same as the actual test run -- otherwise a restriction like
+    // Tags.limit(Tags.ExclusiveTestGroup, 1) only ever sees the forked JVM in between them, and
+    // another subproject's setup/cleanup (or its own exclusive run) can freely overlap either end.
+    def all(work: Seq[ClassLoader => Unit]) =
+      work.fork(f => f(dummyLoader)).map(_.tagw(config.tags*).tagw(tags*))
 
     if opts.tests.isEmpty then
       // Nothing selected after filtering, so don't run setup/cleanup either.
