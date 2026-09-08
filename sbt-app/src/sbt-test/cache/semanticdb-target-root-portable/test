@@ -1,0 +1,7 @@
+# A cache key names ${OUT} rather than the absolute path behind it, so moving the build's output
+# directory must leave the key alone. semanticdbTargetRoot reached the key of the cached task that
+# declares it as a bare File, whose absolute path pins every entry to one checkout and one machine.
+> compile
+> set Global / rootOutputDirectory := (baseDirectory.value / "out2").toPath
+> compile
+> checkHit

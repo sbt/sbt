@@ -265,6 +265,7 @@ object Keys {
   val semanticdbVersion = settingKey[String]("SemanticDB version").withRank(CSetting)
   val semanticdbIncludeInJar = settingKey[Boolean]("Include *.semanticdb files in published artifacts").withRank(CSetting)
   val semanticdbTargetRoot = settingKey[File]("The output directory to produce META-INF/semanticdb/**/*.semanticdb files").withRank(CSetting)
+  private[sbt] val semanticdbTargetRootVF = taskKey[VirtualFileRef]("The output directory to produce META-INF/semanticdb/**/*.semanticdb files").withRank(Invisible)
   val semanticdbOptions = settingKey[Seq[String]]("The Scalac options introduced for SemanticDB").withRank(CSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
