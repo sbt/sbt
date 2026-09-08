@@ -673,6 +673,7 @@ lazy val commandProj = (project in file("main-command"))
       exclude[DirectMissingMethodProblem](
         "sbt.internal.client.NetworkClient#RawInputThread.stopped"
       ),
+      exclude[DirectMissingMethodProblem]("sbt.internal.client.NetworkClient.<clinit>"),
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value

@@ -29,13 +29,19 @@ object ClientSocket {
       extends Exception(s"sbt connection file $file is corrupt or unreadable: $cause", cause)
 
   def socket(portfile: File): (Socket, Option[String]) = socket(portfile, false)
+
+  /** Parses the connection file written by the server. */
+  private[sbt] def portFile(portfile: File): PortFile = {
+    import fileFormats.given
+    try
+      val json: JValue = Parser.parseFromString(sbt.io.IO.read(portfile)).get
+      Converter.fromJson[PortFile](json).get
+    catch case NonFatal(e) => throw new ConnectionFileReadException(portfile, e)
+  }
+
   def socket(portfile: File, useJNI: Boolean): (Socket, Option[String]) = {
     import fileFormats.given
-    val p =
-      try
-        val json: JValue = Parser.parseFromString(sbt.io.IO.read(portfile)).get
-        Converter.fromJson[PortFile](json).get
-      catch case NonFatal(e) => throw new ConnectionFileReadException(portfile, e)
+    val p = portFile(portfile)
     val uri = new URI(p.uri)
     // println(uri)
     val token = p.tokenfilePath map { tp =>
@@ -45,13 +51,22 @@ object ClientSocket {
         Converter.fromJson[TokenFile](json).get.token
       catch case NonFatal(e) => throw new ConnectionFileReadException(tokeFile, e)
     }
-    val sk = uri.getScheme match {
+    (connect(uri, useJNI), token)
+  }
+
+  private def connect(uri: URI, useJNI: Boolean): Socket =
+    uri.getScheme match {
       case "local" => localSocket(uri.getSchemeSpecificPart, useJNI)
       case "tcp"   => new Socket(InetAddress.getByName(uri.getHost), uri.getPort)
       case _       => sys.error(s"Unsupported uri: $uri")
     }
-    (sk, token)
-  }
+
+  /** Whether a server still accepts connections on `uri`, as written in its connection file. */
+  private[sbt] def reachable(uri: String, useJNI: Boolean): Boolean =
+    try
+      connect(new URI(uri), useJNI).close()
+      true
+    catch case NonFatal(_) => false
   def localSocket(name: String, useJNI: Boolean): Socket =
     if (isWindows) new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
     else new UnixDomainSocket(name, useJNI)

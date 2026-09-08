@@ -13,8 +13,10 @@ package client
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
 import java.net.{ Socket, SocketException }
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
-import java.util.UUID
+import java.security.{ MessageDigest, SecureRandom }
+import java.util.{ Base64, UUID }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, Semaphore, TimeUnit }
 
@@ -31,7 +33,7 @@ import sbt.internal.util.{
   Terminal,
   Util
 }
-import sbt.io.IO
+import sbt.io.{ Hash, IO }
 import sbt.io.syntax.*
 import sbt.protocol.*
 import sbt.util.{ HashUtil, Level, Logger }
@@ -40,6 +42,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JObject, JValue }
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.annotation.tailrec
+import scala.collection.immutable.TreeMap
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
@@ -117,7 +120,7 @@ class NetworkClient(
 ) extends AutoCloseable { self =>
   def this(configuration: xsbti.AppConfiguration, arguments: Arguments) =
     this(
-      arguments = arguments.withBaseDirectory(configuration.baseDirectory),
+      arguments = arguments.withoutSysProps.withBaseDirectory(configuration.baseDirectory),
       console = NetworkClient.consoleAppenderInterface(System.out),
       inputStream = System.in,
       errorStream = System.err,
@@ -127,8 +130,10 @@ class NetworkClient(
   def this(configuration: xsbti.AppConfiguration, args: List[String]) =
     this(
       console = NetworkClient.consoleAppenderInterface(System.out),
-      arguments =
-        NetworkClient.parseArgs(args.toArray).withBaseDirectory(configuration.baseDirectory),
+      arguments = NetworkClient
+        .parseArgs(args.toArray)
+        .withoutSysProps
+        .withBaseDirectory(configuration.baseDirectory),
       inputStream = System.in,
       errorStream = System.err,
       printStream = System.out,
@@ -151,8 +156,11 @@ class NetworkClient(
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
     !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
   private def shutdownOnly = arguments.commandArguments == Seq(Shutdown)
+  private def exitOnly = arguments.commandArguments == Seq(TerminateAction)
   private lazy val serverAutoStart: Boolean =
     sys.props.get("sbt.server.autostart").forall(_.toLowerCase == "true")
+  private lazy val serverAutoRestart: Boolean =
+    sys.props.get("sbt.server.autorestart").forall(_.toLowerCase == "true")
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 
@@ -190,11 +198,152 @@ class NetworkClient(
       "use 'sbt shutdown' to shutdown the server" ::
       " " :: Nil
 
+  /**
+   * A running server was started with its own `-D` options, and the ones passed to this
+   * invocation would be dropped on the floor. Restart the server so that they take effect,
+   * or, when this client isn't the one to do that, say which options it is missing rather
+   * than let them go by unmentioned. A server a client started with no options at all is
+   * one that runs without any, so a client that carries some restarts it too, but a server
+   * no client started keeps whatever it has. Completion queries never restart it: a client
+   * is not worth a server to someone pressing tab.
+   */
+  private def restartServerIfSysPropsChanged(promptCompleteUsers: Boolean): Unit =
+    val checked = arguments.forwardsSysProps && !shutdownOnly && !exitOnly && !arguments.bsp &&
+      !promptCompleteUsers
+    if checked then
+      // a -D option written after the command is parsed as part of the command, so it isn't
+      // ours to compare and the server isn't missing it either. Only the name it defines is
+      // left out: everything after the first command lands in commandArguments, so letting
+      // one of these turn the whole comparison off would drop the options written before it,
+      // which is the very thing #9682 is about.
+      val deferred = arguments.commandArguments
+        .filter(_.startsWith("-D"))
+        .map(NetworkClient.sysPropName)
+        .toSet
+      val current = NetworkClient.serverSysProps(arguments.sbtArguments)
+      Try(ClientSocket.portFile(portfile)).toOption match
+        case Some(pf) =>
+          val (dropped, added, changed) =
+            NetworkClient.sysPropsDiff(pf.sysProps, current, deferred)
+          if (dropped ++ added ++ changed).nonEmpty then
+            // a server nothing recorded the options of may well have the ones this client
+            // carries already, and an editor's server is the usual one to be in that state,
+            // so it gets a word rather than a shutdown it never asked for
+            val known = pf.sysPropsRecorded.contains(true)
+            val restarts = known && serverAutoStart && serverAutoRestart
+            val level = if restarts then Level.Info else Level.Warn
+            // the values are what a credential would be hiding in, so only the names of
+            // the options are worth saying out loud
+            console.appendLog(
+              level,
+              if restarts then "sbt server is running with different JVM options; restarting it"
+              else if known then
+                "sbt server is running with different JVM options, which it cannot pick up"
+              else
+                "sbt server was started by something other than the thin client, so it may "
+                  + "not have these JVM options"
+            )
+            if dropped.nonEmpty then console.appendLog(level, s"dropped: ${dropped.mkString(" ")}")
+            if added.nonEmpty then console.appendLog(level, s"added: ${added.mkString(" ")}")
+            if changed.nonEmpty then console.appendLog(level, s"changed: ${changed.mkString(" ")}")
+            if !restarts then console.appendLog(level, "run 'sbt shutdown' for them to take effect")
+            else
+              shutdownRunningServer(pf.uri) match
+                case Some(true)  => ()
+                case Some(false) =>
+                  console.appendLog(
+                    Level.Error,
+                    "the sbt server did not shut down, it is most likely busy with another client"
+                  )
+                  // the request is queued on it and stays there, so a second one buys nothing
+                  console.appendLog(
+                    Level.Error,
+                    "it has the request and takes it once that work is done, which ends that"
+                      + " client's session too"
+                  )
+                  console.appendLog(Level.Error, "run this command again once the server is gone")
+                  throw new ServerFailedException
+                case None =>
+                  // it answers no socket but is still there, which says nothing about how
+                  // busy it is, so leaving it alone beats failing an invocation over it
+                  console.appendLog(
+                    Level.Warn,
+                    "the sbt server could not be reached to restart it; it keeps the JVM"
+                      + " options it was started with"
+                  )
+                  console.appendLog(
+                    Level.Warn,
+                    "run 'sbt shutdown' for the ones passed here to take effect"
+                  )
+        case _ => ()
+
+  /**
+   * Asks the running server to shut down and waits for it to let go of its socket, so that
+   * the server started next doesn't run into the one it replaces. `Some(false)` means it was
+   * asked and is still there, `None` that it couldn't be asked at all.
+   */
+  private def shutdownRunningServer(uri: String): Option[Boolean] =
+    def gone = !portfile.exists && !ClientSocket.reachable(uri, useJNI)
+    @tailrec def socketOpt(attempt: Int): Option[(Socket, Option[String])] =
+      Try(mkSocket(portfile)).toOption match
+        case Some(sk)             => Some(sk)
+        case None if attempt < 10 =>
+          // the socket can be momentarily busy, and the connection file can be mid-write,
+          // both of which the connect path retries as well
+          Thread.sleep(new java.util.Random().nextInt(20).toLong)
+          socketOpt(attempt + 1)
+        case None => None
+    socketOpt(0) match
+      // a server that stopped answering leaves a stale portfile, which the caller replaces
+      case None            => if ClientSocket.reachable(uri, useJNI) then None else Some(true)
+      case Some((sk, tkn)) =>
+        val session = new ServerSessionImpl(sk, "sbt-server-restart")
+        try
+          val opts = InitializeOption(
+            token = tkn,
+            skipAnalysis = Some(true),
+            canWork = Some(false),
+            subscribeToAll = Some(false),
+          )
+          val asked =
+            for
+              _ <- session.sendCommand(
+                InitCommand(
+                  token = tkn,
+                  execId = Option(UUID.randomUUID.toString),
+                  skipAnalysis = Some(true),
+                  initializationOptions = Some(opts),
+                )
+              )
+              _ <- session.sendCommand(ExecCommand(Shutdown, Option(UUID.randomUUID.toString)))
+            yield ()
+          // a send that fails either lost the connection to a server that is already on its
+          // way out, which settles in a moment, or never reached one that is still up and
+          // never will, and waiting the full timeout on that second case says nothing that
+          // the first second didn't
+          val waitFor =
+            if asked.isFailure then NetworkClient.serverShutdownGrace
+            else NetworkClient.serverShutdownTimeout
+          val deadline = waitFor.fromNow
+          // the server drops the portfile when it starts tearing down, and only then is it
+          // worth asking its socket whether it is still there
+          while (portfile.exists && !deadline.isOverdue()) Thread.sleep(20)
+          // each of these asks costs a connection on a server that is still up, so they
+          // get further apart the longer it takes
+          var delay = 20L
+          while (!gone && !deadline.isOverdue()) {
+            Thread.sleep(delay)
+            if (delay < 500) delay = delay * 2
+          }
+          Some(gone)
+        finally session.close()
+
   private[sbt] def connectOrStartServerAndConnect(
       promptCompleteUsers: Boolean,
       retry: Boolean
   ): (Socket, Option[String]) =
     try
+      if (portfile.exists) restartServerIfSysPropsChanged(promptCompleteUsers)
       if (!portfile.exists) {
         if (shutdownOnly) {
           console.appendLog(Level.Info, "no sbt server is running. ciao")
@@ -435,6 +584,17 @@ class NetworkClient(
             .redirectOutput(nullFile)
             .redirectError(stderrFile)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
+        if (arguments.forwardsSysProps) {
+          processBuilder.environment.put(
+            NetworkClient.sysPropsEnv,
+            NetworkClient.recordedSysProps(arguments.sbtArguments)
+          )
+          processBuilder.environment
+            .put(NetworkClient.sysPropsPortfileEnv, portfile.getCanonicalPath)
+        } else {
+          Util.ignoreResult(processBuilder.environment.remove(NetworkClient.sysPropsEnv))
+          Util.ignoreResult(processBuilder.environment.remove(NetworkClient.sysPropsPortfileEnv))
+        }
         Try(processBuilder.start()) match {
           case Success(process) =>
             sbtProcess.set(process)
@@ -1235,10 +1395,20 @@ object NetworkClient {
       val bsp: Boolean,
       val sbtLaunchJar: Option[String],
       val launcherValueArgs: Seq[String] = Nil,
+      // false when -D options went to the JVM running this client instead of its arguments,
+      // in which case they say nothing about the server
+      val forwardsSysProps: Boolean = true,
   ) {
     def withBaseDirectory(file: File): Arguments =
+      copy(baseDirectory = file)
+    def withoutSysProps: Arguments =
+      copy(forwardsSysProps = false)
+    private def copy(
+        baseDirectory: File = baseDirectory,
+        forwardsSysProps: Boolean = forwardsSysProps
+    ): Arguments =
       new Arguments(
-        file,
+        baseDirectory,
         sbtArguments,
         commandArguments,
         completionArguments,
@@ -1246,6 +1416,7 @@ object NetworkClient {
         bsp,
         sbtLaunchJar,
         launcherValueArgs,
+        forwardsSysProps,
       )
   }
   private[client] def serverCommand(arguments: Arguments): List[String] =
@@ -1259,6 +1430,115 @@ object NetworkClient {
         List(arguments.sbtScript) ++ arguments.launcherValueArgs ++ arguments.sbtArguments ++
           List(DashDashDetachStdio, DashDashServer)
     }
+
+  /** Carries the `-D` options a client forwards to the server it starts. */
+  private[sbt] val sysPropsEnv = "SBT_SERVER_SYS_PROPS"
+
+  /**
+   * The connection file of the server [[sysPropsEnv]] is meant for. Both are inherited by
+   * everything the server itself starts, so a server only trusts them when they name it.
+   */
+  private[sbt] val sysPropsPortfileEnv = "SBT_SERVER_SYS_PROPS_PORTFILE"
+  private[sbt] val serverShutdownTimeout: FiniteDuration = 30.seconds
+
+  /** How long a server that never took the shutdown request is given to disappear anyway. */
+  private[sbt] val serverShutdownGrace: FiniteDuration = 2.seconds
+
+  /**
+   * These are set per client invocation, so they don't describe the server JVM.
+   * `sbt.io.virtual` belongs here because the client appends its own `=true` either way.
+   */
+  private[client] val ignoredSysProps: Set[String] = Set(
+    "sbt.banner",
+    "sbt.client",
+    "sbt.color",
+    "sbt.io.virtual",
+    "sbt.log.noformat",
+    "sbt.script",
+    "sbt.server.autorestart",
+    "sbt.server.autostart",
+    "sbt.supershell",
+  )
+
+  /** The name a `-D` option defines, which is everything up to the first `=`. */
+  private[client] def sysPropName(option: String): String =
+    option.drop(2).takeWhile(_ != '=')
+
+  /** The `-D` options that make up the identity of a server started with `sbtArguments`. */
+  private[client] def serverSysProps(sbtArguments: Seq[String]): Seq[String] =
+    sbtArguments
+      .filter(_.startsWith("-D"))
+      .filterNot(a => ignoredSysProps(sysPropName(a)))
+      // a name given twice is whatever the JVM ends up with, which is the last definition
+      .foldLeft(TreeMap.empty[String, String])((acc, a) => acc.updated(sysPropName(a), a))
+      .values
+      .toVector
+
+  private lazy val random = new SecureRandom
+
+  /** The digest a connection file records `option` as, under a salt of its own. */
+  private def sysPropDigest(salt: String, option: String): String =
+    val md = MessageDigest.getInstance("SHA-256")
+    md.update(salt.getBytes(UTF_8))
+    md.update(option.getBytes(UTF_8))
+    s"$salt:${Hash.toHex(md.digest)}"
+
+  /**
+   * The `-D` options as they are written down: the name each defines, and a salted digest
+   * of the option itself. A value can carry a credential, and a name is enough to tell one
+   * server from another and to say which options changed.
+   */
+  private[sbt] def digestSysProps(props: Seq[String]): Vector[String] =
+    props.toVector.map { p =>
+      val salt = new Array[Byte](8)
+      random.nextBytes(salt)
+      s"${sysPropName(p)}=${sysPropDigest(Hash.toHex(salt), p)}"
+    }
+
+  /**
+   * Carries the recorded options to the server one per line. They are encoded because a
+   * value is free to contain a newline, which would otherwise read back as two options.
+   */
+  private[sbt] def encodeSysProps(recorded: Seq[String]): String =
+    recorded.map(r => Base64.getEncoder.encodeToString(r.getBytes(UTF_8))).mkString("\n")
+
+  /** Reads back the options [[sysPropsEnv]] carries to the server they were passed to. */
+  private[sbt] def decodeSysProps(value: String): Vector[String] =
+    value
+      .split("\n")
+      .toVector
+      .filter(_.nonEmpty)
+      .flatMap(r => Try(new String(Base64.getDecoder.decode(r), UTF_8)).toOption)
+
+  /** What [[sysPropsEnv]] carries to a server started with `sbtArguments`. */
+  def recordedSysProps(sbtArguments: Seq[String]): String =
+    encodeSysProps(digestSysProps(serverSysProps(sbtArguments)))
+
+  /**
+   * How the options a server recorded and the ones a client carries differ: the names the
+   * client no longer passes, the ones it adds, and the ones it gives another value. Names in
+   * `deferred` are nobody's to answer for and are left out of all three.
+   */
+  private[client] def sysPropsDiff(
+      recorded: Seq[String],
+      current: Seq[String],
+      deferred: Set[String] = Set.empty
+  ): (Seq[String], Seq[String], Seq[String]) =
+    val was = recorded
+      .map(r => r.takeWhile(_ != '=') -> r.dropWhile(_ != '=').drop(1))
+      .toMap
+      .removedAll(deferred)
+    val now = current.map(o => sysPropName(o) -> o).toMap.removedAll(deferred)
+    val changed = (was.keySet & now.keySet).filter { name =>
+      val digest = was(name)
+      sysPropDigest(digest.takeWhile(_ != ':'), now(name)) != digest
+    }
+    (
+      (was.keySet -- now.keySet).toSeq.sorted,
+      (now.keySet -- was.keySet).toSeq.sorted,
+      changed.toSeq.sorted
+    )
+
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"
   private[client] val noStdErr = "--no-stderr"
@@ -1625,7 +1905,8 @@ object NetworkClient {
     val term = Terminal.console
     val err = new PrintStream(term.errorStream)
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
-    val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
+    val args =
+      parseArgs(arguments.toArray).withoutSysProps.withBaseDirectory(configuration.baseDirectory)
     val useJNI =
       (Util.isMac && sys.props.getOrElse("os.arch", "") != "x86_64") ||
         System.getProperty("sbt.ipcsocket.jni", "false") == "true"

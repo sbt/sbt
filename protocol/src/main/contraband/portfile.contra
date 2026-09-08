@@ -9,6 +9,11 @@ type PortFile {
   uri: String!
   tokenfilePath: String
   tokenfileUri: String
+  ## The -D options the thin client passed to this server, as names and salted digests.
+  sysProps: [String] @since("2.0.7")
+  ## Whether sysProps is the whole story. Absent on a server no thin client started, whose
+  ## options are its own business and unknown here.
+  sysPropsRecorded: Boolean @since("2.0.7")
 }
 
 type TokenFile {

@@ -18,6 +18,7 @@ import java.math.BigInteger
 
 import scala.concurrent.{ Future, Promise }
 import scala.util.{ Failure, Success, Try }
+import sbt.internal.client.NetworkClient
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
@@ -179,13 +180,31 @@ private[sbt] object Server {
         import JsonProtocol.given
 
         val uri = connection.shortName
+        // both variables reach everything this server starts, so only record them when
+        // they name this build rather than the one whose client set them
+        val startedByThisBuild = sys.env
+          .get(NetworkClient.sysPropsPortfileEnv)
+          .map(new File(_).getCanonicalFile)
+          .contains(portfile.getCanonicalFile)
+        val recorded = if (startedByThisBuild) sys.env.get(NetworkClient.sysPropsEnv) else None
+        val sysProps = recorded.toVector.flatMap(NetworkClient.decodeSysProps)
+        // an empty list of options and no idea what the options are read the same, so say
+        // which of the two this is: a client can restart a server over the first but has no
+        // business taking down one whose options it never saw
+        val sysPropsRecorded = Option(startedByThisBuild)
         val p =
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
               writeTokenfile()
-              PortFile(uri, Option(tokenfile.toString), Option(IO.toURI(tokenfile).toString))
+              PortFile(
+                uri,
+                Option(tokenfile.toString),
+                Option(IO.toURI(tokenfile).toString),
+                sysProps,
+                sysPropsRecorded
+              )
             case _ =>
-              PortFile(uri, None, None)
+              PortFile(uri, None, None, sysProps, sysPropsRecorded)
           }
         val json = Converter.toJson(p).get
         IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
