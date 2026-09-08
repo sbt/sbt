@@ -12,7 +12,7 @@ package server
 
 import java.io.{ File, IOException }
 import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.security.SecureRandom
 import java.math.BigInteger
 
@@ -45,7 +45,7 @@ private[sbt] object Server {
 
   def start(
       connection: ServerConnection,
-      onIncomingSocket: (Socket, ServerInstance) => Unit,
+      onIncomingSocket: (AtomicReference[Socket], ServerInstance) => Unit,
       log: Logger
   ): ServerInstance =
     new ServerInstance { self =>
@@ -105,14 +105,19 @@ private[sbt] object Server {
               running.set(true)
               p.success(())
               while (running.get()) {
+                val clientSocket = AtomicCloseable[Socket]()
                 try {
-                  val socket = serverSocket.accept()
-                  onIncomingSocket(socket, self)
+                  clientSocket.set(serverSocket.accept())
+                  onIncomingSocket(clientSocket.ref, self)
                 } catch {
+                  case scala.util.control.NonFatal(e) if clientSocket.get ne null =>
+                    log.error(s"sbt server failed to serve a client: $e")
+                    log.trace(e)
                   case e: IOException if Option(e.getMessage).exists(_.contains("connect")) =>
                   case _: SocketTimeoutException          => // its ok
                   case _: SocketException if !running.get => // the server is shutting down
                 }
+                clientSocket.close()
               }
               serverSocketHolder.close()
           }

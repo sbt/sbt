@@ -18,7 +18,7 @@ private[sbt] class AtomicCloseable[A >: Null <: AutoCloseable](val ref: AtomicRe
     extends AnyVal:
   def get: A = ref.get
   def set(c: A): Unit = AtomicCloseable.close(ref.getAndSet(c))
-  def close(): Unit = AtomicCloseable.close(ref.getAndSet(null))
+  def close(): Unit = AtomicCloseable.close(AtomicCloseable.release(ref))
 
   /** Keeps the value another caller put here, and closes the one this caller built. */
   def setIfEmpty(ctor: => A): A =
@@ -35,6 +35,13 @@ private[sbt] object AtomicCloseable:
   def apply[A >: Null <: AutoCloseable](): AtomicCloseable[A] =
     new AtomicCloseable(new AtomicReference[A])
 
+  def apply[A >: Null <: AutoCloseable](c: A): AtomicCloseable[A] =
+    new AtomicCloseable(new AtomicReference[A](c))
+
   def close(obj: AutoCloseable): Unit =
     if obj ne null then Util.ignoreTry(obj.close())
+
+  def release[A >: Null <: AutoCloseable](ref: AtomicReference[A]): A =
+    ref.getAndSet(null)
+
 end AtomicCloseable

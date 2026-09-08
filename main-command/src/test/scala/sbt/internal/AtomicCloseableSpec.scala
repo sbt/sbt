@@ -17,6 +17,14 @@ object AtomicCloseableSpec extends BasicTestSuite:
     override def close(): Unit = closed = true
   end Probe
 
+  test("a holder built around a value"):
+    val probe = new Probe
+    val holder = AtomicCloseable(probe)
+    assert(holder.get == probe)
+    assert(!probe.closed)
+    holder.close()
+    assert(probe.closed)
+
   test("a value that replaces another closes it"):
     val holder = AtomicCloseable[Probe]()
     val first, second = new Probe
