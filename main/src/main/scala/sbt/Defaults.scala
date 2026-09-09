@@ -1832,6 +1832,7 @@ object Defaults extends BuildCommon with DefExtra {
       val par = parallelExecution.value
       val max = EvaluateTask.SystemProcessors
       val maxWorker = workerMaxInstances.value
+      if maxWorker < 1 then sys.error("workerMaxInstances must be >= 1")
       Tags.limitAll(if (par) max else 1) ::
         Tags.limit(Tags.ForkedTestGroup, maxWorker) ::
         Tags.exclusiveWithin(Tags.ExclusiveTestGroup, Tags.Test) ::
