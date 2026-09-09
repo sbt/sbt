@@ -30,6 +30,7 @@ object Tags {
   val Disk = Tag("disk")
 
   val ForkedTestGroup = Tag("forked-test-group")
+  val ExclusiveTestGroup = Tag("exclusive-test-group")
 
   /**
    * Describes a restriction on concurrently executing tasks.
@@ -122,5 +123,21 @@ object Tags {
   def exclusiveGroups(exclusiveTags: Tag*): Rule = customLimit { (tags: Map[Tag, Int]) =>
     val groups = exclusiveTags.count(tag => tags.getOrElse(tag, 0) > 0)
     groups <= 1
+  }
+
+  /**
+   * Like [[exclusive]], but the isolation is only enforced among tasks tagged `withinTag` instead
+   * of every task in the build: a task tagged `exclusiveTag` (which must itself also carry
+   * `withinTag`) will not execute alongside any other `withinTag`-tagged task, including another
+   * `exclusiveTag` one, but tasks carrying neither tag are unaffected either way. Unlike
+   * [[exclusiveGroup]], there is no escape hatch admitting several `exclusiveTag` tasks together --
+   * this alone is enough to cap them at one, with no separate `limit` rule needed to back it up.
+   */
+  def exclusiveWithin(exclusiveTag: Tag, withinTag: Tag): Rule = customLimit {
+    (tags: Map[Tag, Int]) =>
+      // if there are no exclusive tasks in this group, this rule adds no restrictions
+      tags.getOrElse(exclusiveTag, 0) == 0 ||
+      // If there is only one withinTag task, allow it to execute.
+      tags.getOrElse(withinTag, 0) == 1
   }
 }

@@ -403,7 +403,8 @@ object Tests {
       testListeners: Vector[TestReportListener],
       config: Execution
   ): Task[Output] = {
-    def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn(actions.toSeq.fork(_())*)
+    def fj(actions: Iterable[() => Unit]): Task[Unit] =
+      nop.dependsOn(actions.toSeq.fork(_()).map(_.tagw(config.tags*))*)
     def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map { a => () =>
       a(loader)
     }
@@ -411,7 +412,7 @@ object Tests {
     val (frameworkSetup, runnables, frameworkCleanup) =
       TestFramework.testTasks(frameworks, runners, loader, tests, log, testListeners)
 
-    val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
+    val setupTasks = fj(partApp(userSetup) :+ frameworkSetup).tagw(config.tags*)
     val mainTasks =
       if (config.parallel)
         makeParallel(loader, runnables, setupTasks, config.tags).map(_.toList)
@@ -421,7 +422,8 @@ object Tests {
     taggedMainTasks
       .map(processResults)
       .flatMap { results =>
-        val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results.overall))
+        val cleanupTasks =
+          fj(partApp(userCleanup) :+ frameworkCleanup(results.overall)).tagw(config.tags*)
         cleanupTasks map { _ =>
           results
         }

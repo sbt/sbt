@@ -55,26 +55,31 @@ private[sbt] object ForkTests:
     import std.TaskExtra.*
     val dummyLoader =
       this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
-    def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
+    // Tag setup/cleanup the same as the actual test run -- otherwise a restriction like
+    // Tags.limit(Tags.ExclusiveTestGroup, 1) only ever sees the forked JVM in between them, and
+    // another subproject's setup/cleanup (or its own exclusive run) can freely overlap either end.
+    def all(work: Seq[ClassLoader => Unit]) =
+      work.fork(f => f(dummyLoader)).map(_.tagw(config.tags*).tagw(tags*))
 
-    val main =
-      if opts.tests.isEmpty then
-        constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
-      else
-        mainTestTask(
-          runners = runners,
-          opts = opts,
-          classpath = classpath,
-          converter = converter,
-          fork = fork,
-          log = log,
-          parallel = config.parallel,
-          parallelism = parallelism,
-          virtualClasspath = virtualClasspath,
-        ).tagw(config.tags*)
-    main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
-      all(opts.cleanup).join.map(_ => results)
-    }
+    if opts.tests.isEmpty then
+      // Nothing selected after filtering, so don't run setup/cleanup either.
+      constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
+    else
+      mainTestTask(
+        runners = runners,
+        opts = opts,
+        classpath = classpath,
+        converter = converter,
+        fork = fork,
+        log = log,
+        parallel = config.parallel,
+        parallelism = parallelism,
+        virtualClasspath = virtualClasspath,
+      ).tagw(config.tags*)
+        .tagw(tags*)
+        .dependsOn(all(opts.setup)*)
+        .flatMap: results =>
+          all(opts.cleanup).join.map(_ => results)
   }
 
   private def mainTestTask(

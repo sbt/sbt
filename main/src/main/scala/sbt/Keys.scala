@@ -404,7 +404,8 @@ object Keys {
   @transient
   val testListeners = taskKey[Seq[TestReportListener]]("Defines test listeners.").withRank(DTask)
   val testForkedParallel = settingKey[Boolean]("Whether forked tests should be executed in parallel").withRank(CTask)
-  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors.").withRank(CTask)
+  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Default: 2.").withRank(CTask)
+  val workerMaxInstances = settingKey[Int]("Maximum number of test workers. Default: 2")
   val testExecution = taskKey[Tests.Execution]("Settings controlling test execution").withRank(DTask)
   val testFilter = taskKey[Seq[String] => Seq[String => Boolean]]("Filter controlling whether the test is executed").withRank(DTask)
   @transient
@@ -412,6 +413,7 @@ object Keys {
   val testSummary = settingKey[TestSummary]("The style of the test summary displayed after an aggregated test run.").withRank(CSetting)
   @transient
   val testSummaryLogger = settingKey[TestResultLogger]("Logs test summary after an aggregated test completes.").withRank(DTask)
+  val testTopology = settingKey[TestTopology]("The topology of how test classes are grouped.").withRank(CSetting)
   val testGrouping = taskKey[Seq[Tests.Group]]("Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.").withRank(BMinusTask)
   val isModule = AttributeKey[Boolean]("isModule", "True if the target is a module.", DSetting)
   val extraTestDigests = taskKey[Seq[Digest]]("Extra digests that would invalidate test caching").withRank(DTask)

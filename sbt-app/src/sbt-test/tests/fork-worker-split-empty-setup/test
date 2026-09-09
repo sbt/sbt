@@ -1,0 +1,5 @@
+> testFull
+> checkAll
+
+> testOnly example.Test1
+> checkOne

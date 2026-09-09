@@ -1,0 +1,11 @@
+> set a / Test / fork := true
+> set b / Test / fork := true
+> allWork
+> checkNoOverlap
+> checkConcurrentWithOtherWork
+
+> set a / Test / fork := false
+> set b / Test / fork := false
+> allWork
+> checkNoOverlap
+> checkConcurrentWithOtherWork

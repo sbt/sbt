@@ -14,6 +14,7 @@ def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 scalaVersion := "3.9.0"
 organization := "com.example"
+Global / workerMaxInstances := 2
 
 lazy val root = rootProject
   .settings(
@@ -36,7 +37,6 @@ lazy val root = rootProject
       if absent.nonEmpty then
         sys.error("Files were not created:\n\t" + absent.mkString("\n\t"))
     },
-    concurrentRestrictions := Tags.limit(Tags.ForkedTestGroup, 2) :: Nil,
     libraryDependencies ++= List(
       munit % Test
     )
