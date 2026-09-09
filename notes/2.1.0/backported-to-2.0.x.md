@@ -18,6 +18,7 @@
 - feat: Execution log by @eed3si9n in https://github.com/sbt/sbt/pull/9203 (released in 2.0.0)
 - Add runner support for execution log by @eed3si9n in https://github.com/sbt/sbt/pull/9237 (released in 2.0.0)
 - Allow opt-out of transient warning by @eed3si9n in https://github.com/sbt/sbt/pull/9437 (released in 2.0.4)
+- Add a resolvedScalacOptions task that resolves cache placeholders by @azdrojowa123 in https://github.com/sbt/sbt/pull/9610 (released in 2.0.7)
 
 ## 🐛 Bug fixes
 
@@ -113,6 +114,18 @@
 - fix: Fixes AccessDeniedException issue on Windows by @eed3si9n in https://github.com/sbt/sbt/pull/9538 (released in 2.0.5)
 - fix: Complete earlyOutputPing on cache-hit and failed compiles by @BrianHotopp in https://github.com/sbt/sbt/pull/9542 (released in 2.0.5)
 - fix: Preserve file timestamp in local diskcache by @eed3si9n in https://github.com/sbt/sbt/pull/9559 (released in 2.0.6)
+- fix: Guard diskcache against path traversal by @eed3si9n in https://github.com/sbt/sbt/pull/9605 (released in 2.0.7)
+- fix: Name the platform in CrossVersion(module, scalaModuleInfo) by @kitbellew in https://github.com/sbt/sbt/pull/9620 (released in 2.0.7)
+- fix: Avoid rewriting unchanged plugin descriptors by @eed3si9n in https://github.com/sbt/sbt/pull/9612 (released in 2.0.7)
+- fix: Fixes -V parsing in sbt runners by @anatoliykmetyuk in https://github.com/sbt/sbt/pull/9626 (released in 2.0.7)
+- fix: Fixes filesystem traversal order affecting cache stability by @christianharrington in https://github.com/sbt/sbt/pull/9646 (released in 2.0.7)
+- fix: keep worker classloader open for shutdown hooks by @stasimus in https://github.com/sbt/sbt/pull/9639 (released in 2.0.8)
+- fix: Restore public test result report types by @unkarjedy in https://github.com/sbt/sbt/pull/9655 (released in 2.0.8)
+- fix: Notify listeners before LinkageError escapes suites by @eed3si9n in https://github.com/sbt/sbt/pull/9667 (released in 2.0.8)
+- fix: Fixes --addPluginSbtFile getting lost after reboot by @azdrojowa123 in https://github.com/sbt/sbt/pull/9669 (released in 2.0.8)
+- fix: Fixes JDK 17 domain socket deadlocks by @eed3si9n in https://github.com/sbt/sbt/pull/9671 (released in 2.0.8)
+- fix: Fixes ThisBuild-scoped bare settings by @eed3si9n in https://github.com/sbt/sbt/pull/9674 (released in 2.0.8)
+- fix: Fixes Windows runner by @eed3si9n in https://github.com/sbt/sbt/pull/9680 (released in 2.0.8)
 
 ## ⚡ Performance improvements
 
@@ -125,6 +138,7 @@
 - perf: Read the resolution's project cache once per report by @hoangmaihuy in https://github.com/sbt/sbt/pull/9522 (released in 2.0.5)
 - perf: Stop content-hashing artifacts when writing update caches by @hoangmaihuy in https://github.com/sbt/sbt/pull/9524 (released in 2.0.5)
 - perf: Memoize the artifact content hash in LibraryManagementCodec by @takayahilton in https://github.com/sbt/sbt/pull/9563 (released in 2.0.6)
+- perf: Stop re-converting the classpath in compileOptions by @hoangmaihuy in https://github.com/sbt/sbt/pull/9622 (released in 2.0.7)
 
 ## Behind the scenes
 
@@ -155,3 +169,4 @@
 - sbtn 2.0.0-a0c4773a by @eed3si9n in https://github.com/sbt/sbt/pull/9503 (released in 2.0.4)
 - Zinc 2.0.4 by @eed3si9n in https://github.com/sbt/sbt/pull/9508 (released in 2.0.4)
 - sbtn 2.0.0-731e6666 by @eed3si9n in https://github.com/sbt/sbt/pull/9545 (released in 2.0.5)
+- Update sbtn to 2.0.0-8753a981 by @eed3si9n in https://github.com/sbt/sbt/pull/9630 (released in 2.0.7)
