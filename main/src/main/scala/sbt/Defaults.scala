@@ -1714,11 +1714,18 @@ object Defaults extends BuildCommon with DefExtra:
 
     val runners = createTestRunners(filteredFrameworks, loader, config)
 
+    val exclusive = config.tags.exists(_._1 == Tags.ExclusiveTestGroup)
+    // Under an exclusive topology, config.tags move to a Span-tagged bracket task holding
+    // them for the whole setup/main/cleanup span; the inner tasks must not repeat them.
+    val innerTags = if exclusive then Vector() else config.tags
     val groupTasks = groups map { group =>
       group.runPolicy match
         case Tests.SubProcess(opts) =>
           s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
-          val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
+          val forkedConfig = config.copy(
+            parallel = config.parallel && forkedParallelExecution,
+            tags = innerTags
+          )
           s.log.debug(
             s"Forking tests - parallelism = ${forkedConfig.parallel}, threads = ${forkedParallelism.getOrElse("auto")}"
           )
@@ -1732,7 +1739,7 @@ object Defaults extends BuildCommon with DefExtra:
             s.log,
             forkedParallelism,
             strategy != ClassLoaderLayeringStrategy.Raw,
-            Vector((Tags.ForkedTestGroup, 1)) ++ config.tags ++ group.tags*
+            Vector((Tags.ForkedTestGroup, 1)) ++ innerTags ++ group.tags*
           )
         case Tests.InProcess =>
           if javaOptions.nonEmpty then
@@ -1742,11 +1749,14 @@ object Defaults extends BuildCommon with DefExtra:
             loader,
             runners,
             processedOptions(group),
-            config.copy(tags = config.tags ++ group.tags),
+            config.copy(tags = innerTags ++ group.tags),
             s.log
           )
     }
-    val output = Tests.foldTasks(groupTasks, config.parallel)
+    val folded = Tests.foldTasks(groupTasks, config.parallel)
+    val output =
+      if exclusive then nop.tagw((config.tags :+ (Tags.Span, 1))*).flatMap(_ => folded)
+      else folded
     val result = output map { out =>
       out.events.foreachEntry { (suite, e) =>
         if strategy != ClassLoaderLayeringStrategy.Flat ||

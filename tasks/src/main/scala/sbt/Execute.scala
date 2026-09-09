@@ -154,6 +154,7 @@ private[sbt] final class Execute(
 
     results(node) = result
     state(node) = Done
+    if node.tags.contains(ConcurrentRestrictions.Span) then strategy.release(node)
     progress.afterCompleted(node, result)
     remove(reverse, node).foreach(dep => notifyDone(node, dep))
     callers.remove(node).toList.flatten.foreach { c =>

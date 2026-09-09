@@ -10,7 +10,7 @@ package sbt
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import sbt.internal.util.AttributeKey
+import sbt.internal.util.{ AttributeKey, IDSet }
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ Future as JFuture, RejectedExecutionException, CancellationException }
 import scala.collection.mutable
@@ -94,6 +94,12 @@ object ConcurrentRestrictions:
 
   /** A standard tag describing the total number of tasks. */
   val All = Tag("all")
+
+  /**
+   * Marker tag: keeps a task's tags held until it retires, spanning any flatMap continuation.
+   * Tasks inside the span must not carry tags conflicting with the held ones, or execution deadlocks.
+   */
+  val Span = Tag("span")
 
   type TagMap = Map[Tag, Int]
   val TagMap = Map.empty[Tag, Int]
@@ -224,6 +230,9 @@ object ConcurrentRestrictions:
        */
       private val pending = new LinkedList[Enqueue]
 
+      /** Span-tagged nodes whose tags remain held until Execute retires them. */
+      private val spanning = IDSet.create[TaskId[?]]
+
       private val sentinels: mutable.ListBuffer[JFuture[?]] = mutable.ListBuffer.empty
 
       def cancelSentinels(): Unit =
@@ -246,7 +255,7 @@ object ConcurrentRestrictions:
             submitValid(node, work)
             ()
           else
-            if running == 0 then errorAddingToIdle()
+            if running == 0 && spanning.isEmpty then errorAddingToIdle()
             pending.add(new Enqueue(node, work))
             ()
         ()
@@ -258,16 +267,25 @@ object ConcurrentRestrictions:
           finally cleanup(node)
         CompletionService.submitFuture(wrappedWork, jservice)
         ()
-      private def cleanup(node: TaskId[?]): Unit = synchronized {
-        running -= 1
+
+      private def removeTags(node: TaskId[?]): Unit =
         tagState = tags.remove(tagState, node)
         if !tags.valid(tagState) then
           warn(
             "Invalid restriction: removing a completed node from a valid system must result in a valid system."
           )
-          ()
+
+      private def cleanup(node: TaskId[?]): Unit = synchronized:
+        running -= 1
+        if node.tags.contains(Span) then spanning += node
+        else removeTags(node)
         submitValid(new LinkedList)
-      }
+
+      override def release(node: TaskId[?]): Unit = synchronized:
+        if spanning -= node then
+          removeTags(node)
+          submitValid(new LinkedList)
+
       private def errorAddingToIdle() =
         warn("Invalid restriction: adding a node to an idle system must be allowed.")
 
@@ -275,7 +293,7 @@ object ConcurrentRestrictions:
       @tailrec private def submitValid(tried: Queue[Enqueue]): Unit =
         if pending.isEmpty then
           if !tried.isEmpty then
-            if running == 0 then errorAddingToIdle()
+            if running == 0 && spanning.isEmpty then errorAddingToIdle()
             pending.addAll(tried)
             ()
         else
