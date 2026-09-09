@@ -20,11 +20,11 @@ object Commands {
    * `state.log` is `globalLogging.full`, created in `LoggerContext.globalContext`,
    * which is the context `LogExchange` binds into.
    *
-   * The appender is deliberately left bound. `LogExchange.unbindLoggerAppenders`
-   * delegates to `LoggerContext.clearAppenders`, which drops *every* appender on
-   * the logger - sbt's own console appender included - and `LoggerContext` has no
-   * per-appender removal. Unbinding here would silence the rest of the session,
-   * and for the same reason `pw` is left open rather than closed.
+   * The appender cannot be unbound: `LogExchange.unbindLoggerAppenders` delegates to
+   * `LoggerContext.clearAppenders`, which drops *every* appender on the logger -
+   * sbt's own console appender included - and there is no per-appender removal.
+   * Closing `pw` instead makes the still-bound appender inert, so it does not follow
+   * the shared sbt process into the rest of a scripted batch.
    */
   private def capturingLog(st: State, file: File, level: Level.Value)(
       f: State => State
@@ -35,7 +35,9 @@ object Commands {
     LogExchange.bindLoggerAppenders(st.globalLogging.full.name, Seq(appender -> level))
     val st1 = f(st)
     pw.flush()
-    (st1, IO.read(file))
+    val captured = IO.read(file)
+    pw.close()
+    (st1, captured)
 
   val probeWarn = Command.command("probeWarn"): (st: State) =>
     val probe = "i1210 probe warning"
@@ -49,9 +51,9 @@ object Commands {
   val runAggOrphan = Command.command("runAggOrphan"): (st: State) =>
     val (st1, captured) = capturingLog(st, st.baseDir / "orphan.log", Level.Info): s =>
       Project.extract(s).runAggregated(orphanTask, s)
-    if !captured.contains("selected no tasks to aggregate") then
-      sys.error(s"expected a no-tasks warning; captured: [$captured]")
-    if captured.contains("elapsed time") then
+    if !captured.contains("orphanTask selected no tasks to aggregate") then
+      sys.error(s"expected a no-tasks warning naming the key; captured: [$captured]")
+    if captured.contains("[success]") then
       sys.error(s"an empty aggregated run should not report success; captured: [$captured]")
     st1
 
@@ -62,7 +64,7 @@ object Commands {
     val message = outcome match
       case Left(m)  => m
       case Right(_) => sys.error("expected runTask to fail on an undefined key")
-    if !message.contains("orphanTask") || !message.contains("is undefined") then
-      sys.error(s"runTask error should name the key: [$message]")
+    if message != "orphanTask is undefined." then
+      sys.error(s"runTask error should name the resolved key: [$message]")
     st
 }
