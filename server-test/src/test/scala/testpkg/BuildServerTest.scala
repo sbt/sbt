@@ -573,8 +573,7 @@ class BuildServerTest extends AbstractServerTest {
     )
     assert(item.jvmOptions.contains("Xmx512M"))
     assert(item.environmentVariables == Map("KEY_TEST" -> "VALUE_TEST"))
-    // forked tests keep the project's baseDirectory as their working directory
-    assert(item.workingDirectory.endsWith("/run-and-test"))
+    assert(item.workingDirectory.endsWith("/buildserver"))
   }
 
   test("buildTarget/scalaTestClasses") {

@@ -819,6 +819,8 @@ lazy val mainProj = (project in file("main"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // private[sbt]; collapsed all compat overloads into the one real implementation
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
       // Moved to sbt-ivy module (Step 5 of sbt#7640)
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.depMap"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.ivySbt0"),

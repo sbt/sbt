@@ -9,6 +9,7 @@
 package sbt.internal.worker1;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
@@ -21,7 +22,13 @@ import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -72,10 +79,11 @@ public final class WorkerMain {
         WorkerMain app = new WorkerMain();
         app.argFileWork(Paths.get(args[0].substring(1)));
         System.exit(0);
-      } else if (args.length == 2 && args[0].equals("--tcp")) {
+      } else if (args.length >= 2 && args[0].equals("--tcp")) {
         WorkerMain app = new WorkerMain();
         int serverPort = Integer.parseInt(args[1]);
-        app.socketWork(serverPort);
+        boolean persistentWorker = Arrays.asList(args).contains("--persistent_worker");
+        app.socketWork(serverPort, persistentWorker);
         System.exit(0);
       } else if (args.length == 2 && args[0].equals("--ipc")) {
         WorkerMain app = new WorkerMain();
@@ -115,14 +123,18 @@ public final class WorkerMain {
     process(line);
   }
 
-  void socketWork(int serverPort) throws Exception {
+  void socketWork(int serverPort, boolean persistentWorker) throws Exception {
     InetAddress loopback = InetAddress.getByName(null);
     Socket client = new Socket(loopback, serverPort);
     this.jsonOut = new PrintStream(client.getOutputStream(), true, "UTF-8");
     this.inScanner = new Scanner(client.getInputStream(), "UTF-8");
-    if (this.inScanner.hasNextLine()) {
+    boolean keepGoing = true;
+    while (keepGoing && this.inScanner.hasNextLine()) {
       String line = this.inScanner.nextLine();
-      process(line);
+      keepGoing = process(line) && persistentWorker;
+      if (keepGoing) {
+        client.setSoTimeout(30 * 60 * 1000);
+      }
     }
   }
 
@@ -137,7 +149,7 @@ public final class WorkerMain {
   }
 
   /** This processes single request of supposed JSON line. */
-  void process(String json) throws Exception {
+  boolean process(String json) throws Exception {
     JsonElement elem = JsonParser.parseString(json);
     JsonObject o = elem.getAsJsonObject();
     if (!o.has("jsonrpc")) {
@@ -161,13 +173,14 @@ public final class WorkerMain {
         case "console":
           ConsoleInfo consoleInfo = g.fromJson(params, ConsoleInfo.class);
           console(id, consoleInfo);
-          return;
+          return false;
         case "bye":
           break;
       }
       String response = String.format("{ \"jsonrpc\": \"2.0\", \"result\": 0, \"id\": %d }", id);
       this.jsonOut.println(response);
       this.jsonOut.flush();
+      return !method.equals("bye");
     } catch (Throwable e) {
       WorkerError err = new WorkerError(1, e.getMessage());
       String errMessage = g.toJson(err, err.getClass());
@@ -176,6 +189,7 @@ public final class WorkerMain {
       this.jsonOut.println(errJson);
       this.jsonOut.flush();
       e.printStackTrace();
+      return false;
     }
   }
 
@@ -203,12 +217,55 @@ public final class WorkerMain {
       if (jvmRunInfo.classpath.isEmpty()) {
         ForkTestMain.main(id, info, this.jsonOut, parent);
       } else {
-        URLClassLoader cl = createClassLoader(jvmRunInfo, parent);
-        ForkTestMain.main(id, info, this.jsonOut, cl);
+        ForkTestMain.main(id, info, this.jsonOut, classLoaderFor(jvmRunInfo, parent));
       }
     } else {
       throw new RuntimeException("only jvm is supported");
     }
+  }
+
+  private Set<FilePath> stableLayerEntries = Collections.emptySet();
+  private URLClassLoader stableLayer;
+  private URLClassLoader topLayer;
+
+  /** Caches non-build-output (library) entries as a parent layer; rebuilds only "target" output. */
+  private URLClassLoader classLoaderFor(RunInfo.JvmRunInfo info, ClassLoader parent)
+      throws IOException {
+    List<FilePath> stable = new ArrayList<>();
+    List<FilePath> changed = new ArrayList<>();
+    for (FilePath fp : info.classpath) {
+      (isBuildOutput(fp) ? changed : stable).add(fp);
+    }
+
+    Set<FilePath> stableSet = new HashSet<>(stable);
+    if (stableLayer == null || !stableLayerEntries.equals(stableSet)) {
+      stableLayer = urlClassLoaderOf(stable, parent);
+      stableLayerEntries = stableSet;
+    }
+
+    if (topLayer != null) topLayer.close();
+    topLayer = changed.isEmpty() ? null : urlClassLoaderOf(changed, stableLayer);
+    return topLayer != null ? topLayer : stableLayer;
+  }
+
+  private static boolean isBuildOutput(FilePath fp) {
+    String path = fp.path.getPath();
+    return path != null && (path.contains("/target/") || path.contains("\\target\\"));
+  }
+
+  private URLClassLoader urlClassLoaderOf(List<FilePath> entries, ClassLoader parent) {
+    URL[] urls =
+        entries.stream()
+            .map(
+                filePath -> {
+                  try {
+                    return filePath.path.toURL();
+                  } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .toArray(URL[]::new);
+    return new URLClassLoader(urls, parent);
   }
 
   void console(long id, ConsoleInfo info) throws Exception {

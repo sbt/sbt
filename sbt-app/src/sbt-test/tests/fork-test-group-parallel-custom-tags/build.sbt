@@ -6,6 +6,9 @@ val TestBTypeTag = Tags.Tag("TestB")
 
 Global / concurrentRestrictions := Seq(Tags.limit(TestATypeTag, 1), Tags.limit(TestBTypeTag, 1))
 
+// this test's lock-file race relies on always-fresh forks; persistent-worker reuse masks it
+testPersistentWorker := false
+
 libraryDependencies += specs % Test
 inConfig(Test)(Seq(
   testGrouping := Def.uncached {

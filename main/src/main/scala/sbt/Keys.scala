@@ -403,6 +403,7 @@ object Keys {
 
   @transient
   val testListeners = taskKey[Seq[TestReportListener]]("Defines test listeners.").withRank(DTask)
+  val testPersistentWorker = settingKey[Boolean]("Whether forked test worker JVMs are pooled and reused across separate test task executions instead of forked fresh every time. Default false.")
   val testForkedParallel = settingKey[Boolean]("Whether forked tests should be executed in parallel").withRank(CTask)
   val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors.").withRank(CTask)
   val testExecution = taskKey[Tests.Execution]("Settings controlling test execution").withRank(DTask)

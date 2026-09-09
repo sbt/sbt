@@ -1,3 +1,1 @@
-Test / forkOptions := Def.uncached(
-  (Test / forkOptions).value.withWorkingDirectory(Some((ThisBuild / baseDirectory).value))
-)
+Test / baseDirectory := baseDirectory.value

@@ -50,6 +50,8 @@ private[sbt] object ForkTests:
       log: Logger,
       parallelism: Option[Int],
       virtualClasspath: Boolean,
+      persistentWorker: Boolean,
+      maxPoolSize: Int,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     import std.TaskExtra.*
@@ -71,6 +73,8 @@ private[sbt] object ForkTests:
           parallel = config.parallel,
           parallelism = parallelism,
           virtualClasspath = virtualClasspath,
+          persistentWorker = persistentWorker && virtualClasspath,
+          maxPoolSize = maxPoolSize,
         ).tagw(config.tags*)
     main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
@@ -87,6 +91,8 @@ private[sbt] object ForkTests:
       parallel: Boolean,
       parallelism: Option[Int],
       virtualClasspath: Boolean,
+      persistentWorker: Boolean,
+      maxPoolSize: Int,
   ): Task[TestOutput] =
     std.TaskExtra.task {
       val testListeners = opts.testListeners.flatMap:
@@ -140,19 +146,22 @@ private[sbt] object ForkTests:
       )
       testListeners.foreach(_.doInit())
       val result =
-        val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles)
-        val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
-        try
-          WorkerExchange.registerListener(wl)
-          val paramJson = g.toJson(param, param.getClass)
-          val json = jsonRpcRequest(randomId, "test", paramJson)
-          w.println(json)
-          if wl.blockForResponse() != 0 then
-            throw MessageOnlyException("Forked test harness failed")
-          testOutputResult
-        finally
-          w.close()
-          WorkerExchange.unregisterListener(wl)
+        WorkerExchange.withWorker(
+          fork,
+          if virtualClasspath then Nil else cpFiles,
+          persistentWorker,
+          maxPoolSize,
+        ): w =>
+          val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
+          try
+            WorkerExchange.registerListener(wl)
+            val paramJson = g.toJson(param, param.getClass)
+            val json = jsonRpcRequest(randomId, "test", paramJson)
+            w.println(json)
+            if wl.blockForResponse() != 0 then
+              throw MessageOnlyException("Forked test harness failed")
+            testOutputResult
+          finally WorkerExchange.unregisterListener(wl)
       testListeners.foreach(_.doComplete(result.overall))
       result
     } // end task
