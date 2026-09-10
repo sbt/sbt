@@ -13,7 +13,7 @@ package sbt
  * In the future this could be used to ask for inputs from
  * other forms of sbt clients such as thin clients and IDEs.
  */
-abstract class InteractionService {
+abstract class InteractionService:
 
   /** Prompts the user for input, optionally with a mask for characters. */
   def readLine(prompt: String, mask: Boolean): Option[String]
@@ -26,4 +26,3 @@ abstract class InteractionService {
   def terminalHeight: Int
 
   // TODO - Ask for input with autocomplete?
-}

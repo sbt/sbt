@@ -53,13 +53,12 @@ object ExtendedRunnerTest extends BasicTestSuite:
     assert(!out.linesIterator.exists(_.startsWith("sbt runner version:")))
   }
 
-  def testVersion(lines: List[String]): Unit = {
+  def testVersion(lines: List[String]): Unit =
     assert(lines.size >= 2)
     val expected0 = s"(?m)^sbt version in this project: $versionRegEx(\\r)?"
     assert(lines(0).matches(expected0))
     val expected1 = s"sbt runner version: $versionRegEx$$"
     assert(lines(1).matches(expected1))
-  }
 
   /* TODO: The lines seems to return List([0Jsbt runner version: 1.11.4) on CI
   test("sbt -V|-version|--version should print sbtVersion") {
@@ -113,12 +112,11 @@ object ExtendedRunnerTest extends BasicTestSuite:
   }
 
   test("sbt \"testOnly *\"") {
-    if (isMac) ()
-    else {
+    if isMac then ()
+    else
       val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
       assert(out.contains[String]("[info] HelloTest"))
       ()
-    }
   }
 
   test("sbt in empty directory") {
@@ -143,24 +141,17 @@ object ExtendedRunnerTest extends BasicTestSuite:
   }
 
   test("sbt --jvm-client") {
-    if (isMac) {
+    if isMac then
       // `--jvm-client` is flaky in macOS CI due to intermittent startup/connection failures.
       // Keep coverage on Linux/Windows where the behavior is stable.
       ()
-    } else {
+    else
       val out = sbtProcess("--jvm-client", "--no-colors", "compile").!!.linesIterator.toList
-      if (isWindows) {
-        println(out)
-      } else {
-        assert(out.exists { _.contains("server was not detected") })
-      }
+      if isWindows then println(out)
+      else assert(out.exists { _.contains("server was not detected") })
       val out2 = sbtProcess("--jvm-client", "--no-colors", "shutdown").!!.linesIterator.toList
-      if (isWindows) {
-        println(out2)
-      } else {
-        assert(out2.exists { _.contains("disconnected") })
-      }
-    }
+      if isWindows then println(out2)
+      else assert(out2.exists { _.contains("disconnected") })
     ()
   }
 
@@ -199,10 +190,10 @@ object ExtendedRunnerTest extends BasicTestSuite:
   // Test for issue #6485: Test `sbt --client` startup
   // https://github.com/sbt/sbt/issues/6485
   test("sbt --client startup time") {
-    if (isWindows || isMac) {
+    if isWindows || isMac then
       // Skip on Windows (sbtn behavior differs) and macOS CI (slow hostname resolution)
       ()
-    } else {
+    else
       // First call starts the server if not running (warmup)
       val warmup = sbtProcess("--client", "version").!
       assert(warmup == 0, "Warmup sbt --client version failed")
@@ -235,17 +226,17 @@ object ExtendedRunnerTest extends BasicTestSuite:
       // Cleanup: shutdown the server
       val shutdown = sbtProcess("--client", "shutdown").!
       assert(shutdown == 0, "Failed to shutdown sbt server")
-    }
+    end if
     ()
   }
 
   // Test for issue #8644: sbt.bat fails when project path contains parentheses
   // https://github.com/sbt/sbt/issues/8644
   test("sbt.bat handles paths with parentheses") {
-    if (!isWindows) {
+    if !isWindows then
       // This test is Windows-specific, skip on other platforms
       ()
-    } else {
+    else
       IO.withTemporaryDirectory { baseDir =>
         // Create a temporary directory with parentheses in the name
         val testDir = new File(baseDir, "test(parentheses)")
@@ -288,7 +279,7 @@ object ExtendedRunnerTest extends BasicTestSuite:
           s"Error message should not contain parsing error when path has parentheses. Error output: $errorOutput"
         )
       }
-    }
+    end if
     ()
   }
 end ExtendedRunnerTest

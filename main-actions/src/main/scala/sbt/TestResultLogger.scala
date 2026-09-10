@@ -150,7 +150,7 @@ object TestResultLogger:
         printStandard: TestResultLogger = Defaults.printStandard,
         printFailures: TestResultLogger = Defaults.printFailures,
         printNoTests: TestResultLogger = Defaults.printNoTests
-    ) extends TestResultLogger {
+    ) extends TestResultLogger:
 
       override def run(log: Logger, results: Output, taskName: String): Unit =
         run(log, results, taskName, Vector.empty)
@@ -160,18 +160,15 @@ object TestResultLogger:
           results: Output,
           taskName: String,
           cached: Vector[String]
-      ): Unit = {
+      ): Unit =
         def run(r: TestResultLogger): Unit = r.run(log, results, taskName, cached)
 
         run(printSummary)
 
-        if (printStandard_?(results))
-          run(printStandard)
+        if printStandard_?(results) then run(printStandard)
 
-        if (results.events.isEmpty)
-          run(printNoTests)
-        else
-          run(printFailures)
+        if results.events.isEmpty then run(printNoTests)
+        else run(printFailures)
 
         // Logging only. Failure propagation lives in the task wrapper
         // (`Defaults.testFull` / `inputTests0`) so the cross-project recap
@@ -179,32 +176,31 @@ object TestResultLogger:
         // the `TestsFailedException` thrown there. The trait contract is
         // "perform logging"; it does not document throwing on failure.
         ()
-      }
-    }
+      end run
+    end Main
 
-    val printSummary = TestResultLogger((log, results, _) => {
+    val printSummary = TestResultLogger((log, results, _) =>
       val multipleFrameworks = results.summaries.size > 1
       for Tests.Summary(name, message) <- results.summaries do
-        if (message.isEmpty) log.debug("Summary for " + name + " not available.")
-        else {
-          if (multipleFrameworks) log.info(name)
+        if message.isEmpty then log.debug("Summary for " + name + " not available.")
+        else
+          if multipleFrameworks then log.info(name)
           log.info(message)
-        }
-    })
+    )
 
     val printStandard_? : Output => Boolean =
       results =>
         // Print the standard one-liner statistic if no framework summary is defined, or when > 1 framework is in used.
         results.summaries.size > 1 || results.summaries.headOption.forall(_.summaryText.isEmpty)
 
-    val printStandard = TestResultLogger((log, results, _, cached) => {
+    val printStandard = TestResultLogger((log, results, _, cached) =>
       val counts = countsString(results.events.values, cached.size, true)
       results.overall match
         case TestResult.Empty  => ()
         case TestResult.Error  => log.error(s"${SummaryStatus.Errored.label}: $counts")
         case TestResult.Passed => log.info(s"${SummaryStatus.Passed.label}: $counts")
         case TestResult.Failed => log.error(s"${SummaryStatus.Failed.label}: $counts")
-    })
+    )
 
     private[sbt] def countsString(events: Iterable[SuiteResult]): String =
       countsString(events, 0, false)
@@ -217,7 +213,7 @@ object TestResultLogger:
         events: Iterable[SuiteResult],
         cachedCount: Int,
         alwaysShowCached: Boolean,
-    ): String = {
+    ): String =
       val (failuresCount, errorsCount, passedCount) =
         events.foldLeft((0, 0, 0)) { case ((failureAcc, errorAcc, passedAcc), suite) =>
           suite.result match
@@ -231,24 +227,22 @@ object TestResultLogger:
       val cachedField =
         if cachedCount > 0 || alwaysShowCached then s", cached $cachedCount" else ""
       base + cachedField
-    }
 
-    val printFailures = TestResultLogger((log, results, _) => {
+    val printFailures = TestResultLogger((log, results, _) =>
       def select(resultTpe: TestResult) = results.events collect {
         case (name, tpe) if tpe.result == resultTpe =>
           scala.reflect.NameTransformer.decode(name)
       }
 
       def show(label: String, level: Level.Value, tests: Iterable[String]): Unit =
-        if (tests.nonEmpty) {
+        if tests.nonEmpty then
           log.log(level, label)
           log.log(level, tests.mkString(suitePadding, s"\n$suitePadding", ""))
-        }
 
       show("passed tests:", Level.Debug, select(TestResult.Passed))
       show("failed tests:", Level.Error, select(TestResult.Failed))
       show("error during tests:", Level.Error, select(TestResult.Error))
-    })
+    )
 
     val printNoTests = TestResultLogger((log, results, taskName, cached) =>
       val suffix = if cached.nonEmpty then s" (${cached.size} cached)" else ""
@@ -345,6 +339,7 @@ object TestResultLogger:
             suites.foreach: (name, st) =>
               lines += s"${suitePadding}${name.padTo(width, ' ')}${st.render(isColorEnabled)}"
           lines.result()
+      end detail
     end Summary
   end Defaults
 end TestResultLogger

@@ -11,7 +11,7 @@ package sbt.internal
 import xsbti.VirtualFileRef
 import xsbti.compile.{ APIChange, InitialChanges, RunProfiler }
 
-class DefaultRunProfiler(profilers: Seq[RunProfiler]) extends RunProfiler {
+class DefaultRunProfiler(profilers: Seq[RunProfiler]) extends RunProfiler:
   override def timeCompilation(startNanos: Long, durationNanos: Long): Unit =
     profilers.foreach(_.timeCompilation(startNanos, durationNanos))
 
@@ -51,4 +51,4 @@ class DefaultRunProfiler(profilers: Seq[RunProfiler]) extends RunProfiler {
 
   override def registerRun(): Unit =
     profilers.foreach(_.registerRun())
-}
+end DefaultRunProfiler

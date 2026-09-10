@@ -30,7 +30,7 @@ import sjsonnew.JsonFormat
 import xsbti.{ PathBasedFile, VirtualFileRef }
 import xsbti.compile.CompilerCache
 
-private[sbt] object Clean {
+private[sbt] object Clean:
 
   private[sbt] def deleteContents(file: File, exclude: File => Boolean): Unit =
     deleteContents(
@@ -44,8 +44,8 @@ private[sbt] object Clean {
       exclude: Path => Boolean,
       view: FileTreeView.Nio[FileAttributes],
       delete: Path => Unit
-  ): Unit = {
-    def deleteRecursive(path: Path): Unit = {
+  ): Unit =
+    def deleteRecursive(path: Path): Unit =
       view
         .list(Glob(path, AnyPath))
         .filterNot { case (p, _) => exclude(p) }
@@ -55,9 +55,7 @@ private[sbt] object Clean {
             delete(dir)
           case (file, _) => delete(file)
         }
-    }
     deleteRecursive(path)
-  }
 
   private def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
     val excludes = (scope / cleanKeepFiles).value.map {
@@ -69,12 +67,11 @@ private[sbt] object Clean {
   }
   private def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
     // Don't use a regular logger because the logger actually writes to the target directory.
-    val debug = (scope / logLevel).?.value.orElse(state.value.get(logLevel.key)) match {
+    val debug = (scope / logLevel).?.value.orElse(state.value.get(logLevel.key)) match
       case Some(Level.Debug) =>
         (string: String) => println(s"[debug] $string")
       case _ =>
         (_: String) => {}
-    }
     tryDelete(debug)
   }
 
@@ -110,7 +107,7 @@ private[sbt] object Clean {
 
           targetDir.withFilter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
           (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
-            if (x.isDirectory) deleteContents(x.toPath, excludeFilter, view, delete)
+            if x.isDirectory then deleteContents(x.toPath, excludeFilter, view, delete)
             else delete(x.toPath)
           }
 
@@ -127,9 +124,7 @@ private[sbt] object Clean {
             targetDir.fold(true)(g.base.startsWith)
           } ++ streamsGlobs)
             .foreach { g =>
-              val filter: Path => Boolean = { path =>
-                !g.matches(path) || excludeFilter(path)
-              }
+              val filter: Path => Boolean = path => !g.matches(path) || excludeFilter(path)
               deleteContents(g.base, filter, FileTreeView.default, delete)
               delete(g.base)
             }
@@ -154,9 +149,7 @@ private[sbt] object Clean {
       case _                => Nil
   end ToSeqPath
 
-  extension [T](t: T) {
-    private def toSeqPath(using toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
-  }
+  extension [T](t: T) private def toSeqPath(using toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
 
   private[sbt] def cleanFileOutputTask[T: JsonFormat: ToSeqPath](
       taskKey: TaskKey[T]
@@ -173,24 +166,22 @@ private[sbt] object Clean {
           val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
           val delete = cleanDelete(scope).value
           val st = (scope / streams).value
-          taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
+          taskKey.previous.foreach(_.toSeqPath.foreach(p => if !excludeFilter(p) then delete(p)))
           delete(st.cacheDirectory.toPath / Previous.DependencyDirectory)
         }
       }
       .tag(Tags.Clean)
 
-  private def tryDelete(debug: String => Unit): Path => Unit = path => {
-    try {
+  private def tryDelete(debug: String => Unit): Path => Unit = path =>
+    try
       debug(s"clean -- deleting file $path")
       Files.deleteIfExists(path)
       ()
-    } catch {
+    catch
       case _: DirectoryNotEmptyException =>
         debug(s"clean -- unable to delete non-empty directory $path")
       case e: IOException =>
         debug(s"Caught unexpected exception $e deleting $path")
-    }
-  }
 
   val registerCompilerCache: State => State = (s: State) =>
     s.get(Keys.stateCompilerCache).foreach(_.clear())
@@ -237,4 +228,5 @@ private[sbt] object Clean {
         )
         s
     Command.command(CleanFull, h)(expunge andThen clearCachesFun)
-}
+  end cleanFull
+end Clean

@@ -60,3 +60,4 @@ object BuildServerConnectionSpec extends BasicTestSuite:
     assert(argv.contains("-Xmx100m"), s"argv should contain -Xmx100m, got: $argv")
     assert(argv.contains("-classpath"), s"argv should contain -classpath, got: $argv")
     assert(argv.contains("xsbt.boot.Boot"), s"argv should contain xsbt.boot.Boot, got: $argv")
+end BuildServerConnectionSpec

@@ -188,17 +188,15 @@ end InMemoryActionCacheStore
 
 case class DiskActionCacheStore(base: Path, converter: FileConverter)
     extends AbstractActionCacheStore:
-  lazy val casBase: Path = {
+  lazy val casBase: Path =
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)
     dir
-  }
 
-  lazy val acBase: Path = {
+  lazy val acBase: Path =
     val dir = base.resolve("ac")
     IO.createDirectory(dir.toFile)
     dir
-  }
 
   // Files.copy clones on APFS, so a real file costs no extra disk while sparing every later
   // directory walk the CAS inode lookup that resolving a symlink pays.
@@ -462,6 +460,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
           // but in practice, NoSuchFileException is thrown often
           case _: NoSuchFileException =>
             writeFileAndNotify(p)
+  end syncFile
 
   /**
    * Emulate virtual side effects.
@@ -518,6 +517,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     allPaths.foreach: path =>
       IO.delete(path.toFile())
     dirPath
+  end unpackageDirZip
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
     parBlobs(refs)

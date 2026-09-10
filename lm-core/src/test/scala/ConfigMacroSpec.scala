@@ -6,26 +6,23 @@ import scala.util.control.NonFatal
 import org.scalacheck.*
 import Prop.*
 
-class ConfigDefs {
+class ConfigDefs:
   lazy val Kompile = config("kompile")
   val X = config("x")
   val Z = config("z").hide
   val A: Configuration = config("a")
   lazy val Aa: Configuration = config("aa")
-}
 
-object ConfigMacroSpec extends Properties("ConfigMacroSpec") {
+object ConfigMacroSpec extends Properties("ConfigMacroSpec"):
   lazy val cd = new ConfigDefs
   import cd.*
 
   def secure(f: => Prop): Prop =
-    try {
-      Prop.secure(f)
-    } catch {
+    try Prop.secure(f)
+    catch
       case NonFatal(e) =>
         e.printStackTrace
         throw e
-    }
 
   property("Explicit type on lazy val supported") = secure {
     check(Aa, "Aa", "aa", true)
@@ -47,7 +44,7 @@ object ConfigMacroSpec extends Properties("ConfigMacroSpec") {
     check(Z, "Z", "z", false)
   }
 
-  def check(c: Configuration, id: String, name: String, isPublic: Boolean): Prop = {
+  def check(c: Configuration, id: String, name: String, isPublic: Boolean): Prop =
     s"Expected id: $id" |:
       s"Expected name: $name" |:
       s"Expected isPublic: $isPublic" |:
@@ -57,5 +54,4 @@ object ConfigMacroSpec extends Properties("ConfigMacroSpec") {
       (c.id == id) &&
       (c.name == name) &&
       (c.isPublic == isPublic)
-  }
-}
+end ConfigMacroSpec

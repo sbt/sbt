@@ -22,10 +22,10 @@ object ServerSessionImplSpec extends BasicTestSuite:
       val path = Files.createTempDirectory("session-eof").resolve("sock")
       val server = UnixDomainServerSocket(path.toString, false)
       val peerResult = new LinkedBlockingQueue[Integer]
-      val accepted = new Thread(() => {
+      val accepted = new Thread(() =>
         val conn = server.accept()
         peerResult.put(conn.getInputStream.read())
-      })
+      )
       accepted.setDaemon(true)
       accepted.start()
       val session = new ServerSessionImpl(UnixDomainSocket(path.toString, false))

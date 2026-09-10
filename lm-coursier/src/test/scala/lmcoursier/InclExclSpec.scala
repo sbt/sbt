@@ -5,7 +5,7 @@ import sbt.librarymanagement.syntax.*
 import scala.annotation.nowarn
 import TestKit.*
 
-object InclExclSpec extends verify.BasicTestSuite {
+object InclExclSpec extends verify.BasicTestSuite:
   val scala210 = Some("2.10.4")
   test("it should exclude any version of lift-json via a new exclusion rule") {
     val toExclude = ExclusionRule("net.liftweb", "lift-json_2.10")
@@ -81,12 +81,11 @@ object InclExclSpec extends verify.BasicTestSuite {
       .cross(CrossVersion.full)
       .excludeAll(toExclude)
 
-  def getUpdateReport(dep: ModuleID, scalaVersion: Option[String]): UpdateReport = {
+  def getUpdateReport(dep: ModuleID, scalaVersion: Option[String]): UpdateReport =
     val m = module(defaultModuleId, Vector(dep), scalaVersion)
     coursierUpdate(m)
-  }
 
-  def testLiftJsonIsMissing(report: UpdateReport): Unit = {
+  def testLiftJsonIsMissing(report: UpdateReport): Unit =
     assert(
       !report.allModules.exists(_.name.contains("lift-json")),
       "lift-json has not been excluded."
@@ -95,9 +94,8 @@ object InclExclSpec extends verify.BasicTestSuite {
       !report.allModuleReports.exists(_.module.name.contains("lift-json")),
       "lift-json has not been excluded."
     )
-  }
 
-  def testScalaLibraryIsMissing(report: UpdateReport): Unit = {
+  def testScalaLibraryIsMissing(report: UpdateReport): Unit =
     assert(
       !report.allModules.exists(_.name.contains("scala-library")),
       "scala-library has not been excluded."
@@ -106,9 +104,8 @@ object InclExclSpec extends verify.BasicTestSuite {
       !report.allModuleReports.exists(_.module.name.contains("scala-library")),
       "scala-library has not been excluded."
     )
-  }
 
-  def testScalahostIsMissing(report: UpdateReport): Unit = {
+  def testScalahostIsMissing(report: UpdateReport): Unit =
     assert(
       !report.allModules.exists(_.name.contains("scalahost")),
       "scalahost has not been excluded."
@@ -117,5 +114,4 @@ object InclExclSpec extends verify.BasicTestSuite {
       !report.allModuleReports.exists(_.module.name.contains("scalahost")),
       "scalahost has not been excluded."
     )
-  }
-}
+end InclExclSpec

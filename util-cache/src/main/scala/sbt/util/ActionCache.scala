@@ -140,11 +140,14 @@ object ActionCache:
               )
               result
             case Left(e) => throw e
+        end if
       catch
         case NonFatal(e) =>
           logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
           cacheEventLog.append(ActionCacheEvent.Error)
           result
+      end try
+    end organicTask
 
     def spawnInput = SpawnInput(
       digest = inputDigest,
@@ -231,6 +234,8 @@ object ActionCache:
             )
             Left(None)
       case Left(_) => Left(None)
+    end match
+  end getWithFailure
 
   /**
    * Retrieves the cached value.
@@ -320,6 +325,7 @@ object ActionCache:
         else Vector(Digest.dummy(cacheVersion))
       })*
     )
+  end mkInput
 
   /** Walks `t`'s cause chain for a `NoSuchFileException`, returning the missing file's path. */
   @tailrec
@@ -396,6 +402,7 @@ object ActionCache:
       IO.copyFile(tempZipPath.toFile, zipPath.toFile)
 
       conv.toVirtualFile(zipPath)
+  end packageDirectory
 
   inline def actionResult[A1](inline value: A1): InternalActionResult[A1] =
     InternalActionResult(value, Nil)

@@ -82,13 +82,13 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
   Global / concurrentRestrictions += Utils.testExclusiveRestriction,
   // On Windows, limit to one task at a time to avoid OverlappingFileLockException when
   // multiple tasks (e.g. scalafix plugin and sbt Coursier) write to the same cache.
-  Global / concurrentRestrictions ++= (if (scala.util.Properties.isWin) Seq(Tags.limitAll(1))
+  Global / concurrentRestrictions ++= (if scala.util.Properties.isWin then Seq(Tags.limitAll(1))
                                        else Nil),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
   Compile / doc / scalacOptions ++= {
-    if (Dependencies.sbtIoPath.isEmpty && Dependencies.sbtZincPath.isEmpty) {
+    if Dependencies.sbtIoPath.isEmpty && Dependencies.sbtZincPath.isEmpty then
       import scala.sys.process.*
       val devnull = ProcessLogger(_ => ())
       val tagOrSha =
@@ -98,9 +98,7 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
         "-revision",
         tagOrSha
       )
-    } else {
-      Nil
-    }
+    else Nil
   },
   Compile / javafmtOnCompile := scalafmtOnCompile.value,
   Test / javafmtOnCompile := (Test / scalafmtOnCompile).value,
@@ -132,8 +130,8 @@ val sbt20Plus =
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
   mimaPreviousArtifacts := {
-    val crossVersion = if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled
-    if (sbtPlugin.value) {
+    val crossVersion = if crossPaths.value then CrossVersion.binary else CrossVersion.disabled
+    if sbtPlugin.value then
       versions
         .map(v =>
           Defaults.sbtPluginExtra(
@@ -143,9 +141,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings
           )
         )
         .toSet
-    } else {
-      versions.map(v => (organization.value % moduleName.value % v).cross(crossVersion)).toSet
-    }
+    else versions.map(v => (organization.value % moduleName.value % v).cross(crossVersion)).toSet
   },
   mimaBinaryIssueFilters ++= Seq(
   ),
@@ -183,8 +179,7 @@ lazy val sbtRoot: Project = (project in file("."))
         |  /____/_.___/\__/
         |Welcome to the build for sbt.
         |""".stripMargin +
-        (if (version != "17")
-           s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        (if version != "17" then s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                |  Java version is $version. We recommend java 17.
                |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
          else "")
@@ -204,16 +199,14 @@ lazy val sbtRoot: Project = (project in file("."))
     installNativeThinClient := {
       // nativeInstallDirectory can be set globally or in a gitignored local file
       val dir = nativeInstallDirectory.?.value
-      val target = Def.spaceDelimited("").parsed.headOption match {
+      val target = Def.spaceDelimited("").parsed.headOption match
         case Some(p) => file(p).toPath
         case _       =>
-          dir match {
+          dir match
             case Some(d) => d / "sbtn"
             case _       =>
               val msg = "Expected input parameter <path>: installNativeExecutable /usr/local/bin"
               throw new IllegalStateException(msg)
-          }
-      }
       val base = baseDirectory.value.toPath
       val exec = fileConverter.value.toPath((sbtClientProj / nativeImage).value)
       streams.value.log.info(s"installing thin client ${base.relativize(exec)} to ${target}")
@@ -351,7 +344,7 @@ lazy val utilLogging = project
     Compile / generateContrabands / contrabandFormatsForType := { tpe =>
       val old = (Compile / generateContrabands / contrabandFormatsForType).value
       val name = tpe.removeTypeParameters.name
-      if (name == "Throwable") Nil
+      if name == "Throwable" then Nil
       else old(tpe)
     },
     Test / fork := true,
@@ -905,9 +898,9 @@ lazy val serverTestProj = (project in file("server-test"))
           .map(_.toFile.getAbsolutePath)
           .mkString(java.io.File.pathSeparator)
       val cp =
-        if (scala.util.Properties.isWin) rawClasspath.replace("\\", "\\\\")
+        if scala.util.Properties.isWin then rawClasspath.replace("\\", "\\\\")
         else rawClasspath
-      val content = {
+      val content =
         s"""|
             |package testpkg
             |
@@ -917,7 +910,6 @@ lazy val serverTestProj = (project in file("server-test"))
             |  val scalaVersion = "${scalaVersion.value}"
             |}
           """.stripMargin
-      }
       val file =
         (Test / target).value / "generated" / "src" / "test" / "scala" / "testpkg" / "TestProperties.scala"
       IO.write(file, content)
@@ -956,17 +948,14 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageJvm := "graalvm-java23",
     nativeImageOutput := {
       val outputDir = (target.value / "bin").toPath
-      if (!Files.exists(outputDir)) {
-        Files.createDirectories(outputDir)
-      }
+      if !Files.exists(outputDir) then Files.createDirectories(outputDir)
       fileConverter.value.toVirtualFile(outputDir.resolve("sbtn"))
     },
     nativeImageCommand := {
       val orig = nativeImageCommand.value
-      sys.env.get("ARCHS") match {
+      sys.env.get("ARCHS") match
         case Some(a) => Seq("arch", s"-$a") ++ orig
         case None    => orig
-      }
     },
     nativeImageOptions ++= Seq(
       "--no-fallback",
@@ -983,16 +972,16 @@ lazy val sbtClientProj = (project in file("client"))
     ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
-      val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"
-      val output = target.value.toPath / "bin" / s"${if (isFish) "fish-" else ""}client$ext"
+      val ext = if isWin then ".bat" else if isFish then ".fish" else ".sh"
+      val output = target.value.toPath / "bin" / s"${if isFish then "fish-" else ""}client$ext"
       java.nio.file.Files.createDirectories(output.getParent)
       val cp = (Compile / fullClasspathAsJars).value.map(_.data)
       val args =
-        if (isWin) "%*" else if (isFish) s"$$argv" else s"$$*"
+        if isWin then "%*" else if isFish then s"$$argv" else s"$$*"
       java.nio.file.Files.write(
         output,
         s"""
-        |${if (isWin) "@echo off" else s"#!/usr/bin/env ${if (isFish) "fish" else "sh"}"}
+        |${if isWin then "@echo off" else s"#!/usr/bin/env ${if isFish then "fish" else "sh"}"}
         |
         |java -cp ${cp.mkString(java.io.File.pathSeparator)} sbt.client.Client --jna $args
         """.stripMargin.linesIterator.toSeq.tail.mkString("\n").getBytes
@@ -1058,11 +1047,10 @@ lazy val upperModules = (project in (file("internal") / "upper"))
     Utils.noPublish
   )
 
-lazy val sbtIgnoredProblems = {
+lazy val sbtIgnoredProblems =
   import com.typesafe.tools.mima.core.*
   Vector(
   )
-}
 
 def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val _ = publishLocalBinAll.value
@@ -1075,7 +1063,7 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
-    scriptedLaunchOpts.value ++ (if (launch) Some(launchJar) else None),
+    scriptedLaunchOpts.value ++ (if launch then Some(launchJar) else None),
     scalaVersion.value,
     version.value,
     (scriptedSbtProj / Test / fullClasspathAsJars).value
@@ -1171,10 +1159,9 @@ def otherRootSettings =
       "-server",
       s"-Dsbt.build.root=${(ThisBuild / baseDirectory).value.getAbsolutePath}"
     ) :::
-      (sys.props.get("sbt.ivy.home") match {
+      (sys.props.get("sbt.ivy.home") match
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
-        case _          => Nil
-      }),
+        case _          => Nil),
     publishLocalBinAll := {
       val _ = (Compile / publishLocalBin).all(scriptedProjects).value
     },
@@ -1185,10 +1172,9 @@ def otherRootSettings =
         "-Xms512M",
         "-server"
       ) :::
-        (sys.props.get("sbt.ivy.home") match {
+        (sys.props.get("sbt.ivy.home") match
           case Some(home) => List(s"-Dsbt.ivy.home=$home")
-          case _          => Nil
-        }),
+          case _          => Nil),
       scripted := scriptedTask(true).evaluated,
       scriptedUnpublished := scriptedTask(true).evaluated,
       scriptedSource := (sbtProj / sourceDirectory).value / "repo-override-test"
@@ -1248,7 +1234,7 @@ ThisBuild / pomIncludeRepository := (_ => false) // drop repos other than Maven 
 ThisBuild / publishTo := {
   val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
   val v = (ThisBuild / version).value
-  if (v.endsWith("SNAPSHOT")) Some("central-snapshots" at centralSnapshots)
+  if v.endsWith("SNAPSHOT") then Some("central-snapshots" at centralSnapshots)
   else localStaging.value
 }
 ThisBuild / publishMavenStyle := true

@@ -14,7 +14,7 @@ import java.lang.reflect.Method
 import sbt.io.{ AllPassFilter, NothingFilter }
 import scala.jdk.CollectionConverters.*
 
-sealed trait ScriptedRun {
+sealed trait ScriptedRun:
   final def run(
       resourceBaseDirectory: File,
       bufferLog: Boolean,
@@ -24,7 +24,7 @@ sealed trait ScriptedRun {
       launchOpts: Seq[String],
       prescripted: java.util.List[File],
       instances: Int,
-  ): Unit = {
+  ): Unit =
     run(
       resourceBaseDirectory,
       bufferLog,
@@ -36,7 +36,6 @@ sealed trait ScriptedRun {
       instances,
       keepTempDirectory = false,
     )
-  }
 
   final def run(
       resourceBaseDirectory: File,
@@ -48,8 +47,8 @@ sealed trait ScriptedRun {
       prescripted: java.util.List[File],
       instances: Int,
       keepTempDirectory: Boolean,
-  ): Unit = {
-    try {
+  ): Unit =
+    try
       invoke(
         resourceBaseDirectory,
         bufferLog,
@@ -62,8 +61,7 @@ sealed trait ScriptedRun {
         keepTempDirectory,
       )
       ()
-    } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
-  }
+    catch case e: java.lang.reflect.InvocationTargetException => throw e.getCause
 
   // v4
   final def run(
@@ -78,8 +76,8 @@ sealed trait ScriptedRun {
       keepTempDirectory: Boolean,
       includeFilter: JFileFilter,
       excludeFilter: JFileFilter,
-  ): Unit = {
-    try {
+  ): Unit =
+    try
       invoke(
         resourceBaseDirectory,
         bufferLog,
@@ -94,8 +92,7 @@ sealed trait ScriptedRun {
         excludeFilter,
       )
       ()
-    } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
-  }
+    catch case e: java.lang.reflect.InvocationTargetException => throw e.getCause
 
   protected def invoke(
       resourceBaseDirectory: File,
@@ -106,7 +103,7 @@ sealed trait ScriptedRun {
       launchOpts: Array[String],
       prescripted: java.util.List[File],
       instances: java.lang.Integer,
-  ): AnyRef = {
+  ): AnyRef =
     invoke(
       resourceBaseDirectory,
       bufferLog,
@@ -118,7 +115,6 @@ sealed trait ScriptedRun {
       instances,
       keepTempDirectory = false,
     )
-  }
 
   protected def invoke(
       resourceBaseDirectory: File,
@@ -145,7 +141,7 @@ sealed trait ScriptedRun {
       keepTempDirectory: java.lang.Boolean,
       includeFilter: JFileFilter,
       excludeFilter: JFileFilter,
-  ): AnyRef = {
+  ): AnyRef =
     invoke(
       resourceBaseDirectory,
       bufferLog,
@@ -157,13 +153,11 @@ sealed trait ScriptedRun {
       instances,
       keepTempDirectory,
     )
-  }
+end ScriptedRun
 
-}
+object ScriptedRun:
 
-object ScriptedRun {
-
-  def of(scriptedTests: AnyRef, batchExecution: Boolean): ScriptedRun = {
+  def of(scriptedTests: AnyRef, batchExecution: Boolean): ScriptedRun =
     val fCls = classOf[File]
     val bCls = classOf[Boolean]
     val asCls = classOf[Array[String]]
@@ -174,7 +168,7 @@ object ScriptedRun {
     val ffCls = classOf[JFileFilter]
 
     val clazz = scriptedTests.getClass
-    if (batchExecution)
+    if batchExecution then
       try
         new RunInParallelV4(
           scriptedTests,
@@ -193,7 +187,7 @@ object ScriptedRun {
             ffCls,
           )
         )
-      catch {
+      catch
         case _: NoSuchMethodException =>
           try
             new RunInParallelV3(
@@ -201,7 +195,7 @@ object ScriptedRun {
               clazz
                 .getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls, bCls)
             )
-          catch {
+          catch
             case _: NoSuchMethodException =>
               try
                 new RunInParallelV2(
@@ -209,15 +203,12 @@ object ScriptedRun {
                   clazz
                     .getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
                 )
-              catch {
+              catch
                 case _: NoSuchMethodException =>
                   new RunInParallelV1(
                     scriptedTests,
                     clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
                   )
-              }
-          }
-      }
     else
       try
         new RunV4(
@@ -236,32 +227,30 @@ object ScriptedRun {
             ffCls,
           )
         )
-      catch {
+      catch
         case _: NoSuchMethodException =>
           try
             new RunV3(
               scriptedTests,
               clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, bCls)
             )
-          catch {
+          catch
             case _: NoSuchMethodException =>
               try
                 new RunV2(
                   scriptedTests,
                   clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
                 )
-              catch {
+              catch
                 case _: NoSuchMethodException =>
                   new RunV1(
                     scriptedTests,
                     clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
                   )
-              }
-          }
-      }
-  }
+    end if
+  end of
 
-  private class RunV1(scriptedTests: AnyRef, run: Method) extends ScriptedRun {
+  private class RunV1(scriptedTests: AnyRef, run: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -282,9 +271,9 @@ object ScriptedRun {
         launchOpts,
         prescripted,
       )
-  }
+  end RunV1
 
-  private class RunInParallelV1(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun {
+  private class RunInParallelV1(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -306,9 +295,9 @@ object ScriptedRun {
         prescripted,
         instances,
       )
-  }
+  end RunInParallelV1
 
-  private class RunV2(scriptedTests: AnyRef, run: Method) extends ScriptedRun {
+  private class RunV2(scriptedTests: AnyRef, run: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -330,9 +319,9 @@ object ScriptedRun {
         launchOpts,
         prescripted,
       )
-  }
+  end RunV2
 
-  private class RunInParallelV2(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun {
+  private class RunInParallelV2(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -355,9 +344,9 @@ object ScriptedRun {
         prescripted,
         instances,
       )
-  }
+  end RunInParallelV2
 
-  private class RunV3(scriptedTests: AnyRef, run: Method) extends ScriptedRun {
+  private class RunV3(scriptedTests: AnyRef, run: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -380,9 +369,9 @@ object ScriptedRun {
         prescripted,
         keepTempDirectory,
       )
-  }
+  end RunV3
 
-  private class RunInParallelV3(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun {
+  private class RunInParallelV3(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -406,9 +395,9 @@ object ScriptedRun {
         instances,
         keepTempDirectory,
       )
-  }
+  end RunInParallelV3
 
-  private class RunV4(scriptedTests: AnyRef, run: Method) extends ScriptedRun {
+  private class RunV4(scriptedTests: AnyRef, run: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -460,9 +449,9 @@ object ScriptedRun {
         includeFilter,
         excludeFilter,
       )
-  }
+  end RunV4
 
-  private class RunInParallelV4(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun {
+  private class RunInParallelV4(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun:
     override protected def invoke(
         resourceBaseDirectory: File,
         bufferLog: java.lang.Boolean,
@@ -515,6 +504,5 @@ object ScriptedRun {
         includeFilter,
         excludeFilter,
       )
-  }
-
-}
+  end RunInParallelV4
+end ScriptedRun

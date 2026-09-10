@@ -3,18 +3,15 @@
  */
 package sbt.librarymanagement
 
-private[librarymanagement] abstract class InlineConfigurationFunctions {
+private[librarymanagement] abstract class InlineConfigurationFunctions:
   def configurations(
       explicitConfigurations: Iterable[Configuration],
       defaultConfiguration: Option[Configuration]
   ) =
-    if (explicitConfigurations.isEmpty) {
-      defaultConfiguration match {
+    if explicitConfigurations.isEmpty then
+      defaultConfiguration match
         case Some(Configurations.DefaultIvyConfiguration)   => Configurations.Default :: Nil
         case Some(Configurations.DefaultMavenConfiguration) =>
           Configurations.defaultMavenConfigurations
         case _ => Nil
-      }
-    } else
-      explicitConfigurations
-}
+    else explicitConfigurations

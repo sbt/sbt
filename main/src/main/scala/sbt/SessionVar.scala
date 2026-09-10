@@ -18,23 +18,21 @@ import Keys.sessionVars
 import sjsonnew.JsonFormat
 import sbt.ProjectExtra.*
 
-object SessionVar {
+object SessionVar:
   val DefaultDataID = "data"
 
   // these are required because of inference+manifest limitations
   final case class Key[T](key: ScopedKey[Task[T]])
-  final case class Map(map: IMap[Key, Id]) {
+  final case class Map(map: IMap[Key, Id]):
     def get[T](k: ScopedKey[Task[T]]): Option[T] = map.get(Key(k))
     def put[T](k: ScopedKey[Task[T]], v: T): Map = Map(map.put(Key(k), v))
-  }
   def emptyMap = Map(IMap.empty)
 
   def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(using
       f: JsonFormat[T]
-  ): State = {
+  ): State =
     persist(key, state, value)(using f)
     set(key, state, value)
-  }
 
   def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(using f: JsonFormat[T]): Unit =
     Project.structure(state).streams(state).use(key)(s => s.getOutput(DefaultDataID).write(value))
@@ -67,9 +65,8 @@ object SessionVar {
 
   def read[T](key: ScopedKey[Task[T]], state: State)(using f: JsonFormat[T]): Option[T] =
     Project.structure(state).streams(state).use(key) { s =>
-      try {
-        Some(s.getInput(key, DefaultDataID).read[T]())
-      } catch { case NonFatal(_) => None }
+      try Some(s.getInput(key, DefaultDataID).read[T]())
+      catch case NonFatal(_) => None
     }
 
   def load[T](key: ScopedKey[Task[T]], state: State)(using f: JsonFormat[T]): Option[T] =
@@ -78,15 +75,13 @@ object SessionVar {
   def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(using
       f: JsonFormat[T]
   ): (State, Option[T]) =
-    get(key, state) match {
+    get(key, state) match
       case s: Some[T] => (state, s)
       case None       =>
-        read(key, state)(using f) match {
+        read(key, state)(using f) match
           case s @ Some(t) =>
             val newState =
-              if (setIfUnset && get(key, state).isDefined) state else set(key, state, t)
+              if setIfUnset && get(key, state).isDefined then state else set(key, state, t)
             (newState, s)
           case None => (state, None)
-        }
-    }
-}
+end SessionVar

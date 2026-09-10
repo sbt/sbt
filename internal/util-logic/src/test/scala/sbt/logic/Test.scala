@@ -13,7 +13,7 @@ import org.scalacheck.*
 import Prop.secure
 import Logic.{ LogicException, Matched }
 
-object LogicTest extends Properties("Logic") {
+object LogicTest extends Properties("Logic"):
   import TestClauses.*
 
   property("Handles trivial resolution.") = secure(expect(trivial, Set(A)))
@@ -34,18 +34,16 @@ object LogicTest extends Properties("Logic") {
   )
    */
 
-  def expect(result: Either[LogicException, Matched], expected: Set[Atom]) = result match {
+  def expect(result: Either[LogicException, Matched], expected: Set[Atom]) = result match
     case Left(_)    => false
     case Right(res) =>
       val actual = res.provenSet
-      if (actual != expected)
+      if actual != expected then
         sys.error(s"Expected to prove $expected, but actually proved $actual")
-      else
-        true
-  }
-}
+      else true
+end LogicTest
 
-object TestClauses {
+object TestClauses:
 
   val A = Atom("A")
   val B = Atom("B")
@@ -71,7 +69,7 @@ object TestClauses {
     A.proves(D) ::
       clauses
 
-  val excludedNeg = {
+  val excludedNeg =
     val cs =
       (!A).proves(B) ::
         Nil
@@ -80,9 +78,8 @@ object TestClauses {
         (!B) ::
         Nil
     Logic.reduceAll(cs, init.toSet)
-  }
 
-  val excludedPos = {
+  val excludedPos =
     val cs =
       A.proves(B) ::
         Nil
@@ -91,39 +88,34 @@ object TestClauses {
         (!B) ::
         Nil
     Logic.reduceAll(cs, init.toSet)
-  }
 
-  val trivial = {
+  val trivial =
     val cs =
       Formula.True.proves(A) ::
         Nil
     Logic.reduceAll(cs, Set.empty)
-  }
 
-  val lessTrivial = {
+  val lessTrivial =
     val cs =
       Formula.True.proves(A) ::
         Formula.True.proves(B) ::
         (A && B && (!C)).proves(D) ::
         Nil
     Logic.reduceAll(cs, Set())
-  }
 
-  val ordering = {
+  val ordering =
     val cs =
       E.proves(F) ::
         (C && !D).proves(E) ::
         (A && B).proves(C) ::
         Nil
     Logic.reduceAll(cs, Set(A, B))
-  }
 
-  def all(): Unit = {
+  def all(): Unit =
     println(s"Cycles: $cycles")
     println(s"xNeg: $excludedNeg")
     println(s"xPos: $excludedPos")
     println(s"trivial: $trivial")
     println(s"lessTrivial: $lessTrivial")
     println(s"ordering: $ordering")
-  }
-}
+end TestClauses

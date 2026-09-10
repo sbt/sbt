@@ -19,16 +19,14 @@ import scala.util.control.NonFatal
 object Util:
   def makeList[T](size: Int, value: T): List[T] = List.fill(size)(value)
 
-  def separate[T, A, B](ps: Seq[T])(f: T => Either[A, B]): (Seq[A], Seq[B]) = {
+  def separate[T, A, B](ps: Seq[T])(f: T => Either[A, B]): (Seq[A], Seq[B]) =
     val (a, b) = ps.foldLeft((Nil: Seq[A], Nil: Seq[B]))((xs, y) => prependEither(xs, f(y)))
     (a.reverse, b.reverse)
-  }
 
   def prependEither[A, B](acc: (Seq[A], Seq[B]), next: Either[A, B]): (Seq[A], Seq[B]) =
-    next match {
+    next match
       case Left(l)  => (l +: acc._1, acc._2)
       case Right(r) => (acc._1, r +: acc._2)
-    }
 
   def pairID[A, B] = (a: A, b: B) => (a, b)
 
@@ -37,14 +35,14 @@ object Util:
   def hasHyphen(s: String): Boolean = s.indexOf('-') >= 0
 
   def hyphenToCamel(s: String): String =
-    if (hasHyphen(s)) Hyphen.replaceAllIn(s, _.group(1).toUpperCase(Locale.ENGLISH)) else s
+    if hasHyphen(s) then Hyphen.replaceAllIn(s, _.group(1).toUpperCase(Locale.ENGLISH)) else s
 
   private lazy val Camel = """(\p{javaLowerCase})(\p{javaUpperCase})""".r
 
   def camelToHyphen(s: String): String =
     Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase(Locale.ENGLISH))
 
-  def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) s"`${s}`" else s
+  def quoteIfKeyword(s: String): String = if ScalaKeywords.values(s) then s"`${s}`" else s
 
   def quoteIfNotScalaId(s: String): String =
     if isValidScalaId(s) && !ScalaKeywords.values(s) then s
@@ -54,10 +52,9 @@ object Util:
     s.nonEmpty && (s.charAt(0).isLetter || s.charAt(0) == '_') &&
       s.forall(c => c.isLetterOrDigit || c == '_')
 
-  def ignoreResult[A](f: => A): Unit = {
+  def ignoreResult[A](f: => A): Unit =
     val _ = f
     ()
-  }
 
   def ignoreTry[A](f: => A): Unit = ignoreResult(Try(f))
 
@@ -67,13 +64,11 @@ object Util:
   lazy val isWindows: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 
-  lazy val isCygwin: Boolean = {
+  lazy val isCygwin: Boolean =
     val os = sys.env.get("OSTYPE")
-    os match {
+    os match
       case Some(x) => x.toLowerCase(Locale.ENGLISH).contains("cygwin")
       case _       => false
-    }
-  }
 
   lazy val isNonCygwinWindows: Boolean = isWindows && !isCygwin
   lazy val isCygwinWindows: Boolean = isWindows && isCygwin
@@ -88,14 +83,11 @@ object Util:
   def nilSeq[A]: Seq[A] = Seq.empty[A]
   def none[A]: Option[A] = (None: Option[A])
 
-  extension [A](value: A) {
-    def some: Option[A] = (Some(value): Option[A])
-  }
+  extension [A](value: A) def some: Option[A] = (Some(value): Option[A])
 
-  private[sbt] def withCaching[A1, A2](f: A1 => A2): A1 => A2 = {
+  private[sbt] def withCaching[A1, A2](f: A1 => A2): A1 => A2 =
     val cache = TrieMap.empty[A1, A2]
     x => cache.getOrElseUpdate(x, f(x))
-  }
 
   lazy val javaHome: Path =
     sys.env.get("JAVA_HOME") match

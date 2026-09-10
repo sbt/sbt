@@ -101,6 +101,7 @@ object InputTaskMacro:
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
     val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
     convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, None, inner)
+  end iInitializeMacro
 
   private def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
       f: Expr[A1] => Expr[F1[A1]]
@@ -157,7 +158,7 @@ object InputTaskMacro:
       val lambda = Lambda(
         owner = Symbol.spliceOwner,
         tpe = tpe,
-        rhsFn = (sym, params) => {
+        rhsFn = (sym, params) =>
           val param = params.head.asInstanceOf[Term]
           val substitute = [a] =>
             (name: String, tpe: Type[a], qual: Term, replace: Term) =>
@@ -169,12 +170,12 @@ object InputTaskMacro:
             convert1
               .transformWrappers(body.changeOwner(sym), substitute, sym)
           modifiedBody
-        }
       )
       val action = expandTask[Arg => Def.Initialize[Task[A1]]](false, lambda)
       '{
         InputTask.createDyn[Arg, A1](p = $param)(action = $action)
       }
+    end genCreateDyn
     val body = convert1.transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
     inputBuf.toList match
       case Nil                           => genCreateFree(body)
@@ -214,7 +215,7 @@ object InputTaskMacro:
       val lambda = Lambda(
         owner = Symbol.spliceOwner,
         tpe = lambdaTpe,
-        rhsFn = (sym, params) => {
+        rhsFn = (sym, params) =>
           val p0 = params.head.asInstanceOf[Ident]
           val body2 =
             convert1
@@ -231,7 +232,6 @@ object InputTaskMacro:
                 case _                              => super.transformTerm(tree)(owner)
           end refTransformer
           refTransformer.transformTerm(body2.changeOwner(sym))(sym)
-        }
       )
       val action = lambda.asExprOf[A1 => Def.Initialize[Task[A2]]]
       '{
@@ -239,6 +239,7 @@ object InputTaskMacro:
           Def.valueStrict(TaskExtra.task[A1 => Def.Initialize[Task[A2]]]($action))
         )
       }
+    end mkInputTask
     tree.asTerm match
       case Lambda(params, body) =>
         mkInputTask(params, body)
@@ -254,4 +255,5 @@ object InputTaskMacro:
             Block(List(), Lambda(params, body)),
           ) =>
         mkInputTask(params, body)
+  end parserGenFlatMapTaskImpl
 end InputTaskMacro

@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
  * A project load closes the file tree repository and installs a new one, so a portfile watch that
  * a load does not outlive stops working after the first reload.
  */
-class PortfileReloadTest extends AbstractServerTest {
+class PortfileReloadTest extends AbstractServerTest:
   override val testDirectory: String = "client"
 
   private val settle = 30.seconds
@@ -28,4 +28,3 @@ class PortfileReloadTest extends AbstractServerTest {
     IO.write(portfile, """{"uri":"local:///displaced","serverId":"another-server"}""")
     assert(waitUntil(settle)(!svr.isAlive), "the displaced server exits")
   }
-}

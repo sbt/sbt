@@ -18,7 +18,7 @@ import sjsonnew.{ JsonFormat, JsonWriter }
 import sjsonnew.support.murmurhash.Hasher
 import scala.annotation.nowarn
 
-object Tracked {
+object Tracked:
 
   /**
    * Creates a tracker that provides the last time it was evaluated. If the function throws an
@@ -38,10 +38,9 @@ object Tracked {
    * time is when the evaluated function completes. In both cases, the timestamp is not updated if
    * the function throws an exception.
    */
-  def tstamp(store: CacheStore, useStartTime: Boolean): Timestamp = {
+  def tstamp(store: CacheStore, useStartTime: Boolean): Timestamp =
     import CacheImplicits.LongJsonFormat
     new Timestamp(store, useStartTime)
-  }
 
   /**
    * Creates a tracker that provides the last time it was evaluated. If 'useStartTime' is true, the
@@ -81,12 +80,11 @@ object Tracked {
     diffOutputs(CacheStore(cacheFile), style)
 
   /** Creates a tracker that provides the output of the most recent invocation of the function */
-  def lastOutput[I, O: JsonFormat](store: CacheStore)(f: (I, Option[O]) => O): I => O = { in =>
+  def lastOutput[I, O: JsonFormat](store: CacheStore)(f: (I, Option[O]) => O): I => O = in =>
     val previous = Try { store.read[O]() }.toOption
     val next = f(in, previous)
     store.write(next)
     next
-  }
 
   /** Creates a tracker that provides the output of the most recent invocation of the function */
   def lastOutput[I, O: JsonFormat](cacheFile: File)(f: (I, Option[O]) => O): I => O =
@@ -108,9 +106,8 @@ object Tracked {
    */
   def outputChanged[A1: JsonFormat, A2](store: CacheStore)(
       f: (Boolean, A1) => A2
-  ): (() => A1) => A2 = {
+  ): (() => A1) => A2 =
     outputChangedW(store)(f)
-  }
 
   /**
    * Creates a tracker that indicates whether the output returned from `p` has changed or not.
@@ -131,20 +128,16 @@ object Tracked {
    */
   def outputChangedW[A1: JsonWriter, A2](store: CacheStore)(
       f: (Boolean, A1) => A2
-  ): (() => A1) => A2 = p => {
-    val cache: SingletonCache[Long] = {
+  ): (() => A1) => A2 = p =>
+    val cache: SingletonCache[Long] =
       import CacheImplicits.LongJsonFormat
       implicitly
-    }
     val initial = p()
     val help = new CacheHelp(cache)
     val changed = help.changed(store, initial)
     val result = f(changed, initial)
-    if (changed) {
-      help.save(store, p())
-    }
+    if changed then help.save(store, p())
     result
-  }
 
   /**
    * Creates a tracker that indicates whether the output returned from `p` has changed or not.
@@ -225,18 +218,15 @@ object Tracked {
    */
   def inputChangedW[I: JsonWriter, O](store: CacheStore)(
       f: (Boolean, I) => O
-  ): I => O = { in =>
-    val cache: SingletonCache[Long] = {
+  ): I => O = in =>
+    val cache: SingletonCache[Long] =
       import CacheImplicits.LongJsonFormat
       implicitly
-    }
     val help = new CacheHelp(cache)
     val changed = help.changed(store, in)
     val result = f(changed, in)
-    if (changed)
-      help.save(store, in)
+    if changed then help.save(store, in)
     result
-  }
 
   /**
    * Creates a tracker that indicates whether the arguments given to f have changed since the most
@@ -280,67 +270,59 @@ object Tracked {
   ): I => O =
     inputChangedW(CacheStore(cacheFile))(f)
 
-  private final class CacheHelp[I: JsonWriter](val sc: SingletonCache[Long]) {
+  private final class CacheHelp[I: JsonWriter](val sc: SingletonCache[Long]):
     import CacheImplicits.implicitHashWriter
     import CacheImplicits.LongJsonFormat
-    def save(store: CacheStore, value: I): Unit = {
-      Hasher.hash(value) match {
+    def save(store: CacheStore, value: I): Unit =
+      Hasher.hash(value) match
         case USuccess(keyHash) => store.write[Long](keyHash.toLong)
         case Failure(e)        =>
-          if (isStrictMode) throw e
+          if isStrictMode then throw e
           else ()
-      }
-    }
 
     def changed(store: CacheStore, value: I): Boolean =
-      Try { store.read[Long]() } match {
+      Try { store.read[Long]() } match
         case USuccess(prev: Long) =>
-          Hasher.hash(value) match {
+          Hasher.hash(value) match
             case USuccess(keyHash: Int) => keyHash.toLong != prev
             case Failure(e)             =>
-              if (isStrictMode) throw e
+              if isStrictMode then throw e
               else true
-          }
         case Failure(_: EmptyCacheError) => true
         case Failure(e)                  =>
-          if (isStrictMode) throw e
+          if isStrictMode then throw e
           else true
-      }
-  }
+  end CacheHelp
 
   private[sbt] def isStrictMode: Boolean =
     java.lang.Boolean.getBoolean("sbt.strict")
-}
+end Tracked
 
-trait Tracked {
+trait Tracked:
 
   /** Cleans outputs and clears the cache. */
   def clean(): Unit
 
-}
-
 class Timestamp(val store: CacheStore, useStartTime: Boolean)(using format: JsonFormat[Long])
-    extends Tracked {
+    extends Tracked:
   def clean() = store.delete()
 
   /**
    * Reads the previous timestamp, evaluates the provided function, and then updates the timestamp
    * if the function completes normally.
    */
-  def apply[T](f: Long => T): T = {
+  def apply[T](f: Long => T): T =
     val start = now()
     val result = f(readTimestamp)
-    store.write(if (useStartTime) start else now())
+    store.write(if useStartTime then start else now())
     result
-  }
 
   private def now() = System.currentTimeMillis
 
   def readTimestamp: Long =
     Try { store.read[Long]() } getOrElse 0
-}
 
-object Difference {
+object Difference:
   def constructor(
       defineClean: Boolean,
       filesAreOutputs: Boolean
@@ -361,18 +343,15 @@ object Difference {
    */
   val inputs = constructor(false, false)
 
-}
-
 class Difference(
     val store: CacheStore,
     val style: FileInfo.Style,
     val defineClean: Boolean,
     val filesAreOutputs: Boolean
-) extends Tracked {
-  def clean() = {
-    if (defineClean) IO.delete(raw(cachedFilesInfo)) else ()
+) extends Tracked:
+  def clean() =
+    if defineClean then IO.delete(raw(cachedFilesInfo)) else ()
     clearCache()
-  }
 
   private def clearCache() = store.delete()
 
@@ -380,26 +359,24 @@ class Difference(
     store.read(default = FilesInfo.empty[style.F])(using style.formats).files
   private def raw(fs: Set[style.F]): Set[File] = fs.map(_.file)
 
-  def apply[T](files: Set[File])(f: ChangeReport[File] => T): T = {
+  def apply[T](files: Set[File])(f: ChangeReport[File] => T): T =
     val lastFilesInfo = cachedFilesInfo
     apply(files, lastFilesInfo)(f)(_ => files)
-  }
 
-  def apply[T](f: ChangeReport[File] => T)(using toFiles: T => Set[File]): T = {
+  def apply[T](f: ChangeReport[File] => T)(using toFiles: T => Set[File]): T =
     val lastFilesInfo = cachedFilesInfo
     apply(raw(lastFilesInfo), lastFilesInfo)(f)(toFiles)
-  }
 
   private def abs(files: Set[File]) = files.map(_.getAbsoluteFile)
 
   private def apply[T](files: Set[File], lastFilesInfo: Set[style.F])(
       f: ChangeReport[File] => T
-  )(extractFiles: T => Set[File]): T = {
+  )(extractFiles: T => Set[File]): T =
     val lastFiles = raw(lastFilesInfo)
     val currentFiles = abs(files)
     val currentFilesInfo = style(currentFiles)
 
-    val report = new ChangeReport[File] {
+    val report = new ChangeReport[File]:
       lazy val checked = currentFiles
       lazy val removed =
         lastFiles -- checked // all files that were included previously but not this time.  This is independent of whether the files exist.
@@ -407,13 +384,12 @@ class Difference(
         checked -- lastFiles // all files included now but not previously.  This is independent of whether the files exist.
       lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files) ++ added
       lazy val unmodified = checked -- modified
-    }
 
     val result = f(report)
-    val info = if (filesAreOutputs) style(abs(extractFiles(result))) else currentFilesInfo
+    val info = if filesAreOutputs then style(abs(extractFiles(result))) else currentFilesInfo
 
     store.write(info)(using style.formats)
 
     result
-  }
-}
+  end apply
+end Difference

@@ -12,29 +12,22 @@ import java.util.Properties
 import scala.util.Using
 
 /** Defines utilities to load Java properties from the JVM. */
-private[inc] object ResourceLoader {
-  def getPropertiesFor(resource: String): Properties = {
+private[inc] object ResourceLoader:
+  def getPropertiesFor(resource: String): Properties =
     val properties = new Properties
     val resourceUrl = getClass.getResource(resource)
-    if (resourceUrl eq null) {
+    if resourceUrl eq null then
       throw new java.io.FileNotFoundException(s"Resource not found: $resource")
-    }
     Using.resource(resourceUrl.openStream) { propertiesStream =>
       properties.load(propertiesStream)
     }
     properties
-  }
 
-  def getSafePropertiesFor(resource: String, classLoader: ClassLoader): Properties = {
+  def getSafePropertiesFor(resource: String, classLoader: ClassLoader): Properties =
     val properties = new Properties
-    val propertiesStream = classLoader.getResourceAsStream(resource)
-    if (propertiesStream ne null) {
-      try {
-        properties.load(propertiesStream)
-      } catch {
-        case _: Exception =>
-      } finally propertiesStream.close()
-    }
+    Using.resource(classLoader.getResourceAsStream(resource)): propertiesStream =>
+      if propertiesStream ne null then
+        try properties.load(propertiesStream)
+        catch
+          case _: Exception =>
     properties
-  }
-}

@@ -60,6 +60,7 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
     val stamps = Map(cachedDescriptor.getAbsolutePath -> 12345L)
 
     UpdateReport(cachedDescriptor, Vector(configReport), stats, stamps)
+  end buildTestReport
 
   "UpdateReportPersistence.toCache and fromCache" should "preserve stats and stamps" in:
     IO.withTemporaryDirectory: baseDir =>
@@ -199,6 +200,7 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       Vector.empty,
       Vector.empty
     )
+  end moduleFor
 
   // `managedJars` derives the managed classpath's order from `ConfigurationReport.modules`, and that
   // order is part of the compile task's cache key.

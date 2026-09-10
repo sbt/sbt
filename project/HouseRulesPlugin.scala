@@ -2,7 +2,7 @@ import sbt.*
 import Keys.*
 import sbt.util.CacheImplicits.given
 
-object HouseRulesPlugin extends AutoPlugin {
+object HouseRulesPlugin extends AutoPlugin:
   override def requires = plugins.JvmPlugin
   override def trigger = allRequirements
 
@@ -16,12 +16,10 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions ++= "-Xfuture".ifScala213OrMinus.value.toList,
     scalacOptions ++= "-Xlint".ifScala2.value.toList,
     scalacOptions ++= {
-      if (
-        sys.props.get("sbt.build.fatal") match {
+      if sys.props.get("sbt.build.fatal") match
           case Some(_) => java.lang.Boolean.getBoolean("sbt.build.fatal")
           case _       => true
-        }
-      ) List("-Werror")
+      then List("-Werror")
       else Nil
     },
     scalacOptions ++= "-Yinline-warnings".ifScala211OrMinus.value.toList,
@@ -31,11 +29,10 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions ++= "-Ywarn-value-discard".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList,
     scalacOptions ++= {
-      scalaPartV.value match {
+      scalaPartV.value match
         case Some((3, _)) => Seq("-Wunused:imports,implicits") // ,nowarn
         case Some((2, _)) => Seq("-Ywarn-unused:-privates,-locals,-explicits")
         case _            => Seq.empty
-      }
     },
     scalacOptions ++= "-Xsource:3".ifScala2.value.toList,
     testFrameworks += TestFramework("verify.runner.Framework"),
@@ -45,7 +42,7 @@ object HouseRulesPlugin extends AutoPlugin {
 
   private def scalaPartV = Def.setting(CrossVersion.partialVersion(scalaVersion.value))
 
-  private implicit final class AnyWithIfScala[A](val __x: A) {
+  private implicit final class AnyWithIfScala[A](val __x: A):
     def ifScala2x(p: Long => Boolean) =
       Def.setting(scalaPartV.value.collect { case (2, y) if p(y) => __x })
     def ifScala3x(p: Long => Boolean) =
@@ -58,8 +55,7 @@ object HouseRulesPlugin extends AutoPlugin {
     def ifScala213OrMinus = ifScalaLte(13)
     def ifScala2 = ifScala2x(_ => true)
     def ifScala3 = Def.setting(
-      if (scalaBinaryVersion.value == "3") Seq(__x)
+      if scalaBinaryVersion.value == "3" then Seq(__x)
       else Nil
     )
-  }
-}
+end HouseRulesPlugin

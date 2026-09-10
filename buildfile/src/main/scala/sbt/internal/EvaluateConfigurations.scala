@@ -33,7 +33,7 @@ import dotty.tools.dotc.ast.untpd.{ Annotated, ValOrDefDef, Tree }
  *  2. Compiling scala code into local .class files
  *  3. Evaluating the expressions and obtaining in-memory objects of the results (Setting[_] instances, or val references).
  */
-private[sbt] object EvaluateConfigurations {
+private[sbt] object EvaluateConfigurations:
 
   type LazyClassLoaded[A] = ClassLoader => A
 
@@ -61,7 +61,7 @@ private[sbt] object EvaluateConfigurations {
       eval: Eval,
       srcs: Seq[VirtualFile],
       imports: Seq[String],
-  ): LazyClassLoaded[LoadedSbtFile] = {
+  ): LazyClassLoaded[LoadedSbtFile] =
     val loadFiles = srcs.sortBy(_.name) map { src =>
       evaluateSbtFile(eval, src, IO.readStream(src.input()).linesIterator.toList, imports, 0)
     }
@@ -69,7 +69,6 @@ private[sbt] object EvaluateConfigurations {
       loadFiles.foldLeft(LoadedSbtFile.empty) { (loaded, load) =>
         loaded.merge(load(loader))
       }
-  }
 
   /**
    * Reads a given .sbt file and evaluates it into a sequence of setting values.
@@ -95,7 +94,7 @@ private[sbt] object EvaluateConfigurations {
       builtinImports: Seq[String],
       offset: Int,
       options: Seq[String]
-  ): ParsedFile = {
+  ): ParsedFile =
     def loseTree(l: (String, Tree, LineRange)): (String, LineRange) = (l._1, l._3)
     val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines, options)
     val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
@@ -103,7 +102,6 @@ private[sbt] object EvaluateConfigurations {
       addOffsetToRange(offset, settingsAndDefinitions)
     )
     new ParsedFile(allImports, definitions.map(loseTree), settings.map(loseTree))
-  }
 
   /**
    * Evaluates a  parsed sbt configuration file.
@@ -121,10 +119,9 @@ private[sbt] object EvaluateConfigurations {
       lines: Seq[String],
       imports: Seq[String],
       offset: Int
-  ): LazyClassLoaded[Seq[Setting[?]]] = {
+  ): LazyClassLoaded[Seq[Setting[?]]] =
     val l = evaluateSbtFile(eval, file, lines, imports, offset)
     loader => l(loader).settings
-  }
 
   /**
    * Evaluates a parsed sbt configuration file.
@@ -142,7 +139,7 @@ private[sbt] object EvaluateConfigurations {
       lines: Seq[String],
       imports: Seq[String],
       offset: Int
-  ): LazyClassLoaded[LoadedSbtFile] = {
+  ): LazyClassLoaded[LoadedSbtFile] =
     // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
     //        detection for which project manipulations should be applied.
     val name = file match
@@ -150,13 +147,12 @@ private[sbt] object EvaluateConfigurations {
       case file                => file.id
     val parsed = parseConfiguration(file, lines, imports, offset, eval.nonCpOptions)
     val (importDefs, definitions) =
-      if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty)
-      else {
+      if parsed.definitions.isEmpty then (Nil, DefinedSbtValues.empty)
+      else
         val definitions =
           evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
         val imp = BuildUtilLite.importAllRoot(definitions.enclosingModule :: Nil)
         (imp, DefinedSbtValues(definitions))
-      }
     val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
     val dslEntries = parsed.settings map { (dslExpression, range) =>
       evaluateDslEntry(eval, name, allImports, dslExpression, range)
@@ -167,13 +163,12 @@ private[sbt] object EvaluateConfigurations {
 
     // Tracks all the files we generated from evaluating the sbt file.
     val allGeneratedFiles: Seq[Path] = (definitions.generated ++ dslEntries.flatMap(_.generated))
-    loader => {
-      val projects = {
+    loader =>
+      val projects =
         val compositeProjects = definitions
           .values(loader)
           .collect { case p: CompositeProject => p }
         CompositeProject.expand(compositeProjects)
-      }
       val loadedDslEntries = dslEntries.map(_.result.apply(loader))
       val settings = loadedDslEntries.collect { case DslEntry.ProjectSettings(s) => s }.flatten
       val manipulations = loadedDslEntries.collect { case DslEntry.ProjectManipulation(f) => f }
@@ -186,8 +181,7 @@ private[sbt] object EvaluateConfigurations {
         definitions,
         allGeneratedFiles
       )
-    }
-  }
+  end evaluateSbtFile
 
   private def addOffset(offset: Int, lines: Seq[(String, Int)]): Seq[(String, Int)] =
     lines.map { (s, i) => (s, i + offset) }
@@ -201,11 +195,10 @@ private[sbt] object EvaluateConfigurations {
   /**
    * The name of the class we cast DSL "setting" (vs. definition) lines to.
    */
-  val SettingsDefinitionName = {
+  val SettingsDefinitionName =
     val _ =
       classOf[DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
     "sbt.internal.DslEntry"
-  }
 
   /**
    * This actually compiles a scala expression which represents a sbt.internals.DslEntry.
@@ -225,11 +218,11 @@ private[sbt] object EvaluateConfigurations {
       imports: Seq[(String, Int)],
       expression: String,
       range: LineRange
-  ): TrackedEvalResult[DslEntry] = {
+  ): TrackedEvalResult[DslEntry] =
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result =
-      try {
+      try
         eval.eval(
           expression,
           imports = new EvalImports(imports.map(_._1)), // name
@@ -237,18 +230,16 @@ private[sbt] object EvaluateConfigurations {
           tpeName = Some(SettingsDefinitionName),
           line = range.start
         )
-      } catch {
+      catch
         case e: EvalException => throw new MessageOnlyException(e.getMessage)
-      }
     // TODO - keep track of configuration classes defined.
     TrackedEvalResult(
       result.generated,
-      loader => {
+      loader =>
         val pos = RangePosition(name, range.shift(1))
         result.getValue(loader).asInstanceOf[DslEntry].withPos(pos)
-      }
     )
-  }
+  end evaluateDslEntry
 
   /**
    * This actually compiles a scala expression which represents a Seq[Setting[_]], although the
@@ -308,13 +299,11 @@ private[sbt] object EvaluateConfigurations {
     lines partition { case (_, tree, _) => isDefinition(tree) }
 
   @tailrec
-  private def isDefinition(tree: Tree): Boolean = {
-    tree match {
+  private def isDefinition(tree: Tree): Boolean =
+    tree match
       case Annotated(arg, annot) => isDefinition(arg)
       case _: ValOrDefDef        => true
       case _                     => false
-    }
-  }
 
   private def extractedValTypes: Seq[String] =
     Seq(
@@ -330,7 +319,7 @@ private[sbt] object EvaluateConfigurations {
       imports: Seq[(String, Int)],
       definitions: Seq[(String, LineRange)],
       file: Option[VirtualFileRef],
-  ): EvalDefinitions = {
+  ): EvalDefinitions =
     val convertedRanges = definitions.map { (s, r) => (s, r.start to r.end) }
     eval.evalDefinitions(
       convertedRanges,
@@ -339,13 +328,12 @@ private[sbt] object EvaluateConfigurations {
       // file,
       extractedValTypes
     )
-  }
-}
+end EvaluateConfigurations
 
 object BuildUtilLite:
   /** Import just the names. */
   def importNames(names: Seq[String]): Seq[String] =
-    if (names.isEmpty) Nil else names.mkString("import ", ", ", "") :: Nil
+    if names.isEmpty then Nil else names.mkString("import ", ", ", "") :: Nil
 
   /** Prepend `_root_` and import just the names. */
   def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
@@ -353,26 +341,24 @@ object BuildUtilLite:
   /** Wildcard import `.{*, given}` for all values. */
   def importAll(values: Seq[String]): Seq[String] = importNames(values map { _ + ".{*, given}" })
   def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
-  def rootedName(s: String): String = if (s contains '.') "_root_." + s else s
+  def rootedName(s: String): String = if s contains '.' then "_root_." + s else s
 end BuildUtilLite
 
-object Index {
-  def allKeys(settings: Seq[Setting[?]]): Set[ScopedKey[?]] = {
+object Index:
+  def allKeys(settings: Seq[Setting[?]]): Set[ScopedKey[?]] =
     val result = new java.util.HashSet[ScopedKey[?]]
     settings.foreach { s =>
-      if (!s.key.key.isLocal && result.add(s.key)) {
-        s.dependencies.foreach(k => if (!k.key.isLocal) result.add(s.key))
-      }
+      if !s.key.key.isLocal && result.add(s.key) then
+        s.dependencies.foreach(k => if !k.key.isLocal then result.add(s.key))
     }
     result.asScala.toSet
-  }
 
   def stringToKeyMap(settings: Set[AttributeKey[?]]): Map[String, AttributeKey[?]] =
     stringToKeyMap0(settings)(_.label)
 
   private def stringToKeyMap0(
       settings: Set[AttributeKey[?]]
-  )(label: AttributeKey[?] => String): Map[String, AttributeKey[?]] = {
+  )(label: AttributeKey[?] => String): Map[String, AttributeKey[?]] =
     val multiMap = settings.groupBy(label)
     val duplicates = multiMap.iterator
       .collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.tag)) }
@@ -384,11 +370,10 @@ object Index {
         .map { (k, tps) => s"'$k' (${tps.mkString(", ")})" }
         .mkString(",")
       sys.error(s"Some keys were defined with the same name but different types: $duplicateStr")
-  }
 
   private type TriggerMap = collection.mutable.HashMap[TaskId[?], Seq[TaskId[?]]]
 
-  def triggers(ss: Settings): Triggers = {
+  def triggers(ss: Settings): Triggers =
     val runBefore = new TriggerMap
     val triggeredBy = new TriggerMap
     ss.values.collect { case base: Task[?] =>
@@ -400,7 +385,10 @@ object Index {
       update(triggeredBy, Def.triggeredBy)
     }
     val onComplete = (GlobalScope / Def.onComplete).get(ss).getOrElse(() => ())
-    new Triggers(runBefore, triggeredBy, map => { onComplete(); map })
-  }
-
-}
+    new Triggers(
+      runBefore,
+      triggeredBy,
+      map =>
+        onComplete(); map
+    )
+end Index

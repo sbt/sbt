@@ -6,18 +6,17 @@ package sbt.librarymanagement
 import java.io.File
 import java.net.URI
 
-private[librarymanagement] abstract class ArtifactExtra {
+private[librarymanagement] abstract class ArtifactExtra:
   def extraAttributes: Map[String, String]
 
   def withExtraAttributes(extraAttributes: Map[String, String]): Artifact
 
   def extra(attributes: (String, String)*) =
     withExtraAttributes(extraAttributes ++ ModuleID.checkE(attributes))
-}
 
 import Configurations.{ Optional, Pom, Test }
 
-private[librarymanagement] abstract class ArtifactFunctions {
+private[librarymanagement] abstract class ArtifactFunctions:
   def apply(name: String, extra: Map[String, String]): Artifact =
     Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra, None)
   def apply(name: String, classifier: String): Artifact =
@@ -80,17 +79,14 @@ private[librarymanagement] abstract class ArtifactFunctions {
   assert(DefaultSourceTypes contains SourceType)
 
   def extract(uri: URI, default: String): String = extract(uri.toString, default)
-  def extract(name: String, default: String): String = {
+  def extract(name: String, default: String): String =
     val i = name.lastIndexOf('.')
-    if (i >= 0)
-      name.substring(i + 1)
-    else
-      default
-  }
-  def defaultArtifact(file: File) = {
+    if i >= 0 then name.substring(i + 1)
+    else default
+  def defaultArtifact(file: File) =
     val name = file.getName
     val i = name.lastIndexOf('.')
-    val base = if (i >= 0) name.substring(0, i) else name
+    val base = if i >= 0 then name.substring(0, i) else name
     Artifact(
       base,
       extract(name, DefaultType),
@@ -99,18 +95,17 @@ private[librarymanagement] abstract class ArtifactFunctions {
       Vector.empty,
       Some(file.toURI)
     )
-  }
-  def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String = {
+  def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String =
     import artifact.*
-    val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
+    val classifierStr = classifier match
+      case None    => "";
+      case Some(c) => "-" + c
     val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
-    val withPlatform = module.crossVersion match {
+    val withPlatform = module.crossVersion match
       case _: Disabled => artifact.name
       case _           => CrossVersion.addPlatformSuffix(artifact.name, module.platformOpt, None)
-    }
     val base = CrossVersion.applyCross(withPlatform, cross)
     base + "-" + module.revision + classifierStr + "." + artifact.extension
-  }
 
   /**
    * Like `artifactName`, but omits the module's version.
@@ -134,10 +129,8 @@ private[librarymanagement] abstract class ArtifactFunctions {
   val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
   @deprecated("Configuration should not be decided from the classifier.", "1.0")
   def classifierConf(classifier: String): Configuration =
-    if (classifier.startsWith(TestsClassifier))
-      Test
-    else
-      Optional
+    if classifier.startsWith(TestsClassifier) then Test
+    else Optional
   def classifierType(classifier: String): String =
     classifierTypeMap.getOrElse(classifier.stripPrefix(TestsClassifier + "-"), DefaultType)
 
@@ -155,4 +148,4 @@ private[librarymanagement] abstract class ArtifactFunctions {
       Vector.empty,
       None
     )
-}
+end ArtifactFunctions

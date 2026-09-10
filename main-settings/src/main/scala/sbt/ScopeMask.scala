@@ -14,22 +14,16 @@ final case class ScopeMask(
     config: Boolean = true,
     task: Boolean = true,
     extra: Boolean = true
-) {
-  def concatShow(p: String, c: String, t: String, sep: String, x: String): String = {
+):
+  def concatShow(p: String, c: String, t: String, sep: String, x: String): String =
     val sb = new StringBuilder
-    if (project) {
+    if project then
       sb.append(p); ()
-    }
-    if (config) {
+    if config then
       sb.append(c); ()
-    }
-    if (task) {
+    if task then
       sb.append(t); ()
-    }
     sb.append(sep)
-    if (extra) {
+    if extra then
       sb.append(x); ()
-    }
     sb.toString
-  }
-}

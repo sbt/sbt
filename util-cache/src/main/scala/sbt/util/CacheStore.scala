@@ -17,14 +17,12 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Parser }
 import sjsonnew.{ IsoString, JsonReader, JsonWriter, SupportConverter }
 
 /** A `CacheStore` is used by the caching infrastructure to persist cached information. */
-abstract class CacheStore extends Input with Output {
+abstract class CacheStore extends Input with Output:
 
   /** Delete the persisted information. */
   def delete(): Unit
 
-}
-
-object CacheStore {
+object CacheStore:
   @deprecated("Create your own IsoString[JValue]", "1.4") given jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
@@ -36,10 +34,9 @@ object CacheStore {
 
   /** Returns a file-based CacheStore that gzips what it writes. */
   private[sbt] def gzipFile(cacheFile: File): CacheStore = new GzipFileBasedStore(cacheFile)
-}
 
 /** Factory that can make new stores. */
-abstract class CacheStoreFactory {
+abstract class CacheStoreFactory:
 
   /** Create a new store. */
   def make(identifier: String): CacheStore
@@ -52,9 +49,8 @@ abstract class CacheStoreFactory {
 
   /** A symbolic alias for `sub`. */
   final def /(identifier: String): CacheStoreFactory = sub(identifier)
-}
 
-object CacheStoreFactory {
+object CacheStoreFactory:
   @deprecated("Create your own IsoString[JValue]", "1.4") given jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
@@ -63,10 +59,9 @@ object CacheStoreFactory {
 
   /** Returns directory-based CacheStoreFactory using standard JSON converter. */
   def directory(base: File): CacheStoreFactory = new DirectoryStoreFactory(base)
-}
 
 /** A factory that creates new stores persisted in `base`. */
-class DirectoryStoreFactory[J](base: File) extends CacheStoreFactory {
+class DirectoryStoreFactory[J](base: File) extends CacheStoreFactory:
   IO.createDirectory(base)
 
   def make(identifier: String): CacheStore = new FileBasedStore(base / identifier)
@@ -76,10 +71,9 @@ class DirectoryStoreFactory[J](base: File) extends CacheStoreFactory {
 
   def sub(identifier: String): CacheStoreFactory =
     new DirectoryStoreFactory(base / identifier)
-}
 
 /** A `CacheStore` that persists information in `file`. */
-class FileBasedStore[J](file: File) extends CacheStore {
+class FileBasedStore[J](file: File) extends CacheStore:
   IO.touch(file, setModified = false)
 
   def read[T: JsonReader]() =
@@ -90,10 +84,9 @@ class FileBasedStore[J](file: File) extends CacheStore {
 
   def delete() = IO.delete(file)
   def close() = ()
-}
 
 /** A `CacheStore` that persists information in `file`, gzip-framed. */
-private[sbt] class GzipFileBasedStore(file: File) extends CacheStore {
+private[sbt] class GzipFileBasedStore(file: File) extends CacheStore:
   IO.touch(file, setModified = false)
 
   def read[T: JsonReader]() =
@@ -104,16 +97,15 @@ private[sbt] class GzipFileBasedStore(file: File) extends CacheStore {
 
   def delete() = IO.delete(file)
   def close() = ()
-}
 
 /** A store that reads from `inputStream` and writes to `outputStream`. */
 class StreamBasedStore[J: IsoString](
     inputStream: InputStream,
     outputStream: OutputStream,
     converter: SupportConverter[J]
-) extends CacheStore {
+) extends CacheStore:
   def read[T: JsonReader]() = new PlainInput(inputStream, converter).read()
   def write[T: JsonWriter](value: T) = new PlainOutput(outputStream, converter).write(value)
   def delete() = ()
-  def close() = { inputStream.close(); outputStream.close() }
-}
+  def close() =
+    inputStream.close(); outputStream.close()

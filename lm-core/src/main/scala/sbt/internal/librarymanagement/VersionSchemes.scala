@@ -13,7 +13,7 @@ import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.{ EvictionWarningOptions, ModuleID, ScalaModuleInfo }
 
 // See APIMappings.scala
-private[sbt] object VersionSchemes {
+private[sbt] object VersionSchemes:
   final val EarlySemVer = "early-semver"
   final val SemVerSpec = "semver-spec"
   final val PackVer = "pvp"
@@ -21,7 +21,7 @@ private[sbt] object VersionSchemes {
   final val Always = "always"
 
   def validateScheme(value: String): Unit =
-    value match {
+    value match
       case EarlySemVer | SemVerSpec | PackVer | Strict | Always => ()
       case "semver"                                             =>
         sys.error(
@@ -34,7 +34,6 @@ private[sbt] object VersionSchemes {
              |Specify 'semver-spec' for the spec-correct SemVer.""".stripMargin
         )
       case x => sys.error(s"unknown version scheme: $x")
-    }
 
   /**
    * info.versionScheme property will be included into POM after sbt 1.4.0.
@@ -47,11 +46,10 @@ private[sbt] object VersionSchemes {
   def evalFunc(
       scheme: String
   ): Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
-    scheme match {
+    scheme match
       case EarlySemVer => EvictionWarningOptions.guessEarlySemVer
       case SemVerSpec  => EvictionWarningOptions.guessSemVer
       case PackVer     => EvictionWarningOptions.evalPvp
       case Strict      => EvictionWarningOptions.guessStrict
       case Always      => EvictionWarningOptions.guessTrue
-    }
-}
+end VersionSchemes

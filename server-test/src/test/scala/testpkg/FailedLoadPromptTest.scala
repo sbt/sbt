@@ -22,33 +22,28 @@ import scala.collection.mutable
  * The failed-load prompt must reach the interactive client that triggered the reload,
  * and its answer must get back to the server: typing 'r' retries the load.
  */
-class FailedLoadPromptTest extends AbstractServerTest {
+class FailedLoadPromptTest extends AbstractServerTest:
   override val testDirectory: String = "client"
 
-  private class CachingOutputStream extends OutputStream {
+  private class CachingOutputStream extends OutputStream:
     private val byteBuffer = new mutable.ArrayBuffer[Byte]
     override def write(i: Int) = Util.ignoreResult(synchronized(byteBuffer += i.toByte))
     def text: String = new String(synchronized(byteBuffer.toArray), "UTF-8")
-  }
   private class CachingPrintStream(val cos: CachingOutputStream = new CachingOutputStream)
-      extends PrintStream(cos, true) {
+      extends PrintStream(cos, true):
     def text: String = cos.text
-  }
-  private class QueueInputStream extends InputStream {
+  private class QueueInputStream extends InputStream:
     private val queue = new LinkedBlockingQueue[Integer]
     def push(s: String): Unit = s.getBytes("UTF-8").foreach(b => queue.put(b.toInt))
     override def read(): Int = queue.take()
-  }
 
-  private def awaitUntil(deadlineSeconds: Int)(condition: => Boolean): Boolean = {
+  private def awaitUntil(deadlineSeconds: Int)(condition: => Boolean): Boolean =
     val deadline = System.nanoTime + deadlineSeconds * 1000000000L
     var met = condition
-    while (!met && System.nanoTime < deadline) {
+    while !met && System.nanoTime < deadline do
       Thread.sleep(500)
       met = condition
-    }
     met
-  }
 
   test("an interactive client can answer the failed-load prompt") {
     val buildFile = testPath.resolve("build.sbt")
@@ -57,13 +52,11 @@ class FailedLoadPromptTest extends AbstractServerTest {
     val out = new CachingPrintStream
     val err = new CachingPrintStream
     val exitCode = new AtomicReference[Option[Int]](None)
-    val clientThread = new Thread("failed-load-prompt-test-client") {
+    val clientThread = new Thread("failed-load-prompt-test-client"):
       setDaemon(true)
-      override def run(): Unit = {
+      override def run(): Unit =
         val code = NetworkClient.client(testPath.toFile, Array.empty[String], in, out, err, false)
         exitCode.set(Some(code))
-      }
-    }
     clientThread.start()
     assert(awaitUntil(30)(out.text.contains("sbt:")), s"client never attached: ${out.text}")
 
@@ -89,4 +82,4 @@ class FailedLoadPromptTest extends AbstractServerTest {
     in.push("exit\r")
     assert(awaitUntil(60)(exitCode.get.isDefined), s"client did not exit: ${out.text}")
   }
-}
+end FailedLoadPromptTest

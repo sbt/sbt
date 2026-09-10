@@ -9,7 +9,7 @@ package sbt.internal.util
 
 import collection.mutable
 
-trait RMap[K[_], V[_]] {
+trait RMap[K[_], V[_]]:
   def apply[T](k: K[T]): V[T]
   def get[T](k: K[T]): Option[V[T]]
   def contains[T](k: K[T]): Boolean
@@ -24,23 +24,20 @@ trait RMap[K[_], V[_]] {
   def isEmpty: Boolean
 
   sealed case class TPair[T](key: K[T], value: V[T])
-}
 
-trait IMap[K[_], V[_]] extends RMap[K, V] {
+trait IMap[K[_], V[_]] extends RMap[K, V]:
   def put[T](k: K[T], v: V[T]): IMap[K, V]
   def remove[T](k: K[T]): IMap[K, V]
   def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): IMap[K, V]
   def mapValues[V2[_]](f: [A] => V[A] => V2[A]): IMap[K, V2]
-}
 
-trait PMap[K[_], V[_]] extends RMap[K, V] {
+trait PMap[K[_], V[_]] extends RMap[K, V]:
   def update[T](k: K[T], v: V[T]): Unit
   def remove[T](k: K[T]): Option[V[T]]
   def getOrUpdate[T](k: K[T], make: => V[T]): V[T]
   def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): V[T]
-}
 
-object PMap {
+object PMap:
   // implicit def toFunction[K[_], V[_]](map: PMap[K, V]): [A] => K[A] => V[A] =
   //   [A] => (k: K[A]) => map.apply[A](k)
 
@@ -49,9 +46,8 @@ object PMap {
       def apply(map: PMap[K, V]): [A] => K[A] => V[A] =
         [A] => (k: K[A]) => map.apply[A](k)
   def empty[K[_], V[_]]: PMap[K, V] = new DelegatingPMap[K, V](new mutable.HashMap)
-}
 
-object IMap {
+object IMap:
 
   /**
    * Only suitable for K that is invariant in its type parameter. Option and List keys are not
@@ -64,7 +60,7 @@ object IMap {
 
   private[sbt] class IMap0[K[_], V[_]](val backing: Map[K[Any], V[Any]])
       extends AbstractRMap[K, V]
-      with IMap[K, V] {
+      with IMap[K, V]:
     def get[T](k: K[T]): Option[V[T]] =
       (backing get k.asInstanceOf).asInstanceOf[Option[V[T]]]
     def put[T](k: K[T], v: V[T]) =
@@ -85,13 +81,12 @@ object IMap {
     def isEmpty = backing.isEmpty
 
     override def toString = backing.toString
-  }
-}
+  end IMap0
+end IMap
 
-abstract class AbstractRMap[K[_], V[_]] extends RMap[K, V] {
+abstract class AbstractRMap[K[_], V[_]] extends RMap[K, V]:
   def apply[T](k: K[T]): V[T] = get(k).get
   def contains[T](k: K[T]): Boolean = get(k).isDefined
-}
 
 /**
  * Only suitable for K that is invariant in its type parameter. Option and List keys are not
@@ -99,18 +94,17 @@ abstract class AbstractRMap[K[_], V[_]] extends RMap[K, V] {
  */
 class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[Any], V[Any]])
     extends AbstractRMap[K, V]
-    with PMap[K, V] {
+    with PMap[K, V]:
   def get[T](k: K[T]): Option[V[T]] = cast[T](backing.get(k.asInstanceOf))
-  def update[T](k: K[T], v: V[T]): Unit = { backing(k.asInstanceOf) = v.asInstanceOf }
+  def update[T](k: K[T], v: V[T]): Unit = backing(k.asInstanceOf) = v.asInstanceOf
   def remove[T](k: K[T]) = cast(backing.remove(k.asInstanceOf))
   def getOrUpdate[T](k: K[T], make: => V[T]) =
     cast[T](backing.getOrElseUpdate(k.asInstanceOf, make.asInstanceOf))
 
-  def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): V[T] = {
+  def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): V[T] =
     val v = f(this.get(k).getOrElse(init))
     update(k, v)
     v
-  }
 
   def toSeq: Seq[(K[Any], V[Any])] = backing.toSeq
   def keys: Iterable[K[Any]] = backing.keys
@@ -121,4 +115,4 @@ class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[Any], V[Any]])
   private def cast[A](o: Option[V[Any]]): Option[V[A]] = o map cast[A]
 
   override def toString = backing.toString
-}
+end DelegatingPMap

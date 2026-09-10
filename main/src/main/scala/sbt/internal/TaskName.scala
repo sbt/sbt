@@ -12,7 +12,7 @@ package internal
 import Def.{ displayFull, ScopedKey }
 import Keys.taskDefinitionKey
 
-private[sbt] object TaskName {
+private[sbt] object TaskName:
   def name(node: Task[?]): String = definedName(node).getOrElse(anonymousName(node))
   def definedName(node: Task[?]): Option[String] =
     node.name.orElse(transformNode(node).map(displayFull))
@@ -20,4 +20,3 @@ private[sbt] object TaskName {
     "<anon-" + System.identityHashCode(node).toHexString + ">"
   def transformNode(node: Task[?]): Option[ScopedKey[?]] =
     node.get(taskDefinitionKey)
-}

@@ -3,9 +3,9 @@ package sbt.internal.librarymanagement.formats
 import sjsonnew.*
 import scala.xml.*
 
-trait NodeSeqFormat { self: BasicJsonProtocol =>
+trait NodeSeqFormat:
+  self: BasicJsonProtocol =>
   given NodeSeqFormat: JsonFormat[NodeSeq] = projectFormat[NodeSeq, String](
     xml => <binary>{xml}</binary>.toString,
     str => XML.loadString(str).child
   )
-}

@@ -35,7 +35,7 @@ class CoursierDependencyResolution(
     conf: CoursierConfiguration,
     protocolHandlerConfiguration: Option[CoursierConfiguration],
     bootstrappingProtocolHandler: Boolean
-) extends DependencyResolutionInterface {
+) extends DependencyResolutionInterface:
 
   def this(conf: CoursierConfiguration) =
     this(
@@ -51,16 +51,14 @@ class CoursierDependencyResolution(
       configuration: UpdateConfiguration,
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
-  ): ClassLoader = {
+  ): ClassLoader =
 
     val conf0 = protocolHandlerConfiguration.getOrElse(conf)
 
-    def isUnknownProtocol(rawURL: String): Boolean = {
-      Try(new URI(rawURL).toURL) match {
+    def isUnknownProtocol(rawURL: String): Boolean =
+      Try(new URI(rawURL).toURL) match
         case Failure(ex) if ex.getMessage.startsWith("unknown protocol: ") => true
         case _                                                             => false
-      }
-    }
 
     val confWithoutUnknownProtocol =
       conf0.withResolvers(
@@ -88,7 +86,7 @@ class CoursierDependencyResolution(
     val reportOrUnresolved =
       resolution.update(moduleDescriptor(fakeModule), configuration, uwconfig, log)
 
-    val report = reportOrUnresolved match {
+    val report = reportOrUnresolved match
       case Right(report0) =>
         report0
 
@@ -96,17 +94,16 @@ class CoursierDependencyResolution(
         import sbt.util.ShowLines.*
         unresolvedWarning.lines.foreach(log.warn(_))
         throw unresolvedWarning.resolveException
-    }
 
     val jars =
-      for {
+      for
         reportConfiguration <- report.configurations.filter(_.configuration.name == "runtime")
         module <- reportConfiguration.modules
         (_, jar) <- module.artifacts
-      } yield jar
+      yield jar
 
     new URLClassLoader(jars.map(_.toURI().toURL()).toArray)
-  }
+  end fetchProtocolHandlerClassLoader
 
   /*
    * Based on earlier implementations by @leonardehrenfried (https://github.com/sbt/librarymanagement/pull/190)
@@ -122,29 +119,26 @@ class CoursierDependencyResolution(
       configuration: UpdateConfiguration,
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
-  ): Either[UnresolvedWarning, UpdateReport] = {
+  ): Either[UnresolvedWarning, UpdateReport] =
 
-    if (bootstrappingProtocolHandler && protocolHandlerClassLoader.isEmpty)
+    if bootstrappingProtocolHandler && protocolHandlerClassLoader.isEmpty then
       protocolHandlerClassLoaderLock.synchronized {
-        if (bootstrappingProtocolHandler && protocolHandlerClassLoader.isEmpty) {
+        if bootstrappingProtocolHandler && protocolHandlerClassLoader.isEmpty then
           val classLoader = fetchProtocolHandlerClassLoader(configuration, uwconfig, log)
           protocolHandlerClassLoader = Some(classLoader)
-        }
       }
 
     val conf = this.conf.withUpdateConfiguration(configuration)
 
     // TODO Take stuff in configuration into account? uwconfig too?
 
-    val module0 = module match {
+    val module0 = module match
       case c: CoursierModuleDescriptor =>
         c.descriptor
       case other =>
-        other.moduleSettings match {
+        other.moduleSettings match
           case d: ModuleDescriptorConfiguration => d
           case s                                => sys.error(s"unrecognized module settings: $s")
-        }
-    }
 
     val soOpt = module0.scalaModuleInfo
       .map(_.scalaOrganization)
@@ -169,16 +163,13 @@ class CoursierDependencyResolution(
       optionalCrossVer = true,
       projectPlatform = projectPlatform
     )
-    val interProjectDependencies = {
+    val interProjectDependencies =
       val needed = conf.interProjectDependencies.exists { p =>
         p.module == mod && p.version == ver
       }
 
-      if (needed)
-        conf.interProjectDependencies.map(ToCoursier.project)
-      else
-        Vector.empty[coursier.core.Project]
-    }
+      if needed then conf.interProjectDependencies.map(ToCoursier.project)
+      else Vector.empty[coursier.core.Project]
 
     val extraProjects = conf.extraProjects.map(ToCoursier.project)
 
@@ -194,10 +185,8 @@ class CoursierDependencyResolution(
     val ivyProperties = ResolutionParams.defaultIvyProperties(conf.ivyHome)
 
     val classifiers =
-      if (conf.hasClassifiers)
-        Some(conf.classifiers.map(Classifier(_)))
-      else
-        None
+      if conf.hasClassifiers then Some(conf.classifiers.map(Classifier(_)))
+      else None
 
     val authenticationByRepositoryId = conf.authenticationByRepositoryId.toMap
 
@@ -238,7 +227,7 @@ class CoursierDependencyResolution(
       }
       .map { (config, dep) =>
         val depForResolve =
-          if (boms.nonEmpty && (dep.version == "*" || dep.version.isEmpty))
+          if boms.nonEmpty && (dep.version == "*" || dep.version.isEmpty) then
             lmcoursier.definitions.Dependency(
               dep.module,
               "",
@@ -248,8 +237,7 @@ class CoursierDependencyResolution(
               dep.optional,
               dep.transitive
             )
-          else
-            dep
+          else dep
         (ToCoursier.configuration(config), ToCoursier.dependency(depForResolve))
       }
 
@@ -279,7 +267,7 @@ class CoursierDependencyResolution(
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
       orderedConfigs = orderedConfigs,
-      autoScalaLibOpt = if (autoScalaLib) Some((so, sv)) else None,
+      autoScalaLibOpt = if autoScalaLib then Some((so, sv)) else None,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
       interProjectDependencies = interProjectDependencies,
@@ -357,7 +345,7 @@ class CoursierDependencyResolution(
         classLoaders = protocolHandlerClassLoader.toSeq,
       )
 
-    val e = for {
+    val e = for
       (resolutions, lockDataOpt) <- ResolutionRun.resolutionsWithLockFileData(
         resolutionParams,
         verbosityLevel,
@@ -365,22 +353,19 @@ class CoursierDependencyResolution(
         conf.lockFile,
         conf.scalaVersion
       )
-      artifactResult0 <- lockDataOpt match {
+      artifactResult0 <- lockDataOpt match
         case Some(lockData) =>
-          LockedArtifactsRun.fetchFromLockFile(lockData, cache0, verbosityLevel, log) match {
+          LockedArtifactsRun.fetchFromLockFile(lockData, cache0, verbosityLevel, log) match
             case Right(arts) => Right(arts)
             case Left(err)   =>
-              if (verbosityLevel >= 1) {
+              if verbosityLevel >= 1 then
                 log.warn(s"Failed to fetch from lock file: $err, falling back to normal fetch")
-              }
               ArtifactsRun(artifactsParams(resolutions), verbosityLevel, log)
                 .map(_.fullDetailedArtifacts0)
-          }
         case None =>
           ArtifactsRun(artifactsParams(resolutions), verbosityLevel, log)
             .map(_.fullDetailedArtifacts0)
-      }
-    } yield {
+    yield
       val artifactResult = artifactResult0.map {
         case (d, p: Publication, a, o) =>
           (d, (Right(p): Either[VariantPublication, Publication]), a, o)
@@ -388,7 +373,7 @@ class CoursierDependencyResolution(
       }
       val updateParams0 = updateParams(resolutions, artifactResult)
       val report = UpdateRun.update(updateParams0, verbosityLevel, log)
-      if (lockDataOpt.isEmpty) {
+      if lockDataOpt.isEmpty then
         conf.lockFile.foreach: lockFile =>
           val artifactMap = artifactResult
             .groupBy(_._1)
@@ -411,11 +396,10 @@ class CoursierDependencyResolution(
           ) match
             case Right(lockData) => LockFile.write(lockFile, lockData)
             case Left(err)       => throw err
-      }
+      end if
       report
-    }
     e.left.map(unresolvedWarningOrThrow(module0.module, uwconfig, _))
-  }
+  end update
 
   private def toModuleId(module: coursier.core.Module, version: String): ModuleID =
     ModuleID(module.organization.value, module.name.value, version)
@@ -439,9 +423,7 @@ class CoursierDependencyResolution(
       resolution.dependenciesOf0(dependency, false, false) match
         case Right(deps) => sortDependencies(deps)
         case Left(_)     => Vector.empty
-    catch {
-      case NonFatal(_) => Vector.empty
-    }
+    catch case NonFatal(_) => Vector.empty
 
   private def pathScore(path: Vector[Dependency]): (Int, String) =
     path.size -> path
@@ -454,26 +436,24 @@ class CoursierDependencyResolution(
       candidate: Vector[Dependency],
       currentBest: Option[Vector[Dependency]]
   ): Option[Vector[Dependency]] =
-    currentBest match {
+    currentBest match
       case Some(best) =>
         val (bestLength, bestPathStr) = pathScore(best)
         val (candidateLength, candidatePathStr) = pathScore(candidate)
-        if (
-          bestLength > candidateLength || (bestLength == candidateLength && bestPathStr >= candidatePathStr)
-        ) currentBest
+        if bestLength > candidateLength || (bestLength == candidateLength && bestPathStr >= candidatePathStr)
+        then currentBest
         else Some(candidate)
       case _ => Some(candidate)
-    }
 
   private def longestPathToTarget(
       resolution: Resolution,
       current: Dependency,
       target: DependencyKey,
       seen: Set[DependencyKey]
-  ): Option[Vector[Dependency]] = {
+  ): Option[Vector[Dependency]] =
     val currentKey = dependencyKey(current)
-    if (currentKey == target) Some(Vector(current))
-    else {
+    if currentKey == target then Some(Vector(current))
+    else
       safeDependenciesOf(resolution, current).iterator
         .filterNot(dep => seen(dependencyKey(dep)))
         .foldLeft(Option.empty[Vector[Dependency]]) { (best, dep) =>
@@ -481,36 +461,31 @@ class CoursierDependencyResolution(
           val candidate = longestPathToTarget(resolution, dep, target, seen + key).map { tail =>
             current +: tail
           }
-          candidate match {
+          candidate match
             case Some(path) => betterPath(path, best)
             case None       => best
-          }
         }
-    }
-  }
 
   private def resolvePath(
       resolution: Resolution,
       failedDependency: Dependency,
       rootModule: ModuleID
-  ): Seq[ModuleID] = {
+  ): Seq[ModuleID] =
     val normalizedRootModule = rootModule.withConfigurations(None)
     val roots = sortDependencies(resolution.rootDependencies)
     val target = dependencyKey(failedDependency)
     val resolvedPath = roots
       .foldLeft(Option.empty[Vector[Dependency]]) { (best, root) =>
         val candidate = longestPathToTarget(resolution, root, target, Set(dependencyKey(root)))
-        candidate match {
+        candidate match
           case Some(path) => betterPath(path, best)
           case None       => best
-        }
       }
       .getOrElse(Vector(failedDependency))
 
     normalizedRootModule +: resolvedPath.map(dep =>
       toModuleId(dep.module, dep.versionConstraint.asString)
     )
-  }
 
   private def failedPaths(
       rootModule: ModuleID,
@@ -527,19 +502,18 @@ class CoursierDependencyResolution(
       rootModule: ModuleID,
       uwconfig: UnresolvedWarningConfiguration,
       ex: coursier.error.CoursierError
-  ): UnresolvedWarning = {
+  ): UnresolvedWarning =
 
     // TODO Take coursier.error.FetchError.DownloadingArtifacts into account
 
-    val downloadErrors = ex match {
+    val downloadErrors = ex match
       case ex0: coursier.error.ResolutionError =>
         ex0.errors.collect { case err: coursier.error.ResolutionError.CantDownloadModule =>
           err
         }
       case _ =>
         Nil
-    }
-    val otherErrors = ex match {
+    val otherErrors = ex match
       case ex0: coursier.error.ResolutionError =>
         ex0.errors.flatMap {
           case _: coursier.error.ResolutionError.CantDownloadModule => None
@@ -547,13 +521,11 @@ class CoursierDependencyResolution(
         }
       case _ =>
         Seq(ex)
-    }
 
-    if (otherErrors.isEmpty) {
-      val resolution = ex match {
+    if otherErrors.isEmpty then
+      val resolution = ex match
         case ex0: coursier.error.ResolutionError => ex0.resolution
         case _                                   => Resolution()
-      }
       val resolvedPaths = failedPaths(rootModule, resolution, downloadErrors)
       val r = new ResolveException(
         downloadErrors.map(_.getMessage),
@@ -568,12 +540,11 @@ class CoursierDependencyResolution(
         resolvedPaths
       )
       UnresolvedWarning(r, uwconfig)
-    } else
-      throw ex
-  }
-}
+    else throw ex
+  end unresolvedWarningOrThrow
+end CoursierDependencyResolution
 
-object CoursierDependencyResolution {
+object CoursierDependencyResolution:
   def apply(configuration: CoursierConfiguration): DependencyResolution =
     DependencyResolution(new CoursierDependencyResolution(configuration))
 
@@ -594,4 +565,4 @@ object CoursierDependencyResolution {
 
   private[lmcoursier] def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String =
     lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(fileUrl, cacheDir)
-}
+end CoursierDependencyResolution

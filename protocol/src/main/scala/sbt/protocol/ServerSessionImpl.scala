@@ -47,7 +47,7 @@ import java.util.UUID
 private[sbt] class ServerSessionImpl(
     socket: Socket,
     threadName: String = "sbt-server-session-read-thread"
-) extends ServerSession {
+) extends ServerSession:
 
   /** Controls the read loop; set to `false` to stop reading from the socket. */
   private val running = new AtomicBoolean(true)
@@ -90,16 +90,16 @@ private[sbt] class ServerSessionImpl(
    * Each frame is deserialized and dispatched to [[onRequest]], [[onResponse]],
    * [[onNotification]], or [[onInvalidFrame]].
    */
-  private val readThread = new Thread(threadName) {
+  private val readThread = new Thread(threadName):
     setDaemon(true)
-    override def run(): Unit = {
-      try {
+    override def run(): Unit =
+      try
         val in = socket.getInputStream
         socket.setSoTimeout(ServerSessionImpl.ReadIoTimeout)
-        while (running.get) {
-          try {
+        while running.get do
+          try
             val frame = JsonRpcReader.read(in, running, onHeader = None)
-            if (running.get) {
+            if running.get then
               Serialization
                 .deserializeJsonMessage(frame)
                 .fold(
@@ -110,17 +110,10 @@ private[sbt] class ServerSessionImpl(
                     case msg: JsonRpcNotificationMessage => onNotification(msg)
                   }
                 )
-            }
-          } catch {
+          catch
             case _: SocketTimeoutException => // re-check running
             case _: IOException            => running.set(false)
-          }
-        }
-      } finally {
-        close()
-      }
-    }
-  }
+      finally close()
   readThread.start()
 
   /** Returns `true` if the session is still actively reading from the socket. */
@@ -133,52 +126,51 @@ private[sbt] class ServerSessionImpl(
    * I/O and before joining the read thread. When called from the read thread
    * itself (via the `finally` block), skips the thread join to avoid deadlock.
    */
-  override def close(): Unit = if (closed.compareAndSet(false, true)) {
+  override def close(): Unit = if closed.compareAndSet(false, true) then
     running.set(false)
-    try {
+    try
       // close() cannot deliver EOF while the read thread is parked in a native read
       socket.shutdownInput()
       out.close()
       socket.close()
-    } catch case _: IOException => ()
+    catch case _: IOException => ()
     onClose()
     if Thread.currentThread() != readThread then
       try readThread.joinFor(ServerSessionImpl.ReadThreadDestroyTimeout)
       catch case _: TimeoutException => ()
-  }
 
   override def nextId(): String = UUID.randomUUID.toString
 
   override def sendJsonRpc[A: JsonWriter](id: String, method: String, params: A): Try[Unit] =
-    for {
+    for
       converted <- Converter.toJson(params)
       _ <- sendJsonRpc(JsonRpcRequestMessage("2.0", id, method, converted))
-    } yield ()
+    yield ()
 
   override def sendJsonRpc(message: JsonRpcRequestMessage): Try[Unit] =
-    for {
+    for
       converted <- Converter.toJson(message)
       _ <- sendJsonRpcRaw(CompactPrinter(converted))
-    } yield ()
+    yield ()
 
   override def sendJsonRpcNotification[A: JsonWriter](method: String, params: A): Try[Unit] =
-    for {
+    for
       converted <- Converter.toJson(params)
       _ <- sendJsonRpcRaw(
         CompactPrinter(
           Converter.toJson(JsonRpcNotificationMessage("2.0", method, converted)).get
         )
       )
-    } yield ()
+    yield ()
 
   override def sendJsonRpcResponse[A: JsonWriter](id: String, result: A): Try[Unit] =
-    for {
+    for
       convertedResult <- Converter.toJson(result)
       convertedResponse <- Converter.toJson(
         JsonRpcResponseMessage("2.0", id, Some(convertedResult), None)
       )
       _ <- sendJsonRpcRaw(CompactPrinter(convertedResponse))
-    } yield ()
+    yield ()
 
   override def sendJsonRpcRaw(id: String, method: String, params: String): Try[Unit] =
     sendJsonRpcRaw(Serialization.serializeJsonRpcRequest(id, method, params))
@@ -194,7 +186,7 @@ private[sbt] class ServerSessionImpl(
     Try(JsonRpcWriter.write(out, message))
 
   override def sendJsonRpcAwaitResult[R: JsonReader]: ServerSession.SendAwaitResult[R] =
-    new ServerSession.SendAwaitResult[R] {
+    new ServerSession.SendAwaitResult[R]:
       override def apply[A: JsonWriter](method: String, params: A): Try[R] =
         apply(method, params, ServerSessionImpl.ResponseTimeout)
 
@@ -202,20 +194,18 @@ private[sbt] class ServerSessionImpl(
           method: String,
           params: A,
           timeout: FiniteDuration
-      ): Try[R] = {
+      ): Try[R] =
         val id = nextId()
-        for {
+        for
           _ <- sendJsonRpc(id, method, params)
           result <- waitForResultInResponseMsg[R](timeout, id)
-        } yield result
-      }
-    }
+        yield result
 
   override def initialize(
       timeout: FiniteDuration,
       subscribeToAll: Boolean
   ): Try[InitializeResult] =
-    for {
+    for
       options <- Converter
         .toJson(
           InitializeOption(
@@ -235,7 +225,7 @@ private[sbt] class ServerSessionImpl(
       )
       id = nextId()
       result <- sendJsonRpcAwaitResult[InitializeResult]("initialize", params, timeout)
-    } yield result
+    yield result
 
   /**
    * Polls a typed queue for a message that `f` maps to `Some`, discarding
@@ -252,18 +242,16 @@ private[sbt] class ServerSessionImpl(
     val deadline = duration.fromNow
     @tailrec
     def impl(): B =
-      Option(queue.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS)) match {
+      Option(queue.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS)) match
         case None =>
           throw new TimeoutException(s"Timeout waiting for response after $duration")
         case Some(msg) =>
-          f(msg) match {
+          f(msg) match
             case Some(result) => result
             case None         =>
-              if (deadline.isOverdue())
+              if deadline.isOverdue() then
                 throw new TimeoutException(s"Timeout waiting for response after $duration")
               else impl()
-          }
-      }
     impl()
   }
 
@@ -286,11 +274,11 @@ private[sbt] class ServerSessionImpl(
       predicate: T => Boolean
   ): Try[T] =
     pollUntil(responses, duration) { msg =>
-      for {
+      for
         result <- msg.result
         value <- Converter.fromJson[T](result).toOption
         if predicate(value)
-      } yield value
+      yield value
     }
 
   override def waitForResultInResponseMsg[T: JsonReader](
@@ -298,10 +286,9 @@ private[sbt] class ServerSessionImpl(
       id: String
   ): Try[T] =
     waitForResponseMsg(duration, id).flatMap { response =>
-      response.result match {
+      response.result match
         case Some(r) => Converter.fromJson[T](r)
         case None    => Failure(new RuntimeException(s"Response has no result: $response"))
-      }
     }
 
   override def waitForNotificationMsg(
@@ -317,45 +304,38 @@ private[sbt] class ServerSessionImpl(
       predicate: T => Boolean
   ): Try[T] =
     pollUntil(notifications, duration) { msg =>
-      for {
+      for
         params <- msg.params
         value <- Converter.fromJson[T](params).toOption
         if predicate(value)
-      } yield value
+      yield value
     }
 
-  override def shutdown(isAlive: => Boolean, destroy: () => Unit): Try[Unit] = {
-    def waitForExit(isAlive: => Boolean, timeout: FiniteDuration): Unit = {
+  override def shutdown(isAlive: => Boolean, destroy: () => Unit): Try[Unit] =
+    def waitForExit(isAlive: => Boolean, timeout: FiniteDuration): Unit =
       val deadline = timeout.fromNow
-      while (!deadline.isOverdue() && isAlive) Thread.sleep(10)
-    }
+      while !deadline.isOverdue() && isAlive do Thread.sleep(10)
 
-    val result = for {
+    val result = for
       _ <- sendJsonRpc(nextId(), "sbt/exec", SbtExecParams("shutdown"))
       _ = waitForExit(isAlive, ServerSessionImpl.GracefulShutdownTimeout)
-      _ = if (isAlive) {
+      _ = if isAlive then
         destroy()
         waitForExit(isAlive, ServerSessionImpl.DestroyTimeout)
-      }
 
       _ <-
-        if (isAlive) {
-          Failure(new IllegalStateException("sbt process failed to exit"))
-        } else {
-          Success(())
-        }
-    } yield ()
+        if isAlive then Failure(new IllegalStateException("sbt process failed to exit"))
+        else Success(())
+    yield ()
 
     close()
 
     result
-  }
-}
+end ServerSessionImpl
 
-private[sbt] object ServerSessionImpl {
+private[sbt] object ServerSessionImpl:
   val ReadIoTimeout: Int = 5000 // ms
   val ReadThreadDestroyTimeout: FiniteDuration = 1.seconds
   val ResponseTimeout: FiniteDuration = 1.minutes
   val GracefulShutdownTimeout: FiniteDuration = 5.seconds
   val DestroyTimeout: FiniteDuration = 10.seconds
-}

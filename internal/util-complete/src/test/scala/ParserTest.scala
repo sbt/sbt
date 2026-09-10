@@ -11,7 +11,7 @@ package complete
 
 import scala.annotation.tailrec
 
-object JLineTest {
+object JLineTest:
   import DefaultParsers.*
 
   val one = "blue" | "green" | "black"
@@ -27,7 +27,7 @@ object JLineTest {
   }
 
   val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     import jline.TerminalFactory
     import jline.console.ConsoleReader
     val reader = new ConsoleReader()
@@ -36,21 +36,18 @@ object JLineTest {
     val parser = parsers(args(0))
     JLineCompletion.installCustomCompletor(reader, parser)
     @tailrec
-    def loop(): Unit = {
+    def loop(): Unit =
       val line = reader.readLine("> ")
-      if (line ne null) {
+      if line ne null then
         println("Result: " + apply(parser)(line).resultEmpty)
         loop()
-      }
-    }
     loop()
-  }
-}
+end JLineTest
 
 import Parser.*
 import org.scalacheck.*
 
-object ParserTest extends Properties("Completing Parser") {
+object ParserTest extends Properties("Completing Parser"):
   import Parsers.*
   import DefaultParsers.matches
 
@@ -59,7 +56,8 @@ object ParserTest extends Properties("Completing Parser") {
 
   val spacePort = token(Space) ~> Port
 
-  def p[T](f: T): T = { println(f); f }
+  def p[T](f: T): T =
+    println(f); f
 
   def checkSingle(in: String, expect: Completion)(expectDisplay: Completion = expect) =
     (("token '" + in + "'") |: checkOne(in, nested, expect)) &&
@@ -68,19 +66,17 @@ object ParserTest extends Properties("Completing Parser") {
   def checkOne(in: String, parser: Parser[?], expect: Completion): Prop =
     completions(parser, in, 1) == Completions.single(expect)
 
-  def checkAll(in: String, parser: Parser[?], expect: Completions): Prop = {
+  def checkAll(in: String, parser: Parser[?], expect: Completions): Prop =
     val cs = completions(parser, in, 1)
     ("completions: " + cs) |: ("Expected: " + expect) |: (cs == expect: Prop)
-  }
 
   def checkInvalid(in: String) =
     (("token '" + in + "'") |: checkInv(in, nested)) &&
       (("display '" + in + "'") |: checkInv(in, nestedDisplay))
 
-  def checkInv(in: String, parser: Parser[?]): Prop = {
+  def checkInv(in: String, parser: Parser[?]): Prop =
     val cs = completions(parser, in, 1)
     ("completions: " + cs) |: (cs == Completions.nil: Prop)
-  }
 
   property("nested tokens a") =
     checkSingle("", Completion.token("", "a1"))(Completion.displayOnly("<a1>"))
@@ -113,21 +109,19 @@ object ParserTest extends Properties("Completing Parser") {
 
   property("repeatDep no suggestions for bad input") = checkInv(".", repeat)
   property("repeatDep suggest all") = checkAll("", repeat, completionStrings(colors))
-  property("repeatDep suggest remaining two") = {
+  property("repeatDep suggest remaining two") =
     val first = colors.toSeq.head
     checkAll(first + " ", repeat, completionStrings(colors - first))
-  }
-  property("repeatDep suggest remaining one") = {
+  property("repeatDep suggest remaining one") =
     val take = colors.toSeq.take(2)
     checkAll(take.mkString("", " ", " "), repeat, completionStrings(colors -- take))
-  }
   property("repeatDep requires at least one token") = !matches(repeat, "")
   property("repeatDep accepts one token") = matches(repeat, colors.toSeq.head)
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
   property("parses string that doesn't start with quotes, but includes quotes within it") =
     matches(StringBasic, "-Dsilicon:z3ConfigArgs=\"model=true model_validate=true\"")
-}
-object ParserExample {
+end ParserTest
+object ParserExample:
   val ws = charClass(_.isWhitespace, "whitespace").+
   val notws = charClass(!_.isWhitespace, "not whitespace").+
 
@@ -151,7 +145,7 @@ object ParserExample {
   println(apply(t)("test w").resultEmpty)
   println(apply(t)("test was were").resultEmpty)
 
-  def run(n: Int): Unit = {
+  def run(n: Int): Unit =
     val a = 'a'.id
     val aq = a.?
     val aqn = repeat(aq, min = n, max = n)
@@ -160,10 +154,8 @@ object ParserExample {
 
     def r = apply(ann)("a" * (n * 2)).resultEmpty
     println(r.isValid)
-  }
-  def run2(n: Int): Unit = {
+  def run2(n: Int): Unit =
     val ab = "ab".?.*
     val r = apply(ab)("a" * n).resultEmpty
     println(r)
-  }
-}
+end ParserExample

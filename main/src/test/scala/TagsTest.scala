@@ -13,15 +13,15 @@ import Gen.listOf
 import Prop.*
 import Tags.*
 
-object TagsTest extends Properties("Tags") {
+object TagsTest extends Properties("Tags"):
   final case class Size(value: Int)
 
-  def tagMap: Gen[TagMap] = for (ts <- listOf(tagAndFrequency)) yield ts.toMap
+  def tagMap: Gen[TagMap] = for ts <- listOf(tagAndFrequency) yield ts.toMap
   def tagAndFrequency: Gen[(Tag, Int)] =
-    for (t <- tag; count <- Gen.choose(0, Int.MaxValue)) yield (t, count)
-  def tag: Gen[Tag] = for (s <- Gen.alphaStr if !s.isEmpty) yield Tag(s)
+    for t <- tag; count <- Gen.choose(0, Int.MaxValue) yield (t, count)
+  def tag: Gen[Tag] = for s <- Gen.alphaStr if !s.isEmpty yield Tag(s)
   def size: Gen[Size] =
-    for (i <- Arbitrary.arbitrary[Int] if i != Int.MinValue) yield Size(math.abs(i))
+    for i <- Arbitrary.arbitrary[Int] if i != Int.MinValue yield Size(math.abs(i))
 
   given aTagMap: Arbitrary[Map[Tag, Int]] = Arbitrary(tagMap)
   given aTagAndFrequency: Arbitrary[(Tag, Int)] = Arbitrary(tagAndFrequency)
@@ -48,5 +48,4 @@ object TagsTest extends Properties("Tags") {
   }
 
   private def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
-
-}
+end TagsTest

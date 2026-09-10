@@ -12,12 +12,13 @@ import sbt.testing.Status
 
 import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 
-trait StatusFormats { self: sjsonnew.BasicJsonProtocol =>
-  given StatusFormat: JsonFormat[Status] = new JsonFormat[Status] {
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Status = {
-      jsOpt match {
+trait StatusFormats:
+  self: sjsonnew.BasicJsonProtocol =>
+  given StatusFormat: JsonFormat[Status] = new JsonFormat[Status]:
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Status =
+      jsOpt match
         case Some(js) =>
-          unbuilder.readString(js) match {
+          unbuilder.readString(js) match
             case "Success"  => Status.Success
             case "Error"    => Status.Error
             case "Failure"  => Status.Failure
@@ -25,13 +26,10 @@ trait StatusFormats { self: sjsonnew.BasicJsonProtocol =>
             case "Ignored"  => Status.Ignored
             case "Canceled" => Status.Canceled
             case "Pending"  => Status.Pending
-          }
         case None =>
           deserializationError("Expected JsString but found None")
-      }
-    }
-    override def write[J](obj: Status, builder: Builder[J]): Unit = {
-      val str = obj match {
+    override def write[J](obj: Status, builder: Builder[J]): Unit =
+      val str = obj match
         case Status.Success  => "Success"
         case Status.Error    => "Error"
         case Status.Failure  => "Failure"
@@ -39,8 +37,5 @@ trait StatusFormats { self: sjsonnew.BasicJsonProtocol =>
         case Status.Ignored  => "Ignored"
         case Status.Canceled => "Canceled"
         case Status.Pending  => "Pending"
-      }
       builder.writeString(str)
-    }
-  }
-}
+end StatusFormats

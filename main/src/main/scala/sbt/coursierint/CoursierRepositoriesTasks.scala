@@ -14,8 +14,8 @@ import sbt.Keys.*
 import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make.*
 
-object CoursierRepositoriesTasks {
-  private object CResolvers {
+object CoursierRepositoriesTasks:
+  private object CResolvers:
     private val slowReposBase = Seq(
       "https://repo.typesafe.com/",
       "https://repo.scala-sbt.org/",
@@ -29,7 +29,7 @@ object CoursierRepositoriesTasks {
     )
 
     private def url(res: Resolver): Option[String] =
-      res match {
+      res match
         case m: sbt.librarymanagement.MavenRepository =>
           Some(m.root)
         case u: URLRepository =>
@@ -37,7 +37,6 @@ object CoursierRepositoriesTasks {
             .orElse(u.patterns.ivyPatterns.headOption)
         case _ =>
           None
-      }
 
     private def fastRepo(res: Resolver): Boolean =
       url(res).exists(u => fastReposBase.exists(u.startsWith))
@@ -46,11 +45,11 @@ object CoursierRepositoriesTasks {
       url(res).exists(u => slowReposBase.exists(u.startsWith))
 
     def reorderResolvers(resolvers: Seq[Resolver]): Seq[Resolver] =
-      if (resolvers.exists(fastRepo) && resolvers.exists(slowRepo)) {
+      if resolvers.exists(fastRepo) && resolvers.exists(slowRepo) then
         val (slow, other) = resolvers.partition(slowRepo)
         other ++ slow
-      } else resolvers
-  }
+      else resolvers
+  end CResolvers
 
   // local-preloaded-ivy contains dangling ivy.xml without JAR files
   // https://github.com/sbt/sbt/issues/4661
@@ -64,10 +63,10 @@ object CoursierRepositoriesTasks {
 
     val paths = ivyPaths.value
     val result1 =
-      if (reorderResolvers) CResolvers.reorderResolvers(result0)
+      if reorderResolvers then CResolvers.reorderResolvers(result0)
       else result0
     val result2 =
-      paths.ivyHome match {
+      paths.ivyHome match
         case Some(ivyHome) =>
           val ivyHomeUri = ivyHome
           result1 map {
@@ -84,10 +83,8 @@ object CoursierRepositoriesTasks {
             case r => r
           }
         case _ => result1
-      }
 
-    if (keepPreloaded)
-      result2
+    if keepPreloaded then result2
     else
       result2.filter { r =>
         !r.name.startsWith("local-preloaded")
@@ -113,12 +110,10 @@ object CoursierRepositoriesTasks {
     }
 
     val resolvers0 =
-      if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
+      if pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases) then
         resolvers :+ Classpaths.sbtPluginReleases
-      else
-        resolvers
-    if (keepPreloaded)
-      resolvers0
+      else resolvers
+    if keepPreloaded then resolvers0
     else
       resolvers0.filter { r =>
         !r.name.startsWith("local-preloaded")
@@ -139,4 +134,4 @@ object CoursierRepositoriesTasks {
           resolvers.flatten
         }
       }
-}
+end CoursierRepositoriesTasks

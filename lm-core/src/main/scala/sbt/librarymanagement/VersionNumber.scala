@@ -4,7 +4,7 @@ final class VersionNumber private[sbt] (
     val numbers: Seq[Long],
     val tags: Seq[String],
     val extras: Seq[String]
-) {
+):
 
   def _1: Option[Long] = get(0)
   def _2: Option[Long] = get(1)
@@ -22,21 +22,19 @@ final class VersionNumber private[sbt] (
 
   override def hashCode: Int = numbers.## * 41 * 41 + tags.## * 41 + extras.##
 
-  override def equals(that: Any): Boolean = that match {
+  override def equals(that: Any): Boolean = that match
     case v: VersionNumber => (numbers == v.numbers) && (tags == v.tags) && (extras == v.extras)
     case _                => false
-  }
 
-  def matchesSemVer(selsem: SemanticSelector): Boolean = {
+  def matchesSemVer(selsem: SemanticSelector): Boolean =
     selsem.matches(this)
-  }
 
   /** A variant of mkString that returns the empty string if the sequence is empty. */
   private def mkString1[A](xs: Seq[A], start: String, sep: String, end: String): String =
-    if (xs.isEmpty) "" else xs.mkString(start, sep, end)
-}
+    if xs.isEmpty then "" else xs.mkString(start, sep, end)
+end VersionNumber
 
-object VersionNumber {
+object VersionNumber:
 
   /**
    * @param numbers numbers delimited by a dot.
@@ -47,19 +45,18 @@ object VersionNumber {
     new VersionNumber(numbers, tags, extras)
 
   def apply(s: String): VersionNumber =
-    unapply(s) match {
+    unapply(s) match
       case Some((ns, ts, es)) => VersionNumber(ns, ts, es)
       case _                  => throw new IllegalArgumentException(s"Invalid version number: $s")
-    }
 
   def unapply(v: VersionNumber): Option[(Seq[Long], Seq[String], Seq[String])] =
     Some((v.numbers, v.tags, v.extras))
 
-  def unapply(s: String): Option[(Seq[Long], Seq[String], Seq[String])] = {
+  def unapply(s: String): Option[(Seq[Long], Seq[String], Seq[String])] =
 
     // null safe, empty string safe
     def splitOn(s: String, sep: Char): Vector[String] =
-      if (s eq null) Vector()
+      if s eq null then Vector()
       else s.split(sep).filterNot(_ == "").toVector
 
     def splitDot(s: String) = splitOn(s, '.') map (_.toLong)
@@ -69,7 +66,7 @@ object VersionNumber {
     val TaggedVersion = """(\d{1,14})([\.\d{1,14}]*)((?:-\w+(?:\.\w+)*)*)((?:\+.+)*)""".r
     val NonSpaceString = """(\S+)""".r
 
-    s match {
+    s match
       case TaggedVersion(m, ns, ts, es) =>
         val numbers = Vector(m.toLong) ++ splitDot(ns)
         val tags = splitDash(ts)
@@ -78,17 +75,15 @@ object VersionNumber {
       case ""                => None
       case NonSpaceString(s) => Some((Vector.empty, Vector.empty, Vector(s)))
       case _                 => None
-    }
-  }
+  end unapply
 
   /** Strict. Checks everything. */
-  object Strict extends VersionNumberCompatibility {
+  object Strict extends VersionNumberCompatibility:
     def name: String = "Strict"
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean = v1 == v2
-  }
 
   /** Semantic Versioning. See http://semver.org/spec/v2.0.0.html */
-  object SemVer extends VersionNumberCompatibility {
+  object SemVer extends VersionNumberCompatibility:
     def name: String = "Semantic Versioning"
 
     /* Quotes of parts of the rules in the SemVer Spec relevant to compatibility checking:
@@ -141,44 +136,41 @@ object VersionNumber {
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
     private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
-      (v1, v2) match {
+      (v1, v2) match
         case (NormalVersion(0, _, _), NormalVersion(0, _, _))   => v1 == v2 // R4
         case (NormalVersion(_, 0, 0), NormalVersion(_, 0, 0))   => v1 == v2 // R9 maybe?
         case (NormalVersion(x1, _, _), NormalVersion(x2, _, _)) => x1 == x2 // R6, R7 & R8
         case _                                                  => false
-      }
 
     // SemVer Spec Rule 10 (above)
     private[VersionNumber] def dropBuildMetadata(v: VersionNumber) =
-      if (v.extras.isEmpty) v else VersionNumber(v.numbers, v.tags, Nil)
+      if v.extras.isEmpty then v else VersionNumber(v.numbers, v.tags, Nil)
 
     // An extractor for SemVer's "normal version number" - SemVer Spec Rule 2 & Rule 9 (above)
-    private[VersionNumber] object NormalVersion {
+    private[VersionNumber] object NormalVersion:
       def unapply(v: VersionNumber): Option[(Long, Long, Long)] =
         PartialFunction.condOpt(v.numbers) {
           // NOTE! We allow the z to be missing, because of legacy like commons-io 1.3
           case Seq(x, y, _*) => (x, y, v._3 getOrElse 0)
         }
-    }
-  }
+  end SemVer
 
   /**
    * A variant of SemVar that seems to be common among the Scala libraries.
    * The second segment (y in x.y.z) increments breaks the binary compatibility even when x > 0.
    * Also API compatibility is expected even when the first segment is zero.
    */
-  object SecondSegment extends VersionNumberCompatibility {
+  object SecondSegment extends VersionNumberCompatibility:
     def name: String = "Second Segment Variant"
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       PackVer.isCompatible(v1, v2)
-  }
 
   /**
    * A variant of SemVar that seems to be common among the Scala libraries.
    * The second segment (y in x.y.z) increments breaks the binary compatibility even when x > 0.
    * Also API compatibility is expected even when the first segment is zero.
    */
-  object PackVer extends VersionNumberCompatibility {
+  object PackVer extends VersionNumberCompatibility:
     import SemVer.*
 
     def name: String = "Package Versioning Policy"
@@ -186,19 +178,16 @@ object VersionNumber {
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
-    private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean = {
-      (v1, v2) match {
+    private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
+      (v1, v2) match
         case (NormalVersion(_, _, 0), NormalVersion(_, _, 0))     => v1 == v2 // R9 maybe?
         case (NormalVersion(x1, y1, _), NormalVersion(x2, y2, _)) => (x1 == x2) && (y1 == y2)
         case _                                                    => false
-      }
-    }
-  }
 
   /**
    * A variant of SemVar that enforces API compatibility when the first segment is zero.
    */
-  object EarlySemVer extends VersionNumberCompatibility {
+  object EarlySemVer extends VersionNumberCompatibility:
     import SemVer.*
 
     def name: String = "Early Semantic Versioning"
@@ -250,17 +239,15 @@ object VersionNumber {
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
     private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
-      (v1, v2) match {
+      (v1, v2) match
         case (NormalVersion(0, _, 0), NormalVersion(0, _, 0))   => v1 == v2
         case (NormalVersion(0, y1, _), NormalVersion(0, y2, _)) => y1 == y2
         case (NormalVersion(_, 0, 0), NormalVersion(_, 0, 0))   => v1 == v2 // R9 maybe?
         case (NormalVersion(x1, _, _), NormalVersion(x2, _, _)) => x1 == x2 // R6, R7 & R8
         case _                                                  => false
-      }
-  }
-}
+  end EarlySemVer
+end VersionNumber
 
-trait VersionNumberCompatibility {
+trait VersionNumberCompatibility:
   def name: String
   def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean
-}

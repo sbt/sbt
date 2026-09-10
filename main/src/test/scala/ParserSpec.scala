@@ -19,7 +19,7 @@ import sbt.librarymanagement.Configuration
 import hedgehog.*
 import hedgehog.runner.*
 
-object ParserSpec extends Properties {
+object ParserSpec extends Properties:
   override def tests: List[Test] =
     List(
       property(
@@ -53,7 +53,7 @@ object ParserSpec extends Properties {
       projectID: String = "p",
       configName: String = "c",
       attributeName: String = "a"
-  ) = {
+  ) =
     val attributeKey = AttributeKey[String](attributeName)
     val scope = Scope(
       Select(BuildRef(buildURI)),
@@ -80,5 +80,5 @@ object ParserSpec extends Properties {
     val resultStr = result.fold(_ => "<parse error>", _.toString)
     (result ==== Right(scopedKey))
       .log(s"$string parsed back to $resultStr rather than $scopedKey")
-  }
-}
+  end parse
+end ParserSpec

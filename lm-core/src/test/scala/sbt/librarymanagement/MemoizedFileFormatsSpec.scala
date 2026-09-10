@@ -131,3 +131,4 @@ object MemoizedFileFormatsSpec extends BasicTestSuite:
       UpdateStats(0L, 0L, 0L, false),
       Map.empty
     )
+end MemoizedFileFormatsSpec

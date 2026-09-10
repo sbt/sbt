@@ -24,65 +24,57 @@ import sbt.util.{ Level, Logger }
  */
 private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     extends AbstractTaskExecuteProgress
-    with ExecuteProgress {
+    with ExecuteProgress:
   @deprecated("Use the constructor that takes an sbt.util.Logger parameter.", "1.3.3")
   def this(reportOnShutdown: Boolean) =
     this(
       reportOnShutdown,
-      new Logger {
+      new Logger:
         override def trace(t: => Throwable): Unit = {}
         override def success(message: => String): Unit = {}
         override def log(level: Level.Value, message: => String): Unit =
           ConsoleOut.systemOut.println(message)
-      }
     )
   private var start = 0L
   private val threshold = SysProp.taskTimingsThreshold
   private val omitPaths = SysProp.taskTimingsOmitPaths
   private val (unit, divider) = SysProp.taskTimingsUnit
 
-  if (reportOnShutdown) {
+  if reportOnShutdown then
     start = System.nanoTime
     addShutdownHandler(() => report())
-  }
 
-  override def initial(): Unit = {
-    if (!reportOnShutdown)
-      start = System.nanoTime
-  }
+  override def initial(): Unit =
+    if !reportOnShutdown then start = System.nanoTime
 
   override def afterReady(task: TaskId[?]): Unit = ()
   override def afterCompleted[T](task: TaskId[T], result: Result[T]): Unit = ()
   override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
-    if (!reportOnShutdown) {
-      report()
-    }
+    if !reportOnShutdown then report()
 
   override def stop(): Unit = ()
 
   private val reFilePath = raw"\{[^}]+\}".r
 
-  private def report() = {
+  private def report() =
     val total = divide(System.nanoTime - start)
     logger.info(s"Total time: $total $unit")
     val times = timingsByName.toSeq
       .sortBy(_._2.get)
       .reverse
       .map { (name, time) =>
-        (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
+        (if omitPaths then reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
       }
       .filter { _._2 > threshold }
-    if (times.size > 0) {
+    if times.size > 0 then
       val maxTaskNameLength = times.map { _._1.length }.max
       val maxTime = times.map { _._2 }.max.toString.length
       times.foreach { (taskName, time) =>
         logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
             .padTo(maxTime - time.toString.length, ' ')}$time $unit")
       }
-    }
-  }
 
   private def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
     a / 10L
   }
-}
+end TaskTimings

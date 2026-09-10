@@ -2,7 +2,7 @@ package sbt.librarymanagement
 
 import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter, Parser }
 
-object ModuleIdTest extends verify.BasicTestSuite {
+object ModuleIdTest extends verify.BasicTestSuite:
   test("Module Id should return cross-disabled module id as equal to a copy") {
     assert(ModuleID("com.acme", "foo", "1") == ModuleID("com.acme", "foo", "1"))
   }
@@ -46,4 +46,4 @@ object ModuleIdTest extends verify.BasicTestSuite {
 
   def expectedJson =
     """{"organization":"com.acme","name":"foo","revision":"1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}"""
-}
+end ModuleIdTest

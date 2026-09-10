@@ -12,41 +12,35 @@ import sbt.util.Logger
 
 import scala.util.matching.Regex
 
-final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
+final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name):
   override def toString = "Raw(" + resolver.toString + ")"
 
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = o match
     case o: RawRepository =>
       this.name == o.name
     case _ => false
-  }
 
-  override def hashCode: Int = {
+  override def hashCode: Int =
     var hash = 1
     hash = hash * 31 + this.name.##
     hash
-  }
-}
 
-private[librarymanagement] abstract class MavenRepositoryFunctions {
+private[librarymanagement] abstract class MavenRepositoryFunctions:
   def apply(name: String, root: String, localIfFile: Boolean = true): MavenRepository =
     MavenRepo(name, root, localIfFile)
-}
 
-private[librarymanagement] abstract class PatternsFunctions {
+private[librarymanagement] abstract class PatternsFunctions:
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
   def apply(artifactPatterns: String*): Patterns = Patterns(false, artifactPatterns*)
-  def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = {
+  def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns =
     val patterns = artifactPatterns.toVector
     Patterns()
       .withIvyPatterns(patterns)
       .withArtifactPatterns(patterns)
       .withIsMavenCompatible(isMavenCompatible)
-  }
-}
 
-private[librarymanagement] trait SshBasedRepositoryExtra {
+private[librarymanagement] trait SshBasedRepositoryExtra:
 
   /** The object representing the configured ssh connection for this repository. */
   def connection: SshConnection
@@ -69,9 +63,9 @@ private[librarymanagement] trait SshBasedRepositoryExtra {
 
   def as(user: String, keyfile: File, password: Option[String]): RepositoryType =
     copy(KeyFileAuthentication(user, keyfile, password))
-}
+end SshBasedRepositoryExtra
 
-private[librarymanagement] trait SshRepositoryExtra extends SshBasedRepositoryExtra {
+private[librarymanagement] trait SshRepositoryExtra extends SshBasedRepositoryExtra:
   def name: String
   def patterns: sbt.librarymanagement.Patterns
   def publishPermissions: Option[String]
@@ -80,9 +74,8 @@ private[librarymanagement] trait SshRepositoryExtra extends SshBasedRepositoryEx
 
   protected def copy(connection: SshConnection): SshRepository =
     SshRepository(name, connection, patterns, publishPermissions)
-}
 
-private[librarymanagement] trait SftpRepositoryExtra extends SshBasedRepositoryExtra {
+private[librarymanagement] trait SftpRepositoryExtra extends SshBasedRepositoryExtra:
   def name: String
   def patterns: sbt.librarymanagement.Patterns
 
@@ -90,14 +83,12 @@ private[librarymanagement] trait SftpRepositoryExtra extends SshBasedRepositoryE
 
   protected def copy(connection: SshConnection): SftpRepository =
     SftpRepository(name, connection, patterns)
-}
 
 /** A repository that conforms to sbt launcher's interface */
-private[sbt] class FakeRepository(resolver: AnyRef, name: String) extends xsbti.Repository {
+private[sbt] class FakeRepository(resolver: AnyRef, name: String) extends xsbti.Repository:
   def rawRepository = new RawRepository(resolver, name)
-}
 
-private[librarymanagement] abstract class ResolverFunctions {
+private[librarymanagement] abstract class ResolverFunctions:
   val TypesafeRepositoryRoot = "https://repo.typesafe.com/typesafe"
   val SbtRepositoryRoot = "https://repo.scala-sbt.org/scalasbt"
   @deprecated("Renamed to SbtRepositoryRoot.", "1.0.0")
@@ -152,7 +143,7 @@ private[librarymanagement] abstract class ResolverFunctions {
   def sonatypeRepo(status: String) =
     MavenRepository(
       "sonatype-" + status,
-      if (status == "releases") SonatypeReleasesRepository
+      if status == "releases" then SonatypeReleasesRepository
       else SonatypeRepositoryRoot + "/" + status
     )
   private def sonatypeS01Repo(status: String) =
@@ -212,23 +203,22 @@ private[librarymanagement] abstract class ResolverFunctions {
       appResolvers: Vector[Resolver],
       mavenCentral: Boolean
   ): Vector[Resolver] =
-    appResolvers.partition(_ == Resolver.defaultLocal) match {
+    appResolvers.partition(_ == Resolver.defaultLocal) match
       case (locals, xs) =>
         locals ++
-          (xs.partition(_ == DefaultMavenRepository) match {
-            case (_, xs) =>
-              single(
-                DefaultMavenRepository,
-                mavenCentral
-              ) ++ xs // TODO - Do we need to filter out duplicates?
-          })
-    }
+          (xs.partition(_ == DefaultMavenRepository) match
+              case (_, xs) =>
+                single(
+                  DefaultMavenRepository,
+                  mavenCentral
+                ) ++ xs // TODO - Do we need to filter out duplicates?
+          )
 
   private def single[T](value: T, nonEmpty: Boolean): Vector[T] =
-    if (nonEmpty) Vector(value) else Vector.empty
+    if nonEmpty then Vector(value) else Vector.empty
 
   /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns. */
-  sealed abstract class Define[RepositoryType <: SshBasedRepository] {
+  sealed abstract class Define[RepositoryType <: SshBasedRepository]:
 
     /** Subclasses should implement this method to */
     protected def construct(
@@ -289,7 +279,7 @@ private[librarymanagement] abstract class ResolverFunctions {
         implicit basePatterns: Patterns
     ): RepositoryType =
       construct(name, SshConnection(None, hostname, port), resolvePatterns(basePath, basePatterns))
-  }
+  end Define
 
   /**
    * A factory to construct an interface to an Ivy SSH resolver.
@@ -299,10 +289,9 @@ private[librarymanagement] abstract class ResolverFunctions {
    * literal (e.g. `org.example`), supply Ivy-style patterns such as a [[Patterns]] built with
    * `isMavenCompatible = false` (the [[Patterns]] default). See issue #535.
    */
-  object ssh extends Define[SshRepository] {
+  object ssh extends Define[SshRepository]:
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SshRepository(name, connection, patterns, None)
-  }
 
   /**
    * A factory to construct an interface to an Ivy SFTP resolver.
@@ -312,13 +301,12 @@ private[librarymanagement] abstract class ResolverFunctions {
    * literal (e.g. `org.example`), supply Ivy-style patterns such as a [[Patterns]] built with
    * `isMavenCompatible = false` (the [[Patterns]] default). See issue #535.
    */
-  object sftp extends Define[SftpRepository] {
+  object sftp extends Define[SftpRepository]:
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SftpRepository(name, connection, patterns)
-  }
 
   /** A factory to construct an interface to an Ivy filesystem resolver. */
-  object file {
+  object file:
 
     /**
      * Constructs a file resolver with the given name.  The patterns to use must be explicitly specified
@@ -336,7 +324,6 @@ private[librarymanagement] abstract class ResolverFunctions {
       )
 
     private def toUri(dir: File): URI = dir.toPath.toUri
-  }
   object url:
 
     /**
@@ -379,13 +366,12 @@ private[librarymanagement] abstract class ResolverFunctions {
    * Otherwise, the ivy file and artifact patterns in `patterns` are resolved against the given base.
    */
   private def resolvePatterns(base: Option[String], patterns: Patterns): Patterns =
-    base match {
+    base match
       case Some(path) => resolvePatterns(path, patterns)
       case None       => patterns
-    }
 
   /** Resolves the ivy file and artifact patterns in `patterns` against the given base. */
-  private def resolvePatterns(base: String, basePatterns: Patterns): Patterns = {
+  private def resolvePatterns(base: String, basePatterns: Patterns): Patterns =
     def resolveAll(patterns: Vector[String]) = patterns.map(p => resolvePattern(base, p))
     Patterns(
       resolveAll(basePatterns.ivyPatterns),
@@ -394,12 +380,10 @@ private[librarymanagement] abstract class ResolverFunctions {
       basePatterns.descriptorOptional,
       basePatterns.skipConsistencyCheck
     )
-  }
-  private[sbt] def resolvePattern(base: String, pattern: String): String = {
+  private[sbt] def resolvePattern(base: String, pattern: String): String =
     val normBase = base.replace('\\', '/')
-    if (normBase.endsWith("/") || pattern.startsWith("/")) normBase + pattern
+    if normBase.endsWith("/") || pattern.startsWith("/") then normBase + pattern
     else normBase + "/" + pattern
-  }
   def defaultFileConfiguration = FileConfiguration(true, None)
 
   /**
@@ -428,7 +412,7 @@ private[librarymanagement] abstract class ResolverFunctions {
       str: String,
       envVars: Map[String, String] = sys.env,
       props: Map[String, String] = sys.props.toMap
-  ): String = {
+  ): String =
     // Aren't regular expressions beautifully clear and concise.
     // This means "find all ${...}" blocks, with the first group of each being the text between curly brackets.
     val findQuoted = "\\$\\{([^}]*)}".r
@@ -438,25 +422,23 @@ private[librarymanagement] abstract class ResolverFunctions {
       str,
       regexMatch =>
         Regex.quoteReplacement {
-          regexMatch.group(1) match {
+          regexMatch.group(1) match
             case env(variable) => envVars.getOrElse(variable, "")
             case property      => props.getOrElse(property, "")
-          }
         }
     )
-  }
 
-  private def mavenLocalDir: File = {
+  private def mavenLocalDir: File =
     def loadHomeFromSettings(f: () => File): Option[File] =
-      try {
+      try
         val file = f()
-        if (!file.exists) None
+        if !file.exists then None
         else
-          ((XML.loadFile(file) \ "localRepository").text match {
+          ((XML.loadFile(file) \ "localRepository").text match
             case ""    => None
             case e @ _ => Some(new File(expandMavenSettings(e)))
-          })
-      } catch {
+        )
+      catch
         // Occurs inside File constructor when property or environment variable does not exist
         case _: NullPointerException => None
         // Occurs when File does not exist
@@ -464,82 +446,73 @@ private[librarymanagement] abstract class ResolverFunctions {
         case e: SAXParseException =>
           System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}");
           None
-      }
     sys.props.get("maven.repo.local").map(new File(_)) orElse
       loadHomeFromSettings(() => new File(sbt.io.Path.userHome, ".m2/settings.xml")) orElse
       loadHomeFromSettings(() =>
         new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")
       ) getOrElse
       new File(sbt.io.Path.userHome, ".m2/repository")
-  }
+  end mavenLocalDir
   // TODO - should this just be the *exact* same as mavenLocal?  probably...
   def publishMavenLocal: MavenCache = new MavenCache("publish-m2-local", mavenLocalDir)
   def mavenLocal: MavenRepository = new MavenCache("Maven2 Local", mavenLocalDir)
   def defaultLocal = defaultUserFileRepository("local")
   def defaultShared = defaultUserFileRepository("shared")
-  def defaultUserFileRepository(id: String) = {
+  def defaultUserFileRepository(id: String) =
     val pList = Vector(s"$${ivy.home}/$id/$localBasePattern")
     FileRepository(
       id,
       defaultFileConfiguration,
       Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false)
     )
-  }
-  def defaultIvyPatterns = {
+  def defaultIvyPatterns =
     val pList = Vector(localBasePattern)
     Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false)
-  }
 
   // to display all error messages at once, just log here don't throw
-  private[sbt] def warnHttp(value: String, suggestion: String, logger: Logger): Unit = {
+  private[sbt] def warnHttp(value: String, suggestion: String, logger: Logger): Unit =
     logger.error(s"insecure HTTP request is unsupported '$value'; switch to HTTPS$suggestion")
-  }
-  private[sbt] def isInsecureUrl(str: String): Boolean = {
+  private[sbt] def isInsecureUrl(str: String): Boolean =
     // don't try to parse str as URL because it could contain $variable from Ivy pattern
     str.startsWith("http:") &&
-    !(str.startsWith("http://localhost/")
-      || str.startsWith("http://localhost:")
-      || str.startsWith("http://127.0.0.1/")
-      || str.startsWith("http://127.0.0.1:"))
-  }
-  private[sbt] def validateURLRepository(repo: URLRepository, logger: Logger): Boolean = {
-    if (repo.allowInsecureProtocol) false
-    else {
+      !(str.startsWith("http://localhost/")
+        || str.startsWith("http://localhost:")
+        || str.startsWith("http://127.0.0.1/")
+        || str.startsWith("http://127.0.0.1:"))
+  private[sbt] def validateURLRepository(repo: URLRepository, logger: Logger): Boolean =
+    if repo.allowInsecureProtocol then false
+    else
       val patterns = repo.patterns
-      val ivy = patterns.ivyPatterns.headOption match {
+      val ivy = patterns.ivyPatterns.headOption match
         case Some(x) => isInsecureUrl(x)
         case _       => false
-      }
-      val art = patterns.artifactPatterns.headOption match {
+      val art = patterns.artifactPatterns.headOption match
         case Some(x) => isInsecureUrl(x)
         case _       => false
-      }
-      if (ivy || art) {
+      if ivy || art then
         warnHttp(
           patterns.toString,
           s""" or opt-in as Resolver.uri("${repo.name}", url(...)).withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file""",
           logger
         )
         true
-      } else false
-    }
-  }
+      else false
 
   private[sbt] def validateMavenRepo(repo: MavenRepo, logger: Logger): Boolean =
-    if (repo.allowInsecureProtocol) false
-    else if (isInsecureUrl(repo.root)) {
+    if repo.allowInsecureProtocol then false
+    else if isInsecureUrl(repo.root) then
       warnHttp(
         repo.root,
         s""" or opt-in as ("${repo.name}" at "${repo.root}").withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file""",
         logger
       )
       true
-    } else false
+    else false
 
   private[sbt] def validateArtifact(art: Artifact, logger: Logger): Boolean =
-    if (art.allowInsecureProtocol) false
+    if art.allowInsecureProtocol then false
     else
-      art.url match {
+      art.url match
         case Some(url) if isInsecureUrl(url.toString) =>
           warnHttp(
             art.toString,
@@ -548,5 +521,4 @@ private[librarymanagement] abstract class ResolverFunctions {
           )
           true
         case _ => false
-      }
-}
+end ResolverFunctions

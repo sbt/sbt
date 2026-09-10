@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.File
 
-object FileFunction {
+object FileFunction:
   type UpdateFunction = (ChangeReport[File], ChangeReport[File]) => Set[File]
   private val defaultInStyle = FileInfo.lastModified
   private val defaultOutStyle = FileInfo.exists
@@ -148,18 +148,14 @@ object FileFunction {
    */
   def cached(storeFactory: CacheStoreFactory, inStyle: FileInfo.Style, outStyle: FileInfo.Style)(
       action: UpdateFunction
-  ): Set[File] => Set[File] = {
+  ): Set[File] => Set[File] =
     lazy val inCache = Difference.inputs(storeFactory.make("in-cache"), inStyle)
     lazy val outCache = Difference.outputs(storeFactory.make("out-cache"), outStyle)
-    inputs => {
+    inputs =>
       inCache(inputs) { inReport =>
         outCache { outReport =>
-          if (inReport.modified.isEmpty && outReport.modified.isEmpty)
-            outReport.checked
-          else
-            action(inReport, outReport)
+          if inReport.modified.isEmpty && outReport.modified.isEmpty then outReport.checked
+          else action(inReport, outReport)
         }
       }
-    }
-  }
-}
+end FileFunction

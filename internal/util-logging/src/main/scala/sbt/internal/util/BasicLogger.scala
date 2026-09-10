@@ -11,7 +11,7 @@ package sbt.internal.util
 import sbt.util.*
 
 /** Implements the level-setting methods of Logger. */
-abstract class BasicLogger extends AbstractLogger {
+abstract class BasicLogger extends AbstractLogger:
   private var traceEnabledVar: Int = java.lang.Integer.MAX_VALUE
   private var level: Level.Value = Level.Info
   private var successEnabledVar = true
@@ -21,4 +21,3 @@ abstract class BasicLogger extends AbstractLogger {
   def setLevel(newLevel: Level.Value): Unit = synchronized { level = newLevel }
   def setTrace(level: Int): Unit = synchronized { traceEnabledVar = level }
   def getTrace: Int = synchronized { traceEnabledVar }
-}

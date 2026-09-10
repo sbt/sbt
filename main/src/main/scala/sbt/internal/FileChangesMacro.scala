@@ -49,6 +49,7 @@ object FileChangesMacro:
     )
     inline def outputFiles: Seq[NioPath] =
       ${ FileChangesMacro.outputFilesImpl[A]('in) }
+  end extension
 
   def changedInputFilesImpl[A: Type](in: Expr[TaskKey[A]])(using qctx: Quotes): Expr[FileChanges] =
     impl[A](

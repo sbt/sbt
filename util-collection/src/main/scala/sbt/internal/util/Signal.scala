@@ -10,27 +10,24 @@ package sbt.internal.util
 
 import sun.misc.{ Signal, SignalHandler }
 
-object Signals {
+object Signals:
   val CONT = "CONT"
   val INT = "INT"
 
-  def withHandler[T](handler: () => Unit, signal: String = INT)(action: () => T): T = {
+  def withHandler[T](handler: () => Unit, signal: String = INT)(action: () => T): T =
     val result =
-      try {
+      try
         val signals = new Signals0
         signals.withHandler(signal, handler, action)
-      } catch { case _: LinkageError => Right(action()): Either[Throwable, T] }
+      catch case _: LinkageError => Right(action()): Either[Throwable, T]
 
-    result match {
+    result match
       case Left(e)  => throw e
       case Right(v) => v
-    }
-  }
 
   /** Helper interface so we can expose internals of signal-isms to others. */
-  sealed trait Registration {
+  sealed trait Registration:
     def remove(): Unit
-  }
 
   /**
    * Register a signal handler that can be removed later. NOTE: Does not stack with other signal
@@ -38,62 +35,53 @@ object Signals {
    */
   def register(handler: () => Unit, signal: String = INT): Registration =
     // TODO - Maybe we can just ignore things if not is-supported.
-    if (supported(signal)) {
+    if supported(signal) then
       val intSignal = new Signal(signal)
-      val newHandler = new SignalHandler {
-        def handle(sig: Signal): Unit = { handler() }
-      }
+      val newHandler = new SignalHandler:
+        def handle(sig: Signal): Unit = handler()
       val oldHandler = Signal.handle(intSignal, newHandler)
       new UnregisterNewHandler(intSignal, oldHandler)
-    } else {
+    else
       // TODO - Maybe we should just throw an exception if we don't support signals...
       NullUnregisterNewHandler
-    }
 
   def supported(signal: String): Boolean =
-    try {
+    try
       val signals = new Signals0
       signals.supported(signal)
-    } catch { case _: LinkageError => false }
-}
+    catch case _: LinkageError => false
+end Signals
 
 private class UnregisterNewHandler(intSignal: Signal, oldHandler: SignalHandler)
-    extends Signals.Registration {
-  override def remove(): Unit = {
+    extends Signals.Registration:
+  override def remove(): Unit =
     Signal.handle(intSignal, oldHandler)
     ()
-  }
-}
-private object NullUnregisterNewHandler extends Signals.Registration {
+private object NullUnregisterNewHandler extends Signals.Registration:
   override def remove(): Unit = ()
-}
 
 // Must only be referenced using a
 //   try { } catch { case _: LinkageError => ... }
 // block to
-private final class Signals0 {
-  def supported(signal: String): Boolean = {
+private final class Signals0:
+  def supported(signal: String): Boolean =
     import sun.misc.Signal
-    try {
+    try
       new Signal(signal); true
-    } catch { case _: IllegalArgumentException => false }
-  }
+    catch case _: IllegalArgumentException => false
 
   // returns a LinkageError in `action` as Left(t) in order to avoid it being
   // incorrectly swallowed as missing Signal/SignalHandler
-  def withHandler[T](signal: String, handler: () => Unit, action: () => T): Either[Throwable, T] = {
+  def withHandler[T](signal: String, handler: () => Unit, action: () => T): Either[Throwable, T] =
     import sun.misc.{ Signal, SignalHandler }
     val intSignal = new Signal(signal)
-    val newHandler = new SignalHandler {
-      def handle(sig: Signal): Unit = { handler() }
-    }
+    val newHandler = new SignalHandler:
+      def handle(sig: Signal): Unit = handler()
 
     val oldHandler = Signal.handle(intSignal, newHandler)
 
     try Right(action())
-    catch { case e: LinkageError => Left(e) }
-    finally {
+    catch case e: LinkageError => Left(e)
+    finally
       Signal.handle(intSignal, oldHandler); ()
-    }
-  }
-}
+end Signals0

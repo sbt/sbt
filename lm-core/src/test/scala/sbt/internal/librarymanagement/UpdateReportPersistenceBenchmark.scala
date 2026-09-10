@@ -37,7 +37,7 @@ object UpdateReportPersistenceBenchmark:
       modulesPerConfig: Int = 50,
       warmupIterations: Int = 10
   ): Either[String, BenchmarkResult] =
-    for {
+    for
       _ <- Either.cond(iterations > 0, (), "iterations must be positive")
       _ <- Either.cond(configs.nonEmpty, (), "configs must be non-empty")
       _ <- Either.cond(modulesPerConfig > 0, (), "modulesPerConfig must be positive")
@@ -85,7 +85,7 @@ object UpdateReportPersistenceBenchmark:
           )
         catch case e: Exception => Left(s"Benchmark failed: ${e.getMessage}")
         finally IO.delete(baseDir)
-    } yield result
+    yield result
 
   def buildSampleReport(
       baseDir: File,
@@ -138,6 +138,7 @@ object UpdateReportPersistenceBenchmark:
     val stamps = Map(cachedDescriptor.getAbsolutePath -> System.currentTimeMillis())
 
     UpdateReport(cachedDescriptor, configReports, stats, stamps)
+  end buildSampleReport
 
   def formatResult(result: BenchmarkResult): String =
     f"""UpdateReport Persistence Benchmark Results

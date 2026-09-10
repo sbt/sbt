@@ -10,6 +10,5 @@ package sbt
 package internal
 package scripted
 
-object CommentHandler extends BasicStatementHandler {
+object CommentHandler extends BasicStatementHandler:
   def apply(command: String, args: List[String]) = ()
-}

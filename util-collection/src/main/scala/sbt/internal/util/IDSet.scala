@@ -11,7 +11,7 @@ package sbt.internal.util
 import scala.jdk.CollectionConverters.*
 
 /** A mutable set interface that uses object identity to test for set membership. */
-trait IDSet[T] {
+trait IDSet[T]:
   def apply(t: T): Boolean
   def contains(t: T): Boolean
   def +=(t: T): Unit
@@ -22,40 +22,37 @@ trait IDSet[T] {
   def isEmpty: Boolean
   def foreach(f: T => Unit): Unit
   def process[S](t: T)(ifSeen: S)(ifNew: => S): S
-}
 
-object IDSet {
+object IDSet:
   implicit def toTraversable[T]: IDSet[T] => Iterable[T] = _.all
   def apply[T](values: T*): IDSet[T] = fromIterable(values)
 
   def apply[T](values: Iterable[T]): IDSet[T] = fromIterable(values)
 
-  private def fromIterable[T](values: Iterable[T]): IDSet[T] = {
+  private def fromIterable[T](values: Iterable[T]): IDSet[T] =
     val s = create[T]
     s ++= values
     s
-  }
 
-  def create[T]: IDSet[T] = new IDSet[T] {
+  def create[T]: IDSet[T] = new IDSet[T]:
     private val backing = new java.util.IdentityHashMap[T, AnyRef]
     private val Dummy: AnyRef = ""
 
     def apply(t: T) = contains(t)
     def contains(t: T) = backing.containsKey(t)
     def foreach(f: T => Unit) = all foreach f
-    def +=(t: T) = { backing.put(t, Dummy); () }
+    def +=(t: T) =
+      backing.put(t, Dummy); ()
     def ++=(t: Iterable[T]) = t foreach +=
-    def -=(t: T) = if (backing.remove(t) eq null) false else true
+    def -=(t: T) = if backing.remove(t) eq null then false else true
     def all = backing.keySet.asScala
     def toList = all.toList
     def isEmpty = backing.isEmpty
 
     def process[S](t: T)(ifSeen: S)(ifNew: => S) =
-      if (contains(t)) ifSeen
-      else {
+      if contains(t) then ifSeen
+      else
         this += t; ifNew
-      }
 
     override def toString = backing.toString
-  }
-}
+end IDSet

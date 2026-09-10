@@ -36,7 +36,7 @@ final case class SessionSettings(
     append: SessionMap,
     rawAppend: Seq[Setting[?]],
     currentEval: () => Eval
-) {
+):
 
   assert(
     currentProject contains currentBuild,
@@ -94,11 +94,10 @@ final case class SessionSettings(
   private def modify(
       map: SessionMap,
       onSeq: Seq[SessionSetting] => Seq[SessionSetting],
-  ): SessionMap = {
+  ): SessionMap =
     val cur = current
     map.updated(cur, onSeq(map.getOrElse(cur, Nil)))
-  }
-}
+end SessionSettings
 
 object SessionSettings:
 
@@ -136,30 +135,28 @@ object SessionSettings:
    */
   def withSettings(s: State)(f: SessionSettings => State): State =
     val extracted = Project.extract(s)
-    if (extracted.session.append.isEmpty) {
+    if extracted.session.append.isEmpty then
       s.log.info("No session settings defined.")
       s
-    } else f(extracted.session)
+    else f(extracted.session)
 
   /** Adds `s` to a strings when needed.    Maybe one day we'll care about non-english languages. */
-  def pluralize(size: Int, of: String) = size.toString + (if (size == 1) of else (of + "s"))
+  def pluralize(size: Int, of: String) = size.toString + (if size == 1 then of else (of + "s"))
 
   /** Checks to see if any session settings are being discarded and issues a warning. */
-  def checkSession(newSession: SessionSettings, oldState: State): Unit = {
+  def checkSession(newSession: SessionSettings, oldState: State): Unit =
     val oldSettings = oldState.get(Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
-    if (newSession.append.isEmpty && oldSettings.nonEmpty)
+    if newSession.append.isEmpty && oldSettings.nonEmpty then
       oldState.log.warn(
         "Discarding " + pluralize(
           oldSettings.size,
           " session setting"
         ) + ".  Use 'session save' to persist session settings."
       )
-  }
 
-  def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] = {
+  def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] =
     val asSet = ranges.foldLeft(Set.empty[Int]) { case (s, (hi, lo)) => s ++ (hi to lo) }
-    in.zipWithIndex.flatMap { (t, index) => if (asSet(index + 1)) Nil else t :: Nil }
-  }
+    in.zipWithIndex.flatMap { (t, index) => if asSet(index + 1) then Nil else t :: Nil }
 
   /**
    * Removes settings from the current session, by range.
@@ -179,10 +176,9 @@ object SessionSettings:
   def saveAllSettings(s: State): State = saveSomeSettings(s)(_ => true)
 
   /** Saves the session settings to disk for the current project. */
-  def saveSettings(s: State): State = {
+  def saveSettings(s: State): State =
     val current = Project.session(s).current
     saveSomeSettings(s)(_ == current)
-  }
 
   /**
    * Saves session settings to disk if they match the filter.
@@ -193,11 +189,10 @@ object SessionSettings:
   def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
     withSettings(s) { session =>
       val newSettings =
-        for ((ref, settings) <- session.append if settings.nonEmpty && include(ref)) yield {
+        for (ref, settings) <- session.append if settings.nonEmpty && include(ref) yield
           val (news, olds) =
             writeSettings(ref, settings.toList, session.original, Project.structure(s))
           (ref -> news, olds)
-        }
       val (newAppend, newOriginal) = newSettings.unzip
       val newSession = session.copy(append = newAppend.toMap, original = newOriginal.flatten.toSeq)
       reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
@@ -208,7 +203,7 @@ object SessionSettings:
       settings: List[SessionSetting],
       original: Seq[Setting[?]],
       structure: BuildStructure
-  ): (Seq[SessionSetting], Seq[Setting[?]]) = {
+  ): (Seq[SessionSetting], Seq[Setting[?]]) =
     val project =
       Project.getProject(pref, structure).getOrElse(sys.error("Invalid project reference " + pref))
     val writeTo: File = BuildPaths
@@ -221,16 +216,15 @@ object SessionSettings:
     val (inFile, other, _) =
       original.reverse.foldLeft((List[Setting[?]](), List[Setting[?]](), Set.empty[ScopedKey[?]])) {
         case ((in, oth, keys), s) =>
-          s.pos match {
+          s.pos match
             case RangePosition(`path`, _) if !keys.contains(s.key) => (s :: in, oth, keys + s.key)
             case _                                                 => (in, s :: oth, keys)
-          }
       }
 
     val (_, oldShifted, replace) = inFile.foldLeft((0, List[Setting[?]](), Seq[SessionSetting]())) {
       case ((offs, olds, repl), s) =>
         val RangePosition(_, r @ LineRange(start, end)) = s.pos: @unchecked
-        settings.find(_._1.key == s.key) match {
+        settings.find(_._1.key == s.key) match
           case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
             val shifted = ns.withPos(
               RangePosition(
@@ -242,12 +236,11 @@ object SessionSettings:
           case _ =>
             val shifted = s.withPos(RangePosition(path, r.shift(-offs)))
             (offs, shifted :: olds, repl)
-        }
     }
     val newSettings = settings diff replace
     val oldContent = IO.readLines(writeTo)
     val exist = SbtRefactorings.applySessionSettings(oldContent, replace)
-    val adjusted = if (newSettings.nonEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
+    val adjusted = if newSettings.nonEmpty && needsTrailingBlank(exist) then exist :+ "" else exist
     val lines = adjusted ++ newSettings.flatMap(x => x._2 :+ "")
     IO.writeLines(writeTo, lines)
     val (newWithPos, _) = newSettings.foldLeft((List[SessionSetting](), adjusted.size + 1)) {
@@ -256,7 +249,7 @@ object SessionSettings:
         ((s.withPos(RangePosition(path, LineRange(line, endLine))), newLines) :: acc, endLine + 1)
     }
     (newWithPos.reverse, other ++ oldShifted)
-  }
+  end writeSettings
 
   def needsTrailingBlank(lines: Seq[String]) =
     lines.nonEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
@@ -264,10 +257,9 @@ object SessionSettings:
   /** Prints all the user-defined SessionSettings (not raw) to System.out. */
   def printAllSettings(s: State): State =
     withSettings(s) { session =>
-      for ((ref, settings) <- session.append if settings.nonEmpty) {
+      for (ref, settings) <- session.append if settings.nonEmpty do
         println("In " + Reference.display(ref))
         printSettings(settings)
-      }
       s
     }
 
@@ -280,7 +272,7 @@ object SessionSettings:
 
   /** Prints all the passed in session settings */
   def printSettings(settings: Seq[SessionSetting]): Unit =
-    for (((_, stringRep), index) <- settings.zipWithIndex)
+    for ((_, stringRep), index) <- settings.zipWithIndex do
       println("  " + (index + 1) + ". " + stringRep.mkString("\n"))
 
   def Help =
@@ -352,9 +344,9 @@ save, save-all
 
   /** The raw implementation of the session command. */
   def command(s: State): Parser[() => State] = Command.applyEffect(parser) {
-    case p: Print  => if (p.all) printAllSettings(s) else printSettings(s)
-    case v: Save   => if (v.all) saveAllSettings(s) else saveSettings(s)
-    case c: Clear  => if (c.all) clearAllSettings(s) else clearSettings(s)
+    case p: Print  => if p.all then printAllSettings(s) else printSettings(s)
+    case v: Save   => if v.all then saveAllSettings(s) else saveSettings(s)
+    case c: Clear  => if c.all then clearAllSettings(s) else clearSettings(s)
     case r: Remove => removeSettings(s, r.ranges)
   }
 end SessionSettings

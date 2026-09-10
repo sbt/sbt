@@ -37,3 +37,4 @@ class ResolutionRunSpec extends AnyFunSuite with Matchers:
       "Server returned HTTP response code: 404 for URL: https://repo.example.com/org/mod/1.0/mod-1.0.pom"
     )
     ResolutionRun.isTransientResolutionError(err) shouldBe false
+end ResolutionRunSpec

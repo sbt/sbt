@@ -24,7 +24,7 @@ import sbt.io.syntax.*
  * - `artifacts`
  * - `publishedArtifacts`
  */
-object IvyPlugin extends AutoPlugin {
+object IvyPlugin extends AutoPlugin:
   // We are automatically included on everything that has the global module,
   // which is automatically included on everything.
   override def requires = CorePlugin
@@ -41,5 +41,3 @@ object IvyPlugin extends AutoPlugin {
     )
   override lazy val projectSettings: Seq[Setting[?]] =
     Classpaths.ivyPublishSettings ++ Classpaths.ivyBaseSettings
-
-}

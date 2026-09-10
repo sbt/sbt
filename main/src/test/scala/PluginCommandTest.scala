@@ -21,13 +21,15 @@ import sbt.internal.util.{
 }
 import sbt.internal.inc.PlainVirtualFileConverter
 
-object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
+object PluginCommandTestPlugin0 extends AutoPlugin:
+  override def requires = empty
 
 package subpackage {
-  object PluginCommandTestPlugin1 extends AutoPlugin { override def requires = empty }
+  object PluginCommandTestPlugin1 extends AutoPlugin:
+    override def requires = empty
 }
 
-object PluginCommandTest extends verify.BasicTestSuite {
+object PluginCommandTest extends verify.BasicTestSuite:
   import subpackage.*
   import FakeState.*
 
@@ -62,26 +64,24 @@ object PluginCommandTest extends verify.BasicTestSuite {
       )
     )
   }
-}
+end PluginCommandTest
 
-object FakeState {
+object FakeState:
 
-  def processCommand(input: String, enabledPlugins: AutoPlugin*): String = {
+  def processCommand(input: String, enabledPlugins: AutoPlugin*): String =
     val outBuffer = new ByteArrayOutputStream
     val logFile = File.createTempFile("sbt", ".log")
-    try {
+    try
       val state = FakeState(logFile, enabledPlugins*)
       Terminal.withOut(new PrintStream(outBuffer, true)) {
         MainLoop.processCommand(Exec(input, None), state)
       }
       new String(outBuffer.toByteArray)
-    } finally {
+    finally
       logFile.delete()
       ()
-    }
-  }
 
-  def apply(logFile: File, plugins: AutoPlugin*) = {
+  def apply(logFile: File, plugins: AutoPlugin*) =
 
     val base = new File("").getAbsoluteFile
     val testProject = Project("test-project", base).setAutoPlugins(plugins)
@@ -162,7 +162,5 @@ object FakeState {
       None,
       State.Continue
     )
-
-  }
-
-}
+  end apply
+end FakeState

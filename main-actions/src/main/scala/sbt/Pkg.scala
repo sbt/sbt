@@ -41,29 +41,27 @@ import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef 
 object Pkg:
   def JarManifest(m: Manifest) = PackageOption.JarManifest(m)
   def MainClass(mainClassName: String) = PackageOption.MainClass(mainClassName)
-  def ManifestAttributes(attributes: (String, String)*) = {
-    val converted = for ((name, value) <- attributes) yield (new Attributes.Name(name), value)
+  def ManifestAttributes(attributes: (String, String)*) =
+    val converted = for (name, value) <- attributes yield (new Attributes.Name(name), value)
     PackageOption.ManifestAttributes(converted*)
-  }
   // 2010-01-01
   private val default2010Timestamp: Long = 1262304000000L
   def FixedTimestamp(value: Option[Long]) = PackageOption.FixedTimestamp(value)
   val keepTimestamps: Option[Long] = None
   val fixed2010Timestamp: Option[Long] = Some(default2010Timestamp)
   def gitCommitDateTimestamp: Option[Long] =
-    try {
+    try
       Some(
         OffsetDateTime
           .parse(Process("git show -s --format=%cI").!!.trim)
           .toInstant()
           .toEpochMilli()
       )
-    } catch {
+    catch
       case e: Exception if e.getMessage.startsWith("Nonzero") =>
         sys.error(
           s"git repository was expected for package timestamp; use Package.fixed2010Timestamp or Package.keepTimestamps instead"
         )
-    }
   def setFixedTimestamp(value: Option[Long]): PackageOption =
     FixedTimestamp(value)
 
@@ -81,16 +79,13 @@ object Pkg:
 
   def mergeAttributes(a1: Attributes, a2: Attributes) = a1.asScala ++= a2.asScala
   // merges `mergeManifest` into `manifest` (mutating `manifest` in the process)
-  def mergeManifests(manifest: Manifest, mergeManifest: Manifest): Unit = {
+  def mergeManifests(manifest: Manifest, mergeManifest: Manifest): Unit =
     mergeAttributes(manifest.getMainAttributes, mergeManifest.getMainAttributes)
     val entryMap = manifest.getEntries.asScala
-    for ((key, value) <- mergeManifest.getEntries.asScala) {
-      entryMap.get(key) match {
+    for (key, value) <- mergeManifest.getEntries.asScala do
+      entryMap.get(key) match
         case Some(attributes) => mergeAttributes(attributes, value); ()
         case None             => entryMap.put(key, value); ()
-      }
-    }
-  }
 
   /**
    * The jar package configuration. Contains all relevant information to create a jar file.
@@ -103,7 +98,7 @@ object Pkg:
       val sources: Seq[(HashedVirtualFileRef, String)],
       val jar: VirtualFileRef,
       val options: Seq[PackageOption]
-  ) {
+  ):
     import sbt.util.CacheImplicits.hashedVirtualFileRefToStr
     private def sourcesStr: String =
       sources
@@ -117,7 +112,6 @@ object Pkg:
   options = ...,
 )    
 """
-  }
 
   object Configuration:
     given IsoLList.Aux[
@@ -178,26 +172,23 @@ object Pkg:
    *
    * @param main the current jar attributes
    */
-  def setVersion(main: Attributes): Unit = {
+  def setVersion(main: Attributes): Unit =
     val version = Attributes.Name.MANIFEST_VERSION
-    if (main.getValue(version) eq null) {
+    if main.getValue(version) eq null then
       main.put(version, "1.0")
       ()
-    }
-  }
-  def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption = {
+  def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption =
     import Attributes.Name.*
     val attribKeys = Seq(SPECIFICATION_TITLE, SPECIFICATION_VERSION, SPECIFICATION_VENDOR)
     val attribVals = Seq(name, version, orgName)
     PackageOption.ManifestAttributes(attribKeys.zip(attribVals)*)
-  }
   def addImplManifestAttributes(
       name: String,
       version: String,
       homepage: Option[URI],
       org: String,
       orgName: String
-  ): PackageOption = {
+  ): PackageOption =
     import Attributes.Name.*
 
     // The ones in Attributes.Name are deprecated saying:
@@ -215,7 +206,7 @@ object Pkg:
     PackageOption.ManifestAttributes(attribKeys.zip(attribVals) ++ {
       homepage map (h => (IMPLEMENTATION_URL, h.toString))
     }*)
-  }
+  end addImplManifestAttributes
 
   def makeJar(
       sources: Seq[(File, String)],
@@ -223,25 +214,22 @@ object Pkg:
       manifest: Manifest,
       log: Logger,
       time: Option[Long]
-  ): Unit = {
+  ): Unit =
     val path = jar.getAbsolutePath
     log.debug("Packaging " + path + " ...")
-    if (jar.exists)
-      if (!jar.isFile)
-        sys.error(path + " exists, but is not a regular file")
+    if jar.exists then if !jar.isFile then sys.error(path + " exists, but is not a regular file")
     log.debug(sourcesDebugString(sources))
     IO.jarParallel(sources, jar, manifest, time)
     log.debug("Done packaging.")
-  }
   def sourcesDebugString(sources: Seq[(File, String)]): String =
     "Input file mappings:\n\t" + (sources map { (f, s) => s + "\n\t  " + f } mkString ("\n\t"))
 
   given manifestFormat: JsonFormat[Manifest] = projectFormat[Manifest, Array[Byte]](
-    m => {
+    m =>
       val bos = new java.io.ByteArrayOutputStream()
       m.write(bos)
       bos.toByteArray
-    },
+    ,
     bs => new Manifest(new java.io.ByteArrayInputStream(bs))
   )
 end Pkg

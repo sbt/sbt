@@ -87,3 +87,4 @@ object GzipCacheStoreSpec extends verify.BasicTestSuite:
       val file = new File(dir, "tiny.bin")
       IO.write(file, "{}")
       assert(GzipFileInput.uncompressedSize(file) == 2L)
+end GzipCacheStoreSpec

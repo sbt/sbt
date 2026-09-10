@@ -257,6 +257,7 @@ object Compiler:
            |""".stripMargin
       if err then sys.error(msg)
       else s.log.warn(msg)
+    end reportScalaLibEviction
 
     // For Scala 3, update scala-library.jar in `scala-tool` and `scala-doc-tool` in case a newer version
     // is present in the `compile` configuration. This is needed once forwards binary compatibility is dropped
@@ -264,17 +265,17 @@ object Compiler:
     def updateLibraryToCompileConfiguration(report: ConfigurationReport) =
       if !ScalaArtifacts.isScala3(sv) then report
       else
-        (for {
+        (for
           compileConf <- fullReport.configuration(Configurations.Compile)
           compileLibMod <- compileConf.modules.find(_.module.name == ScalaArtifacts.LibraryID)
           reportLibMod <- report.modules.find(_.module.name == ScalaArtifacts.LibraryID)
           if VersionNumber(reportLibMod.module.revision)
             .matchesSemVer(SemanticSelector(s"<${compileLibMod.module.revision}"))
-        } yield {
+        yield
           val newMods = report.modules
             .filterNot(_.module.name == ScalaArtifacts.LibraryID) :+ compileLibMod
           report.withModules(newMods)
-        }).getOrElse(report)
+        ).getOrElse(report)
 
     val toolReport = updateLibraryToCompileConfiguration(
       fullReport
@@ -329,6 +330,7 @@ object Compiler:
           )
         else ()
     else ()
+    end if
     def file(id: String): Option[File] =
       for
         m <- toolReport.modules.find(_.module.name.startsWith(id))
@@ -385,6 +387,7 @@ object Compiler:
       allJars = allJars,
       explicitActual = Some(version)
     )
+  end makeScalaInstance
 
   private def noToolConfiguration(autoInstance: Boolean): String =
     val pre = "Missing Scala tool configuration from the 'update' report.  "
@@ -565,13 +568,13 @@ object Compiler:
         val rootPaths = Keys.rootPaths.value
         val tFiles = Keys.tastyFiles.value
         val sv = Keys.scalaVersion.value
-        (hasScala, hasJava) match {
+        (hasScala, hasJava) match
           case (true, _) =>
             val xapisFiles = xapis.map { (k, v) =>
               converter.toPath(k).toFile() -> v
             }
             val externalApiOpts =
-              if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
+              if ScalaArtifacts.isScala3(sv) then Opts.doc.externalAPIScala3(xapisFiles)
               else Opts.doc.externalAPI(xapisFiles)
             val options = sOpts ++ externalApiOpts
             val resolvedOptions = resolveVirtualizedScalacOptions(options, rootPaths)
@@ -611,7 +614,7 @@ object Compiler:
               s.log,
             )
           case _ => () // do nothing
-        }
+        end match
         out
     }
 

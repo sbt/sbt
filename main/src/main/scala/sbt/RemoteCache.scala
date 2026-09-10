@@ -18,12 +18,11 @@ import sbt.util.{ CacheImplicits, DiskActionCacheStore }
 import sjsonnew.JsonFormat
 
 object RemoteCache:
-  private[sbt] def artifactToStr(art: Artifact): String = {
+  private[sbt] def artifactToStr(art: Artifact): String =
     import LibraryManagementCodec.given
     import sjsonnew.support.scalajson.unsafe.*
     val format: JsonFormat[Artifact] = summon[JsonFormat[Artifact]]
     CompactPrinter(Converter.toJsonUnsafe(art)(using format))
-  }
 
   lazy val defaultCacheLocation: File = SysProp.globalLocalCache
 

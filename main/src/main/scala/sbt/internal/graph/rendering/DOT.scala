@@ -22,11 +22,11 @@ object DOT:
       colors: Boolean,
   ): String =
     val nodes = {
-      for (n <- graph.nodes) yield {
+      for n <- graph.nodes yield
         val label = nodeFormation(n.id.organization, n.id.name, n.id.version)
-        val style = if (n.isEvicted) EvictedStyle else ""
-        val penwidth = if (n.isEvicted) "3" else "5"
-        val color = if (colors) {
+        val style = if n.isEvicted then EvictedStyle else ""
+        val penwidth = if n.isEvicted then "3" else "5"
+        val color = if colors then
           val orgHash = n.id.organization.hashCode
           val r = (orgHash >> 16) & 0xff
           val g = (orgHash >> 8) & 0xff
@@ -35,7 +35,7 @@ object DOT:
           val g1 = (g * 0.90).toInt
           val b1 = (b * 0.90).toInt
           (r1 << 16) | (g1 << 8) | (b1 << 0)
-        } else 0
+        else 0
         s"""    "%s"[shape=box %s style="%s" penwidth="%s" color="%s"]"""
           .format(
             n.id.idString,
@@ -44,7 +44,6 @@ object DOT:
             penwidth,
             f"#$color%06X",
           )
-      }
     }.sorted.mkString("\n")
 
     def originWasEvicted(edge: Edge): Boolean = graph.module(edge._1).exists(_.isEvicted)
@@ -70,16 +69,16 @@ object DOT:
         .filterNot(e => originWasEvicted(e) || evictionTargetEdges(e)) ++ evictedByEdges
 
     val edges = {
-      for (e <- filteredEdges) yield {
+      for e <- filteredEdges yield
         val extra =
-          if (graph.module(e._1).exists(_.isEvicted))
+          if graph.module(e._1).exists(_.isEvicted) then
             s""" [label="Evicted By" style="$EvictedStyle"]"""
           else ""
         s"""    "${e._1.idString}" -> "${e._2.idString}"${extra}"""
-      }
     }.sorted.mkString("\n")
 
     s"$dotHead\n$nodes\n$edges\n}"
+  end dotGraph
 
   enum HTMLLabelRendering:
     case AngleBrackets

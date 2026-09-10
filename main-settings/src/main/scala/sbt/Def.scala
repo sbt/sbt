@@ -91,14 +91,14 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       current: ProjectRef,
       keyNameColor: Option[String] = None,
   ): Show[ScopedKey[?]] =
-    Show[ScopedKey[?]](key => {
+    Show[ScopedKey[?]](key =>
       val color: String => String = withColor(_, keyNameColor)
       key.scope.extra.toOption
         .flatMap(_.get(Scope.customShowString).map(color))
         .getOrElse {
           Scope.display(key.scope, color(key.key.label), ref => displayRelative2(current, ref))
         }
-    })
+    )
 
   private[sbt] def showShortKey(
       keyNameColor: Option[String],
@@ -108,17 +108,15 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   private[sbt] def showShortKey(
       keyNameColor: Option[String],
       configNameToIdent: String => String,
-  ): Show[ScopedKey[?]] = {
+  ): Show[ScopedKey[?]] =
     def displayShort(
         project: Reference
-    ): String = {
+    ): String =
       val trailing = " /"
-      project match {
+      project match
         case BuildRef(_)      => "ThisBuild" + trailing
         case ProjectRef(_, x) => x + trailing
         case _                => Reference.display(project) + trailing
-      }
-    }
     Show[ScopedKey[?]](key =>
       Scope.display(
         key.scope,
@@ -127,7 +125,6 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
         configNameToIdent
       )
     )
-  }
 
   @deprecated("Use showBuildRelativeKey2 which doesn't take the unused multi param", "1.1.1")
   def showBuildRelativeKey(
@@ -171,33 +168,30 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       current: ProjectRef,
       project: Reference,
       trailingSlash: Boolean
-  ): String = {
+  ): String =
     import Reference.display as displayRef
-    @tailrec def loop(ref: Reference): String = ref match {
-      case ProjectRef(b, p) => if (b == current.build) loop(LocalProject(p)) else displayRef(ref)
-      case BuildRef(b)      => if (b == current.build) loop(ThisBuild) else displayRef(ref)
-      case RootProject(b)   => if (b == current.build) loop(LocalRootProject) else displayRef(ref)
-      case LocalProject(p)  => if (p == current.project) "" else p
-      case ThisBuild        => "ThisBuild"
+    @tailrec def loop(ref: Reference): String = ref match
+      case ProjectRef(b, p) => if b == current.build then loop(LocalProject(p)) else displayRef(ref)
+      case BuildRef(b)      => if b == current.build then loop(ThisBuild) else displayRef(ref)
+      case RootProject(b)  => if b == current.build then loop(LocalRootProject) else displayRef(ref)
+      case LocalProject(p) => if p == current.project then "" else p
+      case ThisBuild       => "ThisBuild"
       case LocalRootProject => "<root>"
       case LocalAggregate   => "<aggregate>"
       case ThisProject      => "<this>"
-    }
     val str = loop(project)
-    if (trailingSlash && !str.isEmpty) s"$str /"
+    if trailingSlash && !str.isEmpty then s"$str /"
     else str
-  }
 
   @deprecated("Use variant without multi", "1.1.1")
   def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String =
     displayBuildRelative(currentBuild, project)
 
   def displayBuildRelative(currentBuild: URI, project: Reference): String =
-    project match {
+    project match
       case BuildRef(`currentBuild`)      => "ThisBuild /"
       case ProjectRef(`currentBuild`, x) => x + " /"
       case _                             => Reference.display(project) + " /"
-    }
 
   def displayFull(scoped: ScopedKey[?]): String = displayFull(scoped, None)
 
@@ -212,10 +206,9 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
 
   def withColor(s: String, color: Option[String]): String =
     withColor(s, color, useColor = ITerminal.isColorEnabled)
-  def withColor(s: String, color: Option[String], useColor: Boolean): String = color match {
+  def withColor(s: String, color: Option[String], useColor: Boolean): String = color match
     case Some(c) if useColor => c + s + scala.Console.RESET
     case _                   => s
-  }
 
   override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] =
     super.deriveAllowed(s, allowDynamic) orElse
@@ -231,14 +224,16 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   override def intersect(s1: Scope, s2: Scope)(using
       delegates: Scope => Seq[Scope]
   ): Option[Scope] =
-    if (s2 == GlobalScope) Some(s1) // s1 is more specific
-    else if (s1 == GlobalScope) Some(s2) // s2 is more specific
+    if s2 == GlobalScope then Some(s1) // s1 is more specific
+    else if s1 == GlobalScope then Some(s2) // s2 is more specific
     else super.intersect(s1, s2)
 
   private def definedSettingString(s: Setting[?]): String =
     s"derived setting ${s.key.key.label}${positionString(s)}"
   private def positionString(s: Setting[?]): String =
-    s.positionString match { case None => ""; case Some(pos) => s" defined at $pos" }
+    s.positionString match
+      case None      => "";
+      case Some(pos) => s" defined at $pos"
 
   /**
    * A default Parser for splitting input into space-separated arguments.
@@ -352,13 +347,12 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   private[sbt] def branchS[A, B, C](
       x: Def.Initialize[Task[Either[A, B]]]
   )(l: Def.Initialize[Task[A => C]])(r: Def.Initialize[Task[B => C]]): Def.Initialize[Task[C]] =
-    val lhs: Initialize[Task[Either[B, C]]] = {
+    val lhs: Initialize[Task[Either[B, C]]] =
       val innerLhs: Def.Initialize[Task[Either[A, Either[B, C]]]] =
         x.map((fab: Either[A, B]) => fab.map(Left(_)))
       val innerRhs: Def.Initialize[Task[A => Either[B, C]]] =
         l.map((fn: A => C) => fn.andThen(Right(_)))
       selectITask[A, Either[B, C]](innerLhs, innerRhs)
-    }
     selectITask[B, C](lhs, r)
 
   // derived from select
@@ -368,9 +362,9 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
     val condition: Def.Initialize[Task[Either[Unit, Unit]]] =
       x.map { (p: Boolean) => if p then Left(()) else Right(()) }
     val left: Def.Initialize[Task[Unit => A]] =
-      t.map { (a: A) => { (_: Unit) => a } }
+      t.map { (a: A) => (_: Unit) => a }
     val right: Def.Initialize[Task[Unit => A]] =
-      e.map { (a: A) => { (_: Unit) => a } }
+      e.map { (a: A) => (_: Unit) => a }
     branchS(condition)(left)(right)
 
   /**
@@ -449,13 +443,11 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
         )
       )
 
-  class InitOps[T](private val x: Initialize[T]) extends AnyVal {
+  class InitOps[T](private val x: Initialize[T]) extends AnyVal:
     def toTaskable: Taskable[T] = x
-  }
 
-  class InitTaskOps[T](private val x: Initialize[Task[T]]) extends AnyVal {
+  class InitTaskOps[T](private val x: Initialize[Task[T]]) extends AnyVal:
     def toTaskable: Taskable[T] = x
-  }
 
   /**
    * This works around Scala 2.12.12's
@@ -471,7 +463,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   private[sbt] def dummy[A: ClassTag](name: String, description: String): (TaskKey[A], Task[A]) =
     (TaskKey[A](name, description, DTask), dummyTask(name))
 
-  private[sbt] def dummyTask[T](name: String): Task[T] = {
+  private[sbt] def dummyTask[T](name: String): Task[T] =
     import TaskExtra.named
     val base: Task[T] = TaskExtra
       .task(
@@ -479,7 +471,6 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       )
       .named(name)
     base.set(isDummyTask, true)
-  }
 
   private[sbt] def isDummy(t: Task[?]): Boolean =
     t.get(isDummyTask).getOrElse(false)
@@ -490,7 +481,8 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   inline def uncached[A1](inline a: A1): A1 = Uncached(a)
 end Def
 
-sealed trait InitializeImplicits { self: Def.type =>
+sealed trait InitializeImplicits:
+  self: Def.type =>
   implicit def initOps[T](x: Def.Initialize[T]): Def.InitOps[T] = new Def.InitOps(x)
 
   implicit def initTaskOps[T](x: Def.Initialize[Task[T]]): Def.InitTaskOps[T] =
@@ -506,4 +498,3 @@ sealed trait InitializeImplicits { self: Def.type =>
    */
   extension [A](in: Seq[Def.Initialize[Task[A]]])
     def join: Def.Initialize[Task[Seq[A]]] = Scoped.richTaskSeq(in).join
-}

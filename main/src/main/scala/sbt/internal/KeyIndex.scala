@@ -16,17 +16,16 @@ import sbt.internal.util.Types.some
 import sbt.internal.util.{ AttributeKey, Relation }
 import sbt.librarymanagement.Configuration
 
-object KeyIndex {
+object KeyIndex:
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
 
   def apply(
       known: Iterable[ScopedKey[?]],
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
-  ): ExtendableKeyIndex = {
+  ): ExtendableKeyIndex =
     import scala.collection.parallel.CollectionConverters.*
     known.par.foldLeft(base(projects, configurations)) { _.add(_) }
-  }
 
   def aggregate(
       known: Set[ScopedKey[?]],
@@ -41,42 +40,38 @@ object KeyIndex {
   private def base(
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
-  ): ExtendableKeyIndex = {
-    val data = for {
-      (uri, ids) <- projects
-    } yield {
-      val data = ids map { id =>
-        val configs = configurations.getOrElse(id, Seq())
-        val configIdentToName = configs.map(config => config.id -> config.name).toMap
-        val configNameToIdent = configs.map(config => config.name -> config.id).toMap
-        Option(id) -> new ConfigIndex(
-          Map.empty,
-          configIdentToName,
-          configNameToIdent,
-          emptyAKeyIndex
-        )
-      }
-      Option(uri) -> new ProjectIndex(data.toMap)
-    }
+  ): ExtendableKeyIndex =
+    val data =
+      for (uri, ids) <- projects
+      yield
+        val data = ids map { id =>
+          val configs = configurations.getOrElse(id, Seq())
+          val configIdentToName = configs.map(config => config.id -> config.name).toMap
+          val configNameToIdent = configs.map(config => config.name -> config.id).toMap
+          Option(id) -> new ConfigIndex(
+            Map.empty,
+            configIdentToName,
+            configNameToIdent,
+            emptyAKeyIndex
+          )
+        }
+        Option(uri) -> new ProjectIndex(data.toMap)
     new KeyIndex0(new BuildIndex(data))
-  }
 
-  def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex {
+  def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex:
     def buildURIs = concat(_.buildURIs)
     def projects(uri: URI) = concat(_.projects(uri))
     def exists(project: Option[ResolvedReference]): Boolean = indices.exists(_.exists(project))
     def configs(proj: Option[ResolvedReference]) = concat(_.configs(proj))
     private[sbt] def configIdents(proj: Option[ResolvedReference]) = concat(_.configIdents(proj))
     private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String =
-      indices.find(idx => idx.exists(proj)) match {
+      indices.find(idx => idx.exists(proj)) match
         case Some(idx) => idx.fromConfigIdent(proj)(configIdent)
         case _         => Scope.unguessConfigIdent(configIdent)
-      }
     private[sbt] def toConfigIdent(proj: Option[ResolvedReference])(configName: String): String =
-      indices.find(idx => idx.exists(proj)) match {
+      indices.find(idx => idx.exists(proj)) match
         case Some(idx) => idx.toConfigIdent(proj)(configName)
         case _         => Scope.guessConfigIdent(configName)
-      }
     def tasks(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.tasks(proj, conf))
     def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String) =
       concat(_.tasks(proj, conf, key))
@@ -86,7 +81,6 @@ object KeyIndex {
       concat(_.keys(proj, conf, task))
     def concat[T](f: KeyIndex => Set[T]): Set[T] =
       indices.foldLeft(Set.empty[T])((s, k) => s ++ f(k))
-  }
   private[sbt] def getOr[A, B](m: Map[A, B], key: A, or: B): B = m.getOrElse(key, or)
   private[sbt] def keySet[A, B](m: Map[Option[A], B]): Set[A] = m.keys.flatten.toSet
   private[sbt] val emptyAKeyIndex = new AKeyIndex(Relation.empty)
@@ -94,11 +88,11 @@ object KeyIndex {
     new ConfigIndex(Map.empty, Map.empty, Map.empty, emptyAKeyIndex)
   private[sbt] val emptyProjectIndex = new ProjectIndex(Map.empty)
   private[sbt] val emptyBuildIndex = new BuildIndex(Map.empty)
+end KeyIndex
 
-}
 import KeyIndex.*
 
-trait KeyIndex {
+trait KeyIndex:
   // TODO, optimize
   def isEmpty(proj: Option[ResolvedReference], conf: Option[String]): Boolean =
     keys(proj, conf).isEmpty
@@ -128,20 +122,18 @@ trait KeyIndex {
   private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String]
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String
   private[sbt] def toConfigIdent(proj: Option[ResolvedReference])(configName: String): String
-}
-trait ExtendableKeyIndex extends KeyIndex {
+end KeyIndex
+trait ExtendableKeyIndex extends KeyIndex:
   def add(scoped: ScopedKey[?]): ExtendableKeyIndex
   def addAggregated(scoped: ScopedKey[?], extra: BuildUtil[?]): ExtendableKeyIndex
-}
 // task axis <-> key
-private[sbt] final class AKeyIndex(val data: Relation[Option[AttributeKey[?]], String]) {
+private[sbt] final class AKeyIndex(val data: Relation[Option[AttributeKey[?]], String]):
   def add(task: Option[AttributeKey[?]], key: AttributeKey[?]): AKeyIndex =
     new AKeyIndex(data + (task, key.label))
   def keys(task: Option[AttributeKey[?]]): Set[String] = data.forward(task)
   def allKeys: Set[String] = data._2s
   def tasks: Set[AttributeKey[?]] = data._1s.flatten
   def tasks(key: String): Set[AttributeKey[?]] = data.reverse(key).flatten
-}
 
 private[sbt] case class IdentifiableConfig(name: String, ident: Option[String])
 
@@ -156,17 +148,15 @@ private[sbt] final class ConfigIndex(
     val configIdentToName: Map[String, String],
     val configNameToIdent: Map[String, String],
     val noConfigKeys: AKeyIndex
-) {
+):
   def add(
       config: Option[IdentifiableConfig],
       task: Option[AttributeKey[?]],
       key: AttributeKey[?]
-  ): ConfigIndex = {
-    config match {
+  ): ConfigIndex =
+    config match
       case Some(c) => addKeyWithConfig(c, task, key)
       case None    => addKeyWithoutConfig(task, key)
-    }
-  }
 
   def addKeyWithConfig(
       config: IdentifiableConfig,
@@ -186,14 +176,12 @@ private[sbt] final class ConfigIndex(
       noConfigKeys
     )
 
-  def addKeyWithoutConfig(task: Option[AttributeKey[?]], key: AttributeKey[?]): ConfigIndex = {
+  def addKeyWithoutConfig(task: Option[AttributeKey[?]], key: AttributeKey[?]): ConfigIndex =
     new ConfigIndex(data, configIdentToName, configNameToIdent, noConfigKeys.add(task, key))
-  }
 
-  def keyIndex(conf: Option[String]): AKeyIndex = conf match {
+  def keyIndex(conf: Option[String]): AKeyIndex = conf match
     case Some(c) => data.get(c).getOrElse(emptyAKeyIndex)
     case None    => noConfigKeys
-  }
 
   def configs: Set[String] = data.keySet
   private[sbt] lazy val idents: Set[String] = configIdentToName.keySet
@@ -207,10 +195,10 @@ private[sbt] final class ConfigIndex(
   // Falls back to guessing if the identifier is not in the index.
   private[sbt] def fromConfigIdent(ident: String): String =
     configIdentToName.getOrElse(ident, Scope.unguessConfigIdent(ident))
-}
+end ConfigIndex
 private[sbt] object ConfigIndex
 
-private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
+private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]):
   def add(
       id: Option[String],
       config: Option[IdentifiableConfig],
@@ -220,8 +208,7 @@ private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]
     new ProjectIndex(data updated (id, confIndex(id).add(config, task, key)))
   def confIndex(id: Option[String]): ConfigIndex = getOr(data, id, emptyConfigIndex)
   def projects: Set[String] = keySet(data)
-}
-private[sbt] final class BuildIndex(val data: Map[Option[URI], ProjectIndex]) {
+private[sbt] final class BuildIndex(val data: Map[Option[URI], ProjectIndex]):
   def add(
       build: Option[URI],
       project: Option[String],
@@ -232,14 +219,12 @@ private[sbt] final class BuildIndex(val data: Map[Option[URI], ProjectIndex]) {
     new BuildIndex(data updated (build, projectIndex(build).add(project, config, task, key)))
   def projectIndex(build: Option[URI]): ProjectIndex = getOr(data, build, emptyProjectIndex)
   def builds: Set[URI] = keySet(data)
-}
-private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex {
+private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex:
   def buildURIs: Set[URI] = data.builds
   def projects(uri: URI): Set[String] = data.projectIndex(Some(uri)).projects
-  def exists(proj: Option[ResolvedReference]): Boolean = {
+  def exists(proj: Option[ResolvedReference]): Boolean =
     val (build, project) = parts(proj)
     data.data.get(build).flatMap(_.data.get(project)).isDefined
-  }
   def configs(project: Option[ResolvedReference]): Set[String] = confIndex(project).configs
 
   private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String] =
@@ -272,39 +257,35 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
 
   def keyIndex(proj: Option[ResolvedReference], conf: Option[String]): AKeyIndex =
     confIndex(proj).keyIndex(conf)
-  def confIndex(proj: Option[ResolvedReference]): ConfigIndex = {
+  def confIndex(proj: Option[ResolvedReference]): ConfigIndex =
     val (build, project) = parts(proj)
     data.projectIndex(build).confIndex(project)
-  }
   def parts(proj: Option[Reference]): (Option[URI], Option[String]) =
-    proj match {
+    proj match
       case Some(ProjectRef(uri, id)) => (Some(uri), Some(id))
       case Some(BuildRef(uri))       => (Some(uri), None)
       case _                         => (None, None)
-    }
   private def optConfigs(project: Option[ResolvedReference]): Seq[Option[String]] =
     None +: (configs(project).toSeq.map(some[String]))
 
   def addAggregated(scoped: ScopedKey[?], extra: BuildUtil[?]): ExtendableKeyIndex =
-    if (validID(scoped.key.label)) {
+    if validID(scoped.key.label) then
       val aggregateProjects = Aggregation.reverseAggregate(Set(scoped), extra)
       aggregateProjects.foldLeft(this: ExtendableKeyIndex)(_.add(_))
-    } else this
+    else this
 
   def add(scoped: ScopedKey[?]): ExtendableKeyIndex =
-    if (validID(scoped.key.label)) add0(scoped) else this
-  private def add0(scoped: ScopedKey[?]): ExtendableKeyIndex = {
+    if validID(scoped.key.label) then add0(scoped) else this
+  private def add0(scoped: ScopedKey[?]): ExtendableKeyIndex =
     val (build, project) = parts(scoped.scope.project.toOption)
     add1(build, project, scoped.scope.config, scoped.scope.task, scoped.key)
-  }
   private def add1(
       uri: Option[URI],
       id: Option[String],
       config: ScopeAxis[ConfigKey],
       task: ScopeAxis[AttributeKey[?]],
       key: AttributeKey[?]
-  ): ExtendableKeyIndex = {
+  ): ExtendableKeyIndex =
     val keyConfig = config.toOption.map(c => IdentifiableConfig(c.name, None))
     new KeyIndex0(data.add(uri, id, keyConfig, task.toOption, key))
-  }
-}
+end KeyIndex0

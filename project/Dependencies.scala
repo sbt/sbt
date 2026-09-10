@@ -1,7 +1,7 @@
 import sbt.*
 import Keys.*
 
-object Dependencies {
+object Dependencies:
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala3 = "3.9.0"
   val scala212 = "2.12.21"
@@ -27,13 +27,12 @@ object Dependencies {
   private val zinc = "org.scala-sbt" %% "zinc" % zincVersion
   private val zincCompileCore = "org.scala-sbt" %% "zinc-compile-core" % zincVersion
 
-  def getSbtModulePath(key: String) = {
+  def getSbtModulePath(key: String) =
     val localProps = new java.util.Properties()
     IO.load(localProps, file("project/local.properties"))
     val path = Option(localProps.getProperty(key)).orElse(sys.props.get(key))
     path.foreach(f => println(s"Using $key=$f"))
     path
-  }
 
   lazy val sbtIoPath = getSbtModulePath("sbtio.path")
   lazy val sbtZincPath = getSbtModulePath("sbtzinc.path")
@@ -43,15 +42,13 @@ object Dependencies {
       projectName: String,
       moduleId: ModuleID,
       c: Option[Configuration] = None
-  ) = (p: Project) => {
+  ) = (p: Project) =>
     val m0 = moduleId.withConfigurations(c.map(_.name))
     val m = m0
-    path match {
+    path match
       case Some(f) =>
         p.dependsOn(ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name)))
       case None => p.settings(libraryDependencies += m, dependencyOverrides += m)
-    }
-  }
 
   def addSbtIO = addSbtModule(sbtIoPath, "io", sbtIO)
   def addSbtIOForTest = addSbtModule(sbtIoPath, "io", sbtIO, Some(Test))
@@ -135,4 +132,4 @@ object Dependencies {
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.
   val jniUtilsVersion = "0.3.3"
-}
+end Dependencies

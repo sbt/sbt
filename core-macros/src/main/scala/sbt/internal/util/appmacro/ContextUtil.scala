@@ -116,6 +116,8 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
         case Inlined(_, _, tree) => extractTags(tree)
         case Apply(_, List(arg)) => extractTags(arg)
         case _                   => extractTags0(tree)
+    end extractTags
+  end Input
 
   def cacheLevels(tree: Term): Seq[CacheLevelTag] =
     tree.underlying match
@@ -202,6 +204,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
     end scanner
     scanner.traverseTree(tree)(Symbol.spliceOwner)
     result.toSet
+  end collectNowarnQuals
 
   def collectDefs(tree: Term, isWrapper: (String, TypeRepr, Term) => Boolean): Set[Symbol] =
     val defs = mutable.HashSet[Symbol]()

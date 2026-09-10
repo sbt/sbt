@@ -8,30 +8,29 @@ import java.io.File
  * sbt.test.integrationtest.basedir when Test/fork is true so paths are
  * correct regardless of the forked JVM's working directory (e.g. on Windows).
  */
-object IntegrationTestPaths {
+object IntegrationTestPaths:
   private val baseDir: Option[File] =
     sys.props.get("sbt.test.integrationtest.basedir").map(new File(_))
 
   def sbtScript(isWindows: Boolean): File =
-    baseDir match {
+    baseDir match
       case Some(b) =>
-        val name = if (isWindows) "sbt.bat" else "sbt"
+        val name = if isWindows then "sbt.bat" else "sbt"
         new File(
           b.getParentFile.getParentFile,
           s"target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/$name"
         ).getAbsoluteFile
       case None =>
         val rel =
-          if (isWindows) "../../target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt.bat"
+          if isWindows then
+            "../../target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt.bat"
           else "../../target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt"
         new File(rel).getAbsoluteFile
-    }
 
   def citestDir(citestVariant: String = "citest"): File =
-    baseDir match {
+    baseDir match
       case Some(b) =>
         new File(b.getParentFile, citestVariant).getAbsoluteFile
       case None =>
         new File("..", citestVariant).getAbsoluteFile
-    }
-}
+end IntegrationTestPaths

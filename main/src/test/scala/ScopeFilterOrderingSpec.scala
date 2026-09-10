@@ -14,7 +14,7 @@ import hedgehog.runner.*
 
 import java.net.URI
 
-object ScopeFilterOrderingSpec extends Properties {
+object ScopeFilterOrderingSpec extends Properties:
   private val buildUri = new URI("file:///scope-filter-ordering/")
 
   override def tests: List[Test] =
@@ -64,4 +64,4 @@ object ScopeFilterOrderingSpec extends Properties {
       Scope(Select(project), Select(ConfigKey("test")), Zero, Zero),
       Scope(Select(project), Zero, Zero, Zero)
     )
-}
+end ScopeFilterOrderingSpec

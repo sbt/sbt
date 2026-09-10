@@ -58,11 +58,10 @@ package object sbt
   given singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
   // others
 
-  object CompileOrder {
+  object CompileOrder:
     val JavaThenScala = xsbti.compile.CompileOrder.JavaThenScala
     val ScalaThenJava = xsbti.compile.CompileOrder.ScalaThenJava
     val Mixed = xsbti.compile.CompileOrder.Mixed
-  }
   type CompileOrder = xsbti.compile.CompileOrder
 
   final val ThisScope = Scope.ThisScope

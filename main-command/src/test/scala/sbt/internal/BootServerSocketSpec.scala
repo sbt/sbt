@@ -16,11 +16,10 @@ object BootServerSocketSpec extends BasicTestSuite:
 
   // the constructor only reads baseDirectory; provider is never touched
   private def config(base: java.io.File): xsbti.AppConfiguration =
-    new xsbti.AppConfiguration {
+    new xsbti.AppConfiguration:
       override def arguments(): Array[String] = Array.empty
       override def baseDirectory(): java.io.File = base
       override def provider(): xsbti.AppProvider = null
-    }
 
   private def probe(location: String): Boolean =
     BootServerSocketProbe.liveServerDetected(location, false)
@@ -56,7 +55,7 @@ object BootServerSocketSpec extends BasicTestSuite:
   }
 
   test("a stale socket file is not a live server and does not block a new socket") {
-    if (!Util.isWindows) {
+    if !Util.isWindows then
       val (base, token) = freshBase("boot-socket-stale")
       val location = Paths.get(BootServerSocket.socketLocation(base.toPath, token))
       Files.createDirectories(location.getParent)
@@ -68,7 +67,6 @@ object BootServerSocketSpec extends BasicTestSuite:
         try probe(location.toString)
         finally server.close()
       assert(liveAfterReclaim)
-    }
   }
 
 end BootServerSocketSpec

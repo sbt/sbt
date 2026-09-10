@@ -25,32 +25,30 @@ import scala.util.{ Failure, Properties, Success, Try }
 sealed trait ScalaRun:
   def run(mainClass: String, classpath: Seq[NioPath], options: Seq[String], log: Logger): Try[Unit]
 
-class ForkRun(config: ForkOptions) extends ScalaRun {
+class ForkRun(config: ForkOptions) extends ScalaRun:
   def run(
       mainClass: String,
       classpath: Seq[NioPath],
       options: Seq[String],
       log: Logger
-  ): Try[Unit] = {
+  ): Try[Unit] =
     log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
     val c = configLogged(log)
     val scalaOpts = scalaOptions(mainClass, classpath, options)
     val exitCode =
       try Fork.java(c, scalaOpts)
-      catch {
+      catch
         case _: InterruptedException =>
           log.warn("run canceled")
           1
-      }
     Run.processExitCode(exitCode, "runner")
-  }
 
   def fork(
       mainClass: String,
       classpath: Seq[NioPath],
       options: Seq[String],
       log: Logger
-  ): Process = {
+  ): Process =
     log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
 
     val c = configLogged(log)
@@ -58,12 +56,10 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
 
     // fork with Java because Scala introduces an extra class loader (#702)
     Fork.java.fork(c, scalaOpts)
-  }
 
-  private def configLogged(log: Logger): ForkOptions = {
-    if (config.outputStrategy.isDefined || config.connectInput) config
+  private def configLogged(log: Logger): ForkOptions =
+    if config.outputStrategy.isDefined || config.connectInput then config
     else config.withOutputStrategy(OutputStrategy.LoggedOutput(log))
-  }
 
   private def scalaOptions(
       mainClass: String,
@@ -71,10 +67,10 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
       options: Seq[String],
   ): Seq[String] =
     "-classpath" :: Path.makeString(classpath.map(_.toFile())) :: mainClass :: options.toList
-}
+end ForkRun
 
 class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boolean)
-    extends ScalaRun {
+    extends ScalaRun:
   def this(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) =
     this(
       (cp: Seq[NioPath]) => ClasspathUtil.makeLoader(cp, instance, nativeTmp.toPath),
@@ -87,20 +83,20 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
       mainClass: String,
       options: Seq[String],
       log: Logger
-  ): Try[Unit] = {
+  ): Try[Unit] =
     log.info(s"running $mainClass ${Run.runOptionsStr(options)}")
 
     def execute(): Unit =
-      try {
+      try
         log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
         val main = detectMainMethod(mainClass, loader)
         invokeMain(loader, main, options)
-      } catch {
+      catch
         case e: java.lang.reflect.InvocationTargetException =>
-          e.getCause match {
+          e.getCause match
             case ex: ClassNotFoundException =>
               val className = ex.getMessage
-              try {
+              try
                 loader.loadClass(className)
                 val msg =
                   s"$className is on the project classpath but not visible to the ClassLoader " +
@@ -108,11 +104,10 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
                     "See https://www.scala-sbt.org/1.x/docs/In-Process-Classloaders.html for " +
                     "further information."
                 log.error(msg)
-              } catch { case NonFatal(_) => }
+              catch
+                case NonFatal(_) =>
               throw ex
             case ex => throw ex
-          }
-      }
     def directExecute(): Try[Unit] =
       Try(execute()) recover { case NonFatal(e) =>
         // bgStop should not print out stack trace
@@ -120,9 +115,9 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
         throw e
       }
 
-    if (trapExit) Run.executeSuccess(execute())
+    if trapExit then Run.executeSuccess(execute())
     else directExecute()
-  }
+  end runWithLoader
 
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner. */
   def run(
@@ -130,7 +125,7 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
       classpath: Seq[NioPath],
       options: Seq[String],
       log: Logger
-  ): Try[Unit] = {
+  ): Try[Unit] =
     val loader = newLoader(classpath)
     try runWithLoader(loader, classpath, mainClass, options, log)
     finally
@@ -138,35 +133,29 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
         case ac: AutoCloseable  => ac.close()
         case c: ClasspathFilter => c.close()
         case _                  =>
-  }
   private def invokeMain(
       loader: ClassLoader,
       main: DetectedMain,
       options: Seq[String]
-  ): Unit = {
+  ): Unit =
     val currentThread = Thread.currentThread
     val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)
-    try {
-      if (main.isStatic) {
-        if (Run.isJava25Plus) {
-          main.method.setAccessible(true)
-        }
-        if (main.parameterCount > 0) main.method.invoke(null, options.toArray[String])
+    try
+      if main.isStatic then
+        if Run.isJava25Plus then main.method.setAccessible(true)
+        if main.parameterCount > 0 then main.method.invoke(null, options.toArray[String])
         else main.method.invoke(null)
-      } else {
+      else
         val constructor = main.mainClass.getDeclaredConstructor()
-        if (Run.isJava25Plus) {
-          constructor.setAccessible(true)
-        }
+        if Run.isJava25Plus then constructor.setAccessible(true)
         val ref = constructor.newInstance().asInstanceOf[AnyRef]
-        if (main.parameterCount > 0) main.method.invoke(ref, options.toArray[String])
+        if main.parameterCount > 0 then main.method.invoke(ref, options.toArray[String])
         else main.method.invoke(ref)
-      }
       ()
-    } catch {
+    catch
       case t: Throwable =>
-        t.getCause match {
+        t.getCause match
           case e: java.lang.IllegalAccessError =>
             val msg = s"Error running $main.\n$e\n" +
               "If using a layered classloader, this can occur if jvm package private classes are " +
@@ -174,60 +163,51 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
               "ScalaInstance class loader layering strategies."
             throw new IllegalAccessError(msg)
           case _ => throw t
-        }
-    } finally {
-      currentThread.setContextClassLoader(oldLoader)
-    }
-  }
+    finally currentThread.setContextClassLoader(oldLoader)
+    end try
+  end invokeMain
   def getMainMethod(mainClassName: String, loader: ClassLoader): Method =
     detectMainMethod(mainClassName, loader).method
 
-  private def detectMainMethod(mainClassName: String, loader: ClassLoader) = {
+  private def detectMainMethod(mainClassName: String, loader: ClassLoader) =
     val mainClass = Class.forName(mainClassName, true, loader)
-    if (Run.isJava25Plus) {
+    if Run.isJava25Plus then
       val method =
-        try {
-          mainClass.getMethod("main", classOf[Array[String]])
-        } catch {
+        try mainClass.getMethod("main", classOf[Array[String]])
+        catch
           case _: NoSuchMethodException =>
-            try {
-              mainClass.getMethod("main")
-            } catch {
+            try mainClass.getMethod("main")
+            catch
               case _: NoSuchMethodException =>
-                try {
-                  mainClass.getDeclaredMethod("main", classOf[Array[String]])
-                } catch {
+                try mainClass.getDeclaredMethod("main", classOf[Array[String]])
+                catch
                   case _: NoSuchMethodException =>
                     mainClass.getDeclaredMethod("main")
-                }
-            }
-        }
       val modifiers = method.getModifiers
-      if (isPrivate(modifiers)) {
+      if isPrivate(modifiers) then
         throw new NoSuchMethodException(s"${mainClassName}.main is private")
-      }
       method.setAccessible(true)
       DetectedMain(mainClass, method, isStatic(modifiers), method.getParameterCount())
-    } else {
+    else
       val method = mainClass.getMethod("main", classOf[Array[String]])
       // jvm allows the actual main class to be non-public and to run a method in the non-public class,
       //  we need to make it accessible
       method.setAccessible(true)
       val modifiers = method.getModifiers
-      if (!isPublic(modifiers))
+      if !isPublic(modifiers) then
         throw new NoSuchMethodException(mainClassName + ".main is not public")
-      if (!isStatic(modifiers))
+      if !isStatic(modifiers) then
         throw new NoSuchMethodException(mainClassName + ".main is not static")
       DetectedMain(mainClass, method, isStatic = true, method.getParameterCount())
-    }
-  }
+    end if
+  end detectMainMethod
   private case class DetectedMain(
       mainClass: Class[?],
       method: Method,
       isStatic: Boolean,
       parameterCount: Int
   )
-}
+end Run
 
 /** This module is an interface to starting the scala interpreter or runner. */
 object Run:
@@ -236,10 +216,9 @@ object Run:
   ) =
     runner.run(mainClass, classpath, options, log)
 
-  private[sbt] def executeSuccess(f: => Unit): Try[Unit] = {
+  private[sbt] def executeSuccess(f: => Unit): Try[Unit] =
     f
     Success(())
-  }
 
   // quotes the option that includes a whitespace
   // https://github.com/sbt/sbt/issues/4834
@@ -250,7 +229,7 @@ object Run:
     }).mkString(" ")
 
   private[sbt] def processExitCode(exitCode: Int, label: String): Try[Unit] =
-    if (exitCode == 0) Success(())
+    if exitCode == 0 then Success(())
     else
       Failure(
         new MessageOnlyException(

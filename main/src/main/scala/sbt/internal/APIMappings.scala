@@ -17,7 +17,7 @@ import sbt.internal.util.Attributed
 import sbt.util.Logger
 import xsbti.HashedVirtualFileRef
 
-private[sbt] object APIMappings {
+private[sbt] object APIMappings:
   def extract(
       cp: Seq[Attributed[HashedVirtualFileRef]],
       log: Logger
@@ -57,4 +57,4 @@ private[sbt] object APIMappings {
     entryAPI match
       case None    => attr
       case Some(u) => attr.put(Keys.entryApiURL, u.toString)
-}
+end APIMappings

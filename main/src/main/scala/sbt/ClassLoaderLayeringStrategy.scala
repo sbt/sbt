@@ -69,7 +69,7 @@ sealed trait ClassLoaderLayeringStrategy
  * Provides instances of [[ClassLoaderLayeringStrategy]] that can be used to define the ClassLoader used by
  * [[Keys.run]], [[Keys.test]] or any other task that runs java code inside of the sbt jvm.
  */
-object ClassLoaderLayeringStrategy {
+object ClassLoaderLayeringStrategy:
 
   /**
    * Include all of the dependencies in the loader. The base loader will be the Application
@@ -103,4 +103,4 @@ object ClassLoaderLayeringStrategy {
    * Add a layer on top of the ScalaLibrary layer for all of the jar dependencies.
    */
   case object AllLibraryJars extends AllLibraryJars
-}
+end ClassLoaderLayeringStrategy

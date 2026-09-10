@@ -11,7 +11,7 @@ package parser
 
 abstract class CheckIfParsedSpec(
     val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
-) extends AbstractSpec {
+) extends AbstractSpec:
 
   test(s"${this.getClass.getName} should parse sbt file") {
     files foreach { (content, description, nonEmptyImports, nonEmptyStatements) =>
@@ -34,13 +34,9 @@ abstract class CheckIfParsedSpec(
 
   private def shouldContains(b: Boolean): String =
     s"""Should ${
-        if (b) {
-          "contain"
-        } else {
-          "not contain"
-        }
+        if b then "contain"
+        else "not contain"
       }"""
 
   protected def files: Seq[(String, String, Boolean, Boolean)]
-
-}
+end CheckIfParsedSpec

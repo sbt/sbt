@@ -343,3 +343,4 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
       UpdateStats(100L, 50L, 1024L, false, Some("stamp")),
       Map(descriptor.getAbsolutePath -> 12345L)
     )
+end UpdateReportFormatSpec

@@ -73,6 +73,7 @@ class GenericPublisher private[sbt] (
     scala.xml.XML.save(file.getAbsolutePath, formatted, "UTF-8", xmlDecl = true)
     log.info("Wrote " + file.getAbsolutePath)
     file
+  end makePomFile
 
   override def publish(
       module: ModuleDescriptor,
@@ -111,7 +112,7 @@ class GenericPublisher private[sbt] (
         val baseStr =
           pat.substring(0, pat.indexOf("[organisation]")).replace('\\', '/').stripSuffix("/")
         val repoDir =
-          (if (baseStr.startsWith("file:")) new File(new java.net.URI(baseStr))
+          (if baseStr.startsWith("file:") then new File(new java.net.URI(baseStr))
            else new File(baseStr)).getAbsoluteFile
         if pbr.patterns.isMavenCompatible then
           log.info(s"Ivyless publish (Maven layout) to file repo: $repoDir")
@@ -162,10 +163,12 @@ class GenericPublisher private[sbt] (
           sys.error(
             s"ivyless Maven publish: unsupported root '$root'; use a supported repository (http/https/file)."
           )
+        end if
       case other =>
         sys.error(
           s"ivyless publish does not support ${other.getClass.getName}; use URLRepository, FileRepository, or MavenRepository."
         )
+    end match
   end publish
 
   private def pluginCrossPath: Seq[String] =
@@ -254,7 +257,7 @@ class GenericPublisher private[sbt] (
       artifactName: String,
       classifier: String,
       ext: String
-  ): String = {
+  ): String =
     var s = pattern
     s = s.replace("[organisation]", org)
     s = s.replace("[module]", moduleName)
@@ -262,7 +265,7 @@ class GenericPublisher private[sbt] (
     s = s.replace("[type]s", typeFolder)
     s = s.replace("[artifact]", artifactName)
     s = s.replace("[ext]", ext)
-    if (classifier.nonEmpty) s = s.replace("(-[classifier])", s"-$classifier")
+    if classifier.nonEmpty then s = s.replace("(-[classifier])", s"-$classifier")
     else s = s.replace("(-[classifier])", "")
     // Substitute or drop optional Ivy pattern parts (scala/sbt version), remove branch for ivyless layout
     val attrs = project.module.attributes
@@ -278,7 +281,7 @@ class GenericPublisher private[sbt] (
     )
     s = s.replaceAll("\\(\\[branch\\]/\\)", "")
     s
-  }
+  end substituteIvyArtifactPattern
 
   /**
    * Picks credentials for a URL. Matches host; when realm is given, prefers credential with matching realm (per Publishing docs).
@@ -326,7 +329,7 @@ class GenericPublisher private[sbt] (
       urlRepo: URLRepository,
       overwrite: Boolean,
       log: Logger
-  ): Unit = {
+  ): Unit =
     val org = project.module.organization.value
     val moduleName = project.module.name.value
     val version = project.version
@@ -376,7 +379,7 @@ class GenericPublisher private[sbt] (
     )
     val ivyUrl = URI.create(ivyPathPattern).toURL()
     val ivyTmp = File.createTempFile("ivy", ".xml")
-    try {
+    try
       IO.write(ivyTmp, ivyXmlContent)
       httpPut(ivyUrl, ivyTmp, credentialFor(ivyUrl, directCreds, None), log)
       val checksums = writeChecksumsToTempFiles(ivyTmp, checksumAlgorithms)
@@ -385,8 +388,8 @@ class GenericPublisher private[sbt] (
         try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
         finally cf.delete()
       }
-    } finally ivyTmp.delete()
-  }
+    finally ivyTmp.delete()
+  end ivylessPublish
 
   /**
    * Publishes artifacts to a local file repo (FileRepository) without using Apache Ivy.
@@ -398,17 +401,17 @@ class GenericPublisher private[sbt] (
       fileRepo: FileRepository,
       overwrite: Boolean,
       log: Logger
-  ): Unit = {
+  ): Unit =
     val pattern = fileRepo.patterns.artifactPatterns.headOption.getOrElse(
       sys.error("FileRepository has no artifact pattern")
     )
     val baseStr =
-      if (pattern.contains("[organisation]"))
+      if pattern.contains("[organisation]") then
         pattern.substring(0, pattern.indexOf("[organisation]"))
       else pattern
     val normalized = baseStr.replace('\\', '/').stripSuffix("/")
     val localRepoBase =
-      if (normalized.startsWith("file:")) new File(new java.net.URI(normalized))
+      if normalized.startsWith("file:") then new File(new java.net.URI(normalized))
       else new File(normalized)
     val repoDir = localRepoBase.getAbsoluteFile
     val isMavenLayout = fileRepo.patterns.isMavenCompatible
@@ -418,7 +421,7 @@ class GenericPublisher private[sbt] (
     else
       log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
       ivylessPublishLocal(artifacts, checksumAlgorithms, repoDir, overwrite, log)
-  }
+  end ivylessPublishToFile
 
   /**
    * Maven layout path: groupId/artifactId/version/artifactId-version[-classifier].ext
@@ -510,6 +513,7 @@ class GenericPublisher private[sbt] (
 
     if version.endsWith("-SNAPSHOT") then
       writeMavenMetadataLocal(versionDir, groupId, artifactId, version, log)
+  end ivylessPublishMavenToFile
 
   private def writeMavenMetadataLocal(
       versionDir: File,
@@ -536,6 +540,7 @@ class GenericPublisher private[sbt] (
     val metadataFile = new File(versionDir, "maven-metadata-local.xml")
     IO.write(metadataFile, metadata)
     log.info(s"published $metadataFile")
+  end writeMavenMetadataLocal
 
   /**
    * Publishes artifacts to a remote Maven repo (HTTP) without using Apache Ivy.
@@ -579,6 +584,7 @@ class GenericPublisher private[sbt] (
         catch
           case e: IOException =>
             throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
+  end ivylessPublishMavenToUrl
 end GenericPublisher
 
 object GenericPublisher:

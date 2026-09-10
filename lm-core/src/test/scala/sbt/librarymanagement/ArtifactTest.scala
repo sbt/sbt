@@ -2,7 +2,7 @@ package sbt.librarymanagement
 
 import sbt.internal.librarymanagement.UnitSpec
 
-class ArtifactTest extends UnitSpec {
+class ArtifactTest extends UnitSpec:
 
   "Artifact.artifactName" should "include the platform suffix before the Scala suffix" in {
     val m = ModuleID("com.example", "root-178", "0.1.0-SNAPSHOT")
@@ -38,4 +38,4 @@ class ArtifactTest extends UnitSpec {
     Artifact.artifactName(sv, m, a) shouldBe
       s"$expectedMavenArtifactId-0.0.9-SNAPSHOT.pom"
   }
-}
+end ArtifactTest

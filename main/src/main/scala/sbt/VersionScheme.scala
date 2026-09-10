@@ -10,10 +10,9 @@ package sbt
 
 import sbt.internal.librarymanagement.VersionSchemes
 
-object VersionScheme {
+object VersionScheme:
   val Always = VersionSchemes.Always
   val EarlySemVer = VersionSchemes.EarlySemVer
   val PVP = VersionSchemes.PackVer
   val SemVerSpec = VersionSchemes.SemVerSpec
   val Strict = VersionSchemes.Strict
-}

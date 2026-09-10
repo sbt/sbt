@@ -12,22 +12,20 @@ package internal.util.codec
 import sbt.util.ShowLines
 import sbt.internal.util.{ StackTrace, TraceEvent }
 
-trait ThrowableShowLines {
+trait ThrowableShowLines:
   given sbtThrowableShowLines: ShowLines[Throwable] =
-    ShowLines[Throwable]((t: Throwable) => {
+    ShowLines[Throwable]((t: Throwable) =>
       // 0 means enabled with default behavior. See StackTrace.scala.
       val traceLevel = 0
       List(StackTrace.trimmed(t, traceLevel))
-    })
-}
+    )
 
 object ThrowableShowLines extends ThrowableShowLines
 
-trait TraceEventShowLines {
+trait TraceEventShowLines:
   given sbtTraceEventShowLines: ShowLines[TraceEvent] =
-    ShowLines[TraceEvent]((t: TraceEvent) => {
+    ShowLines[TraceEvent]((t: TraceEvent) =>
       ThrowableShowLines.sbtThrowableShowLines.showLines(t.message)
-    })
-}
+    )
 
 object TraceEventShowLines extends TraceEventShowLines

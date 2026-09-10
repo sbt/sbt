@@ -22,7 +22,7 @@ import sjsonnew.support.scalajson.unsafe.CompactPrinter
  * as Chrome Trace Event Format.
  * This class is activated by adding -Dsbt.traces=true to the JVM options.
  */
-private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with ExecuteProgress {
+private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with ExecuteProgress:
   import AbstractTaskExecuteProgress.Timer
   private var start = 0L
   private val console = ConsoleOut.systemOut
@@ -36,13 +36,10 @@ private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with
   start = System.nanoTime
   ShutdownHooks.add(() => report())
 
-  private def report() = {
-    if (anyTimings) {
-      writeTraceEvent()
-    }
-  }
+  private def report() =
+    if anyTimings then writeTraceEvent()
 
-  private def writeTraceEvent(): Unit = {
+  private def writeTraceEvent(): Unit =
     // import java.time.{ ZonedDateTime, ZoneOffset }
     // import java.time.format.DateTimeFormatter
     // val fileName = "build-" + ZonedDateTime
@@ -50,29 +47,27 @@ private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with
     //   .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss")) + ".trace"
     val fileName = "build.trace"
     val tracesDirectory = (new File("target").getAbsoluteFile) / "traces"
-    if (!tracesDirectory.exists) IO.createDirectory(tracesDirectory)
+    if !tracesDirectory.exists then IO.createDirectory(tracesDirectory)
     else ()
     val outFile = tracesDirectory / fileName
     val trace = Files.newBufferedWriter(outFile.toPath)
-    try {
+    try
       trace.append("""{"traceEvents": [""")
-      def durationEvent(name: String, cat: String, t: Timer): String = {
+      def durationEvent(name: String, cat: String, t: Timer): String =
         val sb = new java.lang.StringBuilder(name.length + 2)
         CompactPrinter.print(new JString(name), sb)
         s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tid": "${t.threadId}"}"""
-      }
       val entryIterator = currentTimings
-      while (entryIterator.hasNext) {
+      while entryIterator.hasNext do
         val (key, value) = entryIterator.next()
         trace.append(durationEvent(taskName(key), "task", value))
-        if (entryIterator.hasNext) trace.append(",")
-      }
+        if entryIterator.hasNext then trace.append(",")
       trace.append("]}")
       ()
-    } finally {
+    finally
       trace.close()
       try console.println(s"wrote $outFile")
-      catch { case _: java.nio.channels.ClosedChannelException => }
-    }
-  }
-}
+      catch
+        case _: java.nio.channels.ClosedChannelException =>
+  end writeTraceEvent
+end TaskTraceEvent

@@ -14,7 +14,7 @@ import Prop.*
 import sbt.BuildExtra.{ project, rootProject }
 import java.io.File
 
-class ProjectDefs {
+class ProjectDefs:
   lazy val p = project
 
   val x = project
@@ -29,20 +29,17 @@ class ProjectDefs {
   val a: Project = project
 
   lazy val aa: Project = project
-}
 
-object ProjectMacro extends Properties("ProjectMacro") {
+object ProjectMacro extends Properties("ProjectMacro"):
   lazy val pd = new ProjectDefs
   import pd.*
 
   def secure(f: => Prop): Prop =
-    try {
-      Prop.secure(f)
-    } catch {
+    try Prop.secure(f)
+    catch
       case NonFatal(e) =>
         e.printStackTrace
         throw e
-    }
 
   property("Explicit type on lazy val supported") = secure {
     check(aa, "aa", "aa")
@@ -68,12 +65,11 @@ object ProjectMacro extends Properties("ProjectMacro") {
     check(root, "root", ".")
   }
 
-  def check(p: Project, id: String, dir: String): Prop = {
+  def check(p: Project, id: String, dir: String): Prop =
     s"Expected id: $id" |:
       s"Expected dir: $dir" |:
       s"Actual id: ${p.id}" |:
       s"Actual dir: ${p.base}" |:
       (p.id == id) &&
       (p.base.getName == dir)
-  }
-}
+end ProjectMacro

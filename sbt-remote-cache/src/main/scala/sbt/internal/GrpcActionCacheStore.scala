@@ -98,6 +98,7 @@ object GrpcActionCacheStore:
           case Some(existing) => existing
           case None           => mkStore()
       case _ => mkStore()
+  end apply
 
   private def build(
       uri: URI,
@@ -139,6 +140,7 @@ object GrpcActionCacheStore:
       case Some(x)                      => x
       case None                         => ""
     new GrpcActionCacheStore(channel, instanceName, remoteHeaders, disk, uri)
+  end build
 
   class AuthCallCredentials(remoteHeaders: List[String]) extends CallCredentials:
     val pairs = remoteHeaders.map: h =>
@@ -293,6 +295,8 @@ class GrpcActionCacheStore private (
           val casFile = disk.putBlobInternal(p, digest)
           disk.syncFile(r, casFile, outputDirectory)
         }
+    end if
+  end syncBlobs
 
   /**
    * https://github.com/bazelbuild/remote-apis/blob/9ff14cecffe5287ba337f857731ceadfc2d80de9/build/bazel/remote/execution/v2/remote_execution.proto#L379
@@ -334,6 +338,7 @@ class GrpcActionCacheStore private (
       if lookupResponse.contains(d) then
         Some(HashedVirtualFileRef.of(blob.id(), d.contentHashStr, d.sizeBytes))
       else None
+  end batchUpdateBlobs
 
   def uploadBlobs(blobs: Seq[VirtualFile]): Future[Seq[HashedVirtualFileRef]] =
     Future.sequence(blobs.map(uploadBlob))
@@ -365,6 +370,7 @@ class GrpcActionCacheStore private (
       reqObs.onCompleted()
       p.future.map: _ =>
         HashedVirtualFileRef.of(blob.id(), d.contentHashStr, d.sizeBytes)
+  end uploadBlob
 
   private def downloadBlobs(digests: Seq[Digest], outputDirectory: Path): Future[Seq[Path]] =
     Future.sequence(digests.map: x =>
@@ -391,6 +397,7 @@ class GrpcActionCacheStore private (
     val req = b.build()
     byteStreamStubWithDeadline.read(req, resObs)
     p.future
+  end downloadBlob
 
   // helper function for many-to-one gRPC streaming
   // https://grpc.io/docs/languages/java/basics/#client-side-streaming-rpc-1

@@ -6,7 +6,8 @@ package codec
 import sjsonnew.{ BasicJsonProtocol, IsoString }
 import xsbti.HashedVirtualFileRef
 
-trait HashedVirtualFileRefFormats { self: BasicJsonProtocol =>
+trait HashedVirtualFileRefFormats:
+  self: BasicJsonProtocol =>
 
   /**
    * A string representation of HashedVirtualFileRef, delimited by `>`.
@@ -15,15 +16,12 @@ trait HashedVirtualFileRefFormats { self: BasicJsonProtocol =>
     s"${ref.id}>${ref.contentHashStr}/${ref.sizeBytes}"
 
   def strToHashedVirtualFileRef(s: String): HashedVirtualFileRef =
-    s.split(">").toList match {
+    s.split(">").toList match
       case path :: rest :: Nil =>
-        rest.split("/").toList match {
+        rest.split("/").toList match
           case hash :: size :: Nil => HashedVirtualFileRef.of(path, hash, size.toLong)
           case _ => throw new RuntimeException(s"invalid HashedVirtualFileRefIsoString $s")
-        }
       case _ => throw new RuntimeException(s"invalid HashedVirtualFileRefIsoString $s")
-    }
 
   given hashedVirtualFileRefIsoString: IsoString[HashedVirtualFileRef] =
     IsoString.iso(hashedVirtualFileRefToStr, strToHashedVirtualFileRef)
-}

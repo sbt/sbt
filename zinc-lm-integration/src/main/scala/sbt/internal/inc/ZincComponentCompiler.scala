@@ -29,7 +29,7 @@ import java.io.File
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.Callable
 
-private[sbt] object ZincComponentCompiler {
+private[sbt] object ZincComponentCompiler:
   final val binSeparator = "-bin_"
   final val javaClassVersion = System.getProperty("java.class.version")
 
@@ -44,7 +44,7 @@ private[sbt] object ZincComponentCompiler {
       manager: ZincComponentManager,
       dependencyResolution: DependencyResolution,
       scalaJarsTarget: File
-  ) extends CompilerBridgeProvider {
+  ) extends CompilerBridgeProvider:
 
     /**
      * Defines a richer interface for Scala users that want to pass in an explicit module id.
@@ -68,7 +68,7 @@ private[sbt] object ZincComponentCompiler {
       zinc.compiledBridgeJar
     }
 
-    override def fetchCompiledBridge(scalaInstance: XScalaInstance, logger: Logger): File = {
+    override def fetchCompiledBridge(scalaInstance: XScalaInstance, logger: Logger): File =
       val scalaVersion = scalaInstance.actualVersion()
       val bridgeSources = userProvidedBridgeSources
         .getOrElse(
@@ -78,7 +78,6 @@ private[sbt] object ZincComponentCompiler {
           )
         )
       compiledBridge(bridgeSources, scalaInstance, logger)
-    }
 
     // internal representation of Scala artifacts
     private case class ScalaArtifacts(
@@ -87,7 +86,7 @@ private[sbt] object ZincComponentCompiler {
         others: Vector[Path]
     )
 
-    private def getScalaArtifacts(scalaVersion: String, logger: Logger): ScalaArtifacts = {
+    private def getScalaArtifacts(scalaVersion: String, logger: Logger): ScalaArtifacts =
       def isPrefixedWith(artifact: Path, prefix: String) =
         artifact.getFileName.toString.startsWith(prefix)
 
@@ -120,9 +119,9 @@ private[sbt] object ZincComponentCompiler {
       val scalaCompilerJar = maybeScalaCompiler.getOrElse(throw MissingScalaJar.compiler)
       val scalaLibraryJar = maybeScalaLibrary.getOrElse(throw MissingScalaJar.library)
       ScalaArtifacts(scalaCompilerJar, Vector(scalaLibraryJar), others)
-    }
+    end getScalaArtifacts
 
-    override def fetchScalaInstance(scalaVersion: String, logger: Logger): XScalaInstance = {
+    override def fetchScalaInstance(scalaVersion: String, logger: Logger): XScalaInstance =
       val scalaArtifacts = getScalaArtifacts(scalaVersion, logger)
       val scalaCompilerJar = scalaArtifacts.compilerJar
       val scalaLibraryJars = scalaArtifacts.libraryJars
@@ -149,8 +148,8 @@ private[sbt] object ZincComponentCompiler {
         allJars,
         loaderVersion,
       )
-    }
-  }
+    end fetchScalaInstance
+  end ZincCompilerBridgeProvider
 
   // Used by ZincUtil.
   def interfaceProvider(
@@ -158,10 +157,9 @@ private[sbt] object ZincComponentCompiler {
       manager: ZincComponentManager,
       dependencyResolution: DependencyResolution,
       scalaJarsTarget: File,
-  ): CompilerBridgeProvider = {
+  ): CompilerBridgeProvider =
     val bridgeSources = Some(compilerBridgeSource)
     new ZincCompilerBridgeProvider(bridgeSources, manager, dependencyResolution, scalaJarsTarget)
-  }
 
   def interfaceProvider(
       manager: ZincComponentManager,
@@ -171,26 +169,24 @@ private[sbt] object ZincComponentCompiler {
     new ZincCompilerBridgeProvider(None, manager, dependencyResolution, scalaJarsTarget)
 
   private final val LocalIvy =
-    (sys.props.get("sbt.ivy.home") match {
+    (sys.props.get("sbt.ivy.home") match
       case Some(home) =>
-        if (home.endsWith("/")) home
+        if home.endsWith("/") then home
         else home + "/"
       case _ => s"$${user.home}/.ivy2/"
-    }) + "local/" + Resolver.localBasePattern
+    ) + "local/" + Resolver.localBasePattern
 
-  final val LocalResolver: Resolver = {
+  final val LocalResolver: Resolver =
     val toUse = Vector(LocalIvy)
     val ivyPatterns = Patterns().withIsMavenCompatible(false)
     val finalPatterns = ivyPatterns.withIvyPatterns(toUse).withArtifactPatterns(toUse)
     FileRepository("local", Resolver.defaultFileConfiguration, finalPatterns)
-  }
 
-  def getDefaultLock: GlobalLock = new GlobalLock {
+  def getDefaultLock: GlobalLock = new GlobalLock:
     override def apply[T](file: File, callable: Callable[T]): T = callable.call()
-  }
 
   /** Defines a default component provider that manages the component in a given directory. */
-  private final class DefaultComponentProvider(targetDir: File) extends ComponentProvider {
+  private final class DefaultComponentProvider(targetDir: File) extends ComponentProvider:
     import sbt.io.syntax.*
     private val LockFile = targetDir / "lock"
     override def lockFile(): File = LockFile
@@ -199,18 +195,14 @@ private[sbt] object ZincComponentCompiler {
       IO.listFiles(targetDir / componentID)
     override def defineComponent(componentID: String, files: Array[File]): Unit =
       files.foreach(f => IO.copyFile(f, targetDir / componentID / f.getName))
-    override def addToComponent(componentID: String, files: Array[File]): Boolean = {
+    override def addToComponent(componentID: String, files: Array[File]): Boolean =
       defineComponent(componentID, files)
       true
-    }
-  }
 
-  def getDefaultComponentProvider(targetDir: File): ComponentProvider = {
+  def getDefaultComponentProvider(targetDir: File): ComponentProvider =
     require(targetDir.isDirectory)
     new DefaultComponentProvider(targetDir)
-  }
-
-}
+end ZincComponentCompiler
 
 /**
  * Component compiler which is able to to retrieve the compiler bridge sources
@@ -224,13 +216,12 @@ private[inc] class ZincComponentCompiler(
     dependencyResolution: DependencyResolution,
     bridgeSources: ModuleID,
     log: sbt.util.Logger
-) {
+):
   private final val buffered = new BufferedLogger(FullLogger(log))
 
-  def compiledBridgeJar: File = {
+  def compiledBridgeJar: File =
     val jarBinaryName = createBridgeSourcesID(bridgeSources)
     manager.file(jarBinaryName)(IfMissing.define(true, compileAndInstall(jarBinaryName)))
-  }
 
   /**
    * Returns the id for the compiler interface component.
@@ -246,12 +237,11 @@ private[inc] class ZincComponentCompiler(
    * @param sources The moduleID representing the compiler bridge sources.
    * @return The complete jar identifier for the bridge sources.
    */
-  private def createBridgeSourcesID(sources: ModuleID): String = {
+  private def createBridgeSourcesID(sources: ModuleID): String =
     import ZincComponentCompiler.{ binSeparator, javaClassVersion }
     val id = s"${sources.organization}-${sources.name}-${sources.revision}"
     val scalaVersion = compiler.scalaInstance.actualVersion()
     s"$id$binSeparator${scalaVersion}__$javaClassVersion"
-  }
 
   /**
    * Resolves the compiler bridge sources, compiles them and installs the sbt component
@@ -259,7 +249,7 @@ private[inc] class ZincComponentCompiler(
    *
    * @param compilerBridgeId The identifier for the compiler bridge sources.
    */
-  private def compileAndInstall(compilerBridgeId: String): Unit = {
+  private def compileAndInstall(compilerBridgeId: String): Unit =
     val moduleForBridge = dependencyResolution.wrapDependencyInModule(bridgeSources)
     IO.withTemporaryDirectory { binaryDirectory =>
       val target = new File(binaryDirectory, s"$compilerBridgeId.jar")
@@ -288,11 +278,10 @@ private[inc] class ZincComponentCompiler(
         }
       }
     }
-  }
+  end compileAndInstall
+end ZincComponentCompiler
 
-}
-
-private object ZincLMHelper {
+private object ZincLMHelper:
   private final val warningConf = UnresolvedWarningConfiguration()
   private final val defaultRetrievePattern = Resolver.defaultRetrievePattern
 
@@ -306,11 +295,11 @@ private object ZincLMHelper {
       noSource: Boolean,
       logger: sbt.util.Logger,
       desc: String,
-  ): Vector[Path] = {
+  ): Vector[Path] =
     val updateConfiguration = newUpdateConfiguration(retrieveDirectory, noSource)
     val dependencies = prettyPrintDependency(module)
     logger.info(s"Attempting to fetch $dependencies.")
-    dependencyResolution.update(module, updateConfiguration, warningConf, logger) match {
+    dependencyResolution.update(module, updateConfiguration, warningConf, logger) match
       case Left(uw) =>
         logger.debug(s"couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
         val unretrievedMessage = s"The $desc could not be retrieved."
@@ -321,26 +310,23 @@ private object ZincLMHelper {
         logger.debug(s"Files retrieved for ${prettyPrintDependency(module)}:")
         logger.debug(allFiles.mkString(", "))
         allFiles
-    }
-  }
+  end update
 
-  private def newUpdateConfiguration(targetDir: File, noSource: Boolean): UpdateConfiguration = {
+  private def newUpdateConfiguration(targetDir: File, noSource: Boolean): UpdateConfiguration =
     val retrieve = RetrieveConfiguration()
       .withRetrieveDirectory(targetDir)
       .withOutputPattern(defaultRetrievePattern)
     val logLevel = UpdateLogging.DownloadOnly
     val defaultExcluded = Set("doc")
-    val finalExcluded = if (noSource) defaultExcluded + "src" else defaultExcluded
+    val finalExcluded = if noSource then defaultExcluded + "src" else defaultExcluded
     val artifactFilter = ArtifactTypeFilter.forbid(finalExcluded)
     UpdateConfiguration()
       .withRetrieveManaged(retrieve)
       .withLogging(logLevel)
       .withArtifactFilter(artifactFilter)
-  }
 
-  private def prettyPrintDependency(module: ModuleDescriptor): String = {
+  private def prettyPrintDependency(module: ModuleDescriptor): String =
     module.directDependencies
       .map(m => s"${m.organization}:${m.name}:${m.revision}") // like ModuleIDExtra.toStringImpl
       .mkString(", ")
-  }
-}
+end ZincLMHelper

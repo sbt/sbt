@@ -15,25 +15,23 @@ import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.*
 
-class GCMonitorTest extends AnyFunSuite {
-  class TestMonitor extends GCMonitorBase {
+class GCMonitorTest extends AnyFunSuite:
+  class TestMonitor extends GCMonitorBase:
     val loggedTotals = ListBuffer.empty[Long]
     override protected val window = 10.seconds
     override protected val ratio = 0.5
 
     override protected def emitWarning(total: Long, over: Option[Long]): Unit =
       loggedTotals += total
-  }
 
   val collectionTimeStore = new AtomicReference(0.millis -> 0L)
 
-  def simulateBy(f: Long => Long): Long => List[Long] = { duration =>
+  def simulateBy(f: Long => Long): Long => List[Long] = duration =>
     collectionTimeStore.set(0.millis -> 0)
     val testMonitor = new TestMonitor
-    for (x <- 0L to duration by 100)
+    for x <- 0L to duration by 100 do
       testMonitor.totalCollectionTimeChanged(x, f(x), collectionTimeStore)
     testMonitor.loggedTotals.toList
-  }
 
   test("GC time = time") {
     val simulate = simulateBy(identity)
@@ -60,4 +58,4 @@ class GCMonitorTest extends AnyFunSuite {
     assertResult(List(5200, 20000, 20000))(simulate(30000))
     assertResult(List(5200, 20000, 20000, 20000))(simulate(40000))
   }
-}
+end GCMonitorTest

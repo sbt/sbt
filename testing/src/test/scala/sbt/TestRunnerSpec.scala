@@ -22,7 +22,7 @@ import testing.{
 }
 import verify.BasicTestSuite
 
-object TestRunnerSpec extends BasicTestSuite {
+object TestRunnerSpec extends BasicTestSuite:
   // The direct counterpart to sbt-app/src/sbt-test/tests/test-report-listener-linkage-error.
   // This test isolates TestRunner's catch path; the scripted fixture additionally verifies the
   // public testListeners setting with both implicitly created and explicitly thrown errors.
@@ -33,12 +33,10 @@ object TestRunnerSpec extends BasicTestSuite {
     val testTaskDef = taskDef(suiteName)
 
     val thrown = withTestRunner(listener) { runner =>
-      try {
+      try
         runner.run(testTaskDef, new ThrowingTask(testTaskDef, linkageError))
         None
-      } catch {
-        case error: ExceptionInInitializerError => Some(error)
-      }
+      catch case error: ExceptionInInitializerError => Some(error)
     }
 
     assert(thrown.contains(linkageError), s"expected $linkageError to be rethrown, got $thrown")
@@ -56,7 +54,7 @@ object TestRunnerSpec extends BasicTestSuite {
     )
   }
 
-  private final class RecordingListener extends TestReportListener {
+  private final class RecordingListener extends TestReportListener:
     val startedGroups: ArrayBuffer[String] = ArrayBuffer.empty
     val errorEnds: ArrayBuffer[(String, Throwable)] = ArrayBuffer.empty
     val resultEnds: ArrayBuffer[(String, TestResult)] = ArrayBuffer.empty
@@ -65,38 +63,33 @@ object TestRunnerSpec extends BasicTestSuite {
     override def testEvent(event: TestEvent): Unit = ()
     override def endGroup(name: String, error: Throwable): Unit = errorEnds += name -> error
     override def endGroup(name: String, result: TestResult): Unit = resultEnds += name -> result
-  }
 
-  private final class ThrowingTask(testTaskDef: TaskDef, error: LinkageError) extends TestTask {
+  private final class ThrowingTask(testTaskDef: TaskDef, error: LinkageError) extends TestTask:
     override def tags(): Array[String] = Array.empty
     override def taskDef(): TaskDef = testTaskDef
-    override def execute(handler: EventHandler, loggers: Array[TestLogger]): Array[TestTask] = {
+    override def execute(handler: EventHandler, loggers: Array[TestLogger]): Array[TestTask] =
       throw error
-    }
-  }
 
-  private object NoOpRunner extends Runner {
+  private object NoOpRunner extends Runner:
     override def tasks(taskDefs: Array[TaskDef]): Array[TestTask] = Array.empty
     override def done(): String = ""
     override def remoteArgs(): Array[String] = Array.empty
     override def args(): Array[String] = Array.empty
-  }
 
-  private def taskDef(name: String): TaskDef = {
+  private def taskDef(name: String): TaskDef =
     new TaskDef(
       name,
-      new AnnotatedFingerprint {
+      new AnnotatedFingerprint:
         override def isModule(): Boolean = false
         override def annotationName(): String = "example.Test"
-      },
+      ,
       false,
       Array(new SuiteSelector)
     )
-  }
 
-  private def withTestRunner[T](listener: TestReportListener)(f: TestRunner => T): T = {
+  private def withTestRunner[T](listener: TestReportListener)(f: TestRunner => T): T =
     val loggerContext = LoggerContext()
-    try {
+    try
       f(
         new TestRunner(
           NoOpRunner,
@@ -104,8 +97,6 @@ object TestRunnerSpec extends BasicTestSuite {
           loggerContext.logger("TestRunnerSpec", None, None)
         )
       )
-    } finally {
+    finally
       loggerContext.close()
-    }
-  }
-}
+end TestRunnerSpec

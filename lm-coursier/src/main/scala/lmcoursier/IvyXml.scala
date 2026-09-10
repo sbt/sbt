@@ -4,7 +4,7 @@ import lmcoursier.definitions.Project
 
 import scala.xml.{ Node, PrefixedAttribute }
 
-object IvyXml {
+object IvyXml:
 
   @deprecated("Use the override accepting 3 arguments", "2.0.0-RC6-6")
   def apply(
@@ -17,7 +17,7 @@ object IvyXml {
       currentProject: Project,
       exclusions: Seq[(String, String)],
       overrides: Seq[(String, String, String)]
-  ): String = {
+  ): String =
 
     // Important: width = Int.MaxValue, so that no tag gets truncated.
     // In particular, that prevents things like <foo /> to be split to
@@ -29,14 +29,13 @@ object IvyXml {
 
     """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
       printer.format(content(currentProject, exclusions, overrides))
-  }
 
   // These are required for publish to be fine, later on.
   private def content(
       project: Project,
       exclusions: Seq[(String, String)],
       overrides: Seq[(String, String, String)]
-  ): Node = {
+  ): Node =
 
     val props = project.module.attributes.toSeq ++ project.properties
     val infoAttrs = props.foldLeft[xml.MetaData](xml.Null) { case (acc, (k, v)) =>
@@ -63,12 +62,10 @@ object IvyXml {
     } % infoAttrs
 
     val confElems = project.configurations.toVector.collect { (name, extends0) =>
-      val visibility = if (project.privateConfigs.contains(name)) "private" else "public"
+      val visibility = if project.privateConfigs.contains(name) then "private" else "public"
       val n = <conf name={name.value} visibility={visibility} description="" />
-      if (extends0.nonEmpty)
-        n % <x extends={extends0.map(_.value).mkString(",")} />.attributes
-      else
-        n
+      if extends0.nonEmpty then n % <x extends={extends0.map(_.value).mkString(",")} />.attributes
+      else n
     }
 
     val publications = project.publications
@@ -79,10 +76,8 @@ object IvyXml {
         configs.map(_.value).mkString(",")
       } />
 
-      if (pub.classifier.value.nonEmpty)
-        n % <x e:classifier={pub.classifier.value} />.attributes
-      else
-        n
+      if pub.classifier.value.nonEmpty then n % <x e:classifier={pub.classifier.value} />.attributes
+      else n
     }
 
     val dependencyElems = project.dependencies.toVector.map { (conf, dep) =>
@@ -120,6 +115,5 @@ object IvyXml {
       <publications>{publicationElems}</publications>
       <dependencies>{dependencyElems}{excludeElems}{overrideElems}</dependencies>
     </ivy-module>
-  }
-
-}
+  end content
+end IvyXml

@@ -129,7 +129,9 @@ object NetworkClientSilentDisconnectTest extends BasicTestSuite:
     val code = NetworkClient.client(
       base,
       args,
-      new InputStream { override def read(): Int = -1 },
+      new InputStream:
+        override def read(): Int = -1
+      ,
       out,
       err,
       false,

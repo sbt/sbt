@@ -16,7 +16,7 @@ import sjsonnew.JsonFormat
 private[sbt] final class ConsoleChannel(
     val name: String,
     override private[sbt] val mkUIThread: (State, CommandChannel) => UITask
-) extends CommandChannel {
+) extends CommandChannel:
 
   def run(s: State): State = s
 
@@ -26,7 +26,5 @@ private[sbt] final class ConsoleChannel(
 
   override val userThread: UserThread = new UserThread(this)
   private[sbt] def terminal = Terminal.console
-}
-private[sbt] object ConsoleChannel {
+private[sbt] object ConsoleChannel:
   private[sbt] def defaultName = "console0"
-}

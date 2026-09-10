@@ -8,7 +8,7 @@ import sbt.librarymanagement.syntax.*
 /**
  * Library management API to resolve dependencies.
  */
-class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface) {
+class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface):
   import sbt.internal.librarymanagement.InternalDefaults.*
   import sbt.internal.librarymanagement.UpdateClassifiersUtil.*
 
@@ -33,12 +33,11 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
       moduleId: ModuleID,
       directDependencies: Vector[ModuleID],
       scalaModuleInfo: Option[ScalaModuleInfo]
-  ): ModuleDescriptor = {
+  ): ModuleDescriptor =
     val moduleSetting = ModuleDescriptorConfiguration(moduleId, ModuleInfo(moduleId.name))
       .withScalaModuleInfo(scalaModuleInfo)
       .withDependencies(directDependencies)
     moduleDescriptor(moduleSetting)
-  }
 
   /**
    * Resolves the given module's dependencies performing a retrieval.
@@ -77,12 +76,11 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
   def wrapDependencyInModule(
       dependencyId: ModuleID,
       scalaModuleInfo: Option[ScalaModuleInfo]
-  ): ModuleDescriptor = {
+  ): ModuleDescriptor =
     val sha1 = Hash.toHex(Hash(dependencyId.name))
     val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, dependencyId.revision)
       .withConfigurations(dependencyId.configurations)
     moduleDescriptor(dummyID, Vector(dependencyId), scalaModuleInfo)
-  }
 
   /**
    * Resolves the given dependency, and retrieves the artifacts to a directory.
@@ -113,7 +111,7 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
       module: ModuleDescriptor,
       retrieveDirectory: File,
       log: Logger
-  ): Either[UnresolvedWarning, Vector[File]] = {
+  ): Either[UnresolvedWarning, Vector[File]] =
     // Using the default artifact type filter here, so sources and docs are excluded.
     val retrieveConfiguration = RetrieveConfiguration()
       .withRetrieveDirectory(retrieveDirectory)
@@ -126,15 +124,15 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
       updateConfiguration,
       UnresolvedWarningConfiguration(),
       log
-    ) match {
+    ) match
       case Left(unresolvedWarning) => Left(unresolvedWarning)
       case Right(updateReport)     =>
         val allFiles =
-          for {
+          for
             conf <- updateReport.configurations
             m <- conf.modules
             (_, f) <- m.artifacts
-          } yield f
+          yield f
         log.debug(s"Files retrieved for ${directDependenciesNames(module)}:")
         log.debug(allFiles mkString ", ")
         // allFiles filter predicate match {
@@ -142,8 +140,8 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
         //   case files => Some(files)
         // }
         Right(allFiles)
-    }
-  }
+    end match
+  end retrieve
 
   /**
    * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
@@ -159,7 +157,7 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
       uwconfig: UnresolvedWarningConfiguration,
       artifacts: Vector[(String, ModuleID, Artifact, File)],
       log: Logger
-  ): Either[UnresolvedWarning, UpdateReport] = {
+  ): Either[UnresolvedWarning, UpdateReport] =
     import config.module.*
     val artifactFilter = getArtifactTypeFilter(config.updateConfiguration.artifactFilter)
     assert(classifiers.nonEmpty, "classifiers cannot be empty")
@@ -179,7 +177,7 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
 
     // c.copy ensures c.types is preserved too
     val upConf = config.updateConfiguration.withMissingOk(true)
-    update(module, upConf, uwconfig, log) match {
+    update(module, upConf, uwconfig, log) match
       case Right(r) =>
         // The artifacts that came from Ivy don't have their classifier set, let's set it according to
         // FIXME: this is only done because IDE plugins depend on `classifier` to determine type. They
@@ -193,17 +191,15 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
           }
         })
       case Left(w) => Left(w)
-    }
-  }
+  end updateClassifiers
 
   protected def directDependenciesNames(module: ModuleDescriptor): String =
     (module.directDependencies map { case mID: ModuleID =>
       import mID.*
       s"$organization % $name % $revision"
     }).mkString(", ")
-}
+end DependencyResolution
 
-object DependencyResolution {
+object DependencyResolution:
   def apply(lmEngine: DependencyResolutionInterface): DependencyResolution =
     new DependencyResolution(lmEngine)
-}

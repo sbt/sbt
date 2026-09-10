@@ -19,7 +19,7 @@ import scala.jdk.CollectionConverters.*
 /**
  * Describes restrictions on concurrent execution for a set of tasks.
  */
-trait ConcurrentRestrictions {
+trait ConcurrentRestrictions:
 
   /** Internal state type used to describe a set of tasks. */
   type G
@@ -42,17 +42,16 @@ trait ConcurrentRestrictions {
    *      valid(empty) 5. forall g: G, a: A, b: A; !valid(add(g,a)) => !valid(add(add(g,b), a))
    */
   def valid(g: G): Boolean
-}
+end ConcurrentRestrictions
 
-private[sbt] sealed trait CancelSentinels {
+private[sbt] sealed trait CancelSentinels:
   def cancelSentinels(): Unit
-}
 
 import java.util.{ LinkedList, Queue }
 import java.util.concurrent.{ Executor, Executors, ExecutorCompletionService }
 import annotation.tailrec
 
-object ConcurrentRestrictions {
+object ConcurrentRestrictions:
   private val completionServices = new java.util.WeakHashMap[CompletionService, Boolean]
   def cancelAll() = completionServices.keySet.asScala.toVector.foreach {
     case a: AutoCloseable => a.close()
@@ -68,24 +67,21 @@ object ConcurrentRestrictions {
    * A ConcurrentRestrictions instance that places no restrictions on concurrently executing tasks.
    */
   def unrestricted: ConcurrentRestrictions =
-    new ConcurrentRestrictions {
+    new ConcurrentRestrictions:
       type G = Unit
       def empty = ()
       def add(g: G, a: TaskId[?]) = ()
       def remove(g: G, a: TaskId[?]) = ()
       def valid(g: G) = true
-    }
 
-  def limitTotal(i: Int): ConcurrentRestrictions = {
+  def limitTotal(i: Int): ConcurrentRestrictions =
     assert(i >= 1, "Maximum must be at least 1 (was " + i + ")")
-    new ConcurrentRestrictions {
+    new ConcurrentRestrictions:
       type G = Int
       def empty = 0
       def add(g: Int, a: TaskId[?]) = g + 1
       def remove(g: Int, a: TaskId[?]) = g - 1
       def valid(g: Int) = g <= i
-    }
-  }
 
   /** A key object used for associating information with a task. */
   final case class Tag(name: String)
@@ -108,30 +104,26 @@ object ConcurrentRestrictions {
    *   defines whether a set of tasks are allowed to execute concurrently based on their merged tags
    */
   def tagged(validF: TagMap => Boolean): ConcurrentRestrictions =
-    new ConcurrentRestrictions {
+    new ConcurrentRestrictions:
       type G = TagMap
       def empty = Map.empty
       def add(g: TagMap, a: TaskId[?]) = merge(g, a)(_ + _)
       def remove(g: TagMap, a: TaskId[?]) = merge(g, a)(_ - _)
       def valid(g: TagMap) = validF(g)
-    }
 
   private def merge(m: TagMap, a: TaskId[?])(
       f: (Int, Int) => Int
-  ): TagMap = {
+  ): TagMap =
     val base = merge(m, a.tags)(f)
-    val un = if (a.tags.isEmpty) update(base, Untagged, 1)(f) else base
+    val un = if a.tags.isEmpty then update(base, Untagged, 1)(f) else base
     update(un, All, 1)(f)
-  }
 
-  private def update[A, B](m: Map[A, B], a: A, b: B)(f: (B, B) => B): Map[A, B] = {
+  private def update[A, B](m: Map[A, B], a: A, b: B)(f: (B, B) => B): Map[A, B] =
     val newb =
-      (m get a) match {
+      (m get a) match
         case Some(bv) => f(bv, b)
         case None     => b
-      }
     m.updated(a, newb)
-  }
   private def merge[A, B](m: Map[A, B], n: Map[A, B])(f: (B, B) => B): Map[A, B] =
     n.foldLeft(m) { case (acc, (a, b)) => update(acc, a, b)(f) }
 
@@ -146,56 +138,54 @@ object ConcurrentRestrictions {
   def completionService(
       tags: ConcurrentRestrictions,
       warn: String => Unit
-  ): (CompletionService, () => Unit) = {
+  ): (CompletionService, () => Unit) =
     val id = poolID.getAndIncrement
     val i = new AtomicInteger(1)
     val pool = Executors.newCachedThreadPool { r =>
       new Thread(r, s"sbt-completion-service-pool-$id-${i.getAndIncrement()}")
     }
     val service = completionService(pool, tags, warn)
-    (service, () => { pool.shutdownNow(); () })
-  }
+    (
+      service,
+      () =>
+        pool.shutdownNow(); ()
+    )
 
   def completionService(
       tags: ConcurrentRestrictions,
       warn: String => Unit,
       isSentinel: TaskId[?] => Boolean
-  ): (CompletionService, () => Unit) = {
+  ): (CompletionService, () => Unit) =
     val pool = Executors.newCachedThreadPool()
     val service = completionService(pool, tags, warn, isSentinel)
     (
       service,
-      () => {
+      () =>
         pool.shutdownNow()
         ()
-      }
     )
-  }
 
   def cancellableCompletionService(
       tags: ConcurrentRestrictions,
       warn: String => Unit,
       isSentinel: TaskId[?] => Boolean
-  ): (CompletionService, Boolean => Unit) = {
+  ): (CompletionService, Boolean => Unit) =
     val pool = Executors.newCachedThreadPool()
     val service = completionService(pool, tags, warn, isSentinel)
     (
       service,
-      force => {
-        if (force) service.close()
+      force =>
+        if force then service.close()
         pool.shutdownNow()
         ()
-      }
     )
-  }
 
   def completionService(
       backing: Executor,
       tags: ConcurrentRestrictions,
       warn: String => Unit
-  ): CompletionService & AutoCloseable = {
+  ): CompletionService & AutoCloseable =
     completionService(backing, tags, warn, _ => false)
-  }
 
   /**
    * Constructs a CompletionService suitable for backing task execution based on the provided
@@ -207,18 +197,17 @@ object ConcurrentRestrictions {
       tags: ConcurrentRestrictions,
       warn: String => Unit,
       isSentinel: TaskId[?] => Boolean,
-  ): CompletionService & CancelSentinels & AutoCloseable = {
+  ): CompletionService & CancelSentinels & AutoCloseable =
 
     // Represents submitted work for a task.
     final class Enqueue(val node: TaskId[?], val work: () => Completed)
 
-    new CompletionService with CancelSentinels with AutoCloseable {
+    new CompletionService with CancelSentinels with AutoCloseable:
       completionServices.put(this, true)
       private val closed = new AtomicBoolean(false)
-      override def close(): Unit = if (closed.compareAndSet(false, true)) {
+      override def close(): Unit = if closed.compareAndSet(false, true) then
         completionServices.remove(this)
         ()
-      }
 
       /** Backing service used to manage execution on threads once all constraints are satisfied. */
       private val jservice = new ExecutorCompletionService[Completed](backing)
@@ -237,12 +226,11 @@ object ConcurrentRestrictions {
 
       private val sentinels: mutable.ListBuffer[JFuture[?]] = mutable.ListBuffer.empty
 
-      def cancelSentinels(): Unit = {
+      def cancelSentinels(): Unit =
         sentinels.toList foreach { s =>
           s.cancel(true)
         }
         sentinels.clear()
-      }
 
       def submit(node: TaskId[?], work: () => Completed): Unit = synchronized {
         if closed.get then throw new RejectedExecutionException
@@ -263,23 +251,21 @@ object ConcurrentRestrictions {
             ()
         ()
       }
-      private def submitValid(node: TaskId[?], work: () => Completed): Unit = {
+      private def submitValid(node: TaskId[?], work: () => Completed): Unit =
         running += 1
         val wrappedWork = () =>
           try work()
           finally cleanup(node)
         CompletionService.submitFuture(wrappedWork, jservice)
         ()
-      }
       private def cleanup(node: TaskId[?]): Unit = synchronized {
         running -= 1
         tagState = tags.remove(tagState, node)
-        if (!tags.valid(tagState)) {
+        if !tags.valid(tagState) then
           warn(
             "Invalid restriction: removing a completed node from a valid system must result in a valid system."
           )
           ()
-        }
         submitValid(new LinkedList)
       }
       private def errorAddingToIdle() =
@@ -287,34 +273,30 @@ object ConcurrentRestrictions {
 
       /** Submits pending tasks that are now allowed to executed. */
       @tailrec private def submitValid(tried: Queue[Enqueue]): Unit =
-        if (pending.isEmpty) {
-          if (!tried.isEmpty) {
-            if (running == 0) errorAddingToIdle()
+        if pending.isEmpty then
+          if !tried.isEmpty then
+            if running == 0 then errorAddingToIdle()
             pending.addAll(tried)
             ()
-          }
-        } else {
+        else
           val next = pending.remove()
           val newState = tags.add(tagState, next.node)
-          if (tags.valid(newState)) {
+          if tags.valid(newState) then
             tagState = newState
             submitValid(next.node, next.work)
             ()
-          } else {
+          else
             tried.add(next)
             ()
-          }
           submitValid(tried)
-        }
 
-      def take(): Completed = {
-        if (closed.get)
+      def take(): Completed =
+        if closed.get then
           throw new RejectedExecutionException(
             "Tried to get values for a closed completion service"
           )
-        try {
-          jservice.take().get()
-        } catch {
+        try jservice.take().get()
+        catch
           case ce: CancellationException =>
             // When tasks are cancelled (e.g., due to compile errors with usePipelining),
             // the future's get() throws CancellationException. Convert this to an Incomplete
@@ -322,8 +304,6 @@ object ConcurrentRestrictions {
             // by the task execution framework, so we just need to prevent the exception
             // from propagating as an unhandled exception.
             throw Incomplete(node = None, message = Some("cancelled"), directCause = Some(ce))
-        }
-      }
-    }
-  }
-}
+    end new
+  end completionService
+end ConcurrentRestrictions

@@ -18,9 +18,8 @@ private[sbt] case class GraphModuleId(
     organization: String,
     name: String,
     version: String,
-) {
+):
   def idString: String = organization + ":" + name + ":" + version
-}
 
 private[sbt] object GraphModuleId:
   import sjsonnew.BasicJsonProtocol.StringJsonFormat
@@ -83,7 +82,7 @@ private[sbt] object Module:
   )
 end Module
 
-private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
+private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]):
   lazy val modules: Map[GraphModuleId, Module] =
     nodes.map(n => (n.id, n)).toMap
 
@@ -97,18 +96,17 @@ private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
 
   def createMap(
       bindingFor: ((GraphModuleId, GraphModuleId)) => (GraphModuleId, GraphModuleId)
-  ): Map[GraphModuleId, Seq[Module]] = {
+  ): Map[GraphModuleId, Seq[Module]] =
     val map = mutable.Map.empty[GraphModuleId, mutable.Set[Module]]
     edges.foreach { entry =>
       val (f, t) = bindingFor(entry)
       module(t).foreach { m => map.getOrElseUpdate(f, mutable.Set.empty) += m }
     }
     map.view.mapValues(_.toSeq.sortBy(_.id.idString)).toMap.withDefaultValue(Nil)
-  }
 
   def roots: Seq[Module] =
     nodes.filter(n => !edges.exists(_._2 == n.id)).sortBy(_.id.idString)
-}
+end ModuleGraph
 
 private[sbt] object ModuleGraph:
   val empty = ModuleGraph(Seq.empty, Seq.empty)

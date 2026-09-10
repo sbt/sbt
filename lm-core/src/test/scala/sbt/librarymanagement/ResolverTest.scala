@@ -4,7 +4,7 @@ import java.net.URI
 
 import sbt.internal.librarymanagement.UnitSpec
 
-class ResolverTest extends UnitSpec {
+class ResolverTest extends UnitSpec:
 
   "Resolver uri" should "propagate pattern descriptorOptional and skipConsistencyCheck." in {
     val pats = Vector("[orgPath]")
@@ -83,4 +83,4 @@ class ResolverTest extends UnitSpec {
     repo.patterns.artifactPatterns shouldBe Vector(artifacts)
     repo.patterns.isMavenCompatible shouldBe false
   }
-}
+end ResolverTest

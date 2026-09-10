@@ -8,7 +8,7 @@
 
 package sbt.internal.parser
 
-object CommentedXmlSpec extends CheckIfParsedSpec {
+object CommentedXmlSpec extends CheckIfParsedSpec:
 
   override protected val files = Seq(
     (
@@ -95,4 +95,4 @@ object CommentedXmlSpec extends CheckIfParsedSpec {
       false
     )
   )
-}
+end CommentedXmlSpec

@@ -17,17 +17,16 @@ import scala.annotation.tailrec
 import scala.sys.process.Process
 import scala.util.Using
 
-object RunFromSourceMain {
+object RunFromSourceMain:
   def fork(
       workingDirectory: File,
       scalaVersion: String,
       sbtVersion: String,
       classpath: Seq[File]
-  ): Process = {
+  ): Process =
     val fo = ForkOptions()
       .withOutputStrategy(OutputStrategy.StdoutOutput)
     fork(fo, workingDirectory, scalaVersion, sbtVersion, classpath)
-  }
 
   def fork(
       fo0: ForkOptions,
@@ -35,13 +34,13 @@ object RunFromSourceMain {
       scalaVersion: String,
       sbtVersion: String,
       cp: Seq[File]
-  ): Process = {
+  ): Process =
     val fo = fo0
       .withWorkingDirectory(workingDirectory)
-      .withRunJVMOptions((sys.props.get("sbt.ivy.home") match {
+      .withRunJVMOptions((sys.props.get("sbt.ivy.home") match
         case Some(home) => Vector(s"-Dsbt.ivy.home=$home")
         case _          => Vector()
-      }) ++ fo0.runJVMOptions)
+      ) ++ fo0.runJVMOptions)
     val runner = new ForkRun(fo)
     val options =
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
@@ -49,20 +48,18 @@ object RunFromSourceMain {
     val log = context.logger("RunFromSourceMain.fork", None, None)
     try runner.fork("sbt.RunFromSourceMain", cp.map(_.toPath()), options, log)
     finally context.close()
-  }
 
-  def main(args: Array[String]): Unit = args match {
+  def main(args: Array[String]): Unit = args match
     case Array() =>
       sys.error(
         s"Must specify working directory, scala version and sbt version and classpath as the first three arguments"
       )
     case Array(wd, scalaVersion, sbtVersion, classpath, args*) =>
-      if (System.getProperty("jna.nosys") == null) System.setProperty("jna.nosys", "true")
-      if (args.exists(_.startsWith("<"))) System.setProperty("sbt.io.virtual", "false")
+      if System.getProperty("jna.nosys") == null then System.setProperty("jna.nosys", "true")
+      if args.exists(_.startsWith("<")) then System.setProperty("sbt.io.virtual", "false")
       Using.resource(LoggerContext()) { context =>
         run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
       }
-  }
 
   // this arrangement is because Scala does not always properly optimize away
   // the tail recursion in a catch statement
@@ -74,10 +71,9 @@ object RunFromSourceMain {
       args: Seq[String],
       context: LoggerContext
   ): Unit =
-    runImpl(baseDir, scalaVersion, sbtVersion, classpath, args, context: LoggerContext) match {
+    runImpl(baseDir, scalaVersion, sbtVersion, classpath, args, context: LoggerContext) match
       case Some((baseDir, args)) => run(baseDir, scalaVersion, sbtVersion, classpath, args, context)
       case None                  => ()
-    }
 
   private def runImpl(
       baseDir: File,
@@ -86,7 +82,7 @@ object RunFromSourceMain {
       classpath: String,
       args: Seq[String],
       context: LoggerContext,
-  ): Option[(File, Seq[String])] = {
+  ): Option[(File, Seq[String])] =
     try
       launch(
         defaultBootDirectory,
@@ -97,12 +93,10 @@ object RunFromSourceMain {
         args,
         context
       ) map exit
-    catch {
+    catch
       case r: xsbti.FullReload            => Some((baseDir, r.arguments.toSeq))
       case scala.util.control.NonFatal(e) =>
         e.printStackTrace(); errorAndExit(e.toString)
-    }
-  }
 
   private def launch(
       bootDirectory: File,
@@ -112,7 +106,7 @@ object RunFromSourceMain {
       classpath: String,
       arguments: Seq[String],
       context: LoggerContext,
-  ): Option[Int] = {
+  ): Option[Int] =
     ScriptedLauncher
       .launch(
         scalaHome(bootDirectory, scalaVersion, context),
@@ -123,33 +117,30 @@ object RunFromSourceMain {
         classpath.split(java.io.File.pathSeparator).map(file),
         arguments.toArray
       )
-      .orElse(null) match {
+      .orElse(null) match
       case null                   => None
       case i if i == Int.MaxValue => None
       case i                      => Some(i)
-    }
-  }
 
   private lazy val defaultBootDirectory: File =
     file(sys.props("user.home")) / ".sbt" / "scripted" / "boot"
-  private def scalaHome(bootDirectory: File, scalaVersion: String, context: LoggerContext): File = {
+  private def scalaHome(bootDirectory: File, scalaVersion: String, context: LoggerContext): File =
     val log = context.logger("run-from-source", None, None)
     val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
-    if ((scalaHome0 / "lib" / "scala-library.jar").exists) scalaHome0
-    else {
+    if (scalaHome0 / "lib" / "scala-library.jar").exists then scalaHome0
+    else
       log.info(s"""scalaHome ($scalaHome0) wasn't found""")
       val fakeboot = bootDirectory / "fakeboot"
       val scalaHome1 = fakeboot / s"scala-$scalaVersion"
       val scalaHome1Lib = scalaHome1 / "lib"
       val scalaHome1Temp = scalaHome1 / "temp"
       if scalaHome1Lib.exists then log.info(s"""using $scalaHome1 that was found""")
-      else {
+      else
         log.info(s"""creating $scalaHome1 by downloading scala-compiler $scalaVersion""")
         IO.createDirectories(List(scalaHome1Lib, scalaHome1Temp))
-        val lm = {
+        val lm =
           import lmcoursier.{ CoursierConfiguration, CoursierDependencyResolution }
           CoursierDependencyResolution(CoursierConfiguration())
-        }
         val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match
           case Left(w)     => throw w.resolveException
@@ -158,22 +149,21 @@ object RunFromSourceMain {
             jars.foreach: f =>
               val name = jarName(f.getName)
               IO.copyFile(f, scalaHome1Lib / s"$name.jar")
-      }
       scalaHome1
-    }
-  }
+    end if
+  end scalaHome
 
   private val Name = """(.*)(?:\-[\d.]+)\.jar""".r
   private val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
   private val RC = """(.*)(?:\-[\d.]+)-(?:RC\d+)\.jar""".r
 
   private[sbt] def jarName(value: String): String =
-    value match {
+    value match
       case Name(name)   => name
       case BinPre(name) => name
       case RC(name)     => name
-    }
 
-  private def errorAndExit(msg: String): Nothing = { System.err.println(msg); exit(1) }
+  private def errorAndExit(msg: String): Nothing =
+    System.err.println(msg); exit(1)
   private def exit(code: Int): Nothing = System.exit(code).asInstanceOf[Nothing]
-}
+end RunFromSourceMain

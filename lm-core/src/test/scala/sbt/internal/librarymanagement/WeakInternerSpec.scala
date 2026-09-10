@@ -117,3 +117,4 @@ object WeakInternerSpec extends verify.BasicTestSuite:
       Thread.sleep(20)
       i += 1
     ref.get == null
+end WeakInternerSpec

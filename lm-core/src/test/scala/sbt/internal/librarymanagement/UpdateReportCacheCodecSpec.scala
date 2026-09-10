@@ -98,3 +98,4 @@ object UpdateReportCacheCodecSpec extends verify.BasicTestSuite:
       UpdateStats(0L, 0L, 0L, false),
       Map.empty
     )
+end UpdateReportCacheCodecSpec

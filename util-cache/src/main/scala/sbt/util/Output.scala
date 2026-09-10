@@ -13,15 +13,14 @@ import java.io.{ Closeable, File, OutputStream }
 import sjsonnew.{ IsoString, JsonWriter, SupportConverter }
 import sbt.io.{ IO, Using }
 
-trait Output extends Closeable {
+trait Output extends Closeable:
   def write[T: JsonWriter](value: T): Unit
-}
 
 class PlainOutput[J: IsoString](output: OutputStream, converter: SupportConverter[J])
-    extends Output {
+    extends Output:
   val isoFormat: IsoString[J] = implicitly
 
-  def write[T: JsonWriter](value: T) = {
+  def write[T: JsonWriter](value: T) =
     val js = converter.toJson(value).get
     val asString = isoFormat.to(js)
     Using.bufferedOutputStream(output) { writer =>
@@ -29,27 +28,23 @@ class PlainOutput[J: IsoString](output: OutputStream, converter: SupportConverte
       out.print(asString)
       out.flush()
     }
-  }
 
   def close() = output.close()
-}
 
-class FileOutput(file: File) extends Output {
-  override def write[T: JsonWriter](value: T): Unit = {
+class FileOutput(file: File) extends Output:
+  override def write[T: JsonWriter](value: T): Unit =
     val js = sjsonnew.support.scalajson.unsafe.Converter.toJson(value).get
     Using.fileOutputStream(append = false)(file) { stream =>
       val out = new java.io.PrintWriter(stream)
       sjsonnew.support.scalajson.unsafe.CompactPrinter.print(js, out)
       out.flush()
     }
-  }
 
   def close() = ()
-}
 
 /** Writes a gzip-framed cache file. */
-private[sbt] class GzipFileOutput(file: File) extends Output {
-  override def write[T: JsonWriter](value: T): Unit = {
+private[sbt] class GzipFileOutput(file: File) extends Output:
+  override def write[T: JsonWriter](value: T): Unit =
     val js = sjsonnew.support.scalajson.unsafe.Converter.toJson(value).get
     Using.fileOutputStream(append = false)(file) { stream =>
       Using.gzipOutputStream(stream) { gz =>
@@ -59,7 +54,5 @@ private[sbt] class GzipFileOutput(file: File) extends Output {
         out.flush()
       }
     }
-  }
 
   def close() = ()
-}

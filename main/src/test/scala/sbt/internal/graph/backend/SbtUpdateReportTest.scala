@@ -13,7 +13,7 @@ import org.scalatest.matchers.should.Matchers
 import sbt.internal.graph.GraphModuleId
 import sbt.librarymanagement.*
 
-class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
+class SbtUpdateReportTest extends AnyFlatSpec with Matchers:
 
   def caller(org: String, name: String, version: String): Caller =
     Caller(
@@ -119,4 +119,4 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
     graph.edges should contain((rootId, depAId))
     graph.edges should contain((rootId, relocatedBId))
   }
-}
+end SbtUpdateReportTest

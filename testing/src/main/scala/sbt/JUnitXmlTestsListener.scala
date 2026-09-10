@@ -36,26 +36,22 @@ import sbt.protocol.testing.TestResult
  * block sbt startup (only resolves when tests actually run).
  * See https://github.com/sbt/sbt/issues/8601
  */
-object JUnitXmlTestsListener {
+object JUnitXmlTestsListener:
 
   /** Cached hostname resolution result with timing info */
-  private lazy val hostnameInfo: (String, Long) = {
+  private lazy val hostnameInfo: (String, Long) =
     val start = System.nanoTime
     val name =
       try InetAddress.getLocalHost.getHostName
-      catch {
-        case _: IOException => "localhost"
-      }
+      catch case _: IOException => "localhost"
     val elapsed = System.nanoTime - start
     (name, elapsed)
-  }
 
   /** Lazily resolved hostname, cached at object level */
   lazy val hostname: String = hostnameInfo._1
 
   /** Time taken to resolve hostname in nanoseconds */
   lazy val hostnameResolutionTime: Long = hostnameInfo._2
-}
 
 /**
  * A tests listener that outputs the results it receives in junit xml report format.
@@ -63,7 +59,7 @@ object JUnitXmlTestsListener {
  *   directory in which test reports are generated
  */
 class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logger: Logger)
-    extends TestsListener {
+    extends TestsListener:
   // These constructors are for binary compatibility with older versions of sbt
   // Use old hard-coded behaviour for constructing `targetDir` from `outputDir`
   def this(outputDir: String, legacyTestReport: Boolean, logger: Logger) =
@@ -72,18 +68,16 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   def this(outputDir: String) = this(outputDir, false, null)
 
   /** Current hostname so we know which machine executed the tests */
-  lazy val hostname: String = {
+  lazy val hostname: String =
     val name = JUnitXmlTestsListener.hostname
     val elapsed = JUnitXmlTestsListener.hostnameResolutionTime
-    if ((NANOSECONDS.toSeconds(elapsed) >= 4) && Properties.isMac && logger != null) {
+    if (NANOSECONDS.toSeconds(elapsed) >= 4) && Properties.isMac && logger != null then
       logger.warn(
         s"Getting the hostname $name was slow (${elapsed / 1.0e6} ms). " +
           "This is likely because the computer's hostname is not set. You can set the " +
           """hostname with the command: scutil --set HostName "$(scutil --get LocalHostName).local"."""
       )
-    }
     name
-  }
 
   /** all system properties as XML */
   val properties: Elem =
@@ -93,10 +87,9 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
       val clonedProperties = System.getProperties.clone.asInstanceOf[Hashtable[AnyRef, AnyRef]]
       val iter = clonedProperties.entrySet.iterator
       val props: ListBuffer[XNode] = new ListBuffer()
-      while (iter.hasNext) {
+      while iter.hasNext do
         val next = iter.next
         props += <property name={next.getKey.toString} value={next.getValue.toString}/>
-      }
       props
     }
     </properties>
@@ -105,7 +98,7 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * Gathers data for one Test Suite. We map test groups to TestSuites. Each TestSuite gets its own
    * output file.
    */
-  class TestSuite(val name: String, timestamp: LocalDateTime) {
+  class TestSuite(val name: String, timestamp: LocalDateTime):
     def this(name: String) = this(name, LocalDateTime.now())
 
     val events: ListBuffer[TEvent] = new ListBuffer()
@@ -119,7 +112,7 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
     /**
      * Stops the time measuring and emits the XML for All tests collected so far.
      */
-    def stop(): Elem = {
+    def stop(): Elem =
       val duration = events.map(_.duration()).sum
 
       val (errors, failures, tests) = (count(TStatus.Error), count(TStatus.Failure), events.size)
@@ -142,50 +135,45 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
         }>
           {properties}
           {
-          for (e <- events)
-            yield <testcase classname={
-              e.selector match {
-                case nested: NestedTestSelector => nested.suiteId()
-                case _                          => name
-              }
-            } name={
-              e.selector match {
-                case selector: TestSelector =>
-                  val matchEnd =
-                    classnameRegex.findFirstMatchIn(selector.testName).map(_.end).getOrElse(0)
-                  selector.testName.substring(matchEnd)
-                case nested: NestedTestSelector => nested.testName()
-                case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
-              }
-            } time={(e.duration() / 1000.0).toString}>
+          for e <- events
+          yield <testcase classname={
+            e.selector match
+              case nested: NestedTestSelector => nested.suiteId()
+              case _                          => name
+          } name={
+            e.selector match
+              case selector: TestSelector =>
+                val matchEnd =
+                  classnameRegex.findFirstMatchIn(selector.testName).map(_.end).getOrElse(0)
+                selector.testName.substring(matchEnd)
+              case nested: NestedTestSelector => nested.testName()
+              case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
+          } time={(e.duration() / 1000.0).toString}>
                       {
-              val trace: String = if (e.throwable.isDefined) {
-                val stringWriter = new StringWriter()
-                val writer = new PrintWriter(stringWriter)
-                e.throwable.get.printStackTrace(writer)
-                writer.flush()
-                stringWriter.toString
-              } else {
-                ""
-              }
-              e.status match {
-                case TStatus.Error if (e.throwable.isDefined) =>
-                  <error message={e.throwable.get.getMessage} type={
-                    e.throwable.get.getClass.getName
-                  }>{trace}</error>
-                case TStatus.Error =>
-                  <error message={"No Exception or message provided"}/>
-                case TStatus.Failure if (e.throwable.isDefined) =>
-                  <failure message={e.throwable.get.getMessage} type={
-                    e.throwable.get.getClass.getName
-                  }>{trace}</failure>
-                case TStatus.Failure =>
-                  <failure message={"No Exception or message provided"}/>
-                case TStatus.Ignored | TStatus.Skipped | TStatus.Pending =>
-                  <skipped/>
-                case _ => {}
-              }
-            }
+            val trace: String = if e.throwable.isDefined then
+              val stringWriter = new StringWriter()
+              val writer = new PrintWriter(stringWriter)
+              e.throwable.get.printStackTrace(writer)
+              writer.flush()
+              stringWriter.toString
+            else ""
+            e.status match
+              case TStatus.Error if (e.throwable.isDefined) =>
+                <error message={e.throwable.get.getMessage} type={
+                  e.throwable.get.getClass.getName
+                }>{trace}</error>
+              case TStatus.Error =>
+                <error message={"No Exception or message provided"}/>
+              case TStatus.Failure if (e.throwable.isDefined) =>
+                <failure message={e.throwable.get.getMessage} type={
+                  e.throwable.get.getClass.getName
+                }>{trace}</failure>
+              case TStatus.Failure =>
+                <failure message={"No Exception or message provided"}/>
+              case TStatus.Ignored | TStatus.Skipped | TStatus.Pending =>
+                <skipped/>
+              case _ => {}
+          }
                     </testcase>
 
         }
@@ -194,8 +182,8 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
         </testsuite>
 
       result
-    }
-  }
+    end stop
+  end TestSuite
 
   /**
    * A mutable cell holding the suite that is currently running on a thread.
@@ -209,24 +197,21 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * remaining life of the JVM. Clearing the cell severs the reference for the owning thread and
    * every thread that inherited it at once.
    */
-  private final class SuiteRef(initial: Option[TestSuite]) {
+  private final class SuiteRef(initial: Option[TestSuite]):
     private val ref = new AtomicReference(initial)
     def current: Option[TestSuite] = ref.get()
     def clear(): Unit = ref.set(None)
-  }
 
   /** The currently running test suite */
-  private val testSuite = new InheritableThreadLocal[SuiteRef] {
+  private val testSuite = new InheritableThreadLocal[SuiteRef]:
     override def initialValue(): SuiteRef = new SuiteRef(None)
-  }
 
   private def withTestSuite[T](f: TestSuite => T): T =
     testSuite.get().current.map(f).getOrElse(sys.error("no test suite"))
 
   /** Creates the output Dir */
-  override def doInit(): Unit = {
+  override def doInit(): Unit =
     val _ = targetDir.mkdirs()
-  }
 
   /**
    * Starts a new, initially empty Suite with the given name.
@@ -245,15 +230,14 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * late event into an error line via `TestFramework.safeForeach`.
    */
   override def testEvent(event: TestEvent): Unit =
-    testSuite.get().current match {
-      case Some(suite) => for (e <- event.detail) suite.addEvent(e)
+    testSuite.get().current match
+      case Some(suite) => for e <- event.detail do suite.addEvent(e)
       case None        =>
-        if (logger != null) {
+        if logger != null then
           logger.debug(
             s"ignoring ${event.detail.size} test event(s) reported after the suite was written"
           )
-        } else ()
-    }
+        else ()
 
   /**
    * called for each class or equivalent grouping We map one group to one Testsuite, so for each
@@ -272,9 +256,9 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * type="junit.framework.AssertionFailedError">...stack...</failure> </testcase>
    * <system-out><![CDATA[]]></system-out> <system-err><![CDATA[]]></system-err> </testsuite>
    */
-  override def endGroup(name: String, t: Throwable): Unit = {
+  override def endGroup(name: String, t: Throwable): Unit =
     // create our own event to record the error
-    val event: TEvent = new TEvent {
+    val event: TEvent = new TEvent:
       def fullyQualifiedName = name
       // def description =
       // "Throwable escaped the test run of '%s'".format(name)
@@ -283,18 +267,15 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
       def fingerprint = null
       def selector = null
       def throwable = new OptionalThrowable(t)
-    }
     withTestSuite(_.addEvent(event))
     writeSuite()
-  }
 
   /**
    * Ends the current suite, wraps up the result and writes it to an XML file in the output folder
    * that is named after the suite.
    */
-  override def endGroup(name: String, result: TestResult): Unit = {
+  override def endGroup(name: String, result: TestResult): Unit =
     writeSuite()
-  }
 
   // Here we normalize the name to ensure that it's a nicer filename, rather than
   // contort the user into not using spaces.
@@ -306,15 +287,11 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   private def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-  private def writeSuite(): Unit = {
-    val file = if (legacyTestReport) {
+  private def writeSuite(): Unit =
+    val file = if legacyTestReport then
       new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    } else {
-      new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    }
-    if (logger != null) {
-      logger.debug(s"writing JUnit XML test report: $file")
-    }
+    else new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
+    if logger != null then logger.debug(s"writing JUnit XML test report: $file")
     val testSuiteResult = withTestSuite(_.stop())
     XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
     /* Order matters: `clear()` releases the suite for this thread *and* for every thread that
@@ -325,11 +302,10 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
      */
     testSuite.get().clear()
     testSuite.remove()
-  }
 
   /** Does nothing, as we write each file after a suite is done. */
   override def doComplete(finalResult: TestResult): Unit = {}
 
   /** Returns None */
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = None
-}
+end JUnitXmlTestsListener

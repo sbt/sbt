@@ -4,7 +4,7 @@ import sbt.*
 import sbt.Keys.*
 import sys.process.*
 
-object Mima {
+object Mima:
 
   private def stable(ver: String): Boolean =
     ver.exists(c => c != '0' && c != '.') &&
@@ -29,14 +29,11 @@ object Mima {
     // }
   )
 
-  lazy val lmCoursierFilters = {
+  lazy val lmCoursierFilters =
     mimaBinaryIssueFilters ++= Seq(
     )
-  }
 
-  lazy val lmCoursierShadedFilters = {
+  lazy val lmCoursierShadedFilters =
     mimaBinaryIssueFilters ++= Seq(
     )
-  }
-
-}
+end Mima

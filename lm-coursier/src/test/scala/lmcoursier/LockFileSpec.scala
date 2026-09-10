@@ -5,7 +5,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import java.io.File
 import sbt.io.IO
 
-class LockFileSpec extends AnyFunSuite {
+class LockFileSpec extends AnyFunSuite:
 
   test("LockFileData serialization round-trip") {
     val lockData = LockFileData(
@@ -152,4 +152,4 @@ class LockFileSpec extends AnyFunSuite {
       assert(result == httpUrl)
     }
   }
-}
+end LockFileSpec

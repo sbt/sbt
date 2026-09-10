@@ -18,7 +18,7 @@ import sbt.io.{ IO, Path }
 import OutputStrategy.*
 import sbt.internal.util.Util.*
 
-object ForkTest extends Properties("Fork") {
+object ForkTest extends Properties("Fork"):
 
   /**
    * Heuristic for limiting the length of the classpath string. Longer than this will hit hard
@@ -52,8 +52,8 @@ object ForkTest extends Properties("Fork") {
             val config = ForkOptions().withOutputStrategy(LoggedOutput(log))
             val exitCode =
               try Fork.java(config, args)
-              catch { case e: Exception => e.printStackTrace; 1 }
-            val expectedCode = if (optionName.isEmpty) 1 else 0
+              catch case e: Exception => e.printStackTrace; 1
+            val expectedCode = if optionName.isEmpty then 1 else 0
             s"temporary directory: ${dir.getAbsolutePath}" |:
               s"required classpath: ${requiredEntries.mkString("\n\t", "\n\t", "")}" |:
               s"main and args: ${mainAndArgs.mkString(" ")}" |:
@@ -64,7 +64,7 @@ object ForkTest extends Properties("Fork") {
         }
     }
 
-  property("Arguments with double quotes preserved in arguments file mode.") = {
+  property("Arguments with double quotes preserved in arguments file mode.") =
     val baos = new java.io.ByteArrayOutputStream()
     val jsonArg = """{"a":1}"""
     // Pad JVM options to exceed MaxConcatenatedOptionLength (5000) and trigger argsfile mode
@@ -76,33 +76,26 @@ object ForkTest extends Properties("Fork") {
       .withCanUseArgumentsFile(true)
     val exitCode =
       try Fork.java(config, args)
-      catch { case e: Exception => e.printStackTrace(); 1 }
+      catch case e: Exception => e.printStackTrace(); 1
     val output = baos.toString("UTF-8").trim
     s"exitCode: $exitCode" |:
       s"output: '$output', expected: '$jsonArg'" |:
       (exitCode == 0) && (output == jsonArg)
-  }
 
   private def trimClasspath(cp: String): String =
-    if (cp.length > MaximumClasspathLength) {
+    if cp.length > MaximumClasspathLength then
       val lastEntryI = cp.lastIndexOf(File.pathSeparatorChar.toInt, MaximumClasspathLength)
-      if (lastEntryI > 0)
-        cp.substring(0, lastEntryI)
-      else
-        cp
-    } else cp
-}
+      if lastEntryI > 0 then cp.substring(0, lastEntryI)
+      else cp
+    else cp
+end ForkTest
 
 // Object used in the tests
-object exit {
-  def main(args: Array[String]): Unit = {
+object exit:
+  def main(args: Array[String]): Unit =
     System.exit(java.lang.Integer.parseInt(args(0)))
-  }
-}
 
 // Echoes each argument on its own line, used to verify argument passing
-object echoArgs {
-  def main(args: Array[String]): Unit = {
+object echoArgs:
+  def main(args: Array[String]): Unit =
     args.foreach(println)
-  }
-}

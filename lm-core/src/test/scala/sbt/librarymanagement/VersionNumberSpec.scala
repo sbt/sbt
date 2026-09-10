@@ -5,7 +5,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
 // This is a specification to check VersionNumber and VersionNumberCompatibility.
-class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
+class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside:
   import VersionNumber.{ EarlySemVer, SemVer, PackVer }
 
   version("1") { v =>
@@ -179,12 +179,11 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
         (v._4 shouldBe buildNumber)
     }
 
-  private def assertCascadesTo(v: VersionString, ns: Seq[String]): Unit = {
+  private def assertCascadesTo(v: VersionString, ns: Seq[String]): Unit =
     s"should cascade to $ns" in {
       val versionNumbers = ns.toVector map VersionNumber.apply
       VersionNumber(v.value).cascadingVersions shouldBe versionNumbers
     }
-  }
 
   private def assertIsCompatibleWith(
       v1: VersionString,
@@ -205,16 +204,14 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
       vnc: VersionNumberCompatibility,
       v1: VersionString,
       v2: String
-  ) = {
-    val prefix = if (expectOutcome) "should" else "should NOT"
-    val compatibilityStrategy = vnc match {
+  ) =
+    val prefix = if expectOutcome then "should" else "should NOT"
+    val compatibilityStrategy = vnc match
       case SemVer      => "SemVer"
       case PackVer     => "PackVer"
       case EarlySemVer => "EarlySemVer"
       case _           => val s = vnc.name; if s.contains(" ") then s""""$s"""" else s
-    }
     s"$prefix be $compatibilityStrategy compatible with $v2" in {
       vnc.isCompatible(VersionNumber(v1.value), VersionNumber(v2)) shouldBe expectOutcome
     }
-  }
-}
+end VersionNumberSpec

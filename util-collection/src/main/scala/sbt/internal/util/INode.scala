@@ -65,7 +65,7 @@ class EvaluateSettings[I <: Init](
   private val running = new AtomicInteger
   private val cancel = new AtomicBoolean(false)
 
-  def run(using delegates: ScopeType => Seq[ScopeType]): Settings = {
+  def run(using delegates: ScopeType => Seq[ScopeType]): Settings =
     assert(running.get() == 0, "Already running")
     startWork()
     roots.foreach(_.registerIfNew())
@@ -75,7 +75,6 @@ class EvaluateSettings[I <: Init](
       throw ex
     }
     getResults(using delegates)
-  }
 
   private def getResults(using ScopeType => Seq[ScopeType]) =
     static.toTypedSeq.foldLeft(empty) { case (ss, static.TPair(key, node)) =>
@@ -95,12 +94,12 @@ class EvaluateSettings[I <: Init](
     executor.execute(() => if !cancel.get() then run0(work))
 
   private def run0(work: => Unit): Unit =
-    try {
-      work
-    } catch { case e: Throwable => complete.put(Some(e)) }
+    try work
+    catch case e: Throwable => complete.put(Some(e))
     workComplete()
 
-  private def startWork(): Unit = { running.incrementAndGet(); () }
+  private def startWork(): Unit =
+    running.incrementAndGet(); ()
 
   private def workComplete(): Unit =
     if running.decrementAndGet() == 0 then complete.put(None)
@@ -119,7 +118,7 @@ class EvaluateSettings[I <: Init](
     private def keyString =
       static.toSeq
         .flatMap { (key, value) =>
-          if (value eq this) init.showFullKey.show(key) :: Nil else Nil
+          if value eq this then init.showFullKey.show(key) :: Nil else Nil
         }
         .headOption
         .getOrElse("non-static")
@@ -131,10 +130,9 @@ class EvaluateSettings[I <: Init](
 
     final def doneOrBlock(from: INode[?]): Boolean = synchronized {
       val ready = state == Evaluated
-      if (!ready) {
+      if !ready then
         blocking += from
         ()
-      }
       registerIfNew()
       ready
     }
@@ -142,15 +140,14 @@ class EvaluateSettings[I <: Init](
     final def isDone: Boolean = synchronized { state == Evaluated }
     final def isNew: Boolean = synchronized { state == New }
     final def isCalling: Boolean = synchronized { state == Calling }
-    final def registerIfNew(): Unit = synchronized { if (state == New) register() }
+    final def registerIfNew(): Unit = synchronized { if state == New then register() }
 
-    private def register(): Unit = {
+    private def register(): Unit =
       assert(state == New, "Already registered and: " + toString)
       val deps = dependsOn
       blockedOn = deps.size - deps.count(_.doneOrBlock(this))
       if blockedOn == 0 then schedule()
       else state = Blocked
-    }
 
     final def schedule(): Unit = synchronized {
       assert(state == New || state == Blocked, "Invalid state for schedule() call: " + toString)
@@ -162,23 +159,22 @@ class EvaluateSettings[I <: Init](
       assert(state == Blocked, "Invalid state for unblocked() call: " + toString)
       blockedOn -= 1
       assert(blockedOn >= 0, "Negative blockedOn: " + blockedOn + " for " + toString)
-      if (blockedOn == 0) schedule()
+      if blockedOn == 0 then schedule()
     }
 
     final def evaluate(): Unit = synchronized { evaluate0() }
 
-    protected final def makeCall(source: BindNode[?, A1], target: INode[A1]): Unit = {
+    protected final def makeCall(source: BindNode[?, A1], target: INode[A1]): Unit =
       assert(state == Ready, "Invalid state for call to makeCall: " + toString)
       state = Calling
       target.call(source)
-    }
 
-    protected final def setValue(v: A1): Unit = {
+    protected final def setValue(v: A1): Unit =
       assert(
         state != Evaluated,
         "Already evaluated (trying to set value to " + v + "): " + toString
       )
-      if (v == null) sys.error("Setting value cannot be null: " + keyString)
+      if v == null then sys.error("Setting value cannot be null: " + keyString)
       value = v
       state = Evaluated
       blocking foreach { _.unblocked() }
@@ -187,16 +183,14 @@ class EvaluateSettings[I <: Init](
         submitCallComplete(node, value)
       }
       calledBy.clear()
-    }
 
     final def call(by: BindNode[?, A1]): Unit = synchronized {
       registerIfNew()
-      state match {
+      state match
         case Evaluated => submitCallComplete(by, value)
         case _         =>
           calledBy += by
           ()
-      }
     }
 
     protected def dependsOn: Seq[INode[?]]

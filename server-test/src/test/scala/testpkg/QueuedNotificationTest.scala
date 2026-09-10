@@ -13,7 +13,7 @@ import sbt.protocol.ExecStatusEvent
 import sbt.protocol.codec.JsonProtocol.given
 import sbt.internal.langserver.codec.JsonProtocol.given
 
-class QueuedNotificationTest extends AbstractServerTest {
+class QueuedNotificationTest extends AbstractServerTest:
   override val testDirectory: String = "queued"
 
   test("send Queued notification when command is queued behind another") {
@@ -39,4 +39,4 @@ class QueuedNotificationTest extends AbstractServerTest {
       svr.session.waitForResultInResponseMsg[ExecStatusEvent](10.seconds, quickId).get
     assert(quickResponse.status == "Done")
   }
-}
+end QueuedNotificationTest

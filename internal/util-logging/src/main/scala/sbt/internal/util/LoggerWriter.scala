@@ -20,7 +20,7 @@ class LoggerWriter(
     delegate: Logger,
     unbufferedLevel: Option[Level.Value],
     nl: String = System.getProperty("line.separator")
-) extends java.io.Writer {
+) extends java.io.Writer:
   def this(delegate: Logger, level: Level.Value) = this(delegate, Some(level))
   def this(delegate: Logger) = this(delegate, None)
 
@@ -31,16 +31,14 @@ class LoggerWriter(
 
   override def flush(): Unit =
     synchronized {
-      if (buffer.nonEmpty) {
+      if buffer.nonEmpty then
         log(buffer.toString)
         buffer.clear()
-      }
     }
 
   def flushLines(level: Level.Value): Unit =
     synchronized {
-      for (line <- lines)
-        delegate.log(level, line)
+      for line <- lines do delegate.log(level, line)
       lines.clear()
     }
 
@@ -51,18 +49,15 @@ class LoggerWriter(
     }
 
   @tailrec
-  private def process(): Unit = {
+  private def process(): Unit =
     val i = buffer.indexOf(nl)
-    if (i >= 0) {
+    if i >= 0 then
       log(buffer.substring(0, i))
       buffer.delete(0, i + nl.length)
       process()
-    }
-  }
 
-  private def log(s: String): Unit = unbufferedLevel match {
+  private def log(s: String): Unit = unbufferedLevel match
     case None =>
       lines += s; ()
     case Some(level) => delegate.log(level, s)
-  }
-}
+end LoggerWriter

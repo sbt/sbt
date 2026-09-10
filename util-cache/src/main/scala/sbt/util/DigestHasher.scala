@@ -53,3 +53,4 @@ private[sbt] object DigestHasher extends SupportHasher[Digest]:
     def jobject(vs: Map[String, Digest]): Digest =
       val sorted = vs.toSeq.sortBy(_._1).flatMap((k, v) => Seq(jstring(k), v))
       Digest.sha256Hash((objectTag +: sorted)*)
+end DigestHasher

@@ -8,7 +8,7 @@
 
 package sbt.internal.bsp
 
-object DiagnosticSeverity {
+object DiagnosticSeverity:
 
   /**
    * Reports an error.
@@ -29,4 +29,4 @@ object DiagnosticSeverity {
    * Reports a hint.
    */
   val Hint = 4L
-}
+end DiagnosticSeverity

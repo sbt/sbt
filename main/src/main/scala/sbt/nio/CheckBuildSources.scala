@@ -46,7 +46,7 @@ import scala.io.AnsiColor
  * 0.seconds, then it will poll every time. Otherwise, it will only repoll
  * the build files if the poll interval has elapsed.
  */
-private[sbt] class CheckBuildSources extends AutoCloseable {
+private[sbt] class CheckBuildSources extends AutoCloseable:
   private val repository = AtomicCloseable[FileTreeRepository[FileAttributes]]()
   private val pollingPeriod = new AtomicReference[FiniteDuration]
   private val sources = new AtomicReference[Seq[Glob]](Nil)
@@ -55,43 +55,39 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   private val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]](Nil)
   private[sbt] def fileTreeRepository: Option[FileTreeRepository[FileAttributes]] =
     Option(repository.get)
-  private def getStamps(force: Boolean) = {
+  private def getStamps(force: Boolean) =
     val now = SDeadline.now
     val lp = lastPolled.getAndSet(now)
-    if (force || lp + pollingPeriod.get <= now) {
+    if force || lp + pollingPeriod.get <= now then
       FileTreeView.default.list(sources.get) flatMap {
         case (p, a) if a.isRegularFile => FileStamp.hash(p).map(p -> _)
         case _                         => None
       }
-    } else previousStamps.get
-  }
-  private def reset(state: State): Unit = {
+    else previousStamps.get
+  private def reset(state: State): Unit =
     val extracted = Project.extract(state)
     val interval = extracted
       .getOpt(checkBuildSources / pollInterval)
       .getOrElse(CheckBuildSources.defaultPollInterval)
     val newSources = extracted.get(Global / checkBuildSources / fileInputs).distinct
-    if (interval >= 0.seconds || "polling" == SysProp.watchMode) {
+    if interval >= 0.seconds || "polling" == SysProp.watchMode then
       repository.close()
       pollingPeriod.set(interval)
-    } else {
+    else
       pollingPeriod.set(0.seconds)
-      repository.get match {
+      repository.get match
         case null =>
           val repo = FileTreeRepository.default
           repo.addObserver(_ => needUpdate.set(true))
           repository.set(repo)
           newSources.foreach(g => repo.register(g).foreach(_.close()))
         case r =>
-      }
-    }
     val previousSources = sources.getAndSet(newSources)
-    if (previousSources != newSources) {
+    if previousSources != newSources then
       fileTreeRepository.foreach(r => newSources.foreach(g => r.register(g).foreach(_.close())))
       previousStamps.set(getStamps(force = true))
-    }
-  }
-  private def needCheck(state: State, cmd: String): Boolean = {
+  end reset
+  private def needCheck(state: State, cmd: String): Boolean =
     val allCmds = state.remainingCommands
       .map(_.commandLine)
       .dropWhile(!_.startsWith(BasicCommandStrings.MapExec)) :+ cmd
@@ -101,58 +97,51 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
       c == LoadProject || c == BuildServerProtocol.bspReload || c == RebootCommand || c == TerminateAction || c == Shutdown ||
         c.startsWith("sbtReboot")
     val resetState = commands.exists(filter)
-    if (resetState) {
+    if resetState then
       previousStamps.set(getStamps(force = true))
       needUpdate.set(false)
-    }
     // We don't need to do a check since we just updated the stamps since
     // we are about to perform a reload or reboot.
     !resetState
-  }
   @inline private def forceCheck = fileTreeRepository.isEmpty
   private[sbt] def needsReload(
       state: State,
       exec: Exec
-  ): Boolean = {
+  ): Boolean =
     val name = exec.source.map(_.channelName)
     val loggerOrTerminal =
-      name.flatMap(StandardMain.exchange.channelForName(_).map(_.terminal)) match {
+      name.flatMap(StandardMain.exchange.channelForName(_).map(_.terminal)) match
         case Some(t) => Right(t)
         case _       => Left(state.globalLogging.full)
-      }
 
     needsReload(state, loggerOrTerminal, exec.commandLine)
-  }
   private def needsReload(
       state: State,
       loggerOrTerminal: Either[Logger, Terminal],
       cmd: String
-  ): Boolean = {
+  ): Boolean =
     (needCheck(state, cmd) && (forceCheck || needUpdate.compareAndSet(true, false))) && {
       val extracted = Project.extract(state)
       val onChanges = extracted.get(Global / onChangedBuildSource)
       val current = getStamps(force = false)
       val previous = previousStamps.getAndSet(current)
-      Settings.changedFiles(previous, current) match {
+      Settings.changedFiles(previous, current) match
         case fileChanges @ FileChanges(created, deleted, modified, _) if fileChanges.hasChanges =>
           val rawPrefix = s"build source files have changed\n" +
-            (if (created.nonEmpty) s"new files: ${created.mkString("\n  ", "\n  ", "\n")}"
+            (if created.nonEmpty then s"new files: ${created.mkString("\n  ", "\n  ", "\n")}"
              else "") +
-            (if (deleted.nonEmpty)
-               s"deleted files: ${deleted.mkString("\n  ", "\n  ", "\n")}"
+            (if deleted.nonEmpty then s"deleted files: ${deleted.mkString("\n  ", "\n  ", "\n")}"
              else "") +
-            (if (modified.nonEmpty)
-               s"modified files: ${modified.mkString("\n  ", "\n  ", "\n")}"
+            (if modified.nonEmpty then s"modified files: ${modified.mkString("\n  ", "\n  ", "\n")}"
              else "")
           val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
 
-          onChanges match {
+          onChanges match
             case ReloadOnSourceChanges =>
               val msg = s"$prefix\nReloading sbt..."
-              loggerOrTerminal match {
+              loggerOrTerminal match
                 case Right(t) => msg.linesIterator.foreach(l => t.printStream.println(s"[info] $l"))
                 case Left(l)  => l.info(msg)
-              }
               true
             case WarnOnSourceChanges =>
               val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
@@ -160,23 +149,21 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
                 "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
                 "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
               val msg = s"$prefix\n$tail"
-              loggerOrTerminal match {
+              loggerOrTerminal match
                 case Right(t) =>
                   val prefix =
                     s"[${Def.withColor("warn", Some(AnsiColor.YELLOW), t.isColorEnabled)}]"
                   msg.linesIterator.foreach(l => t.printStream.println(s"$prefix $l"))
                 case Left(l) => l.warn(msg)
-              }
               false
             case IgnoreSourceChanges =>
               false
-          }
+          end match
         case _ => false
-      }
+      end match
     }
-  }
   override def close(): Unit = {}
-}
+end CheckBuildSources
 
 private[sbt] object CheckBuildSources:
   val defaultPollInterval: FiniteDuration = FiniteDuration(Int.MinValue, TimeUnit.MILLISECONDS)
@@ -189,7 +176,7 @@ private[sbt] object CheckBuildSources:
    * checkBuildSources / pollInterval. The latter makes it possible to switch between
    * the asynchronous and polling implementations during the same sbt session.
    */
-  private[sbt] def init(state: State): State = state.get(CheckBuildSourcesKey) match {
+  private[sbt] def init(state: State): State = state.get(CheckBuildSourcesKey) match
     case Some(cbs) =>
       cbs.reset(state)
       state
@@ -197,21 +184,19 @@ private[sbt] object CheckBuildSources:
       val cbs = new CheckBuildSources
       cbs.reset(state)
       state.put(CheckBuildSourcesKey, cbs)
-  }
   private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
     val st = state.value
-    st.get(CheckBuildSourcesKey) match {
+    st.get(CheckBuildSourcesKey) match
       case Some(cbs) if (cbs.needsReload(st, Exec("", None))) =>
         StateTransform("reload" :: (_: State))
       case _ => StateTransform(identity)
-    }
   }
   private[sbt] def buildSourceFileInputs: Def.Initialize[Seq[Glob]] = Def.setting {
-    if (onChangedBuildSource.value != IgnoreSourceChanges) {
+    if onChangedBuildSource.value != IgnoreSourceChanges then
       val baseDir = (LocalRootProject / baseDirectory).value
       val projectDir = baseDir / "project"
       @tailrec
-      def projectGlobs(projectDir: File, globs: Seq[Glob]): Seq[Glob] = {
+      def projectGlobs(projectDir: File, globs: Seq[Glob]): Seq[Glob] =
         val glob = projectDir.toGlob
         val updatedGlobs = globs ++ Seq(
           glob / "*.{sbt,scala,java}",
@@ -220,9 +205,8 @@ private[sbt] object CheckBuildSources:
           glob / "src" / ** / "*.{scala,java}"
         )
         val nextLevel = projectDir / "project"
-        if (nextLevel.exists) projectGlobs(nextLevel, updatedGlobs) else updatedGlobs
-      }
+        if nextLevel.exists then projectGlobs(nextLevel, updatedGlobs) else updatedGlobs
       projectGlobs(projectDir, baseDir.toGlob / "*.sbt" :: Nil)
-    } else Nil
+    else Nil
   }
 end CheckBuildSources

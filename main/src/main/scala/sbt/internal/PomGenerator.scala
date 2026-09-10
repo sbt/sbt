@@ -58,6 +58,7 @@ private[sbt] object PomGenerator:
       {makeDependencyManagement(bomDeps)}
       {makeDependencies(regularDeps)}
     </project>
+  end makePom
 
   private def crossVersionDep(dep: ModuleID, scalaInfo: Option[ScalaModuleInfo]): ModuleID =
     val crossFn = CrossVersion(dep, scalaInfo)
@@ -258,13 +259,12 @@ private[sbt] object PomGenerator:
       val base = version.stripSuffix("+").stripSuffix(".")
       val parts = base.split('.')
       if parts.nonEmpty then
-        parts.last.toIntOption.map(_ + 1) match {
+        parts.last.toIntOption.map(_ + 1) match
           case Some(last) =>
             val upper = (parts.init :+ last.toString).mkString(".")
             s"[$base,$upper)"
           case None =>
             version
-        }
       else version
     else if version == "latest.integration" || version == "latest.release" then ""
     else version

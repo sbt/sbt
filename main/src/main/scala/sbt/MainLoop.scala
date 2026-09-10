@@ -97,25 +97,24 @@ private[sbt] object MainLoop:
     logBacking.last.foreach(_.delete())
 
   /** Deletes the current sbt artifacts from boot. */
-  private[sbt] def deleteCurrentArtifacts(state: State): Unit = {
+  private[sbt] def deleteCurrentArtifacts(state: State): Unit =
     val provider = state.configuration.provider
     val appId = provider.id
     // If we can obtain boot directory more accurately it'd be better.
     val defaultBoot = BuildPaths.defaultGlobalBase / "boot"
     val buildProps = state.baseDir / "project" / "build.properties"
     // First try reading the sbt version from build.properties file.
-    val sbtVersionOpt = if (buildProps.exists) {
+    val sbtVersionOpt = if buildProps.exists then
       val buildProperties = new Properties()
       IO.load(buildProperties, buildProps)
       Option(buildProperties.getProperty("sbt.version")).map(_.trim)
-    } else None
+    else None
     val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
     currentArtDirs.get().foreach { dir =>
       state.log.info(s"deleting $dir")
       IO.delete(dir)
     }
-  }
 
   /** Removes the Zinc compiler bridge secondary cache (`zincDir/org.scala-sbt`). */
   private[sbt] def deleteZincBridgeSecondaryCache(log: Logger, zincDir: File): Unit =
@@ -180,21 +179,20 @@ private[sbt] object MainLoop:
         resolutionProgress,
         Project.configNameToIdent(state)
       )
-    val gcMonitor = if (SysProp.gcMonitor) Some(new sbt.internal.GCMonitor(state.log)) else None
-    try {
+    val gcMonitor = if SysProp.gcMonitor then Some(new sbt.internal.GCMonitor(state.log)) else None
+    try
       ErrorHandling.wideConvert {
         state
           .put(Keys.loggerContext, context)
           .put(Keys.taskProgress, taskProgress)
           .put(Keys.resolutionProgress, resolutionProgress)
           .process(processCommand)
-      } match {
+      } match
         case Right(s)                  => s.remove(Keys.loggerContext)
         case Left(t: xsbti.FullReload) => throw t
         case Left(t: RebootCurrent)    => throw t
         case Left(t)                   => state.remove(Keys.loggerContext).handleError(t)
-      }
-    } catch {
+    catch
       case oom: OutOfMemoryError
           if oom.getMessage != null && oom.getMessage.contains("Metaspace") =>
         System.gc() // Since we're under memory pressure, see if more can be freed with a manual gc.
@@ -205,12 +203,12 @@ private[sbt] object MainLoop:
         val isConsole = state.remainingCommands.exists(_.commandLine == "shell") ||
           (state.remainingCommands.last.commandLine == "iflast shell")
         val testOrRunMessage =
-          if (!isTestOrRun) ""
+          if !isTestOrRun then ""
           else
             " If this error occurred during a test or run evaluation, it can be caused by the " +
               "choice of ClassLoaderLayeringStrategy. Of the available strategies, " +
               "ClassLoaderLayeringStrategy.ScalaLibrary will typically use the least metaspace. " +
-              (if (isConsole)
+              (if isConsole then
                  " To change the layering strategy for this session, run:\n\n" +
                    "set ThisBuild / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy." +
                    "ScalaLibrary"
@@ -221,11 +219,11 @@ private[sbt] object MainLoop:
         state.log.error(msg)
         state.log.error("\n")
         state.handleError(oom)
-    } finally {
+    finally
       gcMonitor.foreach(_.close())
       context.close()
       taskProgress.close()
-    }
+    end try
   end next
 
   /** This is the main function State transfer function of the sbt command processing. */
@@ -236,18 +234,16 @@ private[sbt] object MainLoop:
     exchange.notifyStatus(
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
     )
-    try {
-      def process(): State = {
-        def getOrSet[T](state: State, key: AttributeKey[T], value: Extracted => T): State = {
-          state.get(key) match {
+    try
+      def process(): State =
+        def getOrSet[T](state: State, key: AttributeKey[T], value: Extracted => T): State =
+          state.get(key) match
             case Some(_) => state
             case _       =>
-              if (state.get(Keys.stateBuildStructure).isDefined) {
+              if state.get(Keys.stateBuildStructure).isDefined then
                 val extracted = Project.extract(state)
                 state.put(key, value(extracted))
-              } else state
-          }
-        }
+              else state
 
         val cmdProgressState =
           getOrSet(
@@ -280,20 +276,19 @@ private[sbt] object MainLoop:
          */
         val prevSessionCurrent = termState.get(Keys.sessionSettings).map(_.current)
         val newState =
-          try {
+          try
             var errorMsg: Option[String] = None
             val res = FastTrackCommands
               .evaluate(termState, exec.commandLine)
               .getOrElse(Command.process(exec.commandLine, termState, m => errorMsg = Some(m)))
-            errorMsg match {
+            errorMsg match
               case Some(msg) =>
                 currentCmdProgress.foreach(
                   _.afterCommand(exec.commandLine, Left(new ParseException(msg, 0)))
                 )
               case None => currentCmdProgress.foreach(_.afterCommand(exec.commandLine, Right(res)))
-            }
             syncChannelCursor(res, prevSessionCurrent, channelName)
-          } catch {
+          catch
             case _: RejectedExecutionException =>
               val cancelled = new Cancelled(exec.commandLine)
               currentCmdProgress
@@ -304,14 +299,13 @@ private[sbt] object MainLoop:
               currentCmdProgress
                 .foreach(_.afterCommand(exec.commandLine, Left(e)))
               throw e
-          } finally
+          finally
             // Flush the terminal output after command evaluation to ensure that all output
             // is displayed in the thin client before we report the command status.
             flushTerminal()
-        if (
-          exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
+        if exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
           !exec.commandLine.startsWith(networkExecPrefix)
-        ) {
+        then
           val doneEvent = ExecStatusEvent(
             "Done",
             channelName,
@@ -320,13 +314,12 @@ private[sbt] object MainLoop:
             exitCode(newState, state),
           )
           exchange.respondStatus(doneEvent)
-        }
         exchange.setExec(None)
         newState.get(sbt.Keys.currentCommandProgress).foreach(_.stop())
         newState
           .remove(Keys.terminalKey)
           .remove(Keys.currentCommandProgress)
-      }
+      end process
 
       val channel = channelName.flatMap(exchange.channelForName)
       val (canReload, useLoadp) = channel match
@@ -334,16 +327,15 @@ private[sbt] object MainLoop:
         case Some(_: ConsoleChannel)  => (true, false)
         case _                        => (false, false)
 
-      state.get(CheckBuildSourcesKey) match {
+      state.get(CheckBuildSourcesKey) match
         case Some(cbs) if canReload && cbs.needsReload(state, exec) =>
           val loadExec =
-            if (useLoadp) Exec("loadp", exec.execId, exec.source)
+            if useLoadp then Exec("loadp", exec.execId, exec.source)
             else Exec("reload", exec.source)
 
           loadExec +: exec +: state.remove(CheckBuildSourcesKey)
         case _ => process()
-      }
-    } catch {
+    catch
       case err: JsonRpcResponseError =>
         exchange.respondError(err, exec.execId, channelName.map(CommandSource(_)))
         throw err
@@ -358,7 +350,7 @@ private[sbt] object MainLoop:
         )
         StandardMain.exchange.respondStatus(errorEvent)
         throw err
-    }
+    end try
   end processCommand
 
   def logFullException(e: Throwable, log: Logger): Unit = State.logFullException(e, log)
@@ -388,7 +380,7 @@ private[sbt] object MainLoop:
           case _: xsbti.Continue => ExitCode.Success
           case _: xsbti.Reboot   => ExitCode.Success
           case x                 =>
-            val clazz = if (x eq null) "" else " (class: " + x.getClass + ")"
+            val clazz = if x eq null then "" else " (class: " + x.getClass + ")"
             state.log.debug(s"Unknown main result: $x$clazz")
             ExitCode.Unknown
 
@@ -419,6 +411,5 @@ private[sbt] object MainLoop:
 end MainLoop
 
 // No stack trace since this is just to notify the user which command they cancelled
-class Cancelled(cmdLine: String) extends Throwable(cmdLine, null, true, false) {
+class Cancelled(cmdLine: String) extends Throwable(cmdLine, null, true, false):
   override def toString: String = s"Cancelled: $cmdLine"
-}

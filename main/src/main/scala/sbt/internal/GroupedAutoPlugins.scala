@@ -15,19 +15,16 @@ import java.net.URI
 private[sbt] final class GroupedAutoPlugins(
     val all: Seq[AutoPlugin],
     val byBuild: Map[URI, Seq[AutoPlugin]]
-) {
+):
   lazy val globalSettings: Seq[Setting[?]] = all.flatMap(_.globalSettings)
   private lazy val buildSettingsMap: Map[URI, Seq[Setting[?]]] =
     byBuild.view.mapValues(_.flatMap(_.buildSettings)).toMap
   def buildSettings(uri: URI): Seq[Setting[?]] =
     buildSettingsMap.getOrElse(uri, Nil)
-}
 
-private[sbt] object GroupedAutoPlugins {
-  private[sbt] def apply(units: Map[URI, LoadedBuildUnit]): GroupedAutoPlugins = {
+private[sbt] object GroupedAutoPlugins:
+  private[sbt] def apply(units: Map[URI, LoadedBuildUnit]): GroupedAutoPlugins =
     val byBuild: Map[URI, Seq[AutoPlugin]] =
       units.view.mapValues(unit => unit.projects.flatMap(_.autoPlugins).toSeq.distinct).toMap
     val all: Seq[AutoPlugin] = byBuild.values.toSeq.flatten.distinct
     new GroupedAutoPlugins(all, byBuild)
-  }
-}

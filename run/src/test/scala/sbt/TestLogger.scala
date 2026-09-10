@@ -12,10 +12,8 @@ package internal
 import sbt.internal.util.*
 import sbt.util.*
 
-object TestLogger {
-  def apply[T](f: Logger => T): T = {
+object TestLogger:
+  def apply[T](f: Logger => T): T =
     val log = new BufferedLogger(ConsoleLogger())
     log.setLevel(Level.Debug)
     log.bufferQuietly(f(log))
-  }
-}

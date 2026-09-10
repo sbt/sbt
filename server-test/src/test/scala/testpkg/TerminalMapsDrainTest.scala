@@ -20,7 +20,7 @@ import sbt.internal.langserver.codec.JsonProtocol.given
  * Regression: a client that dies while the server waits on a terminal control answer
  * must not strand the parked server-side thread.
  */
-class TerminalMapsDrainTest extends AbstractServerTest {
+class TerminalMapsDrainTest extends AbstractServerTest:
   override val testDirectory: String = "client"
 
   test("a client dying at a failed-reload prompt does not strand the server") {
@@ -29,7 +29,7 @@ class TerminalMapsDrainTest extends AbstractServerTest {
     val goodBuild = java.nio.file.Files.readString(buildFile)
     val silent = SilentTerminalSession.connect(portfile)
     var parkedOn = "none"
-    try {
+    try
       silent.initialize(10.seconds, false).get
       Util.ignoreResult(
         silent.sendJsonRpc(silent.nextId(), Serialization.attach, Attach(interactive = true))
@@ -41,11 +41,10 @@ class TerminalMapsDrainTest extends AbstractServerTest {
       assert(queried || input, "server never queried the terminal nor requested input")
       // the command loop is now parked waiting for an answer that never comes
       parkedOn =
-        Option(silent.firstSilentQuery.get).getOrElse(if (input) "readSystemIn" else "unknown")
-    } finally {
+        Option(silent.firstSilentQuery.get).getOrElse(if input then "readSystemIn" else "unknown")
+    finally
       silent.close()
       java.nio.file.Files.writeString(buildFile, goodBuild)
-    }
     // EOF at the failed-load prompt maps to 'q' by design: the server must shut down
     // cleanly rather than stay parked on the dead client's unanswered query.
     def serverAlive: Boolean =
@@ -53,7 +52,7 @@ class TerminalMapsDrainTest extends AbstractServerTest {
         ph.info.command.orElse("").contains("java")
       }
     val deadline = 90.seconds.fromNow
-    while (serverAlive && deadline.hasTimeLeft()) Thread.sleep(500)
+    while serverAlive && deadline.hasTimeLeft() do Thread.sleep(500)
     assert(!serverAlive, s"server must exit after the prompting client dies (parked on $parkedOn)")
   }
-}
+end TerminalMapsDrainTest

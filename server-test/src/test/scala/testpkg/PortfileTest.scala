@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
  * The portfile names the server that owns the socket. A second server binds the same socket path,
  * which leaves the first server holding a socket that no client can reach.
  */
-class PortfileTest extends AbstractServerTest {
+class PortfileTest extends AbstractServerTest:
   override val testDirectory: String = "client"
 
   private val settle = 30.seconds
@@ -35,4 +35,3 @@ class PortfileTest extends AbstractServerTest {
     assert(waitUntil(settle)(!svr.isAlive), "the displaced server exits")
     assert(IO.read(portfile) == replacement, "the displaced server does not delete the portfile")
   }
-}

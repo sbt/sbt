@@ -11,7 +11,7 @@ package sbt
 import testing.{ Logger as TLogger, Event as TEvent, Status as TStatus }
 import sbt.protocol.testing.*
 
-trait TestReportListener {
+trait TestReportListener:
 
   /** called for each class or equivalent grouping */
   def startGroup(name: String): Unit
@@ -28,19 +28,15 @@ trait TestReportListener {
   /** Used by the test framework for logging test results */
   def contentLogger(@deprecated("unused", "") test: TestDefinition): Option[ContentLogger] = None
 
-}
-
 final class ContentLogger(val log: TLogger, val flush: () => Unit)
 
-trait TestsListener extends TestReportListener {
+trait TestsListener extends TestReportListener:
 
   /** called once, at beginning. */
   def doInit(): Unit
 
   /** called once, at end of the test group. */
   def doComplete(finalResult: TestResult): Unit
-
-}
 
 /**
  * Provides the overall `result` of a group of tests (a suite) and test counts for each result type.
@@ -70,7 +66,7 @@ final class SuiteResult(
     val canceledCount: Int,
     val pendingCount: Int,
     val throwables: Seq[Throwable]
-) {
+):
   def this(
       result: TestResult,
       passedCount: Int,
@@ -113,16 +109,15 @@ final class SuiteResult(
         pendingCount,
       )
 
-  def +(other: SuiteResult): SuiteResult = {
+  def +(other: SuiteResult): SuiteResult =
     val combinedTestResult =
-      (result, other.result) match {
+      (result, other.result) match
         case (TestResult.Empty, TestResult.Empty) => TestResult.Empty: TestResult
         case (TestResult.Passed | TestResult.Empty, TestResult.Passed | TestResult.Empty) =>
           TestResult.Passed: TestResult
         case (_, TestResult.Error) => TestResult.Error: TestResult
         case (TestResult.Error, _) => TestResult.Error: TestResult
         case _                     => TestResult.Failed: TestResult
-      }
     new SuiteResult(
       combinedTestResult,
       passedCount + other.passedCount,
@@ -134,15 +129,14 @@ final class SuiteResult(
       pendingCount + other.pendingCount,
       throwables ++ other.throwables
     )
-  }
-}
+end SuiteResult
 
-object SuiteResult {
+object SuiteResult:
 
   /**
    * Computes the overall result and counts for a suite with individual test results in `events`.
    */
-  def apply(events: Seq[TEvent]): SuiteResult = {
+  def apply(events: Seq[TEvent]): SuiteResult =
     def count(status: TStatus) = events.count(_.status == status)
     new SuiteResult(
       TestEvent.overallResult(events),
@@ -155,32 +149,26 @@ object SuiteResult {
       count(TStatus.Pending),
       events.collect { case e if e.throwable.isDefined => e.throwable.get }
     )
-  }
 
   val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
   val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
+end SuiteResult
 
-}
-
-abstract class TestEvent {
+abstract class TestEvent:
   def result: Option[TestResult]
   def detail: Seq[TEvent] = Nil
-}
-object TestEvent {
+object TestEvent:
   def apply(events: Seq[TEvent]): TestEvent =
-    new TestEvent {
+    new TestEvent:
       val result = Some(overallResult(events))
       override val detail = events
-    }
 
   private[sbt] def overallResult(events: Seq[TEvent]): TestResult =
     events.foldLeft(TestResult.Passed: TestResult) { (sum, event) =>
-      (sum, event.status) match {
+      (sum, event.status) match
         case (TestResult.Error, _)  => TestResult.Error
         case (_, TStatus.Error)     => TestResult.Error
         case (TestResult.Failed, _) => TestResult.Failed
         case (_, TStatus.Failure)   => TestResult.Failed
         case _                      => TestResult.Passed
-      }
     }
-}

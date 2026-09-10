@@ -76,14 +76,13 @@ private[sbt] abstract class SharedAttributeKey[A] extends AttributeKey[A]:
   override final def toString = label
   override final def hashCode = label.hashCode
   override final def equals(o: Any) =
-    (this eq o.asInstanceOf[AnyRef]) || (o match {
+    (this eq o.asInstanceOf[AnyRef]) || (o match
       case a: SharedAttributeKey[t] => a.label == this.label && a.tag == this.tag
-      case _                        => false
-    })
+      case _                        => false)
   final def isLocal: Boolean = false
 end SharedAttributeKey
 
-object AttributeKey {
+object AttributeKey:
   def apply[A: KeyTag: OptJsonWriter](name: String): AttributeKey[A] =
     make(name, None, Nil, Int.MaxValue)
 
@@ -149,7 +148,7 @@ object AttributeKey {
       override val optJsonWriter: OptJsonWriter[A] = summon
 
   private[sbt] final val LocalLabel = "$" + "local"
-}
+end AttributeKey
 
 /**
  * An immutable map where a key is the tuple `(String,T)` for a fixed type `T` and can only be
@@ -254,9 +253,8 @@ type StringAttributeMap = scala.collection.immutable.Map[StringAttributeKey, Str
 
 // type inference required less generality
 /** A map entry where `key` is constrained to only be associated with a fixed value of type `T`. */
-final case class AttributeEntry[T](key: AttributeKey[T], value: T) {
+final case class AttributeEntry[T](key: AttributeKey[T], value: T):
   override def toString = key.label + ": " + value
-}
 
 /** Associates a `metadata` map with `data`. */
 final case class Attributed[A1](data: A1)(val metadata: StringAttributeMap):

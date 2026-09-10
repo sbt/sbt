@@ -20,7 +20,7 @@ import hedgehog.*
 import hedgehog.runner.*
 import _root_.sbt.internal.util.complete.Parser
 
-object CompletionSpec extends Properties {
+object CompletionSpec extends Properties:
   override def tests: List[Test] =
     List(
       property(
@@ -54,7 +54,7 @@ object CompletionSpec extends Properties {
       attributeName: String = "a",
       line: String,
       expected: String,
-  ): Result = {
+  ): Result =
     val attributeKey = AttributeKey[String](attributeName)
     val scope = Scope(
       Select(BuildRef(buildURI)),
@@ -86,5 +86,5 @@ object CompletionSpec extends Properties {
       .log(s"line: $line")
       .log(s"completions: ${cs.get.map(_.append)}")
       .log(s"structure: $structure")
-  }
-}
+  end complete
+end CompletionSpec

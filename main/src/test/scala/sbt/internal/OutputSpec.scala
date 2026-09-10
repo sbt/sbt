@@ -12,7 +12,7 @@ import scala.Console.{ RED, RESET }
 import verify.BasicTestSuite
 import sbt.internal.Output.grep
 
-object OutputSpec extends BasicTestSuite {
+object OutputSpec extends BasicTestSuite:
 
   test(
     "grep should match pattern against visible text when lines contain ANSI escape sequences (#4840)"
@@ -32,4 +32,3 @@ object OutputSpec extends BasicTestSuite {
     val result = grep(lines, "error")
     assert(result.isEmpty, s"expected no match, got: $result")
   }
-}

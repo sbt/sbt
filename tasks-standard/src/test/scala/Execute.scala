@@ -12,7 +12,7 @@ import org.scalacheck.*
 import Prop.*
 import TaskGen.*
 
-object ExecuteSpec extends Properties("Execute") {
+object ExecuteSpec extends Properties("Execute"):
   val iGen = Arbitrary.arbInt.arbitrary
   property("evaluates simple task") = forAll(iGen, MaxWorkersGen) { (i: Int, workers: Int) =>
     ("Workers: " + workers) |:
@@ -50,4 +50,4 @@ object ExecuteSpec extends Properties("Execute") {
         checkResult(result, i * times)
       }
   }
-}
+end ExecuteSpec

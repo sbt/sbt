@@ -10,7 +10,7 @@ final class Configuration private[sbt] (
     val extendsConfigs: Vector[Configuration],
     val transitive: Boolean
 ) extends ConfigurationExtra
-    with Serializable {
+    with Serializable:
 
   require(name != null, "name cannot be null")
   require(name.nonEmpty, "name cannot be empty")
@@ -18,7 +18,7 @@ final class Configuration private[sbt] (
   require(id.nonEmpty, "id cannot be empty")
   require(id.head.isUpper, s"id must be capitalized: $id")
 
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = o match
     case x: Configuration =>
       (this.id == x.id) &&
       (this.name == x.name) &&
@@ -27,7 +27,6 @@ final class Configuration private[sbt] (
       (this.extendsConfigs == x.extendsConfigs) &&
       (this.transitive == x.transitive)
     case _ => false
-  }
 
   override val hashCode: Int =
     37 * (37 * (37 * (37 * (37 * (37 * (17 +
@@ -56,9 +55,9 @@ final class Configuration private[sbt] (
     copy(transitive = transitive)
 
   def toConfigRef: ConfigRef = ConfigRef(name)
-}
+end Configuration
 
-object Configuration {
+object Configuration:
   // Don't call this directly. It's intended to be used from config macro.
   def of(id: String, name: String): Configuration =
     new Configuration(id, name, "", true, Vector.empty, true)
@@ -72,7 +71,6 @@ object Configuration {
       transitive: Boolean
   ): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
-}
 
 /*
 Configuration isn't defined with Contraband.

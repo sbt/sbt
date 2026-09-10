@@ -11,7 +11,7 @@ package sbt
 import sbt.util.Level
 import sbt.internal.util.complete.HistoryCommands
 
-object BasicCommandStrings {
+object BasicCommandStrings:
   val HelpCommand: String = "help"
   val CompletionsCommand: String = "completions"
   val Exit: String = "exit"
@@ -64,14 +64,13 @@ $HelpCommand <regular expression>
   def exitBrief: String = "Terminates the remote client or the build when called from the console."
   def shutdownBrief: String = "Terminates the build."
 
-  def logLevelHelp: Help = {
+  def logLevelHelp: Help =
     val levels = Level.values.toSeq
     val levelList = levels.mkString(", ")
     val brief =
       ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
     val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
     Help(brief, detailed)
-  }
 
   private def logLevelDetail(level: Level.Value): String =
     s"""$level
@@ -89,14 +88,13 @@ $HelpCommand <regular expression>
 """
 
   def runEarly(command: String): String = s"$EarlyCommand($command)"
-  private[sbt] def isEarlyCommand(s: String): Boolean = {
+  private[sbt] def isEarlyCommand(s: String): Boolean =
     val levelOptions = Level.values.toSeq flatMap { elem =>
       List("-" + elem, "--" + elem)
     }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
     (levelOptions contains s) ||
     (s.startsWith("-" + AddPluginSbtFileCommand) || s.startsWith("--" + AddPluginSbtFileCommand))
-  }
 
   val EarlyCommand: String = "early"
   val EarlyCommandBrief: (String, String) =
@@ -108,11 +106,10 @@ $HelpCommand <regular expression>
   The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
 """
 
-  def addPluginSbtFileHelp(): Help = {
+  def addPluginSbtFileHelp(): Help =
     val brief =
       (s"--$AddPluginSbtFileCommand=<file>", "Adds the given *.sbt file to the plugin build.")
     Help(brief)
-  }
 
   val AddPluginSbtFileCommand: String = "addPluginSbtFile"
 
@@ -261,4 +258,4 @@ $AliasCommand name=
 
   private[sbt] val networkExecPrefix = "__"
   private[sbt] val DisconnectNetworkChannel = s"${networkExecPrefix}disconnectNetworkChannel"
-}
+end BasicCommandStrings

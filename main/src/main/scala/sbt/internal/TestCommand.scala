@@ -143,5 +143,8 @@ object TestCommand:
           patterns ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions else Nil)
         val taskStr = s"testSelected ${testSelectedArgs.mkString(" ")}"
         taskStr :: state
+      end if
+    end if
+  end runTestOnly
 
 end TestCommand

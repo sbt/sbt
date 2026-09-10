@@ -24,7 +24,7 @@ private case class PackageDeploymentValidationError(
     packageErrors: Seq[String]
 )
 
-private object PackageDeploymentValidationError {
+private object PackageDeploymentValidationError:
 
   /**
    * Example: (it's not an array but an object which makes it hard to parse with the standard contraband means)
@@ -47,7 +47,7 @@ private object PackageDeploymentValidationError {
    *         None - otherwise (Sonatype Central could change the format of the output)
    */
   def parse(errorsNode: JValue): Option[Seq[PackageDeploymentValidationError]] =
-    errorsNode match {
+    errorsNode match
       case JObject(fields) =>
         val errors = fields.toSeq.flatMap {
           case JField(packageInfo, JArray(packageErrors)) =>
@@ -56,19 +56,15 @@ private object PackageDeploymentValidationError {
               case other          => None
             }
             val noParsingIssues = packageErrors.length == packageErrorsTexts.length
-            if (noParsingIssues)
+            if noParsingIssues then
               Some(PackageDeploymentValidationError(packageInfo, packageErrorsTexts.toSeq))
-            else
-              None
+            else None
           case _ =>
             None
         }
         val noParsingIssues = errors.size == fields.length
-        if (noParsingIssues)
-          Some(errors)
-        else
-          None
+        if noParsingIssues then Some(errors)
+        else None
       case _ =>
         None
-    }
-}
+end PackageDeploymentValidationError

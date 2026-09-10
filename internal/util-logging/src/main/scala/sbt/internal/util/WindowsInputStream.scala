@@ -16,22 +16,18 @@ import org.jline.utils.InfoCmp.Capability
 import scala.annotation.tailrec
 import Terminal.SimpleInputStream
 
-private object WindowsSupport {
-  def getConsoleMode = {
+private object WindowsSupport:
+  def getConsoleMode =
     val console = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
     val mode = new Array[Int](1);
-    if (Kernel32.GetConsoleMode(console, mode) == 0) -1 else mode.head
-  }
-  def setConsoleMode(mode: Int): Unit = {
+    if Kernel32.GetConsoleMode(console, mode) == 0 then -1 else mode.head
+  def setConsoleMode(mode: Int): Unit =
     val console = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
     Kernel32.SetConsoleMode(console, mode)
     ()
-  }
-  def readConsoleInput(count: Int) = {
+  def readConsoleInput(count: Int) =
     val console = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
     Kernel32.readConsoleInputHelper(console, 1, false)
-  }
-}
 /*
  * We need a special input stream for windows because special key events
  * like arrow keys are not reported by System.in. What makes this extra
@@ -45,23 +41,22 @@ private object WindowsSupport {
  * raw mode.
  */
 private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: InputStream)
-    extends SimpleInputStream {
+    extends SimpleInputStream:
 
   private val RIGHT_ALT_PRESSED = 0x0001;
   private val LEFT_ALT_PRESSED = 0x0002;
   private val RIGHT_CTRL_PRESSED = 0x0004;
   private val LEFT_CTRL_PRESSED = 0x0008;
   private val SHIFT_PRESSED = 0x0010;
-  private def getCapability(cap: Capability): String = term.getStringCapability(cap) match {
+  private def getCapability(cap: Capability): String = term.getStringCapability(cap) match
     case null => null
     case c    => c.replace("\\E", "\u001B")
-  }
   /*
    * This function is a hybrid of jline 2 WindowsTerminal.readConsoleInput
    * and jline3 AbstractTerminal.getEscapeSequence.
    */
-  private def readConsoleInput(): Array[Byte] = {
-    WindowsSupport.readConsoleInput(1) match {
+  private def readConsoleInput(): Array[Byte] =
+    WindowsSupport.readConsoleInput(1) match
       case null   => Array.empty
       case events =>
         val sb = new StringBuilder();
@@ -71,26 +66,20 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
           val isCtrl = (controlKeyState & (RIGHT_CTRL_PRESSED | LEFT_CTRL_PRESSED)) > 0;
           val isAlt = (controlKeyState & (RIGHT_ALT_PRESSED | LEFT_ALT_PRESSED)) > 0;
           val isShift = (controlKeyState & SHIFT_PRESSED) > 0;
-          if (keyEvent.keyDown) {
-            if (keyEvent.uchar > 0) {
-              if (
-                ((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
+          if keyEvent.keyDown then
+            if keyEvent.uchar > 0 then
+              if ((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
                 && isAlt && !isCtrl
-              ) {
-                sb.append('\u001B') // ESC
-              }
-              if (isShift && keyEvent.keyCode == 9) {
-                getCapability(Capability.key_btab) match {
+              then sb.append('\u001B') // ESC
+              if isShift && keyEvent.keyCode == 9 then
+                getCapability(Capability.key_btab) match
                   case null => sb.append(keyEvent.uchar)
                   case cap  => sb.append(cap)
-                }
-              } else {
-                sb.append(keyEvent.uchar)
-              }
-            } else {
+              else sb.append(keyEvent.uchar)
+            else
               // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
               // just add support for basic editing keys (no control state, no numpad keys)
-              val escapeSequence = keyEvent.keyCode match {
+              val escapeSequence = keyEvent.keyCode match
                 case 0x21 /* VK_PRIOR PageUp*/  => getCapability(Capability.key_ppage);
                 case 0x22 /* VK_NEXT PageDown*/ => getCapability(Capability.key_npage);
                 case 0x24 /* VK_HOME */         => getCapability(Capability.key_home)
@@ -119,36 +108,27 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
                 case 0x2e /* VK_DELETE */ =>
                   Option(getCapability(Capability.key_dc)).getOrElse("\u001B[3~")
                 case _ => null
-              }
-              escapeSequence match {
+              escapeSequence match
                 case null =>
                 case es   => (0 until keyEvent.repeatCount.toInt).foreach(_ => sb.append(es))
-              }
-            }
-          } else {
+          else
             // key up event
             // support ALT+NumPad input method
-            if (keyEvent.keyCode == 0x12 /*VK_MENU ALT key*/ && keyEvent.uchar > 0) {
+            if keyEvent.keyCode == 0x12 /*VK_MENU ALT key*/ && keyEvent.uchar > 0 then
               sb.append(keyEvent.uchar);
-            }
-          }
+          end if
         }
         sb.toString().getBytes()
-    }
-  }
-  private val raw: InputStream = new SimpleInputStream {
+  private val raw: InputStream = new SimpleInputStream:
     val buffer = new LinkedBlockingQueue[Integer]
     @tailrec
-    override def read(): Int = {
-      buffer.poll match {
+    override def read(): Int =
+      buffer.poll match
         case null =>
           readConsoleInput().foreach(b => buffer.put(b & 0xff))
-          if (!Thread.interrupted) read() else throw new InterruptedException
+          if !Thread.interrupted then read() else throw new InterruptedException
         case b => b
-      }
-    }
-  }
   private val isRaw = new AtomicBoolean(true)
   private[sbt] def setRawMode(toggle: Boolean): Unit = isRaw.set(toggle)
-  override def read(): Int = if (isRaw.get) raw.read() else in.read()
-}
+  override def read(): Int = if isRaw.get then raw.read() else in.read()
+end WindowsInputStream

@@ -17,7 +17,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import scala.jdk.CollectionConverters.*
 
-abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec {
+abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec:
   private val rootDir = Paths.get(getClass.getResource("/" + folder).toURI)
   println(s"Reading files from: $rootDir")
   private val converter = PlainVirtualFileConverter.converter
@@ -62,7 +62,7 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
 
   private def readLines(file: Path): Seq[String] =
     Files.readAllLines(file).asScala.toList
-}
+end AbstractSessionSettingsSpec
 
 object SessionSettingsSpec extends AbstractSessionSettingsSpec("session-settings")
 

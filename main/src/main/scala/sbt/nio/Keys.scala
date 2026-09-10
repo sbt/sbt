@@ -23,7 +23,7 @@ import sbt.*
 
 import scala.concurrent.duration.FiniteDuration
 
-object Keys {
+object Keys:
   sealed trait WatchBuildSourceOption
   case object IgnoreSourceChanges extends WatchBuildSourceOption
   case object WarnOnSourceChanges extends WatchBuildSourceOption
@@ -206,4 +206,4 @@ object Keys {
       " new meta build sources so we should neither warn the user nor automatically restart the build"
   private[sbt] val hasCheckedMetaBuild =
     AttributeKey[AtomicBoolean]("has-checked-meta-build", hasCheckedMetaBuildMsg, Int.MaxValue)
-}
+end Keys

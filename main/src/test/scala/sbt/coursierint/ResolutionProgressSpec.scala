@@ -43,12 +43,11 @@ object ResolutionProgressSpec extends BasicTestSuite:
     // a module count it cannot know.
     val p = new ResolutionProgress
     val log = new ResolutionProgressLogger(p)
-    for (_ <- 1 to 3) { // e.g. compile, runtime, test sessions of one module's update
+    for _ <- 1 to 3 do // e.g. compile, runtime, test sessions of one module's update
       log.init(None)
       log.foundLocally("x.pom")
       log.foundLocally("x.jar")
       log.stop()
-    }
     log.init(None)
     log.foundLocally("x.jar") // re-checked again in the artifacts run
     val line = p.snapshot().map(_._1)

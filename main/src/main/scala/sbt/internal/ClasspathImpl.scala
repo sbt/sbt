@@ -32,7 +32,7 @@ import sbt.util.*
 import scala.jdk.CollectionConverters.*
 import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
-private[sbt] object ClasspathImpl {
+private[sbt] object ClasspathImpl:
 
   // Since we can't predict the path for pickleProduct,
   // we can't reduce the track level.
@@ -109,10 +109,10 @@ private[sbt] object ClasspathImpl {
       track: TrackLevel
   ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     Def.taskIf {
-      if {
+      if
         val _ = (packageBin / dynamicDependency).value
         exportJars.value
-      } then jarProductsForTask(key, track).value
+      then jarProductsForTask(key, track).value
       else trackedNonJarProductsImplTask(track).value
     }
 
@@ -233,7 +233,7 @@ private[sbt] object ClasspathImpl {
         )
     }
 
-  def internalDependencyPicklePathTask: Initialize[Task[Classpath]] = {
+  def internalDependencyPicklePathTask: Initialize[Task[Classpath]] =
     def implTask(
         projectRef: ProjectRef,
         conf: Configuration,
@@ -263,7 +263,7 @@ private[sbt] object ClasspathImpl {
         )
       })
       .flatMapTask(implTask)
-  }
+  end internalDependencyPicklePathTask
 
   def internalDependencyJarsTask: Initialize[Task[Classpath]] =
     (Def
@@ -387,25 +387,22 @@ private[sbt] object ClasspathImpl {
       noTracking: TaskKey[Seq[A]],
       trackIfMissing: TaskKey[Seq[A]],
       trackAlways: TaskKey[Seq[A]]
-  ): Task[Seq[A]] = {
+  ): Task[Seq[A]] =
     val interDepConfigs = interSort(projectRef, conf, data, deps) filter { (dep, c) =>
       includeSelf || (dep != projectRef) || (conf.name != c && self.name != c)
     }
     val tasks = (new LinkedHashSet[Task[Seq[A]]]).asScala
-    for {
-      (dep, c) <- interDepConfigs
-    } {
-      tasks += (track match {
+    for (dep, c) <- interDepConfigs
+    do
+      tasks += (track match
         case TrackLevel.NoTracking =>
           getClasspath(noTracking, dep, c, data)
         case TrackLevel.TrackIfMissing =>
           getClasspath(trackIfMissing, dep, c, data)
         case TrackLevel.TrackAlways =>
-          getClasspath(trackAlways, dep, c, data)
-      })
-    }
+          getClasspath(trackAlways, dep, c, data))
     (tasks.toSeq.join).map(_.flatten.distinct)
-  }
+  end interDependencies
 
   def interSort(
       projectRef: ProjectRef,
@@ -438,6 +435,8 @@ private[sbt] object ClasspathImpl {
           do
             for depConf <- confOpt(configurations, depConfName) do
               if !visited((dep, depConfName)) then visit(dep, depConf)
+      end for
+    end visit
     visit(projectRef, conf)
     visited.toSeq
   end interSort
@@ -448,10 +447,9 @@ private[sbt] object ClasspathImpl {
       depConfs: Seq[String],
       default: String,
       defaultMapping: String
-  ): String => Seq[String] = {
+  ): String => Seq[String] =
     lazy val defaultMap = parseMapping(defaultMapping, masterConfs, depConfs, _ :: Nil)
     parseMapping(confString getOrElse default, masterConfs, depConfs, defaultMap)
-  }
 
   def parseMapping(
       confString: String,
@@ -465,18 +463,16 @@ private[sbt] object ClasspathImpl {
       masterConfs: Seq[String],
       depConfs: Seq[String],
       default: String => Seq[String]
-  )(confString: String): String => Seq[String] = {
+  )(confString: String): String => Seq[String] =
     val ms: Seq[(String, Seq[String])] =
-      trim(confString.split("->", 2)) match {
-        case x :: Nil      => for (a <- parseList(x, masterConfs)) yield (a, default(a))
+      trim(confString.split("->", 2)) match
+        case x :: Nil      => for a <- parseList(x, masterConfs) yield (a, default(a))
         case x :: y :: Nil =>
           val target = parseList(y, depConfs);
-          for (a <- parseList(x, masterConfs)) yield (a, target)
+          for a <- parseList(x, masterConfs) yield (a, target)
         case _ => sys.error("Invalid configuration '" + confString + "'") // shouldn't get here
-      }
     val m = ms.toMap
     s => m.getOrElse(s, Nil)
-  }
 
   def union[A, B](maps: Seq[A => Seq[B]]): A => Seq[B] =
     a => maps.foldLeft(Seq[B]()) { _ ++ _(a) }.distinct
@@ -484,11 +480,10 @@ private[sbt] object ClasspathImpl {
   def parseList(s: String, allConfs: Seq[String]): Seq[String] =
     trim(s.split(",")).flatMap(replaceWildcard(allConfs)).distinct
 
-  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] = conf match {
+  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] = conf match
     case ""  => Nil
     case "*" => allConfs
     case _   => conf :: Nil
-  }
 
   private def trim(a: Array[String]): List[String] = a.toList.map(_.trim)
 
@@ -514,10 +509,9 @@ private[sbt] object ClasspathImpl {
       conf: String,
       data: Def.Settings
   ): Task[Seq[A]] =
-    (dep / ConfigKey(conf) / key).get(data) match {
+    (dep / ConfigKey(conf) / key).get(data) match
       case Some(x) => x
       case _       => constant(Nil)
-    }
 
   // -- dependencyMode filtering --
 
@@ -589,6 +583,8 @@ private[sbt] object ClasspathImpl {
               allowedKeys.contains((mid.organization, mid.name)) ||
               isScalaLibraryModule(mid)
             case None => true
+    end match
+  end filterByPlusOne
 
   /**
    * Apply dependencyMode filtering to a classpath. Entries without moduleIDStr metadata
@@ -655,5 +651,5 @@ private[sbt] object ClasspathImpl {
       case DependencyMode.Transitive => Set.empty
     refs.flatMap: pr =>
       (pr / projectID).get(data).map(mid => (mid.organization, mid.name))
-
-}
+  end allowedInternalKeys
+end ClasspathImpl
