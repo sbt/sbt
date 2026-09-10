@@ -28,10 +28,12 @@ import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
 import org.scalasbt.ipcsocket.*
 import sbt.internal.bsp.BuildServerConnection
+import sbt.protocol.ClientSocket
 import xsbti.AppConfiguration
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
+  def serverId: String
   def ready: Future[Unit]
   def authenticate(challenge: String): Boolean
 }
@@ -42,6 +44,10 @@ private[sbt] object Server {
       with PortFileFormats
       with TokenFileFormats
   object JsonProtocol extends JsonProtocol
+
+  /** The id the portfile names, None when it names none, and a failure when unreadable. */
+  private[sbt] def serverIdOf(portfile: File): Try[Option[String]] =
+    ClientSocket.loadPortFile(portfile).map(_.serverId)
 
   def start(
       connection: ServerConnection,
@@ -56,6 +62,7 @@ private[sbt] object Server {
       private val rand = new SecureRandom
       private var token: String = nextToken
       private val serverSocketHolder = AtomicCloseable[ServerSocket]()
+      override val serverId: String = java.util.UUID.randomUUID().toString
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -157,12 +164,8 @@ private[sbt] object Server {
       }
 
       override def shutdown(): Unit = {
-        if (portfile.exists) {
-          IO.delete(portfile)
-        }
-        if (tokenfile.exists) {
-          IO.delete(tokenfile)
-        }
+        if (serverIdOf(portfile).getOrElse(None).contains(serverId)) IO.delete(portfile)
+        IO.delete(tokenfile)
         running.set(false)
         serverSocketHolder.close()
         log.info("shutting down sbt server")
@@ -197,20 +200,16 @@ private[sbt] object Server {
         // which of the two this is: a client can restart a server over the first but has no
         // business taking down one whose options it never saw
         val sysPropsRecorded = Option(startedByThisBuild)
-        val p =
-          auth match {
-            case _ if auth(ServerAuthentication.Token) =>
-              writeTokenfile()
-              PortFile(
-                uri,
-                Option(tokenfile.toString),
-                Option(IO.toURI(tokenfile).toString),
-                sysProps,
-                sysPropsRecorded
-              )
-            case _ =>
-              PortFile(uri, None, None, sysProps, sysPropsRecorded)
-          }
+        val authOK = auth(ServerAuthentication.Token)
+        if (authOK) writeTokenfile()
+        val p = PortFile(
+          uri,
+          if (authOK) Some(tokenfile.toString) else None,
+          if (authOK) Some(IO.toURI(tokenfile).toString) else None,
+          sysProps,
+          sysPropsRecorded,
+          Some(serverId)
+        )
         val json = Converter.toJson(p).get
         IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
       }

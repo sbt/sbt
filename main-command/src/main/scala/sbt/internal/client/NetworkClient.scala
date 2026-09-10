@@ -221,61 +221,60 @@ class NetworkClient(
         .map(NetworkClient.sysPropName)
         .toSet
       val current = NetworkClient.serverSysProps(arguments.sbtArguments)
-      Try(ClientSocket.portFile(portfile)).toOption match
-        case Some(pf) =>
-          val (dropped, added, changed) =
-            NetworkClient.sysPropsDiff(pf.sysProps, current, deferred)
-          if (dropped ++ added ++ changed).nonEmpty then
-            // a server nothing recorded the options of may well have the ones this client
-            // carries already, and an editor's server is the usual one to be in that state,
-            // so it gets a word rather than a shutdown it never asked for
-            val known = pf.sysPropsRecorded.contains(true)
-            val restarts = known && serverAutoStart && serverAutoRestart
-            val level = if restarts then Level.Info else Level.Warn
-            // the values are what a credential would be hiding in, so only the names of
-            // the options are worth saying out loud
-            console.appendLog(
-              level,
-              if restarts then "sbt server is running with different JVM options; restarting it"
-              else if known then
-                "sbt server is running with different JVM options, which it cannot pick up"
-              else
-                "sbt server was started by something other than the thin client, so it may "
-                  + "not have these JVM options"
-            )
-            if dropped.nonEmpty then console.appendLog(level, s"dropped: ${dropped.mkString(" ")}")
-            if added.nonEmpty then console.appendLog(level, s"added: ${added.mkString(" ")}")
-            if changed.nonEmpty then console.appendLog(level, s"changed: ${changed.mkString(" ")}")
-            if !restarts then console.appendLog(level, "run 'sbt shutdown' for them to take effect")
+      ClientSocket.loadPortFile(portfile).foreach { pf =>
+        val (dropped, added, changed) =
+          NetworkClient.sysPropsDiff(pf.sysProps, current, deferred)
+        if (dropped ++ added ++ changed).nonEmpty then
+          // a server nothing recorded the options of may well have the ones this client
+          // carries already, and an editor's server is the usual one to be in that state,
+          // so it gets a word rather than a shutdown it never asked for
+          val known = pf.sysPropsRecorded.contains(true)
+          val restarts = known && serverAutoStart && serverAutoRestart
+          val level = if restarts then Level.Info else Level.Warn
+          // the values are what a credential would be hiding in, so only the names of
+          // the options are worth saying out loud
+          console.appendLog(
+            level,
+            if restarts then "sbt server is running with different JVM options; restarting it"
+            else if known then
+              "sbt server is running with different JVM options, which it cannot pick up"
             else
-              shutdownRunningServer(pf.uri) match
-                case Some(true)  => ()
-                case Some(false) =>
-                  console.appendLog(
-                    Level.Error,
-                    "the sbt server did not shut down, it is most likely busy with another client"
-                  )
-                  // the request is queued on it and stays there, so a second one buys nothing
-                  console.appendLog(
-                    Level.Error,
-                    "it has the request and takes it once that work is done, which ends that"
-                      + " client's session too"
-                  )
-                  console.appendLog(Level.Error, "run this command again once the server is gone")
-                  throw new ServerFailedException
-                case None =>
-                  // it answers no socket but is still there, which says nothing about how
-                  // busy it is, so leaving it alone beats failing an invocation over it
-                  console.appendLog(
-                    Level.Warn,
-                    "the sbt server could not be reached to restart it; it keeps the JVM"
-                      + " options it was started with"
-                  )
-                  console.appendLog(
-                    Level.Warn,
-                    "run 'sbt shutdown' for the ones passed here to take effect"
-                  )
-        case _ => ()
+              "sbt server was started by something other than the thin client, so it may "
+                + "not have these JVM options"
+          )
+          if dropped.nonEmpty then console.appendLog(level, s"dropped: ${dropped.mkString(" ")}")
+          if added.nonEmpty then console.appendLog(level, s"added: ${added.mkString(" ")}")
+          if changed.nonEmpty then console.appendLog(level, s"changed: ${changed.mkString(" ")}")
+          if !restarts then console.appendLog(level, "run 'sbt shutdown' for them to take effect")
+          else
+            shutdownRunningServer(pf.uri) match
+              case Some(true)  => ()
+              case Some(false) =>
+                console.appendLog(
+                  Level.Error,
+                  "the sbt server did not shut down, it is most likely busy with another client"
+                )
+                // the request is queued on it and stays there, so a second one buys nothing
+                console.appendLog(
+                  Level.Error,
+                  "it has the request and takes it once that work is done, which ends that"
+                    + " client's session too"
+                )
+                console.appendLog(Level.Error, "run this command again once the server is gone")
+                throw new ServerFailedException
+              case None =>
+                // it answers no socket but is still there, which says nothing about how
+                // busy it is, so leaving it alone beats failing an invocation over it
+                console.appendLog(
+                  Level.Warn,
+                  "the sbt server could not be reached to restart it; it keeps the JVM"
+                    + " options it was started with"
+                )
+                console.appendLog(
+                  Level.Warn,
+                  "run 'sbt shutdown' for the ones passed here to take effect"
+                )
+      }
 
   /**
    * Asks the running server to shut down and waits for it to let go of its socket, so that

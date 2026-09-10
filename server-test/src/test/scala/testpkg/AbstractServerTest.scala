@@ -39,6 +39,7 @@ final class SbtServer(
       case _ =>
     }
   }
+  def isAlive: Boolean = process.isAlive()
 }
 
 trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
@@ -138,6 +139,12 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
         false
       )
     )
+
+  protected def waitUntil(timeout: FiniteDuration)(p: => Boolean): Boolean = {
+    val deadline = timeout.fromNow
+    while (!p && deadline.hasTimeLeft()) Thread.sleep(100)
+    p
+  }
 
   override protected def afterAll(): Unit = {
     svr.close()
