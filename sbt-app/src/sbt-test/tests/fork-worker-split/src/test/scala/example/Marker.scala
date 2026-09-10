@@ -3,6 +3,7 @@ package example
 import java.io.{ File, PrintWriter }
 import java.lang.management.ManagementFactory
 import java.nio.file.Files
+import scala.util.control.NonFatal
 import munit.FunSuite
 
 trait Marker extends FunSuite:
@@ -22,7 +23,11 @@ trait Marker extends FunSuite:
     Thread.sleep(1000)
     val peers = new File(".").listFiles().toVector
       .filter(_.getName.startsWith("running-"))
-      .map(f => new String(Files.readAllBytes(f.toPath)))
+      .flatMap:f =>
+        try
+          Some(new String(Files.readAllBytes(f.toPath)))
+        catch
+          case NonFatal(_) => None
       .toSet
     val pw = new PrintWriter(new File(s"peers-$n"))
     try pw.print(peers.size)
