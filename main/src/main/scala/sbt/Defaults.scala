@@ -671,7 +671,18 @@ object Defaults extends BuildCommon with DefExtra {
     resourceGenerators += (Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
     }).taskValue,
-    managedResources := generate(resourceGenerators).value,
+    managedResources := {
+      val files = generate(resourceGenerators).value
+      val dirs = managedResourceDirectories.value.map(_.toPath.toAbsolutePath.normalize)
+      files.foreach: f =>
+        val p = f.toPath.toAbsolutePath.normalize
+        if !dirs.exists(p.startsWith) then
+          sys.error(
+            s"resourceGenerators produced $f outside managedResourceDirectories (${dirs.mkString(", ")}); " +
+              "did you mean (Compile / resourceManaged).value instead of resourceManaged.value?"
+          )
+      files
+    },
     managedResourcesVF := Def.uncached {
       val conv = fileConverter.value
       managedResources.value.toVector.map: x =>

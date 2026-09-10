@@ -1284,7 +1284,7 @@ lazy val lmCore = (project in file("lm-core"))
       .task(
         Utils.generateVersionFile(
           version.value,
-          resourceManaged.value,
+          (Compile / resourceManaged).value,
           streams.value,
           (Compile / compile).value.asInstanceOf[Analysis]
         )
