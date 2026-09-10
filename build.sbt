@@ -350,7 +350,9 @@ lazy val utilLogging = project
     Test / fork := true,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("com.github.ghik.silencer.silent")
+      ProblemFilters.exclude[MissingClassProblem]("com.github.ghik.silencer.silent"),
+      // LoggerContext is sealed, so it has no implementations outside of sbt
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.util.LoggerContext.removeAppender"),
     ),
   )
   .configure(addSbtIO)

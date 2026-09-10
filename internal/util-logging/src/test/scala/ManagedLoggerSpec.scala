@@ -92,6 +92,21 @@ object ManagedLoggerSpec extends BasicTestSuite:
     pool.awaitTermination(30, TimeUnit.SECONDS)
     ()
 
+  test("LoggerContext should remove a single appender"):
+    val other: Appender = ConsoleAppender()
+    val log = newLogger("bar")
+    context.addAppender("bar", asyncStdout -> Level.Info)
+    context.addAppender("bar", other -> Level.Info)
+    context.removeAppender("bar", other)
+    assert(context.appenders("bar") == Seq(asyncStdout))
+    log.info("test_info")
+
+  test("LoggerContext should ignore removal of an unbound appender"):
+    newLogger("baz")
+    context.addAppender("baz", asyncStdout -> Level.Info)
+    context.removeAppender("baz", ConsoleAppender())
+    assert(context.appenders("baz") == Seq(asyncStdout))
+
   test("global logging should log immediately after initialization"):
     // this is passed into State normally
     val global0 = initialGlobalLogging
