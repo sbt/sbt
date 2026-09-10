@@ -15,3 +15,10 @@ TaskKey[Unit]("runThenFail") := Def.uncached {
   val _ = (Compile / run).toTask("").value
   throw new Exception("failed")
 }
+
+commands += Command.command("slowTask") { state =>
+  Thread.sleep(10000)
+  state
+}
+
+TaskKey[Unit]("markLoaded") := IO.touch(baseDirectory.value / "loaded.txt")
