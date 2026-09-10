@@ -382,6 +382,7 @@ object BuiltinCommands {
       tasks,
       settingsCommand,
       loadProject,
+      updateGlobalPlugins,
       templateCommand,
       templateCommandAlias,
       projects,
@@ -980,6 +981,13 @@ object BuiltinCommands {
       loadProjectCommands(arg) ::: s
     )
 
+  def updateGlobalPlugins: Command =
+    Command.command(UpdateGlobalPlugins, UpdateGlobalPluginsBrief, UpdateGlobalPluginsDetailed) {
+      s =>
+        sbt.coursierint.LMCoursier.clearResolutionCache()
+        loadProjectCommands("") ::: s.put(Keys.forceGlobalPluginUpdate, true)
+    }
+
   private def loadProjectParser: State => Parser[String] =
     _ => matched(Project.loadActionParser)
 
@@ -1047,7 +1055,7 @@ object BuiltinCommands {
     val s3 = Project.setProject(
       session,
       structure,
-      s2,
+      s2.remove(Keys.forceGlobalPluginUpdate),
       st => setupGlobalFileTreeRepository(Clean.addCacheStoreFactoryFactory(st))
     )
     addSuperShellParams(
