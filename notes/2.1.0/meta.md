@@ -1,3 +1,5 @@
 - Initially created up to c5eac14c
 - Updated to up 05d80eb7 (develop) / 3127e8d6 (2.0.x)
 - Updated to up 01198f54 (develop) / 3127e8d6 (2.0.x)
+- Merged 2.1.0-c5eac14c-all.md and 2.1.0-05d80eb7-all.md into 2.1.0-01198f54-all.md (single cumulative checkpoint from the start of the release); the two superseded files were removed
+- Updated to up fe56804c (develop) / 3127e8d6 (2.0.x)
