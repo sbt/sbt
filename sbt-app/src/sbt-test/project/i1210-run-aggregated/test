@@ -1,0 +1,50 @@
+# Pin the current project. Scripted runs project/* as one batch in a single sbt
+# process, and the reload injected between tests carries the previous test's
+# current project over. Every assertion below depends on what is current.
+> project root
+
+# Checkpoint: an appender bound to the global logger observes state.log
+# warnings. The assertion lives inside the command, which errors if the
+# captured file is missing the probe text.
+> probeWarn
+
+# An explicit project axis still decides where aggregation starts. projA
+# aggregates nothing, so only its marker appears - not root's, and not projB's.
+> runAggScoped
+$ exists projA/marker.txt
+$ absent marker.txt
+$ absent projB/marker.txt
+
+# Reset so the unscoped run below has to write these markers itself, rather than
+# passing on the file the scoped run already left behind.
+$ delete projA/marker.txt
+
+# runAggregated with a key that has no project axis must aggregate from the
+# current project. Before sbt/sbt#1210 was fixed it resolved the axis to Zero,
+# selected no tasks, and silently did nothing. Aggregation starts at the current
+# project and includes it, so root's own marker must appear alongside both aggregates.
+> runAgg
+$ exists marker.txt
+$ exists projA/marker.txt
+$ exists projB/marker.txt
+
+$ delete marker.txt
+$ delete projA/marker.txt
+$ delete projB/marker.txt
+
+# The axis resolves to the CURRENT project, not to the build's root. From projA -
+# which aggregates nothing - an unscoped run must write projA's marker alone.
+# This is what distinguishes the fix from one that hardcodes the root project.
+> project projA
+> runAgg
+$ exists projA/marker.txt
+$ absent marker.txt
+$ absent projB/marker.txt
+> project root
+
+# An aggregated run that selects nothing warns instead of silently succeeding.
+# The command asserts the warning names the key and that no success was reported.
+> runAggOrphan
+
+# runTask on an undefined key names the key it resolved.
+> runTaskUndefined

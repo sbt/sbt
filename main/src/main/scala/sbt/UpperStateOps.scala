@@ -93,6 +93,7 @@ trait UpperStateOps extends Any {
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
    *
+   * Warns and runs nothing if the key selects no tasks.
    * To avoid race conditions, this should NOT be called from a task.
    */
   def unsafeRunAggregated[A](key: TaskKey[A]): State
