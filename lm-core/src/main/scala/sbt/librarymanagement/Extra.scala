@@ -5,7 +5,7 @@ package sbt.librarymanagement
 
 import sbt.librarymanagement.DependencyBuilders.{ Organization, OrganizationArtifactName }
 
-private[librarymanagement] abstract class InclExclRuleFunctions {
+private[librarymanagement] abstract class InclExclRuleFunctions:
   def everything = InclExclRule("*", "*", "*", Vector.empty, Disabled())
 
   def apply(organization: String, name: String): InclExclRule =
@@ -20,29 +20,26 @@ private[librarymanagement] abstract class InclExclRuleFunctions {
   implicit def organizationArtifactNameToExclusionRule(oa: OrganizationArtifactName): InclExclRule =
     InclExclRule(oa.organization, oa.name, "*", Vector.empty, oa.crossVersion)
 
-  implicit def moduleIDToExclusionRule(moduleID: ModuleID): InclExclRule = {
+  implicit def moduleIDToExclusionRule(moduleID: ModuleID): InclExclRule =
     val org = moduleID.organization
     val name = moduleID.name
     val version = moduleID.revision
     val crossVersion = moduleID.crossVersion
     InclExclRule(org, name, version, Vector.empty, crossVersion)
-  }
-}
+end InclExclRuleFunctions
 
-private[librarymanagement] abstract class ArtifactTypeFilterExtra {
+private[librarymanagement] abstract class ArtifactTypeFilterExtra:
   def inverted: Boolean
 
   def withInverted(inverted: Boolean): ArtifactTypeFilter
 
   def invert = withInverted(!inverted)
-}
 
-private[librarymanagement] abstract class ArtifactTypeFilterFunctions {
+private[librarymanagement] abstract class ArtifactTypeFilterFunctions:
   def allow(types: Set[String]) = ArtifactTypeFilter(types, false)
   def forbid(types: Set[String]) = ArtifactTypeFilter(types, true)
-}
 
-private[librarymanagement] abstract class ConflictManagerFunctions {
+private[librarymanagement] abstract class ConflictManagerFunctions:
   // To avoid NPE (or making the val's below lazy)
   // For case classes refchecks rewrites apply calls to constructor calls, we have to do it manually
   def apply(name: String, organization: String = "*", module: String = "*"): ConflictManager
@@ -54,4 +51,3 @@ private[librarymanagement] abstract class ConflictManagerFunctions {
   val latestCompatible = ConflictManager("latest-compatible")
   val strict = ConflictManager("strict")
   val default = latestRevision
-}

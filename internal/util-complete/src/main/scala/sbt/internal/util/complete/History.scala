@@ -12,7 +12,7 @@ package complete
 import History.number
 import java.io.File
 
-final class History private (val lines: IndexedSeq[String], val path: Option[File]) {
+final class History private (val lines: IndexedSeq[String], val path: Option[File]):
   private def reversed = lines.reverse
 
   def all: Seq[String] = lines
@@ -20,28 +20,23 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
   def !! : Option[String] = !-(1)
 
   def apply(i: Int): Option[String] =
-    if (0 <= i && i < size) Some(lines(i))
-    else {
-      sys.error("Invalid history index: " + i)
-    }
+    if 0 <= i && i < size then Some(lines(i))
+    else sys.error("Invalid history index: " + i)
 
   def !(i: Int): Option[String] = apply(i)
 
   def !(s: String): Option[String] =
-    number(s) match {
-      case Some(n) => if (n < 0) !-(-n) else apply(n)
+    number(s) match
+      case Some(n) => if n < 0 then !-(-n) else apply(n)
       case None    => nonEmpty(s) { reversed.find(_.startsWith(s)) }
-    }
 
   def !-(n: Int): Option[String] = apply(size - n - 1)
 
   def !?(s: String): Option[String] = nonEmpty(s) { reversed.drop(1).find(_.contains(s)) }
 
   private def nonEmpty[T](s: String)(act: => Option[T]): Option[T] =
-    if (s.isEmpty)
-      sys.error("No action specified to history command")
-    else
-      act
+    if s.isEmpty then sys.error("No action specified to history command")
+    else act
 
   def list(historySize: Int, show: Int): Seq[String] =
     lines.toList
@@ -49,13 +44,12 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
       .zipWithIndex
       .map { (line, number) => "   " + number + "  " + line }
       .takeRight(show max 1)
-}
+end History
 
-object History {
+object History:
   def apply(lines: Seq[String], path: Option[File], error: String => Unit): History =
     new History(lines.toIndexedSeq, path)
   def apply(lines: Seq[String], path: Option[File]): History =
     new History(lines.toIndexedSeq, path)
 
   def number(s: String): Option[Int] = s.toIntOption
-}

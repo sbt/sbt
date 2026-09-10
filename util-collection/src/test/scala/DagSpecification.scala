@@ -14,7 +14,7 @@ import Prop.*
 import scala.annotation.tailrec
 import scala.collection.mutable.HashSet
 
-object DagSpecification extends Properties("Dag") {
+object DagSpecification extends Properties("Dag"):
   property("No repeated nodes") = forAll { (dag: TestDag) =>
     isSet(dag.topologicalSort)
   }
@@ -26,37 +26,30 @@ object DagSpecification extends Properties("Dag") {
   }
 
   given Arbitrary[TestDag] = Arbitrary(Gen.sized(dagGen))
-  private def dagGen(nodeCount: Int): Gen[TestDag] = {
+  private def dagGen(nodeCount: Int): Gen[TestDag] =
     val nodes = new HashSet[TestDag]
-    def nonterminalGen(p: Gen.Parameters): Gen[TestDag] = {
+    def nonterminalGen(p: Gen.Parameters): Gen[TestDag] =
       val seed = rng.Seed.random()
-      for {
+      for
         i <- 0 until nodeCount
         nextDeps <- Gen.someOf(nodes).apply(p, seed)
-      } nodes += new TestDag(i, nextDeps)
-      for (nextDeps <- Gen.someOf(nodes)) yield new TestDag(nodeCount, nextDeps)
-    }
+      do nodes += new TestDag(i, nextDeps)
+      for nextDeps <- Gen.someOf(nodes) yield new TestDag(nodeCount, nextDeps)
     Gen.parameterized(nonterminalGen)
-  }
 
   private def isSet[T](c: Seq[T]) = Set(c*).size == c.size
-  private def dependenciesPrecedeNodes(sort: List[TestDag]) = {
+  private def dependenciesPrecedeNodes(sort: List[TestDag]) =
     val seen = new HashSet[TestDag]
     @tailrec
-    def iterate(remaining: List[TestDag]): Boolean = {
-      remaining match {
+    def iterate(remaining: List[TestDag]): Boolean =
+      remaining match
         case Nil          => true
         case node :: tail =>
-          if (node.dependencies.forall(seen.contains) && !seen.contains(node)) {
+          if node.dependencies.forall(seen.contains) && !seen.contains(node) then
             seen += node
             iterate(tail)
-          } else
-            false
-      }
-    }
+          else false
     iterate(sort)
-  }
-}
-class TestDag(id: Int, val dependencies: Iterable[TestDag]) extends Dag[TestDag] {
+end DagSpecification
+class TestDag(id: Int, val dependencies: Iterable[TestDag]) extends Dag[TestDag]:
   override def toString = String.valueOf(id) + "->" + dependencies.mkString("[", ",", "]")
-}

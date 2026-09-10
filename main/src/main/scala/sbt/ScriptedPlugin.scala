@@ -27,9 +27,9 @@ import sbt.librarymanagement.syntax.*
 import sbt.nio.file.{ Glob, RecursiveGlob }
 import scala.jdk.CollectionConverters.*
 
-object ScriptedPlugin extends AutoPlugin {
+object ScriptedPlugin extends AutoPlugin:
 
-  object autoImport {
+  object autoImport:
     val ScriptedConf = Configurations.config("scripted-sbt").hide
     val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch").hide
 
@@ -53,7 +53,7 @@ object ScriptedPlugin extends AutoPlugin {
       )
     val scriptedDependencies = taskKey[Unit]("")
     val scripted = inputKey[Unit]("")
-  }
+  end autoImport
   import autoImport.*
 
   override lazy val globalSettings: Seq[Setting[?]] = Seq(
@@ -84,10 +84,9 @@ object ScriptedPlugin extends AutoPlugin {
       val binVersion = CrossVersionUtil.binarySbtVersion(scriptedSbt.value)
       val versionParts =
         binVersion.split("\\.").flatMap(p => p.takeWhile(_.isDigit).toIntOption).take(2)
-      versionParts match {
+      versionParts match
         case Array(major, minor) => major > 1 || (major == 1 && minor >= 4)
         case _                   => false
-      }
     },
     scriptedRun := Def.uncached(scriptedRunTask.value),
     scriptedDependencies := Def.uncached {
@@ -104,12 +103,10 @@ object ScriptedPlugin extends AutoPlugin {
     Def.task {
       val cp = scriptedClasspath.value.get().map(_.toPath)
       val loader = ClasspathUtil.toLoader(cp, scalaInstance.value.loader)
-      try {
-        ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
-      } catch {
+      try ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
+      catch
         case _: ClassNotFoundException =>
           ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
-      }
     }
 
   private[sbt] def scriptedRunTask: Initialize[Task[ScriptedRun]] = Def.task {
@@ -118,7 +115,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] final case class ScriptedTestPage(page: Int, total: Int)
 
-  private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
+  private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
     import DefaultParsers.*
 
     val scriptedFiles: NameFilter =
@@ -135,7 +132,7 @@ object ScriptedPlugin extends AutoPlugin {
 
     // A parser for page definitions
     val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>
-      if (i <= pairs.size) Parser.success(i)
+      if i <= pairs.size then Parser.success(i)
       else Parser.failure(s"$i exceeds the number of tests (${pairs.size})")
     }
     val pageP: Parser[ScriptedTestPage] = ("*" ~> pageNumber ~ ("of" ~> pageNumber)) flatMap {
@@ -144,34 +141,32 @@ object ScriptedPlugin extends AutoPlugin {
     }
 
     // Grabs the filenames from a given test group in the current page definition.
-    def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
+    def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] =
       val files = pairMap.get(group).toSeq.flatten.sortBy(_.toLowerCase)
       val pageSize = files.size / page.total
       // The last page may loose some values, so we explicitly keep them
       val dropped = files.drop(pageSize * (page.page - 1))
-      if (page.page == page.total) dropped
+      if page.page == page.total then dropped
       else dropped.take(pageSize)
-    }
 
-    def nameP(group: String) = {
+    def nameP(group: String) =
       token("*".id | id.examples(pairMap.getOrElse(group, Set.empty[String])))
-    }
 
     val PagedIds: Parser[Seq[String]] =
-      for {
+      for
         group <- groupP
         page <- pageP
         files = pagedFilenames(group, page)
-        // TODO -  Fail the parser if we don't have enough files for the given page size
-        // if !files.isEmpty
-      } yield files map (f => s"$group/$f")
+      // TODO -  Fail the parser if we don't have enough files for the given page size
+      // if !files.isEmpty
+      yield files map (f => s"$group/$f")
 
-    val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
+    val testID = (for group <- groupP; name <- nameP(group) yield (group, name))
     val testIdAsGroup = matched(testID).map(test => Seq(test))
 
     // (token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).*.map(_.flatten)
-  }
+  end scriptedParser
 
   private[sbt] def scriptedTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
@@ -202,4 +197,4 @@ object ScriptedPlugin extends AutoPlugin {
         .map(_.toFile())
     )
   }
-}
+end ScriptedPlugin

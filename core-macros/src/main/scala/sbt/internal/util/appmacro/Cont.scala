@@ -236,7 +236,7 @@ trait Cont:
               val lambda = Lambda(
                 owner = Symbol.spliceOwner,
                 tpe = tpe,
-                rhsFn = (sym, params) => {
+                rhsFn = (sym, params) =>
                   val param = params.head.asInstanceOf[Term]
                   // Called when transforming the tree to add an input.
                   //  For `qual` of type F[A], and a `selection` qual.value,
@@ -261,7 +261,6 @@ trait Cont:
                       ).asTerm
                         .changeOwner(sym)
                     case None => modifiedBody.asTerm
-                }
               ).asExprOf[a => A1]
               val expr = input.term.asExprOf[F[a]]
               typed[F[A1]](
@@ -274,6 +273,7 @@ trait Cont:
             genMap0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
             flatten(genMap0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
+      end genMap
 
       def genMapN(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] =
         def genMapN0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
@@ -285,7 +285,7 @@ trait Cont:
               val lambda = Lambda(
                 owner = Symbol.spliceOwner,
                 tpe = lambdaTpe,
-                rhsFn = (sym, params) => {
+                rhsFn = (sym, params) =>
                   val p0 = params.head.asInstanceOf[Term]
                   // Called when transforming the tree to add an input.
                   //  For `qual` of type F[A], and a `selection` qual.value,
@@ -342,9 +342,10 @@ trait Cont:
                           body = modifiedBody,
                           input = unitExpr,
                         ).asTerm.changeOwner(sym)
+                      end if
                     case None =>
                       modifiedBody.asTerm
-                }
+                  end match
               )
               val tupleMapRepr = TypeRepr
                 .of[Tuple.Map]
@@ -358,11 +359,14 @@ trait Cont:
                       ${ lambda.asExprOf[inputTypeTpe & Tuple => A1] }
                     )
                   }
+          end match
+        end genMapN0
         eitherTree match
           case Left(_) =>
             genMapN0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
             flatten(genMapN0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
+      end genMapN
 
       // call `ActionCache.cache`
       def callActionCache[A1: Type, A2: Type](
@@ -512,6 +516,8 @@ trait Cont:
         if hasPrintTreeMacroSetting then Console.err.println(Printer.TreeStructure.show(r.asTerm))
         else Console.err.println(r.show)
       r
+    end contImpl
+  end extension
 end Cont
 
 private[sbt] object Cont:

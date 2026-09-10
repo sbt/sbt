@@ -8,7 +8,7 @@ import coursier.cache.FileCache
 import coursier.util.Task
 
 // private[coursier]
-class SbtCoursierCache {
+class SbtCoursierCache:
 
   import SbtCoursierCache.*
 
@@ -28,18 +28,16 @@ class SbtCoursierCache {
   def putReport(key: ReportKey, report: UpdateReport): Unit =
     reportsCache.put(key, report)
 
-  def clear(): Unit = {
+  def clear(): Unit =
     resolutionsCache.clear()
     reportsCache.clear()
-  }
 
   def isEmpty: Boolean =
     resolutionsCache.isEmpty && reportsCache.isEmpty
-
-}
+end SbtCoursierCache
 
 // private[coursier]
-object SbtCoursierCache {
+object SbtCoursierCache:
 
   final case class ResolutionKey(
       dependencies: Seq[(Configuration, Dependency)],
@@ -61,5 +59,4 @@ object SbtCoursierCache {
 
   // private[coursier]
   val default = new SbtCoursierCache
-
-}
+end SbtCoursierCache

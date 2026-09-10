@@ -31,13 +31,13 @@ import sbt.util.Logger
 import sbt.io.syntax.*
 import xsbti.AppConfiguration
 
-object LMCoursier {
+object LMCoursier:
   private val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
-  def defaultCacheLocation: File = {
+  def defaultCacheLocation: File =
     def absoluteFile(path: String): File = new File(path).getAbsoluteFile()
-    def windowsCacheDirectory: File = {
+    def windowsCacheDirectory: File =
       // Per discussion in https://github.com/dirs-dev/directories-jvm/issues/43,
       // LOCALAPPDATA environment variable may NOT represent the one-true
       // Known Folders API (https://docs.microsoft.com/en-us/windows/win32/shell/knownfolderid)
@@ -53,18 +53,16 @@ object LMCoursier {
           .map(absoluteFile)
           .getOrElse(absoluteFile(sys.props("user.home")) / "AppData" / "Local")
       base / "Coursier" / "Cache" / "v1"
-    }
     sys.props
       .get("sbt.coursier.home")
       .map(home => absoluteFile(home) / "cache")
       .orElse(sys.env.get("COURSIER_CACHE").map(absoluteFile))
-      .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match {
+      .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match
       case Some(dir) => dir
       case _         =>
         if Util.isWindows then windowsCacheDirectory
         else CoursierDependencyResolution.defaultCacheLocation
-    }
-  }
+  end defaultCacheLocation
 
   def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
     Vector((ModuleMatchers.all, Reconciliation.Relaxed))
@@ -95,7 +93,7 @@ object LMCoursier {
       localArtifactsShouldBeCached: Boolean,
       lockFile: Option[File],
       log: Logger
-  ): CoursierConfiguration = {
+  ): CoursierConfiguration =
     val coursierExcludeDeps = Inputs
       .exclusions(
         excludeDeps,
@@ -118,10 +116,9 @@ object LMCoursier {
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
     Classpaths.errorInsecureProtocol(rs, log)
-    val missingOk = updateConfig match {
+    val missingOk = updateConfig match
       case Some(uc) => uc.missingOk
       case _        => false
-    }
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
@@ -147,12 +144,12 @@ object LMCoursier {
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
       .withLockFile(lockFile)
-  }
+  end coursierConfiguration
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
     val sv = scalaVersion.value
     val lockFile = dependencyLockFile.value
-    val lockFileOpt = if (lockFile.exists()) Some(lockFile) else None
+    val lockFileOpt = if lockFile.exists() then Some(lockFile) else None
     val ivyHomeOpt = ivyPaths.value.ivyHome.map(new File(_))
     coursierConfiguration(
       csrRecursiveResolvers.value,
@@ -259,7 +256,7 @@ object LMCoursier {
     // resolution run in parallel across modules. Under the super shell we feed the per-command
     // resolution-progress sink (rendered as one task-level line by TaskProgress); otherwise the
     // quiet debug logger.
-    if (progress)
+    if progress then
       Some(
         Keys.state.value
           .get(Keys.resolutionProgress)
@@ -269,37 +266,33 @@ object LMCoursier {
     else Some(new CoursierLogger(st.log))
   }
 
-  class CoursierLogger(logger: Logger) extends CacheLogger {
+  class CoursierLogger(logger: Logger) extends CacheLogger:
     override def downloadedArtifact(url: String, success: Boolean): Unit =
       logger.debug(s"downloaded $url")
-  }
 
-  def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[?] = {
+  def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[?] =
     csrPublications := Def.uncached(
       CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs*).value
     )
-  }
 
   // This emulates Ivy's credential registration which basically keeps mutating global registry
   def allCredentialsTask: Def.Initialize[Task[Seq[IvyCredentials]]] = Def.task {
     val st = streams.value
-    def registerCredentials(creds: IvyCredentials): Unit = {
-      (creds match {
+    def registerCredentials(creds: IvyCredentials): Unit =
+      (creds match
         case dc: IvyCredentials.DirectCredentials =>
           Right[String, IvyCredentials.DirectCredentials](dc)
         case fc: IvyCredentials.FileCredentials =>
           sbt.librarymanagement.CredentialUtils.loadCredentials(fc.path)
-      }) match {
+      ) match
         case Left(err) => st.log.warn(err)
         case Right(d)  =>
           credentialRegistry.put((d.host, d.realm), d)
           ()
-      }
-    }
     import scala.jdk.CollectionConverters.*
     (ThisBuild / Keys.credentials).value foreach registerCredentials
     (LocalRootProject / Keys.credentials).value foreach registerCredentials
     Keys.credentials.value foreach registerCredentials
     credentialRegistry.values.asScala.toVector
   }
-}
+end LMCoursier

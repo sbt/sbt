@@ -19,19 +19,18 @@ import sbt.librarymanagement.{
   OrganizationArtifactReport
 }
 
-object SbtUpdateReport {
+object SbtUpdateReport:
 
-  def fromConfigurationReport(report: ConfigurationReport, rootInfo: ModuleID): ModuleGraph = {
+  def fromConfigurationReport(report: ConfigurationReport, rootInfo: ModuleID): ModuleGraph =
     implicit def id(sbtId: ModuleID): GraphModuleId =
       GraphModuleId(sbtId.organization, sbtId.name, sbtId.revision)
 
-    def moduleEdges(orgArt: OrganizationArtifactReport): Seq[(Module, Seq[Edge])] = {
+    def moduleEdges(orgArt: OrganizationArtifactReport): Seq[(Module, Seq[Edge])] =
       val chosenVersion = orgArt.modules.find(!_.evicted).map(_.module.revision)
       orgArt.modules.map(moduleEdge(chosenVersion))
-    }
 
-    def moduleEdge(chosenVersion: Option[String])(report: ModuleReport): (Module, Seq[Edge]) = {
-      val evictedByVersion = if (report.evicted) chosenVersion else None
+    def moduleEdge(chosenVersion: Option[String])(report: ModuleReport): (Module, Seq[Edge]) =
+      val evictedByVersion = if report.evicted then chosenVersion else None
       val jarFile = report.artifacts
         .find(_._1.`type` == "jar")
         .orElse(report.artifacts.find(_._1.extension == "jar"))
@@ -46,7 +45,6 @@ object SbtUpdateReport {
         ),
         report.callers.map(caller => Edge(caller.caller, report.module))
       )
-    }
 
     val (nodes, edges) = report.details.flatMap(moduleEdges).unzip
     val root = Module(rootInfo)
@@ -56,16 +54,15 @@ object SbtUpdateReport {
 
     // Handle relocated dependencies where the caller node doesn't exist (#8400)
     val fixedEdges = flatEdges.flatMap { case edge @ (from, to) =>
-      if (existingNodeIds.contains(from)) Seq(edge)
-      else {
+      if existingNodeIds.contains(from) then Seq(edge)
+      else
         val callersOfMissing = flatEdges.collect {
           case (caller, target) if target == from => caller
         }
-        if (callersOfMissing.isEmpty) Seq(Edge(root.id, to))
+        if callersOfMissing.isEmpty then Seq(Edge(root.id, to))
         else callersOfMissing.map(caller => Edge(caller, to))
-      }
     }
 
     ModuleGraph(allNodes, fixedEdges.distinct)
-  }
-}
+  end fromConfigurationReport
+end SbtUpdateReport

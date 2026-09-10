@@ -10,8 +10,7 @@ package sbt
 package internal
 package bsp
 
-object ScalaPlatform {
+object ScalaPlatform:
   val JVM = 1
   val JS = 2
   val Native = 3
-}

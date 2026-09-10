@@ -38,6 +38,7 @@ object GraphML:
         </graph>
       </graphml>
     r
+  end graphML
 
   def graphMLAsString(graph: ModuleGraph): String =
     val w = StringWriter()

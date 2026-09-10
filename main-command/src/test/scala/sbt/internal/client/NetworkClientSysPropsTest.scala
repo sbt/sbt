@@ -123,3 +123,4 @@ object NetworkClientSysPropsTest extends BasicTestSuite:
       NetworkClient.sysPropsDiff(Seq("my.prop=garbage"), sysProps("-Dmy.prop=first")) ==
         (Nil, Nil, Seq("my.prop"))
     )
+end NetworkClientSysPropsTest

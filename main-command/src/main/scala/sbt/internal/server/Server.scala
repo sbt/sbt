@@ -31,14 +31,13 @@ import sbt.internal.bsp.BuildServerConnection
 import sbt.protocol.ClientSocket
 import xsbti.AppConfiguration
 
-private[sbt] sealed trait ServerInstance {
+private[sbt] sealed trait ServerInstance:
   def shutdown(): Unit
   def serverId: String
   def ready: Future[Unit]
   def authenticate(challenge: String): Boolean
-}
 
-private[sbt] object Server {
+private[sbt] object Server:
   sealed trait JsonProtocol
       extends sjsonnew.BasicJsonProtocol
       with PortFileFormats
@@ -54,7 +53,8 @@ private[sbt] object Server {
       onIncomingSocket: (AtomicReference[Socket], ServerInstance) => Unit,
       log: Logger
   ): ServerInstance =
-    new ServerInstance { self =>
+    new ServerInstance:
+      self =>
       import connection.*
       val running = new AtomicBoolean(false)
       val p: Promise[Unit] = Promise[Unit]()
@@ -64,10 +64,10 @@ private[sbt] object Server {
       private val serverSocketHolder = AtomicCloseable[ServerSocket]()
       override val serverId: String = java.util.UUID.randomUUID().toString
 
-      val serverThread = new Thread("sbt-socket-server") {
-        override def run(): Unit = {
+      val serverThread = new Thread("sbt-socket-server"):
+        override def run(): Unit =
           Try {
-            connection.connectionType match {
+            connection.connectionType match
               case ConnectionType.Local if isWindows =>
                 // Named pipe already has an exclusive lock.
                 addServerError(
@@ -81,7 +81,7 @@ private[sbt] object Server {
                 val maxSocketLength =
                   UnixDomainSocketLibraryProvider.maxSocketLength(connection.useJni) - 1
                 val path = socketfile.getAbsolutePath
-                if (path.length > maxSocketLength)
+                if path.length > maxSocketLength then
                   sys.error(
                     "socket file absolute path too long; " +
                       "either switch to another connection type " +
@@ -94,56 +94,47 @@ private[sbt] object Server {
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
-            }
-          } match {
+          } match
             case Failure(e)            => p.failure(e)
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
               serverSocketHolder.set(serverSocket)
               log.debug(s"sbt server started at ${connection.shortName}")
               writePortfile()
-              if (connection.bspEnabled) {
+              if connection.bspEnabled then
                 log.debug("Writing bsp connection file")
                 BuildServerConnection.writeConnectionFile(
                   appConfiguration.provider.id.version,
                   appConfiguration.baseDirectory
                 )
-              }
               running.set(true)
               p.success(())
-              while (running.get()) {
+              while running.get() do
                 val clientSocket = AtomicCloseable[Socket]()
-                try {
+                try
                   clientSocket.set(serverSocket.accept())
                   onIncomingSocket(clientSocket.ref, self)
-                } catch {
+                catch
                   case scala.util.control.NonFatal(e) if clientSocket.get ne null =>
                     log.error(s"sbt server failed to serve a client: $e")
                     log.trace(e)
                   case e: IOException if Option(e.getMessage).exists(_.contains("connect")) =>
                   case _: SocketTimeoutException          => // its ok
                   case _: SocketException if !running.get => // the server is shutting down
-                }
                 clientSocket.close()
-              }
               serverSocketHolder.close()
-          }
-        }
-      }
       serverThread.start()
 
       // Try the socket as a client to make sure that the server is not already up.
       // f tries to connect to the server, and flip the result.
-      def tryClient(f: => Socket): Unit = {
-        if (portfile.exists) {
-          Try { f } match {
+      def tryClient(f: => Socket): Unit =
+        if portfile.exists then
+          Try { f } match
             case Failure(_)      => ()
             case Success(socket) =>
               socket.close()
               throw new AlreadyRunningException()
-          }
-        } else ()
-      }
+        else ()
 
       def addServerError(f: => ServerSocket): ServerSocket =
         ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
@@ -151,27 +142,25 @@ private[sbt] object Server {
         }
 
       override def authenticate(challenge: String): Boolean = synchronized {
-        if (token == challenge) {
+        if token == challenge then
           token = nextToken
           writeTokenfile()
           true
-        } else false
+        else false
       }
 
       /** Generates 128-bit non-negative integer, and represent it as decimal string. */
-      private def nextToken: String = {
+      private def nextToken: String =
         new BigInteger(128, rand).toString
-      }
 
-      override def shutdown(): Unit = {
-        if (serverIdOf(portfile).getOrElse(None).contains(serverId)) IO.delete(portfile)
+      override def shutdown(): Unit =
+        if serverIdOf(portfile).getOrElse(None).contains(serverId) then IO.delete(portfile)
         IO.delete(tokenfile)
         running.set(false)
         serverSocketHolder.close()
         log.info("shutting down sbt server")
-      }
 
-      private def writeTokenfile(): Unit = {
+      private def writeTokenfile(): Unit =
         import JsonProtocol.given
 
         val uri = connection.shortName
@@ -181,10 +170,9 @@ private[sbt] object Server {
         IO.writeFileAtomically(tokenfile, ownerOnly = true)(tmp =>
           IO.write(tmp, CompactPrinter(jsonToken), IO.utf8, false)
         )
-      }
 
       // This file exists through the lifetime of the server.
-      private def writePortfile(): Unit = {
+      private def writePortfile(): Unit =
         import JsonProtocol.given
 
         val uri = connection.shortName
@@ -194,34 +182,30 @@ private[sbt] object Server {
           .get(NetworkClient.sysPropsPortfileEnv)
           .map(new File(_).getCanonicalFile)
           .contains(portfile.getCanonicalFile)
-        val recorded = if (startedByThisBuild) sys.env.get(NetworkClient.sysPropsEnv) else None
+        val recorded = if startedByThisBuild then sys.env.get(NetworkClient.sysPropsEnv) else None
         val sysProps = recorded.toVector.flatMap(NetworkClient.decodeSysProps)
         // an empty list of options and no idea what the options are read the same, so say
         // which of the two this is: a client can restart a server over the first but has no
         // business taking down one whose options it never saw
         val sysPropsRecorded = Option(startedByThisBuild)
         val authOK = auth(ServerAuthentication.Token)
-        if (authOK) writeTokenfile()
+        if authOK then writeTokenfile()
         val p = PortFile(
           uri,
-          if (authOK) Some(tokenfile.toString) else None,
-          if (authOK) Some(IO.toURI(tokenfile).toString) else None,
+          if authOK then Some(tokenfile.toString) else None,
+          if authOK then Some(IO.toURI(tokenfile).toString) else None,
           sysProps,
           sysPropsRecorded,
           Some(serverId)
         )
         val json = Converter.toJson(p).get
         IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
-      }
+      end writePortfile
 
-      private[sbt] def prepareSocketfile(): Unit = {
-        if (socketfile.exists) {
-          IO.delete(socketfile)
-        }
+      private[sbt] def prepareSocketfile(): Unit =
+        if socketfile.exists then IO.delete(socketfile)
         IO.createDirectory(socketfile.getParentFile)
-      }
-    }
-}
+end Server
 
 private[sbt] case class ServerConnection(
     connectionType: ConnectionType,
@@ -236,15 +220,12 @@ private[sbt] case class ServerConnection(
     windowsServerSecurityLevel: Int,
     useJni: Boolean,
     bspEnabled: Boolean,
-) {
-  def shortName: String = {
-    connectionType match {
+):
+  def shortName: String =
+    connectionType match
       case ConnectionType.Local if isWindows => s"local:$pipeName"
       case ConnectionType.Local              => s"local://$socketfile"
       case ConnectionType.Tcp                => s"tcp://$host:$port"
       // case ConnectionType.Ssh                => s"ssh://$host:$port"
-    }
-  }
-}
 
 private[sbt] class AlreadyRunningException extends IOException("sbt server is already running.")

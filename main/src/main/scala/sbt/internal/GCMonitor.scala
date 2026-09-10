@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import sbt.util.Logger
 
-trait GCMonitorBase {
+trait GCMonitorBase:
   protected def window: FiniteDuration
 
   protected def ratio: Double
@@ -34,7 +34,7 @@ trait GCMonitorBase {
       nowMillis: Long,
       collectionTime: Long,
       collectionTimeStore: AtomicReference[(FiniteDuration, Long)]
-  ): Unit = {
+  ): Unit =
     val now = nowMillis.millis
     val (lastTimestamp, lastCollectionTime) = collectionTimeStore.getAndSet(now -> collectionTime)
     val elapsed = collectionTime - lastCollectionTime
@@ -42,14 +42,12 @@ trait GCMonitorBase {
     queue.add(lastTimestamp -> elapsed)
     val total = queueScala.foldLeft(0L) { case (total, (_, t)) => total + t }
     val over = queueScala.headOption.map(nowMillis - _._1.toMillis)
-    if ((total > window.toMillis * ratio) && (lastWarned.get + window).time <= now) {
+    if (total > window.toMillis * ratio) && (lastWarned.get + window).time <= now then
       lastWarned.set(Deadline(now))
       emitWarning(total, over)
-    }
-  }
-}
+end GCMonitorBase
 
-class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
+class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable:
   override protected def window =
     System.getProperty("sbt.gc.monitor.window", "10").toIntOption.getOrElse(10).seconds
 
@@ -60,7 +58,7 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
   val runtime = Runtime.getRuntime
   def gbString(n: Long) = f"${n / GB}%.2fGB"
 
-  override protected def emitWarning(total: Long, over: Option[Long]): Unit = {
+  override protected def emitWarning(total: Long, over: Option[Long]): Unit =
     val totalSeconds = total / 1000.0
     val amountMsg = over.fold(f"$totalSeconds%.3f CPU seconds") { d =>
       val dSeconds = (d / 1000.0).ceil.toInt
@@ -74,7 +72,6 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
       "Consider increasing the JVM heap using `-Xmx` or try " +
       "a different collector, e.g. `-XX:+UseG1GC`, for better performance."
     logger.warn(msg)
-  }
 
   val removers = ManagementFactory.getGarbageCollectorMXBeans.asScala.flatMap {
     case bean: NotificationEmitter =>
@@ -91,7 +88,6 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
       Some(() => bean.removeNotificationListener(listener))
     case _ => None
   }
-  override def close(): Unit = {
+  override def close(): Unit =
     removers.foreach(_.apply())
-  }
-}
+end GCMonitor

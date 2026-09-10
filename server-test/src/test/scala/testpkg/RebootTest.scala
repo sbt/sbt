@@ -12,7 +12,7 @@ package testpkg
  * Regression for https://github.com/sbt/sbt/issues/9095: `reboot` from a client must bring the
  * server back and complete instead of leaving a zombie server that drops the client.
  */
-class RebootTest extends AbstractServerTest {
+class RebootTest extends AbstractServerTest:
   override val testDirectory: String = "client"
 
   test("reboot completes and the rebooted server serves the next command") {
@@ -22,4 +22,3 @@ class RebootTest extends AbstractServerTest {
       "the rebooted server must serve a new client connection"
     )
   }
-}

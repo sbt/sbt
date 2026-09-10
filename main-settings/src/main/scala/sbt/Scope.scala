@@ -87,7 +87,7 @@ object Scope:
       )
 
   def subThis[T](sub: ScopeAxis[T], into: ScopeAxis[T]): ScopeAxis[T] =
-    if (into == This) sub else into
+    if into == This then sub else into
 
   /**
    * `Select(ThisProject)` cannot be resolved by [[resolveProject]] (it doesn't know what to replace it with), so we
@@ -99,10 +99,9 @@ object Scope:
   }
 
   def fillTaskAxis(scope: Scope, key: AttributeKey[?]): Scope =
-    scope.task match {
+    scope.task match
       case _: Select[?] => scope
       case _            => scope.copy(task = Select(key))
-    }
 
   def mapReference(f: Reference => Reference): Scope => Scope = {
     case Scope(Select(ref), a, b, c) => Scope(Select(f(ref)), a, b, c)
@@ -114,58 +113,51 @@ object Scope:
     mapReference(ref => resolveBuildOnly(uri, ref))
 
   def resolveBuildOnly(current: URI, ref: Reference): Reference =
-    ref match {
+    ref match
       case br: BuildReference   => resolveBuild(current, br)
       case pr: ProjectReference => resolveProjectBuild(current, pr)
-    }
   def resolveBuild(current: URI, ref: BuildReference): BuildReference =
-    ref match {
+    ref match
       case ThisBuild     => BuildRef(current)
       case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
-    }
   def resolveProjectBuild(current: URI, ref: ProjectReference): ProjectReference =
-    ref match {
+    ref match
       case LocalRootProject    => RootProject(current)
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
       case ThisProject         => ThisProject // haven't exactly "resolved" anything..
       case LocalAggregate      => LocalAggregate
-    }
   def resolveBuild(current: URI, uri: URI): URI =
-    if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
+    if !uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == "." then
       current // this handles the shortcut of referring to the current build using "."
-    else
-      IO.directoryURI(current.resolve(uri))
+    else IO.directoryURI(current.resolve(uri))
 
   def resolveReference(
       current: URI,
       rootProject: URI => String,
       ref: Reference
   ): ResolvedReference =
-    ref match {
+    ref match
       case br: BuildReference   => resolveBuildRef(current, br)
       case pr: ProjectReference => resolveProjectRef(current, rootProject, pr)
-    }
 
   def resolveProjectRef(
       current: URI,
       rootProject: URI => String,
       ref: ProjectReference
   ): ProjectRef =
-    ref match {
+    ref match
       case LocalRootProject    => ProjectRef(current, rootProject(current))
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => val u = resolveBuild(current, uri); ProjectRef(u, rootProject(u))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
       case ThisProject         => sys.error("Cannot resolve ThisProject w/o the current project")
       case LocalAggregate      => sys.error("Cannot resolve LocalAggregate")
-    }
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
-    ref match {
+    ref match
       case ThisBuild     => BuildRef(current)
       case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
-    }
 
   def display(config: ConfigKey): String = guessConfigIdent(config.name) + " /"
 
@@ -277,9 +269,10 @@ object Scope:
             sep,
             postfix
           )
+  end displayMasked
 
   private[sbt] def appendSpace(s: String): String =
-    if (s == "") ""
+    if s == "" then ""
     else s + " "
 
   def equal(a: Scope, b: Scope, mask: ScopeMask): Boolean =
@@ -313,27 +306,25 @@ object Scope:
       projectInherit: ProjectRef => Seq[ProjectRef],
       configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
       taskInherit: AttributeKey[?] => Seq[AttributeKey[?]],
-  ): Scope => Seq[Scope] = {
+  ): Scope => Seq[Scope] =
     val index = delegates(refs, configurations, projectInherit, configInherit)
     scope => indexedDelegates(resolve, index, rootProject, taskInherit)(scope)
-  }
 
   private def indexedDelegates(
       resolve: Reference => ResolvedReference,
       index: DelegateIndex,
       rootProject: URI => String,
       taskInherit: AttributeKey[?] => Seq[AttributeKey[?]],
-  )(rawScope: Scope): Seq[Scope] = {
+  )(rawScope: Scope): Seq[Scope] =
     val scope = Scope.replaceThis(GlobalScope)(rawScope)
 
     // This is a hot method that gets called many times
     def expandDelegateScopes(
         resolvedProj: ResolvedReference
-    )(pLin: Seq[ScopeAxis[ResolvedReference]]): Vector[Scope] = {
-      val tLin = scope.task match {
+    )(pLin: Seq[ScopeAxis[ResolvedReference]]): Vector[Scope] =
+      val tLin = scope.task match
         case t @ Select(_) => linearize(t)(taskInherit)
         case _             => withZeroAxis(scope.task)
-      }
       // val eLin = withZeroAxis(scope.extra)
       // The following while loops handroll the nested for-expression + flatMap
       // projAxes flatMap nonProjectScopes(resolvedProj)
@@ -341,87 +332,76 @@ object Scope:
       //   for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
       val res = Vector.newBuilder[Scope]
       val pIt = pLin.iterator
-      while (pIt.hasNext) {
+      while pIt.hasNext do
         val px = pIt.next()
         val p = px.toOption getOrElse resolvedProj
-        val configProj = p match {
+        val configProj = p match
           case pr: ProjectRef => pr
           case br: BuildRef   => ProjectRef(br.build, rootProject(br.build))
-        }
-        val cLin = scope.config match {
+        val cLin = scope.config match
           case Select(conf) => index.config(configProj, conf)
           case _            => withZeroAxis(scope.config)
-        }
         val cLinIt = cLin.iterator
-        while (cLinIt.hasNext) {
+        while cLinIt.hasNext do
           val c = cLinIt.next()
           val tLinIt = tLin.iterator
-          while (tLinIt.hasNext) {
+          while tLinIt.hasNext do
             val t = tLinIt.next()
-            if (scope.extra.isSelect) {
+            if scope.extra.isSelect then
               res += Scope(px, c, t, scope.extra)
               ()
-            }
             res += Scope(px, c, t, Zero)
-          }
-        }
-      }
       res.result()
-    }
+    end expandDelegateScopes
 
-    scope.project match {
+    scope.project match
       case Zero | This  => globalProjectDelegates(scope)
       case Select(proj) =>
         val resolvedProj = resolve(proj)
         val projAxes: Seq[ScopeAxis[ResolvedReference]] =
-          resolvedProj match {
+          resolvedProj match
             case pr: ProjectRef => index.project(pr)
             case br: BuildRef   =>
               List(Select(br): ScopeAxis[ResolvedReference], Zero: ScopeAxis[ResolvedReference])
-          }
         expandDelegateScopes(resolvedProj)(projAxes)
-    }
-  }
+  end indexedDelegates
 
   private val zeroL = List(Zero)
   private val globalL = List(GlobalScope)
 
   def withZeroAxis[T](base: ScopeAxis[T]): Seq[ScopeAxis[T]] =
-    if (base.isSelect) base :: zeroL else zeroL
+    if base.isSelect then base :: zeroL else zeroL
 
   def withGlobalScope(base: Scope): Seq[Scope] =
-    if (base == GlobalScope) globalL else base :: globalL
+    if base == GlobalScope then globalL else base :: globalL
 
   def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
     ps ++ ps.flatMap(rawBuild).distinct :+ Zero
 
-  def rawBuild(ps: ScopeAxis[ProjectRef]): Seq[ScopeAxis[BuildRef]] = ps match {
+  def rawBuild(ps: ScopeAxis[ProjectRef]): Seq[ScopeAxis[BuildRef]] = ps match
     case Select(ref) => Select(BuildRef(ref.build)) :: Nil
     case _           => Nil
-  }
 
   def delegates[Proj](
       refs: Seq[(ProjectRef, Proj)],
       configurations: Proj => Seq[ConfigKey],
       projectInherit: ProjectRef => Seq[ProjectRef],
       configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]
-  ): DelegateIndex = {
+  ): DelegateIndex =
     val pDelegates = refs
       .map: (ref, project) =>
         (ref, delegateIndex(ref, configurations(project))(projectInherit, configInherit))
       .toMap
     new DelegateIndex0(pDelegates)
-  }
   private def delegateIndex(ref: ProjectRef, confs: Seq[ConfigKey])(
       projectInherit: ProjectRef => Seq[ProjectRef],
       configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]
-  ): ProjectDelegates = {
+  ): ProjectDelegates =
     val refDelegates = withRawBuilds(linearize(Select(ref), false)(projectInherit))
     val configs = confs map { c =>
       axisDelegates(configInherit, ref, c)
     }
     new ProjectDelegates(ref, refDelegates, configs.toMap)
-  }
   def axisDelegates[T](
       direct: (ResolvedReference, T) => Seq[T],
       ref: ResolvedReference,
@@ -432,25 +412,23 @@ object Scope:
   def linearize[T](axis: ScopeAxis[T], appendZero: Boolean = true)(
       inherit: T => Seq[T]
   ): Seq[ScopeAxis[T]] =
-    axis match {
+    axis match
       case Select(x)   => topologicalSort[T](x, appendZero)(inherit)
-      case Zero | This => if (appendZero) zeroL else Nil
-    }
+      case Zero | This => if appendZero then zeroL else Nil
 
   def topologicalSort[T](node: T, appendZero: Boolean)(
       dependencies: T => Seq[T]
-  ): Seq[ScopeAxis[T]] = {
+  ): Seq[ScopeAxis[T]] =
     val o = Dag.topologicalSortUnchecked(node)(dependencies).map(x => Select(x): ScopeAxis[T])
-    if (appendZero) o ::: zeroL else o
-  }
+    if appendZero then o ::: zeroL else o
   def globalProjectDelegates(scope: Scope): Seq[Scope] =
-    if (scope == GlobalScope) globalL
+    if scope == GlobalScope then globalL
     else
-      for {
+      for
         c <- withZeroAxis(scope.config)
         t <- withZeroAxis(scope.task)
         e <- withZeroAxis(scope.extra)
-      } yield Scope(Zero, c, t, e)
+      yield Scope(Zero, c, t, e)
 
   /**
    * Temporary data structure to capture first two axis using slash syntax.

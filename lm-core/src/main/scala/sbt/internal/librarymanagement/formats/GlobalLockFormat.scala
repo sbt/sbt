@@ -9,7 +9,8 @@ import java.util.concurrent.Callable
  * A fake JsonFormat for xsbti.GlobalLock.
  * This is mostly for making IvyConfiguration serializable to JSON.
  */
-trait GlobalLockFormat { self: BasicJsonProtocol =>
+trait GlobalLockFormat:
+  self: BasicJsonProtocol =>
   import GlobalLockFormats.*
 
   given globalLockIsoString: IsoString[GlobalLock] =
@@ -18,10 +19,7 @@ trait GlobalLockFormat { self: BasicJsonProtocol =>
   given GlobalLockFormat: JsonFormat[GlobalLock] = isoStringFormat(using
     globalLockIsoString
   )
-}
 
-private[sbt] object GlobalLockFormats {
-  object NoGlobalLock extends GlobalLock {
+private[sbt] object GlobalLockFormats:
+  object NoGlobalLock extends GlobalLock:
     def apply[T](lockFile: File, run: Callable[T]) = run.call()
-  }
-}

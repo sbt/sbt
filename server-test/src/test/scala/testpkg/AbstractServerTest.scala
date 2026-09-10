@@ -29,20 +29,17 @@ final class SbtServer(
     val session: ServerSession,
     val baseDirectory: File,
     private val process: scala.sys.process.Process
-) {
-  def close(): Unit = {
+):
+  def close(): Unit =
     val result = scala.util.Try(session.shutdown(process.isAlive(), () => process.destroy()).get)
-    if (process.isAlive()) process.destroy()
-    result match {
+    if process.isAlive() then process.destroy()
+    result match
       case scala.util.Failure(e) =>
         System.err.println(s"server session shutdown failed (process destroyed): $e")
       case _ =>
-    }
-  }
   def isAlive: Boolean = process.isAlive()
-}
 
-trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
+trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll:
   private var temp: File = scala.compiletime.uninitialized
   var svr: SbtServer = scala.compiletime.uninitialized
 
@@ -50,21 +47,19 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
   def testPath: Path = temp.toPath.resolve(testDirectory)
   def subscribeToAllForTest: Boolean = true
 
-  private val serverTestBase: File = {
+  private val serverTestBase: File =
     val p0 = new File(".").getAbsoluteFile / "server-test" / "src" / "server-test"
     val p1 = new File(".").getAbsoluteFile / "src" / "server-test"
-    if (p0.exists) p0
+    if p0.exists then p0
     else p1
-  }
 
-  private val targetDir: File = {
+  private val targetDir: File =
     val p0 = new File("..").getAbsoluteFile.getCanonicalFile / "target"
     val p1 = new File("target").getAbsoluteFile
-    if (p0.exists) p0
+    if p0.exists then p0
     else p1
-  }
 
-  override def beforeAll(): Unit = {
+  override def beforeAll(): Unit =
     val base = Files.createTempDirectory(
       Files.createDirectories(targetDir.toPath.resolve("test-server")),
       "server-test"
@@ -97,35 +92,31 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     session.initialize(10.seconds, subscribeToAllForTest)
 
     svr = new SbtServer(session, buildDir, process)
-  }
+  end beforeAll
 
-  private object BlockingInputStream extends InputStream {
-    override def read(): Int = {
+  private object BlockingInputStream extends InputStream:
+    override def read(): Int =
       try Thread.sleep(Long.MaxValue)
-      catch { case _: InterruptedException => }
+      catch
+        case _: InterruptedException =>
       -1
-    }
-  }
   private val nullPrintStream = new PrintStream(_ => {}, false)
 
-  private def background[R](f: => R): R = {
+  private def background[R](f: => R): R =
     val result = new LinkedBlockingQueue[Either[Throwable, R]]
-    val thread = new Thread("server-test-batch-client") {
+    val thread = new Thread("server-test-batch-client"):
       setDaemon(true)
       override def run(): Unit =
         try Util.ignoreResult(result.put(Right(f)))
-        catch { case e: Throwable => Util.ignoreResult(result.put(Left(e))) }
-    }
+        catch case e: Throwable => Util.ignoreResult(result.put(Left(e)))
     thread.start()
-    result.poll(3, TimeUnit.MINUTES) match {
+    result.poll(3, TimeUnit.MINUTES) match
       case null =>
         thread.interrupt()
         thread.join(10000)
         throw new TimeoutException("client did not complete within 3 minutes")
       case Left(e)  => throw e
       case Right(r) => r
-    }
-  }
 
   /** Runs the thin client in batch mode against this suite's server; returns its exit code. */
   protected def runBatchClient(args: String*): Int =
@@ -140,15 +131,13 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
       )
     )
 
-  protected def waitUntil(timeout: FiniteDuration)(p: => Boolean): Boolean = {
+  protected def waitUntil(timeout: FiniteDuration)(p: => Boolean): Boolean =
     val deadline = timeout.fromNow
-    while (!p && deadline.hasTimeLeft()) Thread.sleep(100)
+    while !p && deadline.hasTimeLeft() do Thread.sleep(100)
     p
-  }
 
-  override protected def afterAll(): Unit = {
+  override protected def afterAll(): Unit =
     svr.close()
     svr = null
     IO.delete(temp)
-  }
-}
+end AbstractServerTest

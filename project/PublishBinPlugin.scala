@@ -7,13 +7,12 @@ import sbt.util.CacheImplicits.given
 import sbt.librarymanagement.LibraryManagementCodec.given
 
 /** This local plugin provides ways of publishing just the binary jar. */
-object PublishBinPlugin extends AutoPlugin {
+object PublishBinPlugin extends AutoPlugin:
   override def trigger = allRequirements
 
-  object autoImport {
+  object autoImport:
     val publishLocalBin = taskKey[Unit]("")
     val publishLocalBinConfig = taskKey[PublishConfiguration]("")
-  }
   import autoImport.*
 
   private val dummyDoc = taskKey[HashedVirtualFileRef]("").withRank(Int.MaxValue)
@@ -28,7 +27,7 @@ object PublishBinPlugin extends AutoPlugin {
       Classpaths.publishConfig(
         false, // publishMavenStyle.value,
         Classpaths.deliverPattern(crossTarget.value),
-        if (isSnapshot.value) "integration" else "release",
+        if isSnapshot.value then "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         (publishLocalBin / packagedArtifacts).value.map { (k, v) =>
           k -> fileConverter.value.toPath(v).toFile
@@ -41,10 +40,11 @@ object PublishBinPlugin extends AutoPlugin {
     dummyDoc := {
       val _ = projectID.value
       val dummyFile = target.value / "dummy-doc" / "doc.jar"
-      try {
+      try
         Files.createDirectories(dummyFile.toPath.getParent)
         Files.createFile(dummyFile.toPath)
-      } catch { case _: FileAlreadyExistsException => }
+      catch
+        case _: FileAlreadyExistsException =>
       val out = fileConverter.value.toVirtualFile(dummyFile.toPath)
       Def.declareOutput(out)
       (out: HashedVirtualFileRef)
@@ -58,4 +58,4 @@ object PublishBinPlugin extends AutoPlugin {
         .value
     )
   )
-}
+end PublishBinPlugin

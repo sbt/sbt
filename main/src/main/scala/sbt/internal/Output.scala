@@ -23,7 +23,7 @@ import sbt.internal.util.EscHelpers
 
 import sbt.io.IO
 
-object Output {
+object Output:
   final val DefaultTail = "> "
 
   def last(
@@ -42,7 +42,7 @@ object Output {
       streams: Streams,
       patternString: String,
       printLines: Seq[String] => Unit
-  )(using display: Show[ScopedKey[?]]): Unit = {
+  )(using display: Show[ScopedKey[?]]): Unit =
     val pattern = Pattern.compile(patternString)
     val lines = flatLines(lastLines(keys, streams)) { rawLines =>
       rawLines.flatMap { line =>
@@ -51,7 +51,6 @@ object Output {
       }
     }
     printLines(lines)
-  }
 
   def lastGrep(
       file: File,
@@ -61,34 +60,31 @@ object Output {
   ): Unit =
     printLines(grep(tailLines(file, tailDelim), patternString))
 
-  def grep(lines: Seq[String], patternString: String): Seq[String] = {
+  def grep(lines: Seq[String], patternString: String): Seq[String] =
     val pattern = Pattern.compile(patternString)
     lines.flatMap { line =>
       val stripped = EscHelpers.stripColorsAndMoves(line)
       showMatches(pattern)(stripped)
     }
-  }
 
   def flatLines(outputs: Values[Seq[String]])(f: Seq[String] => Seq[String])(using
       display: Show[ScopedKey[?]]
-  ): Seq[String] = {
+  ): Seq[String] =
     val single = outputs.size == 1
     outputs flatMap { case KeyValue(key, lines) =>
       val flines = f(lines)
-      if (!single) bold(display.show(key)) +: flines else flines
+      if !single then bold(display.show(key)) +: flines else flines
     }
-  }
 
   def lastLines(
       keys: Values[Any],
       streams: Streams,
       sid: Option[String] = None
-  ): Values[Seq[String]] = {
+  ): Values[Seq[String]] =
     val outputs = keys map { (kv: KeyValue[?]) =>
       KeyValue(kv.key, lastLines(kv.key, streams, sid))
     }
     outputs.filterNot(_.value.isEmpty)
-  }
 
   def lastLines(key: ScopedKey[?], mgr: Streams, sid: Option[String]): Seq[String] =
     mgr.use(key) { s =>
@@ -107,11 +103,10 @@ object Output {
     headLines(IO.readLines(file).reverse, tailDelim).reverse
 
   @tailrec def headLines(lines: Seq[String], tailDelim: String): Seq[String] =
-    if (lines.isEmpty) lines
-    else {
+    if lines.isEmpty then lines
+    else
       val (first, tail) = lines.span { line =>
         !line.startsWith(tailDelim)
       }
-      if (first.isEmpty) headLines(tail drop 1, tailDelim) else first
-    }
-}
+      if first.isEmpty then headLines(tail drop 1, tailDelim) else first
+end Output

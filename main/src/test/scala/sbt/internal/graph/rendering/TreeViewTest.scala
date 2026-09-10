@@ -13,7 +13,7 @@ import org.scalatest.matchers.should.Matchers
 import sbt.internal.graph.rendering.TreeView.createJson
 import sbt.internal.graph.{ Edge, GraphModuleId, Module, ModuleGraph, ModuleModel }
 
-class TreeViewTest extends AnyFlatSpec with Matchers {
+class TreeViewTest extends AnyFlatSpec with Matchers:
   val modA = GraphModuleId("orgA", "nameA", "1.0")
   val modB = GraphModuleId("orgB", "nameB", "2.0")
   val modC = GraphModuleId("orgC", "nameC", "3.0")
@@ -167,4 +167,4 @@ class TreeViewTest extends AnyFlatSpec with Matchers {
     )
     assert(tree == expected, s"got: $tree")
   }
-}
+end TreeViewTest

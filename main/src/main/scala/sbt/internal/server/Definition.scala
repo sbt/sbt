@@ -36,21 +36,17 @@ import scala.concurrent.Promise
 import scala.jdk.OptionConverters.*
 import com.github.benmanes.caffeine.cache.Caffeine
 
-private[sbt] object Definition {
-  def send[A: JsonFormat](source: CommandSource, execId: String)(params: A): Unit = {
-    for {
-      channel <- StandardMain.exchange.channels.collectFirst {
+private[sbt] object Definition:
+  def send[A: JsonFormat](source: CommandSource, execId: String)(params: A): Unit =
+    for channel <- StandardMain.exchange.channels.collectFirst {
         case c: NetworkChannel if c.name == source.channelName => c
       }
-    } {
-      channel.respond(params, Option(execId))
-    }
-  }
+    do channel.respond(params, Option(execId))
 
-  object textProcessor {
+  object textProcessor:
     private val isIdentifier: String => Boolean = SbtParser.isIdentifier
 
-    private def findInBackticks(line: String, point: Int): Option[String] = {
+    private def findInBackticks(line: String, point: Int): Option[String] =
       val (even, odd) = line.zipWithIndex
         .collect { case (char, backtickIndex) if char == '`' => backtickIndex }
         .zipWithIndex
@@ -64,7 +60,6 @@ private[sbt] object Definition {
         .collectFirst {
           case (from, to) if from <= point && point < to => line.slice(from, to)
         }
-    }
 
     def identifier(line: String, point: Int): Option[String] = findInBackticks(line, point).orElse {
       val whiteSpaceReg = "(\\s|\\.)+".r
@@ -74,27 +69,26 @@ private[sbt] object Definition {
           (ind, ind + white.length)
         }
         .fold((0, line.length)) { case ((left, right), (from, to)) =>
-          val zero = if (to > left && to <= point) to else left
-          val end = if (from < right && from >= point) from else right
+          val zero = if to > left && to <= point then to else left
+          val end = if from < right && from >= point then from else right
           (zero, end)
         }
 
-      val ranges = for {
+      val ranges = for
         from <- zero to point
         to <- point to end
-      } yield (from -> to)
+      yield (from -> to)
 
       ranges
         .sortBy { (from, to) => -(to - from) }
         .foldLeft(List.empty[String]) { case (z, (from, to)) =>
           val fragment = line.slice(from, to).trim
-          if (isIdentifier(fragment))
-            z match {
+          if isIdentifier(fragment) then
+            z match
               case Nil if fragment.nonEmpty              => fragment :: z
               case h :: _ if h.length < fragment.length  => fragment :: Nil
               case h :: _ if h.length == fragment.length => fragment :: z
               case _                                     => z
-            }
           else z
         }
         .headOption
@@ -103,11 +97,10 @@ private[sbt] object Definition {
     private def asClassObjectIdentifier(sym: String) =
       Seq(s".$sym", s".$sym$$", s"$$$sym", s"$$$sym$$")
 
-    def potentialClsOrTraitOrObj(sym: String): PartialFunction[String, String] = {
-      val encodedSym = NameTransformer.encode(sym.toSeq match {
+    def potentialClsOrTraitOrObj(sym: String): PartialFunction[String, String] =
+      val encodedSym = NameTransformer.encode(sym.toSeq match
         case '`' +: body :+ '`' => body.mkString
-        case noBackticked       => noBackticked.mkString
-      })
+        case noBackticked       => noBackticked.mkString)
       val action: PartialFunction[String, String] = {
         case potentialClassOrTraitOrObject
             if asClassObjectIdentifier(encodedSym).exists(potentialClassOrTraitOrObject.endsWith) ||
@@ -116,15 +109,13 @@ private[sbt] object Definition {
           potentialClassOrTraitOrObject
       }
       action
-    }
 
     @tailrec
-    private def fold(z: Seq[(String, Int)])(it: Regex.MatchIterator): Seq[(String, Int)] = {
-      if (!it.hasNext) z
+    private def fold(z: Seq[(String, Int)])(it: Regex.MatchIterator): Seq[(String, Int)] =
+      if !it.hasNext then z
       else fold(z :+ (it.next() -> it.start))(it)
-    }
 
-    def classTraitObjectInLine(sym: String)(line: String): Seq[(String, Int)] = {
+    def classTraitObjectInLine(sym: String)(line: String): Seq[(String, Int)] =
       val potentials = Seq(
         s"object\\s+${Regex quote sym}".r,
         s"trait\\s+${Regex quote sym} *\\[?".r,
@@ -135,11 +126,10 @@ private[sbt] object Definition {
           fold(Seq.empty)(reg.findAllIn(line))
         }
         .collect { (name, pos) =>
-          (if (name.endsWith("[")) name.init.trim else name.trim) -> pos
+          (if name.endsWith("[") then name.init.trim else name.trim) -> pos
         }
-    }
 
-    def markPosition(file: Path, sym: String): Seq[(URI, Long, Long, Long)] = {
+    def markPosition(file: Path, sym: String): Seq[(URI, Long, Long, Long)] =
       val findInLine = classTraitObjectInLine(sym)(_)
       Files
         .lines(file)
@@ -154,13 +144,11 @@ private[sbt] object Definition {
         }
         .toSeq
         .distinct
-    }
-  }
+  end textProcessor
 
-  private def getDefinition(jsonDefinition: JValue): Option[TextDocumentPositionParams] = {
+  private def getDefinition(jsonDefinition: JValue): Option[TextDocumentPositionParams] =
     import langserver.codec.JsonProtocol.given
     Converter.fromJson[TextDocumentPositionParams](jsonDefinition).toOption
-  }
 
   private val AnalysesKey = "lsp.definition.analyses.key"
   private[server] type Analyses = Set[((String, Boolean, Boolean), Option[Analysis])]
@@ -183,29 +171,24 @@ private[sbt] object Definition {
 
   private[sbt] def updateCache(
       cache: Cache[String, Analyses]
-  )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean): Any = {
-    cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent) -> None)) match {
+  )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean): Any =
+    cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent) -> None)) match
       case null => new AnyRef
       case set  =>
         val newSet = set
           .filterNot { case ((file, _, _), _) => file == cacheFile }
           .+((cacheFile, useBinary, useConsistent) -> None)
         cache.put(AnalysesKey, newSet)
-    }
-  }
-  private[sbt] object AnalysesAccess {
+  private[sbt] object AnalysesAccess:
     private[sbt] lazy val cache: Cache[String, Analyses] = Caffeine.newBuilder.build()
-    ShutdownHooks.add(() => {
+    ShutdownHooks.add(() =>
       cache.invalidateAll()
       cache.cleanUp()
-    })
-    private[sbt] def getFrom(cache: Cache[String, Analyses]): Option[Analyses] = {
-      cache.getIfPresent(AnalysesKey) match {
+    )
+    private[sbt] def getFrom(cache: Cache[String, Analyses]): Option[Analyses] =
+      cache.getIfPresent(AnalysesKey) match
         case null => None
         case a    => Some(a)
-      }
-    }
-  }
 
   def collectAnalysesTask = Def.task {
     val cacheFile: String = compileAnalysisFile.value.getAbsolutePath
@@ -218,15 +201,15 @@ private[sbt] object Definition {
     )
   }
 
-  private[sbt] def getAnalyses: Future[Seq[Analysis]] = {
+  private[sbt] def getAnalyses: Future[Seq[Analysis]] =
     val result = Promise[Seq[Analysis]]()
 
-    new Thread("sbt-get-analysis-thread") {
+    new Thread("sbt-get-analysis-thread"):
       setDaemon(true)
       start()
       override def run(): Unit =
-        try {
-          AnalysesAccess.cache.getIfPresent(AnalysesKey) match {
+        try
+          AnalysesAccess.cache.getIfPresent(AnalysesKey) match
             case null   => result.success(Nil)
             case caches =>
               val (working, uninitialized) = caches.partition {
@@ -239,17 +222,14 @@ private[sbt] object Definition {
                   (title, storeAnalysis(Paths.get(file), !useBinary, useConsistent))
               }
               val validCaches = working ++ addToCache
-              if (addToCache.nonEmpty) {
-                AnalysesAccess.cache.put(AnalysesKey, validCaches)
-              }
+              if addToCache.nonEmpty then AnalysesAccess.cache.put(AnalysesKey, validCaches)
               result.success(validCaches.toSeq.collect { case (_, Some(analysis)) =>
                 analysis
               })
-          }
-        } catch { case scala.util.control.NonFatal(e) => result.failure(e) }
-    }
+        catch case scala.util.control.NonFatal(e) => result.failure(e)
+    end new
     result.future
-  }
+  end getAnalyses
 
   def lspDefinition(
       jsonDefinition: JValue,
@@ -274,7 +254,7 @@ private[sbt] object Definition {
             log.debug(s"$LspDefinitionLogHead found line: $line")
             textProcessor.identifier(line, definition.position.character.toInt)
           }
-      } match {
+      } match
       case Some(sym) =>
         log.debug(s"symbol $sym")
         analyses
@@ -321,6 +301,6 @@ private[sbt] object Definition {
         log.info(s"Symbol not found in definition request $jsonDefinitionString")
         import langserver.codec.JsonProtocol.given
         send(commandSource, requestId)(Array.empty[Location])
-    }
+    end match
   }
-}
+end Definition

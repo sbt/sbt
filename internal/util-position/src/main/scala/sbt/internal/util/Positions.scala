@@ -10,15 +10,14 @@ package sbt.internal.util
 
 sealed trait SourcePosition
 
-sealed trait FilePosition extends SourcePosition {
+sealed trait FilePosition extends SourcePosition:
   def path: String
   def startLine: Int
   def sourceCode: Option[String]
-}
 
 case object NoPosition extends SourcePosition
 
-final case class LinePosition(path: String, startLine: Int) extends FilePosition {
+final case class LinePosition(path: String, startLine: Int) extends FilePosition:
   private var _sourceCode: Option[String] = None
   def sourceCode: Option[String] = _sourceCode
   def withSourceCode(code: String): LinePosition =
@@ -29,13 +28,11 @@ final case class LinePosition(path: String, startLine: Int) extends FilePosition
     c match
       case Some(code) => this.withSourceCode(code)
       case None       => this
-}
 
-final case class LineRange(start: Int, end: Int) {
+final case class LineRange(start: Int, end: Int):
   def shift(n: Int) = new LineRange(start + n, end + n)
-}
 
-final case class RangePosition(path: String, range: LineRange) extends FilePosition {
+final case class RangePosition(path: String, range: LineRange) extends FilePosition:
   private var _sourceCode: Option[String] = None
   def startLine = range.start
   def sourceCode: Option[String] = _sourceCode
@@ -47,6 +44,5 @@ final case class RangePosition(path: String, range: LineRange) extends FilePosit
     c match
       case Some(code) => this.withSourceCode(code)
       case None       => this
-}
 
 object SourcePosition extends SourcePositionImpl

@@ -7,7 +7,7 @@ import coursier.version.VersionConstraint
 import scala.annotation.nowarn
 import scala.collection.immutable.Seq
 
-object ResolutionSerializer {
+object ResolutionSerializer:
 
   def extractLockFileData(
       resolutions: Map[Configuration, Resolution],
@@ -42,6 +42,7 @@ object ResolutionSerializer {
         configurations = configurations,
         metadata = metadata
       )
+  end extractLockFileData
 
   private def extractDependencies(
       resolution: Resolution,
@@ -69,7 +70,7 @@ object ResolutionSerializer {
               artifactMap.getOrElse(dep, Seq.empty).map { case (url, classifier, ext) =>
                 ArtifactLock(
                   url = url,
-                  classifier = if (classifier.isEmpty) None else Some(classifier),
+                  classifier = if classifier.isEmpty then None else Some(classifier),
                   extension = ext,
                   tpe = dep.attributes.`type`.value
                 )
@@ -80,15 +81,16 @@ object ResolutionSerializer {
               name = dep.module.name.value,
               version = resolvedVersion,
               configuration = dep.variantSelector.repr,
-              classifier = dep.attributes.classifier.value match {
+              classifier = dep.attributes.classifier.value match
                 case "" => None
                 case c  => Some(c)
-              },
+              ,
               tpe = dep.attributes.`type`.value,
               transitives = transitives.toVector,
               artifacts = artifacts.toVector
             )
     traverseEither(xs)
+  end extractDependencies
 
   private def traverseEither[A1, A2](xs: Vector[Either[A1, A2]]): Either[A1, Vector[A2]] =
     xs.foldLeft(Right(Vector.empty): Either[A1, Vector[A2]]) {
@@ -100,18 +102,17 @@ object ResolutionSerializer {
   def reconstructResolutions(
       lockFileData: LockFileData,
       params: ResolutionParams
-  ): Map[Configuration, Resolution] = {
+  ): Map[Configuration, Resolution] =
     lockFileData.configurations.map { configLock =>
       val config = Configuration(configLock.name)
       val resolution = reconstructResolution(configLock, params)
       config -> resolution
     }.toMap
-  }
 
   private def reconstructResolution(
       configLock: ConfigurationLock,
       params: ResolutionParams
-  ): Resolution = {
+  ): Resolution =
     val forceVersions: Map[Module, String] = configLock.dependencies.map { depLock =>
       val module = Module(
         coursier.Organization(depLock.organization),
@@ -168,24 +169,22 @@ object ResolutionSerializer {
       .withDependencies(dependencies)
       .withForceVersions(forceVersions ++ params.params.forceVersion)
       .withProjectCache(projectCache): @nowarn)
-  }
+  end reconstructResolution
 
-  private object EmptyArtifactSource extends ArtifactSource {
+  private object EmptyArtifactSource extends ArtifactSource:
     def artifacts(
         dependency: Dependency,
         project: Project,
         overrideClassifiers: Option[scala.collection.immutable.Seq[coursier.core.Classifier]]
     ): scala.collection.immutable.Seq[(coursier.core.Publication, coursier.util.Artifact)] =
       scala.collection.immutable.Seq.empty
-  }
 
   def getLockedArtifacts(
       lockFileData: LockFileData
-  ): Map[(String, String, String), Seq[ArtifactLock]] = {
+  ): Map[(String, String, String), Seq[ArtifactLock]] =
     lockFileData.configurations.flatMap { configLock =>
       configLock.dependencies.map { depLock =>
         (depLock.organization, depLock.name, depLock.version) -> depLock.artifacts
       }
     }.toMap
-  }
-}
+end ResolutionSerializer

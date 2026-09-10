@@ -32,47 +32,41 @@ class ZincComponentManager(
     provider: ComponentProvider,
     secondaryCacheDir: Option[File],
     log0: Logger,
-) {
+):
   val log = new FullLogger(log0)
 
   /** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
-  def files(id: String)(ifMissing: IfMissing): Iterable[File] = {
+  def files(id: String)(ifMissing: IfMissing): Iterable[File] =
     def notFound = invalid(s"Could not find required component '$id'")
-    def getOrElse(orElse: => Iterable[File]): Iterable[File] = {
+    def getOrElse(orElse: => Iterable[File]): Iterable[File] =
       val existing = provider.component(id)
       // log.info(s"[zinc-lm] existing = ${existing.toList}")
-      if (existing.isEmpty) orElse
+      if existing.isEmpty then orElse
       else existing
-    }
 
-    def createAndCache = {
-      ifMissing match {
+    def createAndCache =
+      ifMissing match
         case IfMissing.Fail      => notFound
         case d: IfMissing.Define =>
           d.run() // this is expected to have called define.
-          if (d.useSecondaryCache) {
-            cacheToSecondaryCache(id)
-          }
+          if d.useSecondaryCache then cacheToSecondaryCache(id)
           getOrElse(notFound)
-      }
-    }
 
-    def fromSecondary: Iterable[File] = {
+    def fromSecondary: Iterable[File] =
       lockSecondaryCache {
         update(id)
         getOrElse(createAndCache)
       }.getOrElse(notFound)
-    }
 
     lockLocalCache(getOrElse(fromSecondary))
-  }
+  end files
 
   /**
    * Get the file for component 'id',
    *  throwing an exception if no files or multiple files exist for the component.
    */
-  def file(id: String)(ifMissing: IfMissing): File = {
-    files(id)(ifMissing).toList match {
+  def file(id: String)(ifMissing: IfMissing): File =
+    files(id)(ifMissing).toList match
       case x :: Nil          => x
       case xs if xs.size > 1 =>
         val canonical = xs.find(_.getName == s"$id.jar").getOrElse(xs.head)
@@ -83,8 +77,6 @@ class ZincComponentManager(
         )
         canonical
       case xs => invalid(s"Expected single file for component '$id', found: ${xs.mkString(", ")}")
-    }
-  }
 
   /** Associate a component id to a series of jars. */
   def define(id: String, files: Iterable[File]): Unit =
@@ -101,7 +93,11 @@ class ZincComponentManager(
     secondaryCacheDir.map(dir => lock(new File(dir, ".sbt.cache.lock"))(action))
 
   private def lock[T](file: File)(action: => T): T =
-    globalLock(file, new Callable[T] { def call = action })
+    globalLock(
+      file,
+      new Callable[T]:
+        def call = action
+    )
 
   private def invalid(msg: String) = throw new InvalidComponent(msg)
 
@@ -117,37 +113,29 @@ class ZincComponentManager(
    * To prevent this, we first remove any existing files in the component directory
    * before defining the component with the canonical name (`id.jar`).
    */
-  private def update(id: String): Unit = {
+  private def update(id: String): Unit =
     secondaryCacheDir.foreach { dir =>
       val secondary = secondaryCacheFile(id, dir)
-      if (secondary.exists) {
+      if secondary.exists then
         val componentDir = provider.componentLocation(id)
-        if (componentDir.isDirectory) {
-          IO.listFiles(componentDir).foreach(IO.delete)
-        }
+        if componentDir.isDirectory then IO.listFiles(componentDir).foreach(IO.delete)
         val canonicalJar = new File(componentDir, s"$id.jar")
         IO.copyFile(secondary, canonicalJar)
-      }
     }
-  }
 
   /** Install the files for component 'id' to the secondary cache. */
-  private def cacheToSecondaryCache(id: String): Unit = {
+  private def cacheToSecondaryCache(id: String): Unit =
     val fromPrimaryCache = file(id)(IfMissing.fail)
     secondaryCacheDir.foreach { dir =>
       IO.copyFile(fromPrimaryCache, secondaryCacheFile(id, dir))
     }
-  }
 
-  private def secondaryCacheFile(id: String, dir: File): File = {
+  private def secondaryCacheFile(id: String, dir: File): File =
     new File(new File(dir, SbtOrganization), s"$id-${ZincComponentManager.stampedVersion}.jar")
-  }
-}
+end ZincComponentManager
 
-object ZincComponentManager {
-  lazy val (version, timestamp) = {
+object ZincComponentManager:
+  lazy val (version, timestamp) =
     val properties = ResourceLoader.getPropertiesFor("/incrementalcompiler.version.properties")
     (properties.getProperty("version"), properties.getProperty("timestamp"))
-  }
   lazy val stampedVersion = s"${version}_$timestamp"
-}

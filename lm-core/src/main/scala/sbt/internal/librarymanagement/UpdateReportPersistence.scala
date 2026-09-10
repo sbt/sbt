@@ -141,6 +141,7 @@ object UpdateReportPersistence:
         case hit => hit.intValue
 
     def result(): Vector[ModuleReport] = table.result()
+  end ModuleTable
 
   private def writeV1[J](obj: UpdateReportCache, builder: Builder[J]): Unit =
     val modules = new ModuleTable
@@ -196,6 +197,7 @@ object UpdateReportPersistence:
       cachedDescriptor,
       configurations.map(cfg => cfg.modules.getOrElse(cfg.details.flatMap(_.modules)).map(modules))
     )
+  end readV1
 
   /**
    * `lookupField` consumes nothing, so the branch readers below still see every field. Each branch

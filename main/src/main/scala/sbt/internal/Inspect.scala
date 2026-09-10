@@ -19,12 +19,15 @@ import java.io.File
 import Scope.Global
 import sbt.ProjectExtra.*
 
-object Inspect {
+object Inspect:
   sealed trait Mode
   final case class Details(actual: Boolean) extends Mode
-  private[sbt] case object DependencyTreeMode extends Mode { override def toString = "tree" }
-  private[sbt] case object UsesMode extends Mode { override def toString = "inspect" }
-  private[sbt] case object DefinitionsMode extends Mode { override def toString = "definitions" }
+  private[sbt] case object DependencyTreeMode extends Mode:
+    override def toString = "tree"
+  private[sbt] case object UsesMode extends Mode:
+    override def toString = "inspect"
+  private[sbt] case object DefinitionsMode extends Mode:
+    override def toString = "definitions"
   val DependencyTree: Mode = DependencyTreeMode
   val Uses: Mode = UsesMode
   val Definitions: Mode = DefinitionsMode
@@ -34,20 +37,18 @@ object Inspect {
       spacedModeParser(s) flatMap { mode =>
         commandHandler(s, mode) | keyHandler(s)(mode)
       }
-  val spacedModeParser: State => Parser[Mode] = (_: State) => {
+  val spacedModeParser: State => Parser[Mode] = (_: State) =>
     val default = "-" ^^^ Details(false)
     val actual = "actual" ^^^ Details(true)
     val tree = "tree" ^^^ DependencyTree
     val uses = "uses" ^^^ Uses
     val definitions = "definitions" ^^^ Definitions
     token(Space ~> (default | tree | actual | uses | definitions)) ?? Details(false)
-  }
 
-  def allKeyParser(s: State): Parser[AttributeKey[?]] = {
+  def allKeyParser(s: State): Parser[AttributeKey[?]] =
     val keyMap = Project.structure(s).index.keyMap
     token(Space ~> ((ID !!! "Expected key").examples(keyMap.keySet))).flatMap: key =>
       Act.getKey(keyMap, key, idFun)
-  }
   val spacedKeyParser: State => Parser[ScopedKey[?]] = (s: State) =>
     Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 
@@ -58,9 +59,9 @@ object Inspect {
       spacedKeyParser(s).map(key => () => keyOutput(s, opt, key))
   }
 
-  def commandHandler(s: State, mode: Mode): Parser[() => String] = {
+  def commandHandler(s: State, mode: Mode): Parser[() => String] =
     Space ~> commandParser(s).flatMap { (name, cmd) =>
-      cmd.tags.get(BasicCommands.CommandAliasKey) match {
+      cmd.tags.get(BasicCommands.CommandAliasKey) match
         case Some((_, aliasFor)) =>
           def header = s"Alias for: $aliasFor"
           Parser
@@ -73,20 +74,17 @@ object Inspect {
             )
         case None =>
           success(() => s"Command: $name")
-      }
     }
-  }
 
-  def commandParser: State => Parser[(String, Command)] = { s =>
+  def commandParser: State => Parser[(String, Command)] = s =>
     oneOf(s.definedCommands.map(cmd => cmd -> cmd.nameOption) collect { case (cmd, Some(name)) =>
       DefaultParsers.literal(name).map(_ -> cmd)
     })
-  }
 
-  def keyOutput(s: State, option: Mode, sk: Def.ScopedKey[?]): String = {
+  def keyOutput(s: State, option: Mode, sk: Def.ScopedKey[?]): String =
     val extracted = Project.extract(s)
     import extracted.{ *, given }
-    option match {
+    option match
       case Details(actual)    => Project.details(extracted.structure, actual, sk)
       case DependencyTreeMode =>
         val basedir = new File(Project.session(s).current.build)
@@ -97,7 +95,4 @@ object Inspect {
         Project.showUses(Project.usedBy(extracted.structure, true, sk.key))
       case DefinitionsMode =>
         Project.showDefinitions(sk.key, Project.definitions(extracted.structure, true, sk.key))
-    }
-  }
-
-}
+end Inspect

@@ -8,23 +8,20 @@
 
 package sbt.util
 
-object ChangeReport {
+object ChangeReport:
   def modified[T](files: Set[T]): ChangeReport[T] =
-    new EmptyChangeReport[T] {
+    new EmptyChangeReport[T]:
       override def checked = files
       override def modified = files
       override def markAllModified = this
-    }
 
   def unmodified[T](files: Set[T]): ChangeReport[T] =
-    new EmptyChangeReport[T] {
+    new EmptyChangeReport[T]:
       override def checked = files
       override def unmodified = files
-    }
-}
 
 /** The result of comparing some current set of objects against a previous set of objects. */
-trait ChangeReport[T] {
+trait ChangeReport[T]:
 
   /** The set of all of the objects in the current set. */
   def checked: Set[T]
@@ -51,38 +48,33 @@ trait ChangeReport[T] {
    * sets are the same as in this report.
    */
   def markAllModified: ChangeReport[T] =
-    new ChangeReport[T] {
+    new ChangeReport[T]:
       def checked = ChangeReport.this.checked
       def unmodified = Set.empty[T]
       def modified = ChangeReport.this.checked
       def added = ChangeReport.this.added
       def removed = ChangeReport.this.removed
       override def markAllModified = this
-    }
 
-  override def toString = {
+  override def toString =
     val labels = List("Checked", "Modified", "Unmodified", "Added", "Removed")
     val sets = List(checked, modified, unmodified, added, removed)
     val keyValues = labels.lazyZip(sets).map { (label, set) => label + ": " + set.mkString(", ") }
     keyValues.mkString("Change report:\n\t", "\n\t", "")
-  }
+end ChangeReport
 
-}
-
-class EmptyChangeReport[T] extends ChangeReport[T] {
+class EmptyChangeReport[T] extends ChangeReport[T]:
   def checked = Set.empty[T]
   def unmodified = Set.empty[T]
   def modified = Set.empty[T]
   def added = Set.empty[T]
   def removed = Set.empty[T]
   override def toString = "No changes"
-}
 
 private class CompoundChangeReport[T](a: ChangeReport[T], b: ChangeReport[T])
-    extends ChangeReport[T] {
+    extends ChangeReport[T]:
   lazy val checked = a.checked ++ b.checked
   lazy val unmodified = a.unmodified ++ b.unmodified
   lazy val modified = a.modified ++ b.modified
   lazy val added = a.added ++ b.added
   lazy val removed = a.removed ++ b.removed
-}

@@ -19,7 +19,7 @@ import sbt.librarymanagement.ModuleID
 import sbt.librarymanagement.syntax.*
 import sbt.{ LocalProject, ProjectReference, ThisBuild }
 
-object SlashSyntaxTest extends sbt.SlashSyntax {
+object SlashSyntaxTest extends sbt.SlashSyntax:
   final case class Proj(id: String)
   implicit def projToRef(p: Proj): ProjectReference = LocalProject(p.id)
 
@@ -65,4 +65,4 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
     foo := (Test / bar).value + 1,
     libraryDependencies += uTest % Test,
   )
-}
+end SlashSyntaxTest

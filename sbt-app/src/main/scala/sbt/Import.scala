@@ -8,7 +8,7 @@
 
 package sbt
 
-trait Import {
+trait Import:
   type Settings = Def.Settings
   type Setting[T] = Def.Setting[T]
   type ScopedKey[T] = Def.ScopedKey[T]
@@ -211,7 +211,7 @@ trait Import {
   // type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
 
   // sbt.internal.util.complete
-  object complete {
+  object complete:
     val Completion = sbt.internal.util.complete.Completion
     type Completion = sbt.internal.util.complete.Completion
     val Completions = sbt.internal.util.complete.Completions
@@ -244,7 +244,7 @@ trait Import {
     type TypeString = sbt.internal.util.complete.TypeString
     val UpperBound = sbt.internal.util.complete.UpperBound
     type UpperBound = sbt.internal.util.complete.UpperBound
-  }
+  end complete
 
   // sbt.librarymanagement
   val Artifact = sbt.librarymanagement.Artifact
@@ -368,4 +368,4 @@ trait Import {
   type FileConverter = xsbti.FileConverter
   type HashedVirtualFileRef = xsbti.HashedVirtualFileRef
   type IncOptions = xsbti.compile.IncOptions
-}
+end Import

@@ -53,4 +53,5 @@ private[sbt] object BootServerSocketProbe:
     t.start()
     done.await(timeoutMillis, TimeUnit.MILLISECONDS)
     answered.get()
+  end liveServerDetected
 end BootServerSocketProbe

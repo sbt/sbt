@@ -11,7 +11,7 @@ import sbt.util.ShowLines.*
 // import sbt.librarymanagement.{ Resolver, UnresolvedWarningConfiguration, UpdateConfiguration }
 import sbt.librarymanagement.syntax.*
 
-final class ResolutionSpec extends AnyPropSpec with Matchers {
+final class ResolutionSpec extends AnyPropSpec with Matchers:
 
   lazy val log = ConsoleLogger()
 
@@ -22,7 +22,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       deps: Vector[ModuleID],
       scalaFullVersion: Option[String],
       overrideScalaVersion: Boolean = true
-  ): ModuleDescriptor = {
+  ): ModuleDescriptor =
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(
         scalaFullVersion = fv,
@@ -39,7 +39,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       .withConfigurations(configurations)
       .withScalaModuleInfo(scalaModuleInfo)
     lmEngine.moduleDescriptor(moduleSetting)
-  }
+  end module
 
   def resolvers = Vector(
     DefaultMavenRepository,
@@ -52,11 +52,10 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
   private final val stubModule = "com.example" % "foo" % "0.1.0" % "compile"
 
   private def unresolvedWarningLines(module: ModuleDescriptor): Seq[String] =
-    lmEngine.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), log) match {
+    lmEngine.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), log) match
       case Left(uw)      => uw.lines
       case Right(report) =>
         fail(s"Expected resolution to fail, but it succeeded with report: $report")
-    }
 
   private def assertContainsAll(lines: Seq[String], expected: Seq[String]): Unit =
     expected.foreach { line =>
@@ -337,23 +336,21 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       resolution.toOption.get.configurations.find(_.configuration == Compile.toConfigRef).get
     val tikaCaller = "org.apache.tika:tika-core:3.3.1"
 
-    def callerOf(name: String): ModuleReport = {
+    def callerOf(name: String): ModuleReport =
       val reports = compileConfig.modules.filter(_.module.name == name)
       withClue(s"$name not found in: ${compileConfig.modules.map(_.module.name).mkString(", ")}") {
         reports should have size 1
       }
       reports.head
-    }
 
     def coord(m: sbt.librarymanagement.ModuleID): String =
       s"${m.organization}:${m.name}:${m.revision}"
 
-    for (transitive <- Seq("commons-io", "slf4j-api")) {
+    for transitive <- Seq("commons-io", "slf4j-api") do
       val report = callerOf(transitive)
       val callerCoords = report.callers.map(c => coord(c.caller)).toSet
       withClue(s"$transitive callers: $callerCoords") {
         callerCoords should contain(tikaCaller)
       }
-    }
   }
-}
+end ResolutionSpec

@@ -16,7 +16,7 @@ import librarymanagement.*
 /**
  * An experimental plugin that adds the ability for Giter8 templates to be resolved
  */
-object Giter8TemplatePlugin extends AutoPlugin {
+object Giter8TemplatePlugin extends AutoPlugin:
   override def requires = CorePlugin
   override def trigger = allRequirements
 
@@ -32,4 +32,3 @@ object Giter8TemplatePlugin extends AutoPlugin {
           "sbtgiter8resolver.Giter8TemplateResolver"
         )
     )
-}

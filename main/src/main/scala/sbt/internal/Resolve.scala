@@ -12,13 +12,13 @@ package internal
 import sbt.internal.util.AttributeKey
 import sbt.ScopeAxis.{ Select, This, Zero }
 
-object Resolve {
+object Resolve:
   def apply(
       index: BuildUtil[?],
       current: ScopeAxis[Reference],
       key: AttributeKey[?],
       mask: ScopeMask,
-  ): Scope => Scope = {
+  ): Scope => Scope =
     val rs = (
       resolveProject(current, mask)
         :: resolveExtra(mask)
@@ -27,31 +27,29 @@ object Resolve {
         :: Nil
     )
     scope => rs.foldLeft(scope)((s, f) => f(s))
-  }
 
   def resolveTask(mask: ScopeMask)(scope: Scope): Scope =
-    if (mask.task) scope
+    if mask.task then scope
     else scope.copy(task = Zero)
 
   def resolveProject(current: ScopeAxis[Reference], mask: ScopeMask)(scope: Scope): Scope =
-    if (mask.project) scope
+    if mask.project then scope
     else scope.copy(project = current)
 
   def resolveExtra(mask: ScopeMask)(scope: Scope): Scope =
-    if (mask.extra) scope
+    if mask.extra then scope
     else scope.copy(extra = Zero)
 
   def resolveConfig[P](index: BuildUtil[P], key: AttributeKey[?], mask: ScopeMask)(
       scope: Scope,
   ): Scope =
-    if (mask.config) scope
-    else {
-      val (resolvedRef, proj) = scope.project match {
+    if mask.config then scope
+    else
+      val (resolvedRef, proj) = scope.project match
         case Zero | This => (None, index.thisRootProject)
         case Select(ref) =>
           val r = index.resolveRef(ref)
           (Some(r), index.projectFor(r))
-      }
       val task = scope.task.toOption
       val keyIndex = index.keyIndex
       val definesKey = (c: ScopeAxis[ConfigKey]) =>
@@ -59,5 +57,4 @@ object Resolve {
       val projectConfigs = index.configurations(proj).map(ck => Select(ck))
       val config: ScopeAxis[ConfigKey] = (Zero +: projectConfigs) find definesKey getOrElse Zero
       scope.copy(config = config)
-    }
-}
+end Resolve

@@ -24,28 +24,26 @@ import org.scalatest.funsuite.AnyFunSuite
  * The thin client can only pass `-D` options to a server it starts itself, so a server
  * that is already running has to be restarted for them to take effect (sbt/sbt#9682).
  */
-class ServerSysPropsTest extends AnyFunSuite {
+class ServerSysPropsTest extends AnyFunSuite:
   private val testDirectory = "client"
   private val sysPropsEnv = "SBT_SERVER_SYS_PROPS"
   private val sysPropsPortfileEnv = "SBT_SERVER_SYS_PROPS_PORTFILE"
 
-  private val serverTestBase: File = {
+  private val serverTestBase: File =
     val p0 = new File(".").getAbsoluteFile / "server-test" / "src" / "server-test"
     val p1 = new File(".").getAbsoluteFile / "src" / "server-test"
-    if (p0.exists) p0 else p1
-  }
+    if p0.exists then p0 else p1
 
   private def portfile(buildDir: File): File =
     buildDir / "project" / "target" / "active.json"
 
   /** A script that stands in for the sbt script and never brings a server up. */
-  private def deadScript(): String = {
+  private def deadScript(): String =
     val f = Files.createTempFile("dead-sbt", ".sh")
     Files.writeString(f, "#!/usr/bin/env bash\necho dead-server >&2\nexit 1\n")
     f.toFile.setExecutable(true)
     f.toFile.deleteOnExit()
     f.toString
-  }
 
   /**
    * Forks a server with the environment a client sets when it starts one. `optionsFor` is
@@ -55,7 +53,7 @@ class ServerSysPropsTest extends AnyFunSuite {
   private def withServer(
       sysProps: Seq[String],
       optionsFor: Option[File] = None
-  )(f: (File, scala.sys.process.Process) => Unit): Unit = {
+  )(f: (File, scala.sys.process.Process) => Unit): Unit =
     val base: Path = Files.createTempDirectory("sbt-sysprops")
     val buildDir = base.toFile / testDirectory
     IO.copyDirectory(serverTestBase / testDirectory, buildDir)
@@ -83,47 +81,46 @@ class ServerSysPropsTest extends AnyFunSuite {
       classpath.toSeq
     )
 
-    try {
+    try
       ServerSession.waitForPortfile(portfile(buildDir), process.isAlive())
       f(buildDir, process)
-    } finally {
-      if (process.isAlive()) process.destroy()
+    finally
+      if process.isAlive() then process.destroy()
       IO.delete(base.toFile)
-    }
-  }
+  end withServer
 
-  private class CachingOutputStream extends OutputStream {
+  private class CachingOutputStream extends OutputStream:
     private val bytes = new mutable.ArrayBuffer[Byte]
-    override def write(i: Int): Unit = { bytes += i.toByte; () }
+    override def write(i: Int): Unit =
+      bytes += i.toByte; ()
     def text: String = new String(bytes.toArray, "UTF-8")
-  }
 
   /** Runs the thin client, returning its exit code and everything it logged. */
-  private def client(baseDirectory: File, args: String*): (Int, String) = {
+  private def client(baseDirectory: File, args: String*): (Int, String) =
     val cos = new CachingOutputStream
     val out = new PrintStream(cos, true)
-    try {
+    try
       val code = NetworkClient.client(
         baseDirectory,
         args.toArray,
-        new InputStream { override def read(): Int = -1 },
+        new InputStream:
+          override def read(): Int = -1
+        ,
         out,
         out,
         false
       )
       (code, cos.text)
-    } finally
+    finally
       // the client sets every -D option it parses on its own JVM, which here is the test JVM
       args.foreach { a =>
-        if (a.startsWith("-D")) System.clearProperty(a.drop(2).takeWhile(_ != '='))
+        if a.startsWith("-D") then System.clearProperty(a.drop(2).takeWhile(_ != '='))
       }
-  }
 
-  private def exited(process: scala.sys.process.Process): Boolean = {
+  private def exited(process: scala.sys.process.Process): Boolean =
     val deadline = System.nanoTime + 60L * 1000000000L
-    while (process.isAlive() && System.nanoTime < deadline) Thread.sleep(50)
+    while process.isAlive() && System.nanoTime < deadline do Thread.sleep(50)
     !process.isAlive()
-  }
 
   test("the server records the -D options it was started with, without their values") {
     withServer(Seq("-Dmy.prop=hunter2")) { (buildDir, _) =>
@@ -151,7 +148,9 @@ class ServerSysPropsTest extends AnyFunSuite {
         buildDir,
         Array("--completions=sbtn comp"),
         false,
-        new InputStream { override def read(): Int = -1 },
+        new InputStream:
+          override def read(): Int = -1
+        ,
         out
       )
       assert(process.isAlive(), "a completion query shut the server down")
@@ -247,38 +246,38 @@ class ServerSysPropsTest extends AnyFunSuite {
 
   test("sbt.server.autorestart=false keeps the running server and says what it is missing") {
     withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
-      try {
+      try
         val (code, log) =
           client(buildDir, "-Dsbt.server.autorestart=false", "-Dmy.prop=second", "willSucceed")
         assert(code == 0, log)
         assert(process.isAlive(), s"the server was restarted with autorestart turned off: $log")
         assert(log.contains("cannot pick up"), log)
         assert(log.contains("changed: my.prop"), log)
-      } finally System.clearProperty("sbt.server.autorestart")
+      finally System.clearProperty("sbt.server.autorestart")
     }
   }
 
   test("sbt.server.autostart=false keeps the running server and says what it is missing") {
     withServer(Seq("-Dmy.prop=first")) { (buildDir, process) =>
-      try {
+      try
         val (code, log) =
           client(buildDir, "-Dsbt.server.autostart=false", "-Dmy.prop=second", "willSucceed")
         assert(code == 0, log)
         assert(process.isAlive(), s"the server was restarted with autostart turned off: $log")
         assert(log.contains("cannot pick up"), log)
         assert(log.contains("changed: my.prop"), log)
-      } finally System.clearProperty("sbt.server.autostart")
+      finally System.clearProperty("sbt.server.autostart")
     }
   }
 
   test("what a client is missing doesn't include the values") {
     withServer(Seq("-Dmy.prop=hunter2")) { (buildDir, process) =>
-      try {
+      try
         val (_, log) =
           client(buildDir, "-Dsbt.server.autorestart=false", "-Dmy.prop=hunter3", "willSucceed")
         assert(process.isAlive(), log)
         assert(!log.contains("hunter2") && !log.contains("hunter3"), log)
-      } finally System.clearProperty("sbt.server.autorestart")
+      finally System.clearProperty("sbt.server.autorestart")
     }
   }
-}
+end ServerSysPropsTest

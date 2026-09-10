@@ -3,10 +3,10 @@ import sbt.*
 import sbt.io.CopyOptions
 import sbt.util.CacheImplicits.given
 
-object SbtLauncherPlugin extends AutoPlugin {
+object SbtLauncherPlugin extends AutoPlugin:
   override def requires = plugins.IvyPlugin
 
-  object autoImport {
+  object autoImport:
     val SbtLaunchConfiguration = config("sbt-launch")
     val sbtLaunchJar =
       taskKey[HashedVirtualFileRef]("constructs an sbt-launch.jar for this version of sbt.")
@@ -14,7 +14,6 @@ object SbtLauncherPlugin extends AutoPlugin {
       taskKey[HashedVirtualFileRef](
         "The released version of the sbt-launcher we use to bundle this application."
       )
-  }
   import autoImport.*
 
   override def projectConfigurations: Seq[Configuration] = Seq(SbtLaunchConfiguration)
@@ -24,21 +23,20 @@ object SbtLauncherPlugin extends AutoPlugin {
       val converter = fileConverter.value
       Classpaths
         .managedJars(SbtLaunchConfiguration, Set("jar"), update.value, converter)
-        .headOption match {
+        .headOption match
         case Some(jar) => jar.data
         case None      =>
           sys.error(
             s"Could not resolve sbt launcher!, dependencies := ${libraryDependencies.value}"
           )
-      }
     },
     sbtLaunchJar := Def.uncached {
       val propFiles = (Compile / resources).value
       val propFileLocations =
-        for (file <- propFiles; if file.getName != "resources") yield {
-          if (file.getName == "sbt.boot.properties") "sbt/sbt.boot.properties" -> file
+        for file <- propFiles; if file.getName != "resources"
+        yield
+          if file.getName == "sbt.boot.properties" then "sbt/sbt.boot.properties" -> file
           else file.getName -> file
-        }
       // TODO - We need to inject the appropriate boot.properties file for this version of sbt.
       fileConverter.value.toVirtualFile(
         rebundle(
@@ -50,19 +48,16 @@ object SbtLauncherPlugin extends AutoPlugin {
     }
   )
 
-  def rebundle(jar: File, overrides: Map[String, File], target: File): File = {
+  def rebundle(jar: File, overrides: Map[String, File], target: File): File =
     // TODO - Check if we should rebuild the jar or not....
     IO.withTemporaryDirectory { dir =>
       IO.unzip(jar, dir)
       IO.copy(overrides.map({ case (n, f) => (f, dir / n) }), CopyOptions().withOverwrite(true))
       // TODO - is the ok for creating a jar?
-      val rebase: File => Seq[(File, String)] = {
+      val rebase: File => Seq[(File, String)] =
         val path = dir.toPath
-        f => if (f != dir) f -> path.relativize(f.toPath).toString :: Nil else Nil
-      }
+        f => if f != dir then f -> path.relativize(f.toPath).toString :: Nil else Nil
       IO.zip(dir.allPaths.get().flatMap(rebase), target, None)
     }
     target
-  }
-
-}
+end SbtLauncherPlugin

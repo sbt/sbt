@@ -111,6 +111,7 @@ object ClientSocketDuplexTest extends Properties:
                         .log("client received a different payload than the server sent"),
                     )
                   )
+            end if
 
   private def readNBytes(in: InputStream, n: Int): Array[Byte] =
     val buf = new Array[Byte](n)

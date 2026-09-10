@@ -50,7 +50,7 @@ object ConsoleProject:
       options: Seq[String] = Nil
   )(using
       log: Logger
-  ): Unit = {
+  ): Unit =
     val extracted = Project.extract(state)
     val cpImports = new Imports(extracted, state)
     // Bindings are ignored by Scala 3 bridge: https://github.com/scala/scala3/issues/5069
@@ -149,7 +149,7 @@ object ConsoleProject:
       )(Some(loader), bindings).get
       ()
     finally ConsoleProjectBindings.clear()
-  }
+  end apply
 
   /**
    * `dotty.tools.repl.AbstractFileClassLoader`'s bytecode interrupt
@@ -203,11 +203,10 @@ object ConsoleProject:
       catch case _: java.io.IOException => false
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */
-  final class Imports private[sbt] (extracted: Extracted, state: State) {
+  final class Imports private[sbt] (extracted: Extracted, state: State):
     import extracted.*
     implicit def taskKeyEvaluate[T](t: TaskKey[T]): Evaluate[T] =
       new Evaluate(runTask(t, state)._2)
     implicit def settingKeyEvaluate[T](s: SettingKey[T]): Evaluate[T] = new Evaluate(get(s))
-  }
   final class Evaluate[T] private[sbt] (val eval: T)
 end ConsoleProject

@@ -30,12 +30,12 @@ import sbt.librarymanagement.Configurations.Test
  *
  *  Note:  Using AutoPlugins to enable/disable build features is experimental in sbt 0.13.5.
  */
-object JUnitXmlReportPlugin extends AutoPlugin {
+object JUnitXmlReportPlugin extends AutoPlugin:
   // TODO - If testing becomes its own plugin, we only rely on the core settings.
   override def requires = JvmPlugin
   override def trigger = allRequirements
 
-  object autoImport {
+  object autoImport:
     val testReportsDirectory =
       settingKey[File]("Directory for outputting junit test reports.").withRank(AMinusSetting)
 
@@ -49,10 +49,9 @@ object JUnitXmlReportPlugin extends AutoPlugin {
         )
       }
     )
-  }
 
   import autoImport.*
 
   override lazy val projectSettings: Seq[Setting[?]] =
     inConfig(Test)(testReportSettings)
-}
+end JUnitXmlReportPlugin

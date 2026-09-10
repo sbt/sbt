@@ -16,7 +16,7 @@ import ProjectExtra.{ extract, scopedKeyData }
 import Scope.Global
 import sbt.Def.*
 
-object LintUnused {
+object LintUnused:
   lazy val lintSettings: Seq[Setting[?]] = Seq(
     lintIncludeFilter := {
       val includes = includeLintKeys.value.map(_.scopedKey.key.label)
@@ -80,33 +80,31 @@ object LintUnused {
     val includeKeys = (Global / lintIncludeFilter).value
     val excludeKeys = (Global / lintExcludeFilter).value
     val result = lintUnused(state, includeKeys, excludeKeys)
-    if (result.isEmpty) log.success("ok")
+    if result.isEmpty then log.success("ok")
     else lintResultLines(result) foreach { log.warn(_) }
   }
 
   // function version of the lintUnused, based on just state
-  def lintUnusedFunc(s: State): State = {
+  def lintUnusedFunc(s: State): State =
     val log = s.log
     val extracted = Project.extract(s)
     val includeKeys = extracted.get((Global / lintIncludeFilter))
     val excludeKeys = extracted.get((Global / lintExcludeFilter))
-    if (extracted.get((Global / lintUnusedKeysOnLoad))) {
+    if extracted.get((Global / lintUnusedKeysOnLoad)) then
       val result = lintUnused(s, includeKeys, excludeKeys)
       lintResultLines(result) foreach { log.warn(_) }
-    }
     s
-  }
 
   def lintResultLines(
       result: Seq[(ScopedKey[?], String, Seq[SourcePosition])]
-  ): Vector[String] = {
+  ): Vector[String] =
     import scala.collection.mutable.ListBuffer
     val buffer = ListBuffer.empty[String]
 
-    if (result.isEmpty) Vector.empty
-    else {
+    if result.isEmpty then Vector.empty
+    else
       val size = result.size
-      if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
+      if size == 1 then buffer.append("there's a key that's not used by any other settings/tasks:")
       else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
       buffer.append(" ")
       result foreach { case (_, str, positions) =>
@@ -124,14 +122,14 @@ object LintUnused {
         "either append it to `Global / excludeLintKeys` or call .withRank(KeyRanks.Invisible) on the key"
       )
       buffer.toVector
-    }
-  }
+    end if
+  end lintResultLines
 
   def lintUnused(
       state: State,
       includeKeys: String => Boolean,
       excludeKeys: String => Boolean
-  ): Seq[(ScopedKey[?], String, Seq[SourcePosition])] = {
+  ): Seq[(ScopedKey[?], String, Seq[SourcePosition])] =
     val extracted = Project.extract(state)
     val structure = extracted.structure
     val display = Def.showShortKey(None) // extracted.showKey
@@ -149,10 +147,9 @@ object LintUnused {
 
     def isIncludeKey(u: UnusedKey): Boolean = includeKeys(u.scoped.key.label)
     def isExcludeKey(u: UnusedKey): Boolean = excludeKeys(u.scoped.key.label)
-    def isSettingKey(u: UnusedKey): Boolean = u.data match {
+    def isSettingKey(u: UnusedKey): Boolean = u.data match
       case Some(data) => data.settingValue.isDefined
       case _          => false
-    }
     def isLocallyDefined(u: UnusedKey): Boolean = u.positions.exists {
       case pos: FilePosition => pos.path.contains(File.separator)
       case _                 => false
@@ -166,9 +163,9 @@ object LintUnused {
         u
     }
     unusedKeys.map(u => (u.scoped, display.show(u.scoped), u.positions)).sortBy(_._2)
-  }
+  end lintUnused
 
-  def lintScalaVersion(state: State): State = {
+  def lintScalaVersion(state: State): State =
     val log = state.log
     val extracted = Project.extract(state)
     val structure = extracted.structure
@@ -199,8 +196,9 @@ object LintUnused {
             )
           case _ => ()
       else ()
+    end for
     state
-  }
+  end lintScalaVersion
 
   private case class UnusedKey(
       scoped: ScopedKey[?],
@@ -208,12 +206,10 @@ object LintUnused {
       data: Option[ScopedKeyData[?]]
   )
 
-  private def definedAtString(settings: Seq[Setting[?]]): Seq[SourcePosition] = {
+  private def definedAtString(settings: Seq[Setting[?]]): Seq[SourcePosition] =
     settings flatMap { setting =>
-      setting.pos match {
+      setting.pos match
         case NoPosition => Vector.empty
         case pos        => Vector(pos)
-      }
     }
-  }
-}
+end LintUnused

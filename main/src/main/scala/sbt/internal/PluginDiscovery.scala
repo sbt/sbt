@@ -26,20 +26,18 @@ object PluginDiscovery:
    * Relative paths of resources that list top-level modules that are available.
    * Normally, the classes for those modules will be in the same classpath entry as the resource.
    */
-  object Paths {
+  object Paths:
     final val AutoPlugins = "sbt/sbt.autoplugins"
     final val Builds = "sbt/sbt.builds"
-  }
 
   /** Names of top-level modules that subclass sbt plugin-related classes: [[AutoPlugin]], and [[BuildDef]]. */
-  final class DiscoveredNames(val autoPlugins: Seq[String], val builds: Seq[String]) {
+  final class DiscoveredNames(val autoPlugins: Seq[String], val builds: Seq[String]):
     override def toString: String = s"""DiscoveredNames($autoPlugins, $builds)"""
-  }
 
   def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil)
 
   /** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
-  def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins = {
+  def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins =
     def discover[A1: ClassTag](resource: String) =
       binarySourceModules[A1](data, loader, resource)
     import Paths.*
@@ -60,40 +58,36 @@ object PluginDiscovery:
       DetectedAutoPlugin(name, value, sbt.Plugins.hasAutoImportGetter(value, loader))
     }
     new DetectedPlugins(allAutoPlugins, discover[BuildDef](Builds))
-  }
+  end discoverAll
 
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
-  def discoverSourceAll(analysis: CompileAnalysis): DiscoveredNames = {
+  def discoverSourceAll(analysis: CompileAnalysis): DiscoveredNames =
     def discover[T](using classTag: reflect.ClassTag[T]): Seq[String] =
       sourceModuleNames(analysis, classTag.runtimeClass.getName)
     new DiscoveredNames(discover[AutoPlugin], discover[BuildDef])
-  }
 
   // TODO: consider consolidating into a single file, which would make the classpath search 4x faster
   /** Writes discovered module `names` to zero or more files in `dir` as per [[writeDescriptor]] and returns the list of files written. */
-  def writeDescriptors(names: DiscoveredNames, dir: File): Seq[File] = {
+  def writeDescriptors(names: DiscoveredNames, dir: File): Seq[File] =
     import Paths.*
     val files =
       writeDescriptor(names.autoPlugins, dir, AutoPlugins) ::
         writeDescriptor(names.builds, dir, Builds) ::
         Nil
     files.flatMap(_.toList)
-  }
 
   /** Stores the module `names` in `dir / path`, one per line, unless `names` is empty and then the file is deleted and `None` returned. */
-  def writeDescriptor(names: Seq[String], dir: File, path: String): Option[File] = {
+  def writeDescriptor(names: Seq[String], dir: File, path: String): Option[File] =
     val descriptor: File = new File(dir, path)
-    if (names.isEmpty) {
+    if names.isEmpty then
       IO.delete(descriptor)
       None
-    } else {
+    else
       val lines = names.distinct.sorted
       // Do not invalidate timestamp-based downstream caches when the descriptor content is unchanged.
-      if (!descriptor.exists || IO.readLines(descriptor) != lines)
+      if !descriptor.exists || IO.readLines(descriptor) != lines then
         IO.writeLines(descriptor, lines)
       Some(descriptor)
-    }
-  }
 
   /**
    * Discovers the names of top-level modules listed in resources named `resourceName` as per [[binaryModuleNames]] or
@@ -112,16 +106,15 @@ object PluginDiscovery:
     ).distinct
 
   /** Discovers top-level modules in `analysis` that inherit from any of `subclasses`. */
-  def sourceModuleNames(analysis: CompileAnalysis, subclasses: String*): Seq[String] = {
+  def sourceModuleNames(analysis: CompileAnalysis, subclasses: String*): Seq[String] =
     val subclassSet = subclasses.toSet
     val defs = Tests.allDefs(analysis)
     val ds = Discovery(subclassSet, Set.empty)(defs)
     ds.flatMap {
       case (definition, Discovered(subs, _, _, true)) =>
-        if ((subs & subclassSet).isEmpty) Nil else definition.name :: Nil
+        if (subs & subclassSet).isEmpty then Nil else definition.name :: Nil
       case _ => Nil
     }
-  }
 
   /**
    * Obtains the list of modules identified in all resource files `resourceName` from `loader` that are on `classpath`.
@@ -176,14 +169,13 @@ object PluginDiscovery:
       loader: ClassLoader
   ): Seq[(String, A)] =
     try ModuleUtilities.getCheckedObjects[A](names, loader)
-    catch {
+    catch
       case e: ExceptionInInitializerError =>
         val cause = e.getCause
-        if (cause eq null) throw e else throw cause
+        if cause eq null then throw e else throw cause
       case e: LinkageError => incompatiblePlugins(data, e)
-    }
 
-  private def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing = {
+  private def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing =
     val evicted = data.report.toList.flatMap(_.configurations.flatMap(_.evicted))
     val evictedModules = evicted.map { id =>
       (id.organization, id.name)
@@ -191,11 +183,10 @@ object PluginDiscovery:
     val evictedStrings = evictedModules map { (o, n) => o + ":" + n }
     val msgBase = "Binary incompatibility in plugins detected."
     val msgExtra =
-      if (evictedStrings.isEmpty) ""
+      if evictedStrings.isEmpty then ""
       else
         "\nNote that conflicts were resolved for some dependencies:\n\t" + evictedStrings.mkString(
           "\n\t"
         )
     throw new IncompatiblePluginsException(msgBase + msgExtra, t)
-  }
 end PluginDiscovery

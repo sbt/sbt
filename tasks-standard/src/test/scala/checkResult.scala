@@ -12,19 +12,16 @@ import scala.util.control.NonFatal
 
 import org.scalacheck.Prop.*
 
-object checkResult {
-  def apply[T](run: => T, expected: T) = {
+object checkResult:
+  def apply[T](run: => T, expected: T) =
     ("Expected: " + expected) |:
-      (try {
+      (try
         val actual = run
         ("Actual: " + actual) |: (actual == expected)
-      } catch {
+      catch
         case i: Incomplete =>
           println(i)
           "One or more tasks failed" |: false
         case NonFatal(e) =>
           e.printStackTrace()
-          "Error in framework" |: false
-      })
-  }
-}
+          "Error in framework" |: false)

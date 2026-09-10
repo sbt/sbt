@@ -5,7 +5,7 @@ import sbt.librarymanagement.syntax.*
 
 final case class ScalaVersion(full: String, binary: String)
 
-private[librarymanagement] abstract class CrossVersionFunctions {
+private[librarymanagement] abstract class CrossVersionFunctions:
 
   /** Compatibility with 0.13 */
   @deprecated(
@@ -84,30 +84,26 @@ private[librarymanagement] abstract class CrossVersionFunctions {
   def for2_13Use3With(prefix: String, suffix: String): CrossVersion = For2_13Use3(prefix, suffix)
 
   private[sbt] def getPrefixSuffix(value: CrossVersion): (String, String) =
-    value match {
+    value match
       case (_: Disabled | _: Constant | _: Patch) => ("", "")
       case b: Binary                              => (b.prefix, b.suffix)
       case f: Full                                => (f.prefix, f.suffix)
       case c: For3Use2_13                         => (c.prefix, c.suffix)
       case c: For2_13Use3                         => (c.prefix, c.suffix)
-    }
 
   private[sbt] def setPrefixSuffix(value: CrossVersion, p: String, s: String): CrossVersion =
-    value match {
+    value match
       case (_: Disabled | _: Constant | _: Patch) => value
       case b: Binary                              => b.withPrefix(p).withSuffix(s)
       case f: Full                                => f.withPrefix(p).withSuffix(s)
       case c: For3Use2_13                         => c.withPrefix(p).withSuffix(s)
       case c: For2_13Use3                         => c.withPrefix(p).withSuffix(s)
-    }
 
-  private[sbt] def patchFun(fullVersion: String): String = {
+  private[sbt] def patchFun(fullVersion: String): String =
     import sbt.internal.librarymanagement.cross.CrossVersionUtil.BinCompatV
-    fullVersion match {
-      case BinCompatV(x, y, z, w, _) => s"""$x.$y.$z${if (w == null) "" else w}"""
+    fullVersion match
+      case BinCompatV(x, y, z, w, _) => s"""$x.$y.$z${if w == null then "" else w}"""
       case other                     => other
-    }
-  }
 
   private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 
@@ -121,7 +117,7 @@ private[librarymanagement] abstract class CrossVersionFunctions {
       fullVersion: String,
       binaryVersion: String
   ): Option[String => String] =
-    cross match {
+    cross match
       case _: Disabled    => None
       case b: Binary      => append(b.prefix + binaryVersion + b.suffix)
       case c: Constant    => append(c.value)
@@ -129,15 +125,14 @@ private[librarymanagement] abstract class CrossVersionFunctions {
       case f: Full        => append(f.prefix + fullVersion + f.suffix)
       case c: For3Use2_13 =>
         val compat =
-          if (binaryVersion == "3" || binaryVersion.startsWith("3.0.0")) "2.13"
+          if binaryVersion == "3" || binaryVersion.startsWith("3.0.0") then "2.13"
           else binaryVersion
         append(c.prefix + compat + c.suffix)
       case c: For2_13Use3 =>
         val compat =
-          if (binaryVersion == "2.13") "3"
+          if binaryVersion == "2.13" then "3"
           else binaryVersion
         append(c.prefix + compat + c.suffix)
-    }
 
   /**
    * Constructs the cross-version function defined by `module` and `is`, if one is configured.
@@ -160,16 +155,14 @@ private[librarymanagement] abstract class CrossVersionFunctions {
       artifacts: Vector[Artifact],
       cross: Option[String => String]
   ): Vector[Artifact] =
-    cross match {
+    cross match
       case None    => artifacts
       case Some(_) => substituteCrossA(artifacts, cross)
-    }
 
   private[sbt] def applyCross(s: String, fopt: Option[String => String]): String =
-    fopt match {
+    fopt match
       case None       => s
       case Some(fopt) => fopt(s)
-    }
 
   private[sbt] def crossName(name: String, cross: String): String =
     name + "_" + cross
@@ -192,13 +185,12 @@ private[librarymanagement] abstract class CrossVersionFunctions {
   private[sbt] def substituteCross(
       exclude: ExclusionRule,
       is: Option[ScalaModuleInfo]
-  ): ExclusionRule = {
+  ): ExclusionRule =
     val fopt: Option[String => String] =
       is flatMap { i =>
         CrossVersion(exclude.crossVersion, i.scalaFullVersion, i.scalaBinaryVersion)
       }
     exclude.withName(applyCross(exclude.name, fopt))
-  }
 
   /** Cross-versions `a` according to cross-version function `cross`. */
   def substituteCross(a: Artifact, cross: Option[String => String]): Artifact =
@@ -214,14 +206,12 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    * for the given full and binary Scala versions `scalaFullVersion` and `scalaBinaryVersion`
    * according to the ModuleID's cross-versioning setting.
    */
-  def apply(scalaFullVersion: String, scalaBinaryVersion: String): ModuleID => ModuleID = m => {
+  def apply(scalaFullVersion: String, scalaBinaryVersion: String): ModuleID => ModuleID = m =>
     val cross = apply(m.crossVersion, scalaFullVersion, scalaBinaryVersion)
-    if (cross.isDefined)
+    if cross.isDefined then
       m.withName(applyCross(m.name, cross))
         .withExplicitArtifacts(substituteCrossA(m.explicitArtifacts, cross))
-    else
-      m
-  }
+    else m
 
   def isSbtApiCompatible(v: String): Boolean = CrossVersionUtil.isSbtApiCompatible(v)
 
@@ -271,4 +261,4 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    */
   def isScalaBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean =
     CrossVersionUtil.isScalaBinaryCompatibleWith(newVersion, origVersion)
-}
+end CrossVersionFunctions

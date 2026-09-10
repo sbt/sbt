@@ -49,6 +49,7 @@ object ServerAcceptSpec extends BasicTestSuite:
     finally
       instance.shutdown()
       sbt.io.IO.delete(dir)
+  end withServer
 
   private def waitUntil(p: => Boolean): Boolean =
     val deadline = 10.seconds.fromNow

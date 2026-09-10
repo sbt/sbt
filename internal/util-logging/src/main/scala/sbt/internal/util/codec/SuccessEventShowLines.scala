@@ -12,11 +12,8 @@ package internal.util.codec
 import sbt.util.ShowLines
 import sbt.internal.util.SuccessEvent
 
-trait SuccessEventShowLines {
+trait SuccessEventShowLines:
   given sbtSuccessEventShowLines: ShowLines[SuccessEvent] =
-    ShowLines[SuccessEvent]((e: SuccessEvent) => {
-      Vector(e.message)
-    })
-}
+    ShowLines[SuccessEvent]((e: SuccessEvent) => Vector(e.message))
 
 object SuccessEventShowLines extends SuccessEventShowLines

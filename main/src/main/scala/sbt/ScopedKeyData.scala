@@ -11,7 +11,7 @@ package sbt
 import Def.ScopedKey
 import sbt.internal.util.KeyTag
 
-final case class ScopedKeyData[A](key: ScopedKey[A], definingKey: ScopedKey[A], value: Any) {
+final case class ScopedKeyData[A](key: ScopedKey[A], definingKey: ScopedKey[A], value: Any):
   def typeName: String = key.key.tag.toString
   def settingValue: Option[Any] =
     key.key.tag match
@@ -23,4 +23,3 @@ final case class ScopedKeyData[A](key: ScopedKey[A], definingKey: ScopedKey[A], 
       case KeyTag.SeqTask(typeArg)   => s"Task: Seq[$typeArg]"
       case KeyTag.InputTask(typeArg) => s"Input task: $typeArg"
       case KeyTag.Setting(typeArg)   => s"Setting: $typeArg = $value"
-}

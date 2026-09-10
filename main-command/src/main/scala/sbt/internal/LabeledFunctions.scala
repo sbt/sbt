@@ -19,14 +19,14 @@ package sbt.internal
  * is not ready to be exposed to users. Until the api matures or we decide that it's worth
  * exposing to users, these should remain sbt package private.
  */
-private[sbt] object LabeledFunctions {
+private[sbt] object LabeledFunctions:
 
   /**
    * Adds extension methods to a zero argument function.
    * @param f the function to extend
    * @tparam R the function result type
    */
-  extension [R](f: () => R) {
+  extension [R](f: () => R)
 
     /**
      * Add a label to the function.
@@ -34,7 +34,6 @@ private[sbt] object LabeledFunctions {
      * @return a wrapped function with an overridden toString method.
      */
     def label(string: String): () => R = new LabeledFunction0(f, string)
-  }
 
   /**
    * Adds extension methods to a single argument function.
@@ -42,7 +41,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T the input parameter
    * @tparam R the function result type
    */
-  extension [T, R](f: T => R) {
+  extension [T, R](f: T => R)
 
     /**
      * Add a label to the function.
@@ -50,7 +49,6 @@ private[sbt] object LabeledFunctions {
      * @return a wrapped function with an overridden toString method.
      */
     def label(string: String): T => R = new LabeledFunction1(f, string)
-  }
 
   /**
    * Adds extension methods to a two argument function.
@@ -59,7 +57,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T2 the second function input parameter
    * @tparam R the function result type
    */
-  extension [T1, T2, R](f: (T1, T2) => R) {
+  extension [T1, T2, R](f: (T1, T2) => R)
 
     /**
      * Add a label to the function.
@@ -67,7 +65,6 @@ private[sbt] object LabeledFunctions {
      * @return a wrapped function with an overridden toString method.
      */
     def label(string: String): (T1, T2) => R = new LabeledFunction2(f, string)
-  }
 
   /**
    * Adds extension methods to a three argument function.
@@ -77,7 +74,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T3 the third function input parameter
    * @tparam R the function result type
    */
-  extension [T1, T2, T3, R](f: (T1, T2, T3) => R) {
+  extension [T1, T2, T3, R](f: (T1, T2, T3) => R)
 
     /**
      * Add a label to the function.
@@ -85,7 +82,6 @@ private[sbt] object LabeledFunctions {
      * @return a wrapped function with an overridden toString method.
      */
     def label(string: String): (T1, T2, T3) => R = new LabeledFunction3(f, string)
-  }
 
   /**
    * Adds extension methods to a three argument function.
@@ -96,7 +92,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T4 the fourth function input parameter
    * @tparam R the function result type
    */
-  extension [T1, T2, T3, T4, R](f: (T1, T2, T3, T4) => R) {
+  extension [T1, T2, T3, T4, R](f: (T1, T2, T3, T4) => R)
 
     /**
      * Add a label to the function.
@@ -104,30 +100,24 @@ private[sbt] object LabeledFunctions {
      * @return a wrapped function with an overridden toString method.
      */
     def label(string: String): (T1, T2, T3, T4) => R = new LabeledFunction4(f, string)
-  }
-  private class LabeledFunction0[+R](private val f: () => R, label: String) extends (() => R) {
+  private class LabeledFunction0[+R](private val f: () => R, label: String) extends (() => R):
     override def apply(): R = f()
     override def toString: String = label
-  }
-  private class LabeledFunction1[-T, +R](private val f: T => R, label: String) extends (T => R) {
+  private class LabeledFunction1[-T, +R](private val f: T => R, label: String) extends (T => R):
     override def apply(t: T): R = f(t)
     override def toString: String = label
-  }
   private class LabeledFunction2[-T1, -T2, +R](private val f: (T1, T2) => R, label: String)
-      extends ((T1, T2) => R) {
+      extends ((T1, T2) => R):
     override def apply(t1: T1, t2: T2): R = f(t1, t2)
     override def toString: String = label
-  }
   private class LabeledFunction3[-T1, -T2, -T3, +R](private val f: (T1, T2, T3) => R, label: String)
-      extends ((T1, T2, T3) => R) {
+      extends ((T1, T2, T3) => R):
     override def apply(t1: T1, t2: T2, t3: T3): R = f(t1, t2, t3)
     override def toString: String = label
-  }
   private class LabeledFunction4[-T1, -T2, -T3, T4, +R](
       private val f: (T1, T2, T3, T4) => R,
       label: String
-  ) extends ((T1, T2, T3, T4) => R) {
+  ) extends ((T1, T2, T3, T4) => R):
     override def apply(t1: T1, t2: T2, t3: T3, t4: T4): R = f(t1, t2, t3, t4)
     override def toString: String = label
-  }
-}
+end LabeledFunctions

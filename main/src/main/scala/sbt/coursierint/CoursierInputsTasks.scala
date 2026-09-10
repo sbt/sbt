@@ -20,7 +20,7 @@ import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make.*
 
-object CoursierInputsTasks {
+object CoursierInputsTasks:
   private def coursierProject0(
       projId: ModuleID,
       dependencies: Seq[ModuleID],
@@ -34,7 +34,7 @@ object CoursierInputsTasks {
       vsOpt: Option[String],
       projectPlatform: Option[String],
       log: Logger
-  ): CProject = {
+  ): CProject =
 
     val configMap = Inputs.configExtendsSeq(configurations).toMap
     val privConfigs = Inputs.privateConfigs(configurations)
@@ -49,27 +49,24 @@ object CoursierInputsTasks {
         projectPlatform,
       )
       .withPrivateConfigs(privConfigs)
-    val proj1 = auOpt match {
+    val proj1 = auOpt match
       case Some(au) =>
         proj0.withProperties(proj0.properties :+ (SbtPomExtraProperties.POM_API_KEY -> au.toString))
       case _ => proj0
-    }
-    val proj2 = vsOpt match {
+    val proj2 = vsOpt match
       case Some(vs) =>
         proj1.withProperties(proj1.properties :+ (SbtPomExtraProperties.VERSION_SCHEME_KEY -> vs))
       case _ => proj1
-    }
-    val proj3 = rnOpt match {
+    val proj3 = rnOpt match
       case Some(rn) =>
         proj2.withProperties(
           proj2.properties :+ (SbtPomExtraProperties.POM_RELEASE_NOTES_KEY -> rn.toString)
         )
       case _ => proj2
-    }
     proj3.withInfo(
       proj3.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
     )
-  }
+  end coursierProject0
 
   def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
     Def.task {
@@ -103,13 +100,12 @@ object CoursierInputsTasks {
         }
       }
 
-  private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
+  private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] =
     Def.task {
       // Coursier handles inter-project dependencies natively via csrInterProjectDependencies.
       // When IvyDependencyPlugin is enabled, it overrides csrExtraProjects with Ivy descriptors.
       Seq.empty[CProject]
     }
-  }
 
   private[sbt] def coursierFallbackDependenciesTask
       : Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
@@ -139,12 +135,11 @@ object CoursierInputsTasks {
       .flatMap {
         case dc: IvyCredentials.DirectCredentials => List(dc)
         case fc: IvyCredentials.FileCredentials   =>
-          sbt.librarymanagement.CredentialUtils.loadCredentials(fc.path) match {
+          sbt.librarymanagement.CredentialUtils.loadCredentials(fc.path) match
             case Left(err) =>
               log.warn(s"$err, ignoring it")
               Nil
             case Right(dc) => List(dc)
-          }
       }
       .map { c =>
         DirectCredentials()
@@ -162,7 +157,7 @@ object CoursierInputsTasks {
     val cm = conflictManager.value
     val log = streams.value.log
 
-    cm.name match {
+    cm.name match
       case ConflictManager.latestRevision.name =>
         None
       case ConflictManager.strict.name =>
@@ -172,6 +167,5 @@ object CoursierInputsTasks {
       case other =>
         log.warn(s"Unsupported conflict manager $other")
         None
-    }
   }
-}
+end CoursierInputsTasks

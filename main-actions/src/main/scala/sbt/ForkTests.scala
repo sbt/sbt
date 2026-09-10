@@ -51,7 +51,7 @@ private[sbt] object ForkTests:
       parallelism: Option[Int],
       virtualClasspath: Boolean,
       tags: (Tag, Int)*
-  ): Task[TestOutput] = {
+  ): Task[TestOutput] =
     import std.TaskExtra.*
     val dummyLoader =
       this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
@@ -80,7 +80,7 @@ private[sbt] object ForkTests:
         .dependsOn(all(opts.setup)*)
         .flatMap: results =>
           all(opts.cleanup).join.map(_ => results)
-  }
+  end apply
 
   private def mainTestTask(
       runners: Map[TestFramework, Runner],
@@ -262,6 +262,8 @@ private class React(
           promise.failure(info.error)
         else ()
       case _ => ()
+    end match
+  end processNotification
 
   def blockForResponse(): Int =
     Await.result(promise.future, Duration.Inf)

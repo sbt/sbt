@@ -67,6 +67,7 @@ object WorkerExchange:
             major >= 16
           catch case NonFatal(_) => false
     jdkIpcSupportCache.getOrElseUpdate(javaHome, doDetect)
+  end supportsUnixDomainSockets
 
   /**
    * Start a worker process.
@@ -90,10 +91,10 @@ object WorkerExchange:
     val (connArgs, closer) = connectionType match
       case WorkerConnection.Tcp =>
         val serverSocket = Retry(ServerSocket(0, 1, loopback))
-        val accepter = Thread(() => {
+        val accepter = Thread(() =>
           val socket = serverSocket.accept()
           runAccepter(socket.getOutputStream(), socket.getInputStream())
-        })
+        )
         accepter.setName("sbt-fork-test-response-reader")
         accepter.setPriority(Thread.NORM_PRIORITY + 1)
         accepter.start()
@@ -106,22 +107,21 @@ object WorkerExchange:
           ch
         }
         @volatile var acceptedChannel: SocketChannel = null
-        val accepter = Thread(() => {
+        val accepter = Thread(() =>
           val channel = serverChannel.accept()
           acceptedChannel = channel
           runAccepter(
             DuplexChannels.newOutputStream(channel),
             DuplexChannels.newInputStream(channel)
           )
-        })
+        )
         accepter.setName("sbt-fork-test-response-reader")
         accepter.setPriority(Thread.NORM_PRIORITY + 1)
         accepter.start()
-        val closer: AutoCloseable = () => {
+        val closer: AutoCloseable = () =>
           if acceptedChannel != null then acceptedChannel.close()
           serverChannel.close()
           Files.deleteIfExists(path)
-        }
         (Seq("--ipc", path.toString()), Some(closer))
       case WorkerConnection.Stdio => (Nil, None)
     val options = Seq(
@@ -146,6 +146,7 @@ object WorkerExchange:
     val forkTimeout = fo.connectionTimeout.getOrElse(30.seconds)
     val input = Await.result(inputRef.future, forkTimeout)
     WorkerProxy(input, p, options, closer)
+  end startWorker
 
   /** Generates a fresh path suitable for binding a `WorkerConnection.Ipc` socket. */
   def newIpcSocketPath(): NioPath =
@@ -194,10 +195,10 @@ class WorkerProxy(
     inputStream.println(str)
     inputStream.flush()
 
-  val watch = Thread(() => {
+  val watch = Thread(() =>
     while process.isAlive() do Thread.sleep(100)
     WorkerExchange.listeners.foreach(_.notifyExit(process))
-  })
+  )
   watch.start()
 end WorkerProxy
 

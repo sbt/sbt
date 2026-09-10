@@ -23,7 +23,7 @@ enum Result[+A]:
     case Value(value) => Right(value)
 end Result
 
-object Result {
+object Result:
   type Id[X] = X
   val tryValue: [A] => Result[A] => A =
     [A] =>
@@ -32,12 +32,9 @@ object Result {
           case Result.Value(v) => v
           case Result.Inc(i)   => throw i
 
-  def tryValues[S](r: Seq[Result[Unit]], v: Result[S]): S = {
+  def tryValues[S](r: Seq[Result[Unit]], v: Result[S]): S =
     r foreach tryValue[Unit]
     tryValue[S](v)
-  }
-  implicit def fromEither[T](e: Either[Incomplete, T]): Result[T] = e match {
+  implicit def fromEither[T](e: Either[Incomplete, T]): Result[T] = e match
     case Left(i)  => Inc(i)
     case Right(v) => Value(v)
-  }
-}

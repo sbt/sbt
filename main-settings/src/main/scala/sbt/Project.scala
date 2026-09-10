@@ -19,7 +19,7 @@ import Scope.ThisScope
 import sbt.Scope.ThisBuildScope
 import sbt.internal.util.Util
 
-sealed trait ProjectDefinition[PR <: ProjectReference] {
+sealed trait ProjectDefinition[PR <: ProjectReference]:
 
   /**
    * The project ID is used to uniquely identify a project within a build.
@@ -72,12 +72,11 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
 
   override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
 
-  override final def equals(o: Any) = o match {
+  override final def equals(o: Any) = o match
     case p: ProjectDefinition[?] => p.getClass == this.getClass && p.id == id && p.base == base
     case _                       => false
-  }
 
-  override def toString = {
+  override def toString =
     val agg = ifNonEmpty("aggregate", aggregate)
     val dep = ifNonEmpty("dependencies", dependencies)
     val conf = ifNonEmpty("configurations", configurations)
@@ -85,17 +84,16 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
     val fields =
       s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"plugins: List($plugins)" :: autos)
     s"Project(${fields.mkString(", ")})"
-  }
 
   private def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] =
-    if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
-}
+    if ts.isEmpty then Nil else s"$label: $ts" :: Nil
+end ProjectDefinition
 
 trait CompositeProject:
   def componentProjects: Seq[Project]
 end CompositeProject
 
-private[sbt] object CompositeProject {
+private[sbt] object CompositeProject:
 
   /**
    *  Expand user defined projects with the component projects of `compositeProjects`.
@@ -117,14 +115,12 @@ private[sbt] object CompositeProject {
    */
   def expand(compositeProjects: Seq[CompositeProject]): Seq[Project] = {
     val userProjects = compositeProjects.collect { case p: Project => p }
-    for (p <- compositeProjects.flatMap(_.componentProjects)) yield {
-      userProjects.find(_.id == p.id) match {
-        case Some(userProject) => userProject
-        case None              => p
-      }
-    }
+    for p <- compositeProjects.flatMap(_.componentProjects)
+    yield userProjects.find(_.id == p.id) match
+      case Some(userProject) => userProject
+      case None              => p
   }.distinct
-}
+end CompositeProject
 
 sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject:
   override def componentProjects: Seq[Project] = this :: Nil
@@ -278,10 +274,9 @@ object Project:
       val plugins: Plugins,
       val autoPlugins: Seq[AutoPlugin],
       val projectOrigin: ProjectOrigin
-  ) extends ProjectDefinition[PR] {
+  ) extends ProjectDefinition[PR]:
     // checks for cyclic references here instead of having to do it in Scope.delegates
     Dag.topologicalSort(configurations)(_.extendsConfigs)
-  }
 
   // Data structure representing an unresolved Project in terms of the project references.
   // This is created in build.sbt by the build user.
@@ -310,6 +305,7 @@ object Project:
       autoPlugins,
       origin
     ) with Project
+  end unresolved
 
   // Data structure representing resolved Project in terms of references to
   // other projects in dependencies etc.
@@ -388,14 +384,13 @@ object Project:
   def normalizeModuleID(id: String): String = normalizeBase(id)
 
   /** Constructs a valid Project ID based on `id` and returns it in Right or returns the error message in Left if one cannot be constructed. */
-  private[sbt] def normalizeProjectID(id: String): Either[String, String] = {
+  private[sbt] def normalizeProjectID(id: String): Either[String, String] =
     val attempt = normalizeBase(id)
     val refined =
-      if (attempt.length < 1) "root"
-      else if (!validProjectIDStart(attempt.substring(0, 1))) "root-" + attempt
+      if attempt.length < 1 then "root"
+      else if !validProjectIDStart(attempt.substring(0, 1)) then "root-" + attempt
       else attempt
     validProjectID(refined).toLeft(refined)
-  }
 
   private def normalizeBase(s: String) =
     s.toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
@@ -405,19 +400,16 @@ object Project:
     case Current
     case Plugins
 
-  private[sbt] lazy val loadActionParser: Parser[LoadAction] = {
+  private[sbt] lazy val loadActionParser: Parser[LoadAction] =
     import DefaultParsers.*
     token(
       Space ~> ("plugins" ^^^ LoadAction.Plugins | "return" ^^^ LoadAction.Return)
     ) ?? LoadAction.Current
-  }
 end Project
 
-sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
+sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]:
 
   /** The [[AutoPlugin]]s enabled for this project as computed from [[plugins]]. */
   def autoPlugins: Seq[AutoPlugin]
-
-}
 
 private[sbt] trait GeneratedRootProject

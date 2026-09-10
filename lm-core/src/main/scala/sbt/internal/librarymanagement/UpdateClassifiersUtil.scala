@@ -4,13 +4,13 @@ import java.io.File
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
 
-object UpdateClassifiersUtil {
+object UpdateClassifiersUtil:
 
   def restrictedCopy(m: ModuleID, confs: Boolean) =
     ModuleID(m.organization, m.name, m.revision)
       .withCrossVersion(m.crossVersion)
       .withExtraAttributes(m.extraAttributes)
-      .withConfigurations(if (confs) m.configurations else None)
+      .withConfigurations(if confs then m.configurations else None)
       .branch(m.branchName)
 
   // This version adds explicit artifact
@@ -18,37 +18,33 @@ object UpdateClassifiersUtil {
       classifiers: Vector[String],
       exclude: Map[ModuleID, Set[ConfigRef]],
       artifacts: Vector[(String, ModuleID, Artifact, File)]
-  )(m: ModuleID): Option[ModuleID] = {
+  )(m: ModuleID): Option[ModuleID] =
     def sameModule(m1: ModuleID, m2: ModuleID): Boolean =
       m1.organization == m2.organization && m1.name == m2.name && m1.revision == m2.revision
-    def explicitArtifacts = {
+    def explicitArtifacts =
       val arts = (artifacts collect {
         case (_, x, art, _) if sameModule(m, x) && art.classifier.isDefined => art
       }).distinct
-      if (arts.isEmpty) None
+      if arts.isEmpty then None
       else Some(intransitiveModuleWithExplicitArts(m, arts))
-    }
     def hardcodedArtifacts = classifiedArtifacts(classifiers, exclude)(m)
     explicitArtifacts orElse hardcodedArtifacts
-  }
 
   def classifiedArtifacts(
       classifiers: Vector[String],
       exclude: Map[ModuleID, Set[ConfigRef]]
-  )(m: ModuleID): Option[ModuleID] = {
+  )(m: ModuleID): Option[ModuleID] =
     val excluded: Set[ConfigRef] = exclude.getOrElse(restrictedCopy(m, false), Set.empty)
     val exls = excluded map { _.name }
     val included = classifiers filterNot exls
-    if (included.isEmpty) None
-    else {
+    if included.isEmpty then None
+    else
       Some(
         intransitiveModuleWithExplicitArts(
           module = m,
           arts = classifiedArtifacts(m.name, included)
         )
       )
-    }
-  }
 
   def classifiedArtifacts(name: String, classifiers: Vector[String]): Vector[Artifact] =
     classifiers map { c =>
@@ -98,5 +94,4 @@ object UpdateClassifiersUtil {
 
   private def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
     exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
-
-}
+end UpdateClassifiersUtil

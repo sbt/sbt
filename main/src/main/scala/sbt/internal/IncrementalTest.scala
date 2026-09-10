@@ -322,6 +322,7 @@ class ClassStamper private[sbt] (
       else ()
 
       builder |= newBuilder
+    end internalStamp0
 
     if alreadySeen.contains(javaClassName) then ()
     else
@@ -332,4 +333,5 @@ class ClassStamper private[sbt] (
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
           val classNames = relations.productClassName.reverse(javaClassName)
           classNames.foreach(internalStamp0)
+  end internalStamp
 end ClassStamper

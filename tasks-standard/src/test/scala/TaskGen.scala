@@ -11,7 +11,7 @@ package sbt
 import org.scalacheck.*
 import Gen.choose
 
-object TaskGen extends std.TaskExtra {
+object TaskGen extends std.TaskExtra:
   // upper bounds to make the tests finish in reasonable time
   val MaxTasks = 100
   val MaxWorkers = 29
@@ -22,7 +22,7 @@ object TaskGen extends std.TaskExtra {
   val MaxJoinGen = choose(0, MaxJoin)
   val TaskListGen = MaxTasksGen.flatMap(size => Gen.listOfN(size, Arbitrary.arbInt.arbitrary))
 
-  def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] = {
+  def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] =
     val (service, shutdown) = CompletionService(maxWorkers)
     val dummies = std.Transform.DummyTaskMap(Nil)
     val x = new Execute(
@@ -30,15 +30,12 @@ object TaskGen extends std.TaskExtra {
       Execute.noTriggers,
       ExecuteProgress.empty
     )(using std.Transform(dummies))
-    try {
+    try
       x.run(root)(using service)
-    } finally {
+    finally
       shutdown()
-    }
-  }
   def tryRun[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): T =
-    run(root, checkCycles, maxWorkers) match {
+    run(root, checkCycles, maxWorkers) match
       case Result.Value(v) => v
       case Result.Inc(i)   => throw i
-    }
-}
+end TaskGen

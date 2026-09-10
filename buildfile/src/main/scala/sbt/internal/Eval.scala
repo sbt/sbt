@@ -255,6 +255,7 @@ class Eval(
       generated = generatedFiles,
       enclosingModule = moduleName,
     )
+  end evalCommon
 
   // location of the cached type or definition information
   private def cacheFile(base: Path, moduleName: String): Path =
@@ -271,12 +272,12 @@ class Eval(
     val source = ev.makeSource(moduleName)
     run.compileSources(source :: Nil)
     val unit = run.units.head
-    val traverser = new tpd.TreeTraverser {
-      override def traverse(tree: tpd.Tree)(using Context): Unit = {
-        tree match {
+    val traverser = new tpd.TreeTraverser:
+      override def traverse(tree: tpd.Tree)(using Context): Unit =
+        tree match
           case x: tpd.TypeDef
               if x.name.mangledString == s"${moduleName}${NameTransformer.MODULE_SUFFIX_STRING}" =>
-            x.rhs match {
+            x.rhs match
               case template: tpd.Template =>
                 template.body.foreach {
                   case defdef: tpd.DefDef if defdef.name.mangledString == WrapValName =>
@@ -314,13 +315,9 @@ class Eval(
                   case _ =>
                 }
               case _ =>
-            }
           case _: tpd.PackageDef =>
             traverseChildren(tree)
           case _ =>
-        }
-      }
-    }
     traverser.traverse(unit.tpdTree)
     checkError("an error in expression")
     val extra: A = ev.extract(run, unit)
@@ -329,6 +326,7 @@ class Eval(
     }
     val loader = (parent: ClassLoader) => AbstractFileClassLoader(outputDir, parent)
     (extra, loader)
+  end compileAndLoad
 
   private final class EvalIntermediate[A](
       val extra: A,
@@ -534,11 +532,10 @@ final class EvalDefinitions(
     val enclosingModule: String,
     val valNames: Seq[String]
 ):
-  def values(parent: ClassLoader): Seq[Any] = {
+  def values(parent: ClassLoader): Seq[Any] =
     val module = Eval.getModule(enclosingModule, loader(parent))
     for n <- valNames
     yield module.getClass.getMethod(n).invoke(module)
-  }
 end EvalDefinitions
 
 final class EvalException(msg: String) extends RuntimeException(msg)

@@ -6,7 +6,7 @@ import java.util.Locale
  * Shared helper for launcher integration tests. When sbt.test.useSbtw=true on Windows,
  * tests use sbtw (JVM) as the runner instead of sbt.bat, to validate sbtw as a drop-in.
  */
-object LauncherTestHelper {
+object LauncherTestHelper:
   def isWindows: Boolean =
     sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 
@@ -21,4 +21,3 @@ object LauncherTestHelper {
       val cp = sys.props.get("sbt.test.classpath").getOrElse(System.getProperty("java.class.path"))
       Seq("java", "-cp", cp, "sbtw.Main")
     else Seq(scriptPath)
-}

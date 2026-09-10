@@ -13,7 +13,7 @@ import sbt.protocol.SettingQuerySuccess
 import sjsonnew.shaded.scalajson.ast.unsafe.JString
 
 // starts svr using server-test/handshake and perform basic tests
-class HandshakeTest extends AbstractServerTest {
+class HandshakeTest extends AbstractServerTest:
   override val testDirectory: String = "handshake"
 
   test("handshake") {
@@ -29,4 +29,3 @@ class HandshakeTest extends AbstractServerTest {
       .get
     assert(response.value == JString("handshake"))
   }
-}

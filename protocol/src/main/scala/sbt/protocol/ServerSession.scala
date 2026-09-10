@@ -28,7 +28,7 @@ import sjsonnew.{ JsonReader, JsonWriter }
  *   session.shutdown(process.isAlive, () => process.destroy())
  * }}}
  */
-trait ServerSession extends AutoCloseable {
+trait ServerSession extends AutoCloseable:
 
   /** Allocates the next sequential JSON-RPC request ID (as a string). */
   def nextId(): String
@@ -132,18 +132,17 @@ trait ServerSession extends AutoCloseable {
    * @param destroy forcefully terminate the server process
    */
   def shutdown(isAlive: => Boolean, destroy: () => Unit): Try[Unit]
-}
+end ServerSession
 
-object ServerSession {
+object ServerSession:
 
-  trait SendAwaitResult[R] {
+  trait SendAwaitResult[R]:
 
     /** Sends a request and awaits the result using the default timeout. */
     def apply[A: JsonWriter](method: String, params: A): Try[R]
 
     /** Sends a request and awaits the result within the given `timeout`. */
     def apply[A: JsonWriter](method: String, params: A, timeout: FiniteDuration): Try[R]
-  }
 
   private val PortfileTimeout: FiniteDuration = 1.minute
   private val PortfileLogInterval: FiniteDuration = 10.seconds
@@ -154,10 +153,9 @@ object ServerSession {
    * @param portfile the `active.json` portfile created by the sbt server
    * @return a connected [[ServerSession]] ready for `initialize`
    */
-  def connect(portfile: File): ServerSession = {
+  def connect(portfile: File): ServerSession =
     val (socket, _) = ClientSocket.socket(portfile, false)
     new ServerSessionImpl(socket)
-  }
 
   /** Waits for the portfile using the default timeout and no logging. */
   def waitForPortfile(portfile: File, isAlive: => Boolean): Unit =
@@ -182,31 +180,27 @@ object ServerSession {
       isAlive: => Boolean,
       duration: FiniteDuration,
       log: String => Unit
-  ): Unit = {
+  ): Unit =
     def portfileIsEmpty(): Boolean =
       try IO.read(portfile).isEmpty
-      catch { case _: IOException => true }
+      catch case _: IOException => true
 
     log(s"Waiting up to $duration for sbt to be ready ...")
 
     val deadline = duration.fromNow
     var nextLog = PortfileLogInterval.fromNow
 
-    while (portfileIsEmpty() && !deadline.isOverdue() && isAlive) {
-      if (nextLog.isOverdue()) {
+    while portfileIsEmpty() && !deadline.isOverdue() && isAlive do
+      if nextLog.isOverdue() then
         log("Still waiting for sbt ...")
         nextLog = PortfileLogInterval.fromNow
-      }
       Thread.sleep(10)
-    }
 
-    if (deadline.isOverdue())
+    if deadline.isOverdue() then
       throw new TimeoutException(
         s"${portfile.getAbsolutePath} was not created within $duration"
       )
 
-    if (!isAlive)
-      throw new RuntimeException("sbt process unexpectedly terminated")
-  }
-
-}
+    if !isAlive then throw new RuntimeException("sbt process unexpectedly terminated")
+  end waitForPortfile
+end ServerSession

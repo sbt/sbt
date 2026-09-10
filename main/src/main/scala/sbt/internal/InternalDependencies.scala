@@ -11,7 +11,7 @@ package internal
 
 import sbt.Keys.*
 
-private[sbt] object InternalDependencies {
+private[sbt] object InternalDependencies:
   def configurations: Def.Initialize[Seq[(ProjectRef, Set[String])]] = Def.setting {
     val configMap = internalConfigurationMap.value
     val config = configMap(configuration.value)
@@ -22,15 +22,14 @@ private[sbt] object InternalDependencies {
     ((ref -> allConfigs) +:
       projectDependencies.flatMap { case ClasspathDep.ResolvedClasspathDependency(p, rawConfigs) =>
         val configs = rawConfigs.getOrElse("*->compile").split(";").flatMap { config =>
-          config.split("->", 2).map(_.trim) match {
+          config.split("->", 2).map(_.trim) match
             case Array(n, c) if c.nonEmpty && applicableConfigs.contains(n) => Some(c)
             case Array(n) if applicableConfigs.contains(n)                  =>
               // "test" is equivalent to "compile->test"
               Some("compile")
             case _ => None
-          }
         }
-        if (configs.isEmpty) None else Some(p -> configs.toSet)
+        if configs.isEmpty then None else Some(p -> configs.toSet)
       }).distinct
   }
-}
+end InternalDependencies

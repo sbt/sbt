@@ -7,7 +7,7 @@ import com.typesafe.sbt.packager.debian.{ DebianPlugin, DebianDeployPlugin }
 import com.typesafe.sbt.packager.rpm.{ RpmPlugin, RpmDeployPlugin }
 import com.jsuereth.sbtpgp.gpgExtension
 
-object PackageSignerPlugin extends sbt.AutoPlugin {
+object PackageSignerPlugin extends sbt.AutoPlugin:
   override def trigger = allRequirements
   override def requires = SbtPgp && UniversalDeployPlugin && DebianDeployPlugin && RpmDeployPlugin
 
@@ -32,7 +32,7 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
       val skipZ = (pgpSigner / skip).value
       val s = streams.value
       val converter = fileConverter.value
-      if (!skipZ) {
+      if !skipZ then
         artifacts flatMap { case (art, virtualFile) =>
           val f = converter.toPath(virtualFile).toFile
           Seq(
@@ -41,7 +41,7 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
               converter.toVirtualFile(r.sign(f, file(f.getAbsolutePath + gpgExtension), s).toPath)
           )
         }
-      } else artifacts
+      else artifacts
     },
     publishSignedConfiguration := Classpaths.publishConfig(
       publishMavenStyle = publishMavenStyle.value,
@@ -49,7 +49,7 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
         .toPath((Compile / packageBin / artifactPath).value)
         .toFile
         .getParent + "/[artifact]-[revision](-[classifier]).[ext]",
-      status = if (isSnapshot.value) "integration" else "release",
+      status = if isSnapshot.value then "integration" else "release",
       configurations = Vector.empty,
       artifacts = signedArtifacts.value.map { (k, v) =>
         k -> fileConverter.value.toPath(v).toFile
@@ -65,7 +65,7 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
         .toPath((Compile / packageBin / artifactPath).value)
         .toFile
         .getParent + "/[artifact]-[revision](-[classifier]).[ext]",
-      status = if (isSnapshot.value) "integration" else "release",
+      status = if isSnapshot.value then "integration" else "release",
       configurations = Vector.empty,
       artifacts = signedArtifacts.value.map { (k, v) =>
         k -> fileConverter.value.toPath(v).toFile
@@ -98,5 +98,4 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
       }
     }.value
   )
-
-}
+end PackageSignerPlugin

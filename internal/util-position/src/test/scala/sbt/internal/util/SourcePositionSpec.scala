@@ -17,7 +17,7 @@ object SourcePositionSpec extends Properties:
       "SourcePosition() should return a SourcePosition", {
         val filename = "SourcePositionSpec.scala"
         val lineNumber = 19
-        SourcePosition.fromEnclosing() match {
+        SourcePosition.fromEnclosing() match
           case pos @ LinePosition(path, startLine) =>
             Result.assert(path == filename && startLine == lineNumber).log(pos.toString())
             Result
@@ -26,7 +26,6 @@ object SourcePositionSpec extends Properties:
           case pos @ RangePosition(path, range) =>
             Result.assert(path == filename && inRange(range, lineNumber)).log(pos.toString())
           case NoPosition => Result.assert(false).log("No source position found")
-        }
       }
     )
   )

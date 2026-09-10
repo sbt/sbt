@@ -12,7 +12,7 @@ package complete
 import sbt.io.IO
 import Util.*
 
-object HistoryCommands {
+object HistoryCommands:
   val Start = "!"
   // second characters
   val Contains = "?"
@@ -59,20 +59,22 @@ object HistoryCommands {
   lazy val last = Last ^^^ { execute(_.!!) }
 
   lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show => (h: History) =>
-    { printHistory(h, MaxLines, show); nil[String].some }
+    printHistory(h, MaxLines, show); nil[String].some
   }
 
   lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map { (contains, str) =>
-    execute(h => if (contains) h !? str else h ! str)
+    execute(h => if contains then h !? str else h ! str)
   }
 
   lazy val execInt = flag('-') ~ num map { (neg, value) =>
-    execute(h => if (neg) h !- value else h ! value)
+    execute(h => if neg then h !- value else h ! value)
   }
 
-  lazy val help = success((h: History) => { printHelp(); nil[String].some })
+  lazy val help = success((h: History) =>
+    printHelp(); nil[String].some
+  )
 
-  def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) => {
+  def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) =>
     val command = f(h).filterNot(_.startsWith(Start))
     val lines = h.lines.toArray
     command.foreach(lines(lines.length - 1) = _)
@@ -80,8 +82,7 @@ object HistoryCommands {
       IO.writeLines(h, lines.toSeq)
     }
     command.toList.some
-  }
 
   val actionParser: Parser[complete.History => Option[List[String]]] =
     Start ~> (help | last | execInt | list | execStr) // execStr must come last
-}
+end HistoryCommands

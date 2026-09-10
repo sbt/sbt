@@ -114,6 +114,10 @@ object Main:
             bootArgs,
             opts.verbose
           )
+        end if
+      end if
+    end if
+  end launch
 
   private def shouldRunNativeClient(
       opts: LauncherOptions,
@@ -164,7 +168,7 @@ object Main:
               val out = Process(cmd, None, selected.envOverlay*).!!
               println(out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse(""))
               0
-            catch { case _: Exception => 1 }
+            catch case _: Exception => 1
     else 0
 
   private def projectSbtVersion(cwd: File): Option[String] =
@@ -198,4 +202,5 @@ object Main:
       |  -J-X                pass -X to the JVM (-J is stripped)
       |""".stripMargin)
     0
+  end printUsage
 end Main

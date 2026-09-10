@@ -21,7 +21,7 @@ import xsbti.FileConverter
 private[sbt] final case class LangServerError(code: Long, message: String)
     extends Throwable(message)
 
-private[sbt] object LanguageServerProtocol {
+private[sbt] object LanguageServerProtocol:
   private val internalJsonProtocol = new sbt.internal.langserver.codec.JsonProtocol
     with sbt.protocol.codec.JsonProtocol
     with sjsonnew.BasicJsonProtocol
@@ -37,13 +37,12 @@ private[sbt] object LanguageServerProtocol {
       )
     )
 
-  lazy val serverCapabilities: ServerCapabilities = {
+  lazy val serverCapabilities: ServerCapabilities =
     ServerCapabilities(
       textDocumentSync = TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
       hoverProvider = false,
       definitionProvider = false
     )
-  }
 
   def handler(converter: FileConverter): ServerHandler = ServerHandler { callback =>
     import callback.*
@@ -69,13 +68,13 @@ private[sbt] object LanguageServerProtocol {
           )
           val opt = Converter.fromJson[InitializeOption](optionJson).get
           setInitializeOption(opt)
-          if (authOptions(ServerAuthentication.Token)) {
+          if authOptions(ServerAuthentication.Token) then
             val token = opt.token.getOrElse(sys.error("'token' is missing."))
-            if (authenticate(token)) ()
+            if authenticate(token) then ()
             else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
-          } else ()
+          else ()
           setInitialized(true)
-          if (!opt.skipAnalysis.getOrElse(false)) appendExec("collectAnalyses", None)
+          if !opt.skipAnalysis.getOrElse(false) then appendExec("collectAnalyses", None)
           jsonRpcRespond(InitializeResult(serverCapabilities), Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "sbt/exec" =>
@@ -106,10 +105,10 @@ private[sbt] object LanguageServerProtocol {
       onResponse = PartialFunction.empty,
       onNotification = {
         case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
-          if (isAuthenticated) {
+          if isAuthenticated then
             val _ = appendExec(";Test/compile; collectAnalyses", None)
-          } else log.warn(s"ignoring '${n.method}' before authentication")
+          else log.warn(s"ignoring '${n.method}' before authentication")
       }
     )
   }
-}
+end LanguageServerProtocol

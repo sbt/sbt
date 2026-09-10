@@ -18,7 +18,7 @@ import sbt.protocol.*
 import sjsonnew.*
 import sjsonnew.support.scalajson.unsafe.*
 
-object SettingQuery {
+object SettingQuery:
   import sbt.internal.util.AttributeKey
   import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers.*
   import sbt.Def.{ showBuildRelativeKey2, ScopedKey }
@@ -35,25 +35,23 @@ object SettingQuery {
   def projectRef(
       index: KeyIndex,
       currentBuild: URI
-  ): Parser[ParsedExplicitAxis[ResolvedReference]] = {
+  ): Parser[ParsedExplicitAxis[ResolvedReference]] =
     val global = token(Act.GlobalIdent ~ '/') ^^^ ParsedExplicitGlobal
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
     global | explicitValue(Act.resolvedReference(index, currentBuild, trailing))
-  }
 
   def resolveProject(parsed: ParsedExplicitAxis[ResolvedReference]): Option[ResolvedReference] =
-    parsed match {
+    parsed match
       case ParsedExplicitGlobal       => None
       case pv: ParsedExplicitValue[?] => Some(pv.value)
-    }
 
   def scopedKeyFull(
       index: KeyIndex,
       currentBuild: URI,
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       keyMap: Map[String, AttributeKey[?]]
-  ): Parser[Seq[Parser[ParsedKey]]] = {
-    for {
+  ): Parser[Seq[Parser[ParsedKey]]] =
+    for
       rawProject <- projectRef(index, currentBuild)
       proj = resolveProject(rawProject)
       confAmb <- Act.configIdent(
@@ -62,8 +60,7 @@ object SettingQuery {
         index.fromConfigIdent(proj)
       )
       partialMask = ScopeMask(true, confAmb.isExplicit, false, false)
-    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
-  }
+    yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
 
   def scopedKeySelected(
       index: KeyIndex,
@@ -106,10 +103,9 @@ object SettingQuery {
       }
 
   def getJsonWriter[A](key: AttributeKey[A]): Either[String, JsonWriter[A]] =
-    key.optJsonWriter match {
+    key.optJsonWriter match
       case SomeJsonWriter(jw) => Right(jw)
       case NoJsonWriter()     => Left(s"JsonWriter for ${key.tag} not found")
-    }
 
   def toJson[A: JsonWriter](x: A): JValue = Converter.toJsonUnsafe(x)
 
@@ -126,18 +122,16 @@ object SettingQuery {
   def handleSettingQueryEither(
       req: SettingQuery,
       structure: BuildStructure
-  ): Either[String, SettingQuerySuccess] = {
+  ): Either[String, SettingQuerySuccess] =
     val key = Parser.parse(req.setting, scopedKeyParser(structure))
 
-    for {
+    for
       key <- key
       json <- getSettingJsonValue(structure, key)
-    } yield SettingQuerySuccess(json, key.key.tag.toString)
-  }
+    yield SettingQuerySuccess(json, key.key.tag.toString)
 
   def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse =
-    handleSettingQueryEither(req, structure) match {
+    handleSettingQueryEither(req, structure) match
       case Right(x) => x
       case Left(s)  => SettingQueryFailure(s)
-    }
-}
+end SettingQuery

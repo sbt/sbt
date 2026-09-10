@@ -5,7 +5,7 @@ import CrossVersion.*
 import sbt.librarymanagement.syntax.*
 import scala.annotation.nowarn
 
-class CrossVersionTest extends UnitSpec {
+class CrossVersionTest extends UnitSpec:
   "sbtApiVersion" should "for xyz return None" in {
     sbtApiVersion("xyz") shouldBe None
   }
@@ -449,4 +449,4 @@ class CrossVersionTest extends UnitSpec {
       Some("sjs1")
     ) shouldBe None
   }
-}
+end CrossVersionTest

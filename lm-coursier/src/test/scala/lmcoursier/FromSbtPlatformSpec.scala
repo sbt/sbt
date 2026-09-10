@@ -4,7 +4,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import sbt.librarymanagement.*
 
-final class FromSbtPlatformSpec extends AnyPropSpec with Matchers {
+final class FromSbtPlatformSpec extends AnyPropSpec with Matchers:
 
   property("explicit platform should not be overridden by project platform") {
     // Test case for issue #8665: Auto-injected Scala library with explicit .platform(Platform.jvm)
@@ -124,4 +124,4 @@ final class FromSbtPlatformSpec extends AnyPropSpec with Matchers {
     module.name.value shouldBe "sniper_native0.5_3"
     version shouldBe "0.0.9-SNAPSHOT"
   }
-}
+end FromSbtPlatformSpec

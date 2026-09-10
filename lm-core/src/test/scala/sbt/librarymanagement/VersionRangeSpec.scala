@@ -2,7 +2,7 @@ package sbt
 package internal
 package librarymanagement
 
-class VersionRangeSpec extends UnitSpec {
+class VersionRangeSpec extends UnitSpec:
   "Version range" should "strip 1.0 to None" in stripTo("1.0", None)
   it should "strip (,1.0] to 1.0" in stripTo("(,1.0]", Some("1.0"))
   it should "strip (,1.0) to None" in stripTo("(,1.0)", None)
@@ -113,4 +113,4 @@ class VersionRangeSpec extends UnitSpec {
     assert(VersionRange.versionSatisfiesRange("1.3.1", "1.3.1,2.3") == true)
     assert(VersionRange.versionSatisfiesRange("2.4", "1.3.1,2.3") == false)
   }
-}
+end VersionRangeSpec

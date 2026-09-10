@@ -5,7 +5,7 @@ import sbt.util.{ CacheStore, Logger }
 import sbt.librarymanagement.*, LibraryManagementCodec.given
 import sbt.io.IO
 
-private[sbt] object JsonUtil {
+private[sbt] object JsonUtil:
   def sbtOrgTemp = "org.scala-sbt.temp"
   def fakeCallerOrganization = "org.scala-sbt.temp-callers"
 
@@ -13,28 +13,25 @@ private[sbt] object JsonUtil {
       path: File,
       cachedDescriptor: File,
       log: Logger
-  ): UpdateReport = {
-    try {
+  ): UpdateReport =
+    try
       val lite = CacheStore(path).read[UpdateReportLite]()
       fromLite(lite, cachedDescriptor)
-    } catch {
+    catch
       case e: Throwable =>
         log.error(s"Unable to parse mini graph: $path")
         throw e
-    }
-  }
 
-  def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit = {
+  def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
     val updateReportLite = toLite(ur)
     IO.createDirectory(graphPath.getParentFile)
     CacheStore(graphPath).write(updateReportLite)
-  }
 
   /** The per-module normalization `toLite` applies; anything stored alongside it must match. */
-  private[sbt] def withFilteredCallers(mr: ModuleReport): ModuleReport = {
+  private[sbt] def withFilteredCallers(mr: ModuleReport): ModuleReport =
     val callers = filterOutArtificialCallers(mr.callers)
     // Reuse the instance when filtering changed nothing, so interning is not undone here.
-    if (callers eq mr.callers) mr
+    if callers eq mr.callers then mr
     else
       ModuleReport(
         mr.module,
@@ -56,11 +53,12 @@ private[sbt] object JsonUtil {
         mr.licenses,
         callers
       )
-  }
+    end if
+  end withFilteredCallers
 
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
-      val details0 = if (cr.details.nonEmpty) cr.details else modulesToDetails(cr.modules)
+      val details0 = if cr.details.nonEmpty then cr.details else modulesToDetails(cr.modules)
       ConfigurationReportLite(
         cr.configuration.name,
         details0 map { oar =>
@@ -74,20 +72,19 @@ private[sbt] object JsonUtil {
     })
 
   private def modulesToDetails(modules: Vector[ModuleReport]): Vector[OrganizationArtifactReport] =
-    if (modules.isEmpty) Vector.empty
-    else {
+    if modules.isEmpty then Vector.empty
+    else
       val grouped = modules.groupBy(m => (m.module.organization, m.module.name))
       val orderedKeys = modules.map(m => (m.module.organization, m.module.name)).distinct
       orderedKeys.map { case (organization, name) =>
         OrganizationArtifactReport(organization, name, grouped((organization, name)))
       }
-    }
 
   // #1763/#2030. Caller takes up 97% of space, so we need to shrink it down,
   // but there are semantics associated with some of them.
   def filterOutArtificialCallers(callers: Vector[Caller]): Vector[Caller] =
-    if (callers.isEmpty) callers
-    else {
+    if callers.isEmpty then callers
+    else
       val nonArtificial = callers filter { c =>
         (c.caller.organization != sbtOrgTemp) &&
         (c.caller.organization != fakeCallerOrganization)
@@ -96,9 +93,8 @@ private[sbt] object JsonUtil {
         c.caller.organization == sbtOrgTemp
       }).toVector
       interProj ++ nonArtificial
-    }
 
-  def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport = {
+  def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
     val stats = UpdateStats(0L, 0L, 0L, false)
     val configReports = lite.configurations map { cr =>
       val details = cr.details
@@ -110,9 +106,8 @@ private[sbt] object JsonUtil {
       ConfigurationReport(ConfigRef(cr.configuration), modules, details)
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
-  }
 
-  def fromLiteFull(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport = {
+  def fromLiteFull(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
     val stats = UpdateStats(0L, 0L, 0L, false)
     val configReports = lite.configurations map { cr =>
       val details = cr.details
@@ -120,5 +115,4 @@ private[sbt] object JsonUtil {
       ConfigurationReport(ConfigRef(cr.configuration), modules, details)
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
-  }
-}
+end JsonUtil

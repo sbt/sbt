@@ -4,7 +4,7 @@ import coursier.core.*
 import coursier.util.{ EitherT, Monad }
 
 // private[coursier]
-final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
+final case class InterProjectRepository(projects: Seq[Project]) extends Repository:
 
   private val map = projects
     .map(proj =>
@@ -20,7 +20,7 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
       fetch: Repository.Fetch[F]
   )(using
       F: Monad[F]
-  ): EitherT[F, String, (ArtifactSource, Project)] = {
+  ): EitherT[F, String, (ArtifactSource, Project)] =
 
     val res = map
       .get((module, version))
@@ -28,7 +28,6 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
       .toRight("Not found")
 
     EitherT(F.point(res))
-  }
 
   override def artifacts(
       dependency: Dependency,
@@ -36,4 +35,4 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
       overrideClassifiers: Option[Seq[Classifier]]
   ) =
     Nil
-}
+end InterProjectRepository

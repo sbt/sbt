@@ -13,7 +13,7 @@ package complete
  * Represents a set of completions. It exists instead of implicitly defined operations on top of
  * Set[Completion] for laziness.
  */
-sealed trait Completions {
+sealed trait Completions:
   def get: Set[Completion]
 
   final infix def x(o: Completions): Completions = flatMap(_ x o)
@@ -30,17 +30,15 @@ sealed trait Completions {
   final def map(f: Completion => Completion): Completions = Completions(get map f)
 
   override final def hashCode = get.hashCode
-  override final def equals(o: Any) = o match {
-    case c: Completions => get == c.get; case _ => false
-  }
-}
+  override final def equals(o: Any) = o match
+    case c: Completions => get == c.get;
+    case _              => false
 
-object Completions {
+object Completions:
 
   /** Returns a lazy Completions instance using the provided Completion Set. */
-  def apply(cs: => Set[Completion]): Completions = new Completions {
+  def apply(cs: => Set[Completion]): Completions = new Completions:
     lazy val get = cs
-  }
 
   /** Returns a strict Completions instance using the provided Completion Set. */
   def strict(cs: Set[Completion]): Completions = apply(cs)
@@ -59,8 +57,7 @@ object Completions {
 
   /** Returns a strict Completions instance containing only the provided Completion. */
   def single(c: Completion): Completions = strict(Set.empty + c)
-
-}
+end Completions
 
 /**
  * Represents a completion. The abstract members `display` and `append` are best explained with an
@@ -74,7 +71,7 @@ object Completions {
  * input if a completion is selected 2) the full token being completed, which is useful for
  * presenting a user with choices to select
  */
-sealed trait Completion {
+sealed trait Completion:
 
   /**
    * The proposed suffix to append to the existing input to complete the last token in the input.
@@ -95,58 +92,51 @@ sealed trait Completion {
     else Completions.strict(Set.empty + this)
 
   override final lazy val hashCode = Completion.hashCode(this)
-  override final def equals(o: Any) = o match {
-    case c: Completion => Completion.equal(this, c); case _ => false
-  }
-}
+  override final def equals(o: Any) = o match
+    case c: Completion => Completion.equal(this, c);
+    case _             => false
+end Completion
 
-final class DisplayOnly(val display: String) extends Completion {
+final class DisplayOnly(val display: String) extends Completion:
   def isEmpty = display.isEmpty
   def append = ""
   override def toString = "{" + display + "}"
-}
 
-final class Token(val display: String, val append: String) extends Completion {
+final class Token(val display: String, val append: String) extends Completion:
   def isEmpty = display.isEmpty && append.isEmpty
   override final def toString = "[" + display + "]++" + append
-}
 
-final class Suggestion(val append: String) extends Completion {
+final class Suggestion(val append: String) extends Completion:
   def isEmpty = append.isEmpty
   def display = append
   override def toString = append
-}
 
-object Completion {
+object Completion:
   def concat(a: Completion, b: Completion): Completion =
-    (a, b) match {
+    (a, b) match
       case (as: Suggestion, bs: Suggestion)    => suggestion(as.append + bs.append)
       case (at: Token, _) if at.append.isEmpty => b
       case _ if a.isEmpty                      => b
       case _                                   => a
-    }
 
   def evaluatesRight(a: Completion): Boolean =
-    a match {
+    a match
       case _: Suggestion                  => true
       case at: Token if at.append.isEmpty => true
       case _                              => a.isEmpty
-    }
 
   def equal(a: Completion, b: Completion): Boolean =
-    (a, b) match {
+    (a, b) match
       case (as: Suggestion, bs: Suggestion)   => as.append == bs.append
       case (ad: DisplayOnly, bd: DisplayOnly) => ad.display == bd.display
       case (at: Token, bt: Token)             => at.display == bt.display && at.append == bt.append
       case _                                  => false
-    }
 
   def hashCode(a: Completion): Int =
-    a match {
+    a match
       case as: Suggestion  => (0, as.append).hashCode
       case ad: DisplayOnly => (1, ad.display).hashCode
       case at: Token       => (2, at.display, at.append).hashCode
-    }
 
   val empty: Completion = suggestion("")
   def single(c: Char): Completion = suggestion(c.toString)
@@ -160,4 +150,4 @@ object Completion {
   def tokenDisplay(append: String, display: String): Completion = new Token(display, append)
 
   def suggestion(value: String): Completion = new Suggestion(value)
-}
+end Completion

@@ -23,7 +23,7 @@ import org.scalasbt.ipcsocket.*
 
 import scala.util.{ Failure, Success, Try }
 
-object ClientSocket {
+object ClientSocket:
   private lazy val fileFormats = new BasicJsonProtocol with PortFileFormats with TokenFileFormats {}
 
   /** Thrown when a server connection file can't be read or parsed as JSON. */
@@ -33,18 +33,16 @@ object ClientSocket {
   def socket(portfile: File): (Socket, Option[String]) = socket(portfile, false)
 
   /** Parses the connection file written by the server. */
-  private[sbt] def loadPortFile(portfile: File): Try[PortFile] = {
+  private[sbt] def loadPortFile(portfile: File): Try[PortFile] =
     import fileFormats.given
     val parsed = Try(sbt.io.IO.read(portfile)).flatMap(Parser.parseFromString)
     parsed.flatMap(Converter.fromJson[PortFile])
-  }
 
-  def socket(portfile: File, useJNI: Boolean): (Socket, Option[String]) = {
+  def socket(portfile: File, useJNI: Boolean): (Socket, Option[String]) =
     import fileFormats.given
-    val p = loadPortFile(portfile) match {
+    val p = loadPortFile(portfile) match
       case Success(p) => p
       case Failure(e) => throw new ConnectionFileReadException(portfile, e)
-    }
     val uri = new URI(p.uri)
     val token = p.tokenfilePath map { tp =>
       val tokeFile = new File(tp)
@@ -54,14 +52,12 @@ object ClientSocket {
       catch case NonFatal(e) => throw new ConnectionFileReadException(tokeFile, e)
     }
     (connect(uri, useJNI), token)
-  }
 
   private def connect(uri: URI, useJNI: Boolean): Socket =
-    uri.getScheme match {
+    uri.getScheme match
       case "local" => localSocket(uri.getSchemeSpecificPart, useJNI)
       case "tcp"   => new Socket(InetAddress.getByName(uri.getHost), uri.getPort)
       case _       => sys.error(s"Unsupported uri: $uri")
-    }
 
   /** Whether a server still accepts connections on `uri`, as written in its connection file. */
   private[sbt] def reachable(uri: String, useJNI: Boolean): Boolean =
@@ -70,11 +66,11 @@ object ClientSocket {
       true
     catch case NonFatal(_) => false
   def localSocket(name: String, useJNI: Boolean): Socket =
-    if (isWindows) new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
+    if isWindows then new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
     else new UnixDomainSocket(name, useJNI)
 
   def bootSocket(path: String): Socket =
     val ch = SocketChannel.open(StandardProtocolFamily.UNIX)
     ch.connect(UnixDomainSocketAddress.of(path))
     DuplexChannels.newSocket(ch)
-}
+end ClientSocket

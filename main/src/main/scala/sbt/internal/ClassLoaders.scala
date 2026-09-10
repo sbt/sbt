@@ -28,7 +28,7 @@ import sbt.util.Logger
 import xsbti.ArtifactInfo
 import xsbti.HashedVirtualFileRef
 
-private[sbt] object ClassLoaders {
+private[sbt] object ClassLoaders:
 
   /**
    * https://github.com/sbt/sbt/issues/9468
@@ -43,9 +43,7 @@ private[sbt] object ClassLoaders {
     catch case _: IOException => f
     real.toURI.toURL
 
-  extension (files: Seq[File]) {
-    def urls: Array[URL] = files.toArray.map(toRealURL)
-  }
+  extension (files: Seq[File]) def urls: Array[URL] = files.toArray.map(toRealURL)
   private val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
    * Get the class loader for a test task. The configuration could be Test.
@@ -102,7 +100,7 @@ private[sbt] object ClassLoaders {
         s.log.debug(s"javaOptions: $options")
         val opts = forkOptions.value
         new ForkRun(opts)
-      else {
+      else
         val converter = fileConverter.value
         val resolvedScope = resolvedScoped.value.scope
         val instance = scalaInstance.value
@@ -121,7 +119,7 @@ private[sbt] object ClassLoaders {
         val allowZombies = allowZombieClassLoaders.value
         val close = closeClassLoaders.value
         val newLoader =
-          (cp: Seq[Path]) => {
+          (cp: Seq[Path]) =>
             val mappings = cp.map(_.toFile()).map(f => f.getName -> f).toMap
             val transformedDependencies = allDeps.map(f => mappings.getOrElse(f.getName, f))
             buildLayers(
@@ -137,9 +135,7 @@ private[sbt] object ClassLoaders {
               close = close,
               allowZombies = allowZombies,
             )
-          }
         new Run(newLoader, trapExit.value)
-      }
     }
 
   private def extendedClassLoaderCache: Def.Initialize[Task[ClassLoaderCache]] = Def.task {
@@ -170,27 +166,26 @@ private[sbt] object ClassLoaders {
       logger: Logger,
       close: Boolean,
       allowZombies: Boolean
-  ): ClassLoader = {
+  ): ClassLoader =
     val cpFiles = fullCP.map(_._1)
-    strategy match {
+    strategy match
       case Flat | Raw =>
         new FlatLoader(cpFiles.urls, interfaceLoader, tmp, close, allowZombies, logger)
       case _ =>
-        val layerDependencies = strategy match {
+        val layerDependencies = strategy match
           case _: AllLibraryJars => true
           case _                 => false
-        }
         val cpFiles = fullCP.map(_._1)
-        val scalaLibraryLayer = {
+        val scalaLibraryLayer =
           val jars =
-            if (ScalaArtifacts.isScala3(si.version) || Classpaths.isScala213(si.version))
+            if ScalaArtifacts.isScala3(si.version) || Classpaths.isScala213(si.version) then
               cpFiles
-                .filter(f => {
+                .filter(f =>
                   val name = f.getName
                   name == s"${ArtifactInfo.ScalaLibraryID}.jar" ||
                   name.startsWith(s"${ArtifactInfo.ScalaLibraryID}-") ||
                   si.libraryJars.exists(_.getName == name)
-                })
+                )
                 .toArray
             else si.libraryJars
           cache.apply(
@@ -198,7 +193,6 @@ private[sbt] object ClassLoaders {
             interfaceLoader,
             () => new ScalaLibraryClassLoader(jars.map(_.toURI.toURL), interfaceLoader)
           )
-        }
 
         val allDependencies = cpFiles.filter(allDependenciesSet)
         def isReflectJar(f: File): Boolean =
@@ -218,7 +212,7 @@ private[sbt] object ClassLoaders {
 
         // layer 2 (optional if in the test config and the runtime layer is not shared)
         val dependencyLayer: ClassLoader =
-          if (layerDependencies && allDependencies.nonEmpty) {
+          if layerDependencies && allDependencies.nonEmpty then
             cache(
               allDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
               scalaReflectLayer,
@@ -231,26 +225,24 @@ private[sbt] object ClassLoaders {
                   logger = logger,
                 )
             )
-          } else scalaReflectLayer
+          else scalaReflectLayer
 
         val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
         // layer 3
         val filteredSet =
-          if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
+          if layerDependencies then allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
           else Set(si.libraryJars ++ scalaReflectJar*)
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
-        dependencyLayer match {
+        dependencyLayer match
           case dl: ReverseLookupClassLoaderHolder =>
             dl.checkout(cpFiles, tmp)
           case cl =>
-            cl.getParent match {
+            cl.getParent match
               case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
               case _                                  =>
                 new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, close, allowZombies, logger)
-            }
-        }
-    }
-  }
+    end match
+  end buildLayers
 
   private def dependencyJars(
       key: sbt.TaskKey[Seq[Attributed[HashedVirtualFileRef]]]
@@ -263,4 +255,4 @@ private[sbt] object ClassLoaders {
       val f = p.toFile
       f -> IO.getModifiedTimeOrZero(f)
   }
-}
+end ClassLoaders

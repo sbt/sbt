@@ -12,7 +12,7 @@ import java.io.File
 import verify.BasicTestSuite
 import sbt.io.IO
 
-object ScriptTest extends BasicTestSuite {
+object ScriptTest extends BasicTestSuite:
 
   test("stripShebang returns same lines when first line does not start with #!") {
     val lines = Seq("println(1)", "val x = 2")
@@ -45,18 +45,18 @@ object ScriptTest extends BasicTestSuite {
 
   test("scriptBodyLines returns all lines when file has no blocks") {
     val f = File.createTempFile("script", ".scala")
-    try {
+    try
       IO.write(f, "println(1)\nval x = 2\n")
       val result = Script.scriptBodyLines(f)
       assert(result.contains("println(1)"))
       assert(result.contains("val x = 2"))
       assert(!result.exists(_.startsWith("/***")))
-    } finally f.delete()
+    finally f.delete()
   }
 
   test("scriptBodyLines excludes lines inside /*** */ block") {
     val f = File.createTempFile("script", ".scala")
-    try {
+    try
       IO.write(
         f,
         """println("before")
@@ -74,12 +74,12 @@ object ScriptTest extends BasicTestSuite {
         !result.contains("*/"),
         "closing */ must not appear in script body (would break wrapped Main.scala)"
       )
-    } finally f.delete()
+    finally f.delete()
   }
 
   test("scriptBodyLines excludes block content when file has only a block") {
     val f = File.createTempFile("script", ".scala")
-    try {
+    try
       IO.write(
         f,
         """/***
@@ -92,12 +92,12 @@ object ScriptTest extends BasicTestSuite {
         !result.contains("scalaVersion := \"3.0.0\""),
         s"block content must be excluded, got $result"
       )
-    } finally f.delete()
+    finally f.delete()
   }
 
   test("blocks parses block containing settings") {
     val f = File.createTempFile("script", ".scala")
-    try {
+    try
       IO.write(
         f,
         """line0
@@ -110,6 +110,6 @@ object ScriptTest extends BasicTestSuite {
       val result = Script.blocks(f)
       val settingBlock = result.find(_.lines.contains("scalaVersion := \"3.0.0\""))
       assert(settingBlock.isDefined, s"expected a block with scalaVersion, got $result")
-    } finally f.delete()
+    finally f.delete()
   }
-}
+end ScriptTest

@@ -3,16 +3,15 @@ package sbt
 import sbt.librarymanagement.CrossVersion.{ binaryScalaVersion, partialVersion }
 
 /** Virtual Axis represents a parameter to a project matrix row. */
-sealed abstract class VirtualAxis {
+sealed abstract class VirtualAxis:
   def directorySuffix: String
 
   def idSuffix: String
 
   /* The order to sort the suffixes if there were multiple axes. */
   def suffixOrder: Int = 50
-}
 
-object VirtualAxis {
+object VirtualAxis:
 
   /**
    * WeakAxis allows a row to depend on another row with Zero value.
@@ -27,44 +26,39 @@ object VirtualAxis {
     lhs.forall(isStronglyCompatible(_, rhs)) && rhs.forall(isStronglyCompatible(_, lhs))
 
   private[sbt] def isStronglyCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
-    v match {
+    v match
       case v: WeakAxis =>
         val clazz = v.getClass
         stack.contains(v) || !stack.exists(_.getClass == clazz)
       case v: StrongAxis =>
         stack.contains(v)
-    }
 
   def isSecondaryMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean =
     lhs.forall(isSecondaryCompatible(_, rhs)) && rhs.forall(isSecondaryCompatible(_, lhs))
 
   def isSecondaryCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
-    v match {
+    v match
       case v: ScalaVersionAxis =>
         val thatSVOpt = stack.collectFirst { case x: ScalaVersionAxis =>
           x
         }
-        thatSVOpt match {
+        thatSVOpt match
           case Some(ScalaVersionAxis(sv, _)) =>
             (v.scalaVersion == sv) ||
             isScala2Scala3Sandwich(partialVersion(v.scalaVersion), partialVersion(sv))
           case _ => true
-        }
       case _ =>
         isStronglyCompatible(v, stack)
-    }
 
   private[sbt] def isScala2Scala3Sandwich(
       sbv1: Option[(Long, Long)],
       sbv2: Option[(Long, Long)]
-  ): Boolean = {
+  ): Boolean =
     def str(x: Option[(Long, Long)]): String =
-      x match {
+      x match
         case Some((a, b)) => s"$a.$b"
         case _            => "0.0"
-      }
     isScala2Scala3Sandwich(str(sbv1), str(sbv2))
-  }
 
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean =
     def compare(a: String, b: String): Boolean =
@@ -72,43 +66,35 @@ object VirtualAxis {
     compare(sbv1, sbv2) || compare(sbv2, sbv1)
 
   // This admits partial Scala version
-  private[sbt] def isPartialVersionEquals(ax1: VirtualAxis, ax2: VirtualAxis): Boolean = {
-    (ax1, ax2) match {
+  private[sbt] def isPartialVersionEquals(ax1: VirtualAxis, ax2: VirtualAxis): Boolean =
+    (ax1, ax2) match
       case (ax1: ScalaVersionAxis, ax2: ScalaVersionAxis) =>
         (ax1 == ax2) || (ax1.value == ax2.value)
       case _ => ax1 == ax2
-    }
-  }
 
-  case class ScalaVersionAxis(scalaVersion: String, value: String) extends WeakAxis {
+  case class ScalaVersionAxis(scalaVersion: String, value: String) extends WeakAxis:
     override def idSuffix: String = directorySuffix.replaceAll("""\W+""", "_")
     override val suffixOrder: Int = 100
     override def directorySuffix: String = value
 
     // use only the scalaVersion field for equality
-    override def equals(obj: Any): Boolean = {
-      if (obj.isInstanceOf[AnyRef] && (this eq obj.asInstanceOf[AnyRef])) true
-      else if (!obj.isInstanceOf[ScalaVersionAxis]) false
-      else {
+    override def equals(obj: Any): Boolean =
+      if obj.isInstanceOf[AnyRef] && (this eq obj.asInstanceOf[AnyRef]) then true
+      else if !obj.isInstanceOf[ScalaVersionAxis] then false
+      else
         val o = obj.asInstanceOf[ScalaVersionAxis]
         this.scalaVersion == o.scalaVersion
-      }
-    }
-    override def hashCode: Int = {
+    override def hashCode: Int =
       37 * (17 + "sbt.ScalaVersionAxis".hashCode()) + scalaVersion.hashCode()
-    }
-  }
 
   case class PlatformAxis(value: String, idSuffix: String, directorySuffix: String)
-      extends StrongAxis {
+      extends StrongAxis:
     override val suffixOrder: Int = 80
-  }
 
   def scalaPartialVersion(scalaVersion: String): ScalaVersionAxis =
-    partialVersion(scalaVersion) match {
+    partialVersion(scalaVersion) match
       case Some((m, n)) => scalaVersionAxis(scalaVersion, s"$m.$n")
       case _            => scalaVersionAxis(scalaVersion, scalaVersion)
-    }
   def scalaABIVersion(scalaVersion: String): ScalaVersionAxis =
     scalaVersionAxis(scalaVersion, binaryScalaVersion(scalaVersion))
 
@@ -118,4 +104,4 @@ object VirtualAxis {
   val jvm: PlatformAxis = PlatformAxis("jvm", "JVM", "jvm")
   val js: PlatformAxis = PlatformAxis("js", "JS", "js")
   val native: PlatformAxis = PlatformAxis("native", "Native", "native")
-}
+end VirtualAxis

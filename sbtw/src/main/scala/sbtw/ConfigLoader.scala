@@ -14,7 +14,7 @@ object ConfigLoader:
           val trimmed = line.trim
           if trimmed.isEmpty || trimmed.startsWith("#") then Nil
           else Seq(trimmed))
-      catch { case _: Exception => Nil }
+      catch case _: Exception => Nil
 
   def loadSbtOpts(cwd: File, sbtHome: File): Seq[String] =
     val fromProject = new File(cwd, ".sbtopts")
@@ -41,8 +41,10 @@ object ConfigLoader:
         c match
           case '"'                 => inDouble = true
           case '\''                => inSingle = true
-          case w if w.isWhitespace => if word.nonEmpty then { out += word.toString; word.clear() }
-          case other               => word += other
+          case w if w.isWhitespace =>
+            if word.nonEmpty then
+              out += word.toString; word.clear()
+          case other => word += other
     if word.nonEmpty then out += word.toString
     out.toList
 
@@ -71,7 +73,7 @@ object ConfigLoader:
               val eq = line.indexOf('=')
               if eq >= 0 then Some(line.substring(eq + 1).trim).filter(_.nonEmpty)
               else None
-      catch { case _: Exception => None }
+      catch case _: Exception => None
 
   def isSbtProjectDir(dir: File): Boolean =
     new File(dir, "build.sbt").isFile || new File(dir, "project/build.properties").isFile

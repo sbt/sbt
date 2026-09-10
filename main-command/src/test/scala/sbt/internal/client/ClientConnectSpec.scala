@@ -63,6 +63,7 @@ object ClientConnectSpec extends BasicTestSuite:
       Try(client.close())
       instance.shutdown()
       sbt.io.IO.delete(base)
+  end withServerAndClient
 
   test("a portfile that a server is still writing"):
     if !isWindows then

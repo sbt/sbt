@@ -22,7 +22,7 @@ import sbt.ScopeFilter.Make.*
 import sbt.util.CacheImplicits.given
 import xsbti.VirtualFileRef
 
-object SemanticdbPlugin extends AutoPlugin {
+object SemanticdbPlugin extends AutoPlugin:
   override def requires = JvmPlugin
   override def trigger = allRequirements
 
@@ -42,14 +42,14 @@ object SemanticdbPlugin extends AutoPlugin {
       val sdb = semanticdbEnabled.value
       val m = semanticdbCompilerPlugin.value
       val sv = scalaVersion.value
-      if (sdb && !ScalaInstance.isDotty(sv)) List(BuildExtra.compilerPlugin(m))
+      if sdb && !ScalaInstance.isDotty(sv) then List(BuildExtra.compilerPlugin(m))
       else Nil
     },
     semanticdbOptions += {
       val sv = scalaVersion.value
-      if (sv.startsWith("0.") || sv.startsWith("3.0.0-M1") || sv.startsWith("3.0.0-M2"))
+      if sv.startsWith("0.") || sv.startsWith("3.0.0-M1") || sv.startsWith("3.0.0-M2") then
         "-Ysemanticdb"
-      else if (sv.startsWith("3.")) "-Xsemanticdb"
+      else if sv.startsWith("3.") then "-Xsemanticdb"
       else "-Yrangepos"
     }
   ) ++
@@ -61,7 +61,7 @@ object SemanticdbPlugin extends AutoPlugin {
       fileConverter.value.toVirtualFile(semanticdbTargetRoot.value.toPath)
     ),
     compileIncremental := Def.taskIf {
-      if (semanticdbIncludeInJar.value || !semanticdbEnabled.value) compileIncremental.value
+      if semanticdbIncludeInJar.value || !semanticdbEnabled.value then compileIncremental.value
       else compileIncAndCacheSemanticdbTargetRootTask.value
     }.value,
     semanticdbTargetRoot := {
@@ -95,13 +95,9 @@ object SemanticdbPlugin extends AutoPlugin {
     }).value,
   )
 
-  def targetRootOptions(scalaVersion: String, targetRoot: File): Seq[String] = {
-    if (ScalaInstance.isDotty(scalaVersion)) {
-      Seq("-semanticdb-target", targetRoot.toString)
-    } else {
-      Seq(s"-P:semanticdb:targetroot:$targetRoot")
-    }
-  }
+  def targetRootOptions(scalaVersion: String, targetRoot: File): Seq[String] =
+    if ScalaInstance.isDotty(scalaVersion) then Seq("-semanticdb-target", targetRoot.toString)
+    else Seq(s"-P:semanticdb:targetroot:$targetRoot")
 
   private val compileIncAndCacheSemanticdbTargetRootTask = Def.cachedTask {
     val prev = compileIncremental.value
@@ -110,10 +106,9 @@ object SemanticdbPlugin extends AutoPlugin {
     prev
   }
 
-  private def ancestorConfigs(config: Configuration) = {
+  private def ancestorConfigs(config: Configuration) =
     def ancestors(configs: Vector[Configuration]): Vector[Configuration] =
       configs ++ configs.flatMap(conf => ancestors(conf.extendsConfigs))
 
     ScopeFilter(configurations = inConfigurations(ancestors(config.extendsConfigs)*))
-  }
-}
+end SemanticdbPlugin

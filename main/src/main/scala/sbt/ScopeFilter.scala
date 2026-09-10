@@ -16,7 +16,8 @@ import Def.Initialize
 import sbt.ScopeAxis.{ Select, This, Zero }
 import java.net.URI
 
-sealed abstract class ScopeFilter { self =>
+sealed abstract class ScopeFilter:
+  self =>
 
   /** Implements this filter. */
   private[ScopeFilter] def apply(data: ScopeFilter.Data): Set[Scope]
@@ -41,9 +42,9 @@ sealed abstract class ScopeFilter { self =>
   /** Constructs a filter that selects values that do not match this filter. */
   def unary_- : ScopeFilter = new ScopeFilter:
     def apply(data: ScopeFilter.Data): Set[Scope] = data.allScopes.set -- self(data)
-}
+end ScopeFilter
 
-object ScopeFilter {
+object ScopeFilter:
   type ProjectFilter = AxisFilter[Reference]
   type ConfigurationFilter = AxisFilter[ConfigKey]
   type TaskFilter = AxisFilter[AttributeKey[?]]
@@ -82,12 +83,12 @@ object ScopeFilter {
         val cf = configurations(data)
         val tf = tasks(data)
         val res =
-          for {
+          for
             (project, configs) <- data.allScopes.grouped.iterator if pf(project)
             (config, tasks) <- configs.iterator if cf(config)
             (task, scopes) <- tasks.iterator if tf(task)
             scope <- scopes
-          } yield scope
+          yield scope
         res.toSet
 
       override private[ScopeFilter] def scopeOrdering(data: Data): Scope => Option[Int] =
@@ -213,7 +214,7 @@ object ScopeFilter {
         s"${other.getClass.getName}(${other.toString})"
 
   private[sbt] val Make = new Make {}
-  trait Make {
+  trait Make:
 
     /** Selects Scopes with a Zero task axis. */
     def inZeroTask: TaskFilter = zeroAxis[AttributeKey[?]]
@@ -282,31 +283,27 @@ object ScopeFilter {
       ScopeFilter.inProjects(projects*)
 
     /** Selects Scopes that have a task axis with one of the provided values. */
-    def inTasks(tasks: Scoped*): TaskFilter = {
+    def inTasks(tasks: Scoped*): TaskFilter =
       val ts = tasks.map(_.key).toSet
       selectAxis[AttributeKey[?]](const(ts))
-    }
 
     /** Selects Scopes that have a task axis with one of the provided values. */
-    def inConfigurations(configs: Configuration*): ConfigurationFilter = {
+    def inConfigurations(configs: Configuration*): ConfigurationFilter =
       val cs = configs.map(_.name).toSet
       selectAxis[ConfigKey](const(c => cs(c.name)))
-    }
 
-    def inConfigurationsByKeys(keys: ConfigKey*): ConfigurationFilter = {
+    def inConfigurationsByKeys(keys: ConfigKey*): ConfigurationFilter =
       val cs = keys.toSet
       selectAxis[ConfigKey](const(cs))
-    }
 
-    def inConfigurationsByRefs(refs: ConfigRef*): ConfigurationFilter = {
+    def inConfigurationsByRefs(refs: ConfigRef*): ConfigurationFilter =
       val cs = refs.map(r => ConfigKey(r.name)).toSet
       selectAxis[ConfigKey](const(cs))
-    }
 
     implicit def settingKeyAll[T](key: Initialize[T]): SettingKeyAll[T] =
       new SettingKeyAll[T](key)
     implicit def taskKeyAll[T](key: Initialize[Task[T]]): TaskKeyAll[T] = new TaskKeyAll[T](key)
-  }
+  end Make
 
   private[sbt] final class AllScopes(val set: Set[Scope], val grouped: ScopeMap)
 
@@ -337,16 +334,14 @@ object ScopeFilter {
       val build = Keys.loadedBuild.value
       val scopes = Keys.allScopes.value
       val thisRef = Keys.thisProjectRef.?.value
-      val current = thisRef match {
+      val current = thisRef match
         case Some(ProjectRef(uri, _)) => uri
         case None                     => build.root
-      }
       val rootProject = Load.getRootProject(build.units)
       val resolve: ProjectReference => ProjectRef = p =>
-        (p, thisRef) match {
+        (p, thisRef) match
           case (ThisProject, Some(pref)) => pref
           case _                         => Scope.resolveProjectRef(current, rootProject, p)
-        }
       new Data(build.units, resolve, scopes)
     }
 
@@ -358,8 +353,8 @@ object ScopeFilter {
     ref =>
       import sbt.ProjectExtra.getProject
       Project.getProject(ref, structure).toList flatMap { p =>
-        (if (classpath) p.dependencies.map(_.project) else Nil) ++
-          (if (aggregate) p.aggregate else Nil)
+        (if classpath then p.dependencies.map(_.project) else Nil) ++
+          (if aggregate then p.aggregate else Nil)
       }
 
   private def byDeps(
@@ -372,13 +367,12 @@ object ScopeFilter {
     inResolvedProjects { data =>
       val resolvedRef = data.resolve(ref)
       val direct = getDependencies(data.units, classpath = classpath, aggregate = aggregate)
-      if (transitive) {
+      if transitive then
         val full = Dag.topologicalSort(resolvedRef)(direct)
-        if (includeRoot) full else full dropRight 1
-      } else {
+        if includeRoot then full else full dropRight 1
+      else
         val directDeps = direct(resolvedRef)
-        if (includeRoot) resolvedRef +: directDeps else directDeps
-      }
+        if includeRoot then resolvedRef +: directDeps else directDeps
     }
 
   private def inProjects(projects: ProjectReference*): ProjectFilter =
@@ -400,22 +394,19 @@ object ScopeFilter {
           case Select(ref: ProjectRef) => index.get(ref)
           case _                       => None
 
-  private def zeroAxis[T]: AxisFilter[T] = new AxisFilter[T] {
+  private def zeroAxis[T]: AxisFilter[T] = new AxisFilter[T]:
     private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean = _ == Zero
-  }
   private def selectAny[T]: AxisFilter[T] = selectAxis(const(const(true)))
-  private def selectAxis[T](f: Data => T => Boolean): AxisFilter[T] = new AxisFilter[T] {
-    private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean = {
+  private def selectAxis[T](f: Data => T => Boolean): AxisFilter[T] = new AxisFilter[T]:
+    private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean =
       val g = f(data)
-      _ match {
+      _ match
         case Select(t) => g(t)
         case _         => false
-      }
-    }
-  }
 
   /** Base functionality for filters on axis of type `In` that need access to build data. */
-  sealed abstract class AxisFilter[In] { self =>
+  sealed abstract class AxisFilter[In]:
+    self =>
 
     /** Implements this filter. */
     private[ScopeFilter] def apply(data: Data): ScopeAxis[In] => Boolean
@@ -429,30 +420,23 @@ object ScopeFilter {
     def --(other: AxisFilter[In]): AxisFilter[In] = this && -other
 
     /** Constructs a filter that selects values that match this filter and `other`. */
-    def &&(other: AxisFilter[In]): AxisFilter[In] = new AxisFilter[In] {
-      private[sbt] def apply(data: Data): ScopeAxis[In] => Boolean = {
+    def &&(other: AxisFilter[In]): AxisFilter[In] = new AxisFilter[In]:
+      private[sbt] def apply(data: Data): ScopeAxis[In] => Boolean =
         val a = self(data)
         val b = other(data)
         s => a(s) && b(s)
-      }
-    }
 
     /** Constructs a filter that selects values that match this filter or `other`. */
-    def ||(other: AxisFilter[In]): AxisFilter[In] = new AxisFilter[In] {
-      private[sbt] def apply(data: Data): ScopeAxis[In] => Boolean = {
+    def ||(other: AxisFilter[In]): AxisFilter[In] = new AxisFilter[In]:
+      private[sbt] def apply(data: Data): ScopeAxis[In] => Boolean =
         val a = self(data)
         val b = other(data)
         s => a(s) || b(s)
-      }
-    }
 
     /** Constructs a filter that selects values that do not match this filter. */
-    def unary_- : AxisFilter[In] = new AxisFilter[In] {
-      private[sbt] def apply(data: Data): ScopeAxis[In] => Boolean = {
+    def unary_- : AxisFilter[In] = new AxisFilter[In]:
+      private[sbt] def apply(data: Data): ScopeAxis[In] => Boolean =
         val a = self(data)
         s => !a(s)
-      }
-    }
-  }
-
-}
+  end AxisFilter
+end ScopeFilter

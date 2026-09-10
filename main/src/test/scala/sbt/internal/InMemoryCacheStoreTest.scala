@@ -100,3 +100,4 @@ object InMemoryCacheStoreTest extends Properties:
       val value = second("value").read[String]()
       Result.assert(value == "written by the first session").log(s"got '$value'")
     }
+end InMemoryCacheStoreTest

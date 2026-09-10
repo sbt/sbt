@@ -36,6 +36,7 @@ object RemoteCachePlugin extends AutoPlugin:
           )
           orig ++ Seq(r)
         case _ => orig
+      end match
     },
   )
 end RemoteCachePlugin

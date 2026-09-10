@@ -14,7 +14,7 @@ import sbt.internal.inc.MixedAnalyzingCompiler
 import xsbti.compile.AnalysisStore as XAnalysisStore
 import xsbti.compile.analysis.ReadWriteMappers
 
-private[sbt] object AnalysisUtil {
+private[sbt] object AnalysisUtil:
   // some machines have many cores.
   // we don't want to occupy them all for analysis serialization.
   lazy val parallelism: Int =
@@ -35,4 +35,4 @@ private[sbt] object AnalysisUtil {
       reproducible = true,
       parallelism = parallelism,
     )
-}
+end AnalysisUtil

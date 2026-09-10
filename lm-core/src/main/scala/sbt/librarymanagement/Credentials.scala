@@ -19,22 +19,19 @@ object Credentials:
   def apply(file: File): Credentials =
     new FileCredentials(file)
 
-  final class FileCredentials(val path: File) extends Credentials {
+  final class FileCredentials(val path: File) extends Credentials:
     override def toString = s"""FileCredentials("$path")"""
-  }
 
   final class DirectCredentials(
       val realm: String,
       val host: String,
       val userName: String,
       val passwd: String
-  ) extends Credentials {
-    override def toString = {
+  ) extends Credentials:
+    override def toString =
       val dq = '"'
       val r =
-        if (realm == null) "null"
+        if realm == null then "null"
         else s"$dq$realm$dq"
       s"""DirectCredentials($r, "$host", "$userName", ****)"""
-    }
-  }
 end Credentials

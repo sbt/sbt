@@ -6,7 +6,7 @@ import sbt.util.Logger
 /**
  * Library management API to publish artifacts.
  */
-class Publisher private[sbt] (publisherEngine: PublisherInterface) {
+class Publisher private[sbt] (publisherEngine: PublisherInterface):
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
@@ -41,9 +41,8 @@ class Publisher private[sbt] (publisherEngine: PublisherInterface) {
       log: Logger
   ): File =
     publisherEngine.makePomFile(module, configuration, log)
-}
+end Publisher
 
-object Publisher {
+object Publisher:
   def apply(publisherEngine: PublisherInterface): Publisher =
     new Publisher(publisherEngine)
-}

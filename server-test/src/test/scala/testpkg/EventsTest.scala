@@ -14,7 +14,7 @@ import sbt.internal.langserver.{ LogMessageParams, SbtExecParams, CancelRequestP
 import sbt.internal.langserver.codec.JsonProtocol.given
 
 // starts svr using server-test/events and perform event related tests
-class EventsTest extends AbstractServerTest {
+class EventsTest extends AbstractServerTest:
   override val testDirectory: String = "events"
 
   test("report task failures in case of exceptions") {
@@ -64,4 +64,4 @@ class EventsTest extends AbstractServerTest {
       .get
     assert(cancelResult.status == "Task cancelled")
   }
-}
+end EventsTest

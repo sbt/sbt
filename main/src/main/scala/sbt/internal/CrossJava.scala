@@ -29,50 +29,47 @@ import sbt.internal.CommandStrings.{
   javaSwitchHelp
 }
 
-private[sbt] object CrossJava {
+private[sbt] object CrossJava:
   // parses jabba style version number adopt@1.8
-  def parseJavaVersion(version: String): JavaVersion = {
+  def parseJavaVersion(version: String): JavaVersion =
     val Num = """([0-9]+)""".r
     def splitDot(s: String): Vector[Long] =
-      Option(s) match {
+      Option(s) match
         case Some(x) =>
           x.split('.').toVector collect { case Num(n) =>
             n.toLong
           }
         case _ => Vector()
-      }
     def splitDash(str: String): Vector[String] =
       Option(str).fold(Vector.empty[String])(_.split('-').toVector)
     def splitAt(s: String): Vector[String] =
       Option(s).fold(Vector.empty[String])(_.split('@').toVector)
     def parse0(str: String): JavaVersion =
-      splitDash(str) match {
+      splitDash(str) match
         case Vector()  => sys.error(s"Invalid JavaVersion: $version")
         case Vector(h) => JavaVersion(splitDot(h), Vector(), None)
         case xs        => JavaVersion(splitDot(xs.head), xs.tail, None)
-      }
-    splitAt(version) match {
+    splitAt(version) match
       case Vector(vendor, rest) => parse0(rest).withVendor(vendor)
       case Vector(rest)         => parse0(rest)
       case _                    => sys.error(s"Invalid JavaVersion: $version")
-    }
-  }
+  end parseJavaVersion
 
   def parseSdkmanString(version: String): Try[JavaVersion] = Try {
     val Num = """([0-9]+)""".r
     def splitDash(str: String): Vector[String] =
       Option(str).fold(Vector.empty[String])(_.split('-').toVector)
     def splitDot(str: String): Vector[String] =
-      Option(str) match {
+      Option(str) match
         case Some(x) => x.split('.').toVector.filterNot(_ == "")
         case _       => Vector()
-      }
-    splitDash(version) match {
+    splitDash(version) match
       case xs if xs.size < 2 => sys.error(s"Invalid SDKMAN Java version: $version")
       case xs                =>
         val first = xs.init.head
         val ds =
-          if (!first.contains(".") && first.contains("u")) splitDot(first.replaceFirst("u", ".0."))
+          if !first.contains(".") && first.contains("u") then
+            splitDot(first.replaceFirst("u", ".0."))
           else splitDot(first)
         val nums = ds
           .takeWhile {
@@ -80,37 +77,32 @@ private[sbt] object CrossJava {
             case _      => false
           }
           .map { _.toLong }
-        if (nums.isEmpty) {
-          sys.error(s"Invalid SDKMAN Java version: $version")
-        }
+        if nums.isEmpty then sys.error(s"Invalid SDKMAN Java version: $version")
         val nonNum = ds.drop(nums.size).mkString("")
         // last dash indicates vendor code
-        val (vnd0, tag0) = (xs.last, nonNum) match {
+        val (vnd0, tag0) = (xs.last, nonNum) match
           case ("adpt", "hs") => ("adpt", "")
           case ("adpt", "j9") => ("adopt-openj9", "")
           case (v, t)         => (v, t)
-        }
-        val vnd = vnd0 match {
+        val vnd = vnd0 match
           case "adpt" => "adopt"
           case "open" => "openjdk"
           case "grl"  => "graalvm"
           case "amzn" => "corretto"
           case _      => vnd0
-        }
         val tag1: String = xs.init.tail.mkString("")
-        val tags = (if (tag0 == "") Vector.empty[String] else Vector(tag0)) ++
-          (if (tag1 == "") Vector.empty[String] else Vector(tag1))
+        val tags = (if tag0 == "" then Vector.empty[String] else Vector(tag0)) ++
+          (if tag1 == "" then Vector.empty[String] else Vector(tag1))
         JavaVersion().withNumbers(nums).withVendor(vnd).withTags(tags)
-    }
+    end match
   }
 
-  def lookupJavaHome(jv: String, mappings: Map[String, File]): File = {
+  def lookupJavaHome(jv: String, mappings: Map[String, File]): File =
     val ms = mappings map { (k, v) => (JavaVersion(k), v) }
     lookupJavaHome(JavaVersion(jv), ms)
-  }
 
-  def lookupJavaHome(jv: JavaVersion, mappings: Map[JavaVersion, File]): File = {
-    mappings.get(jv) match {
+  def lookupJavaHome(jv: JavaVersion, mappings: Map[JavaVersion, File]): File =
+    mappings.get(jv) match
       case Some(dir) => dir
 
       // when looking for "10" it should match "openjdk@10"
@@ -120,14 +112,11 @@ private[sbt] object CrossJava {
         }
         noVendors.get(jv).getOrElse(javaHomeNotFound(jv, mappings))
       case _ => javaHomeNotFound(jv, mappings)
-    }
-  }
 
-  private def javaHomeNotFound(version: JavaVersion, mappings: Map[JavaVersion, File]): Nothing = {
+  private def javaHomeNotFound(version: JavaVersion, mappings: Map[JavaVersion, File]): Nothing =
     sys.error(s"""Java home for $version was not found in $mappings
                  |
                  |use Global / javaHomes += JavaVersion("$version") -> file(...)""".stripMargin)
-  }
 
   private case class SwitchTarget(version: Option[JavaVersion], home: Option[File], force: Boolean)
   private case class SwitchJavaHome(target: SwitchTarget, verbose: Boolean, command: Option[String])
@@ -135,9 +124,9 @@ private[sbt] object CrossJava {
   private[sbt] val JavaSwitchCommandCompletions =
     Vector("-v", "compile", "test", "run", "clean", "console", "package")
 
-  private def switchParser(state: State): Parser[SwitchJavaHome] = {
+  private def switchParser(state: State): Parser[SwitchJavaHome] =
     import DefaultParsers.*
-    def versionAndCommand(spacePresent: Boolean) = {
+    def versionAndCommand(spacePresent: Boolean) =
       val x = Project.extract(state)
       import x.*
       val javaHomes = getJavaHomesTyped(x, currentRef)
@@ -156,7 +145,7 @@ private[sbt] object CrossJava {
               SwitchTarget(None, Option(new File(home)), true)
           }
       val spacedVersion =
-        if (spacePresent) version
+        if spacePresent then version
         else version & spacedFirst(JavaSwitchCommand)
       val verbose = Parser.opt(token(Space ~> "-v"))
       val optionalCommand =
@@ -166,37 +155,34 @@ private[sbt] object CrossJava {
       (spacedVersion ~ verbose ~ optionalCommand).map { case v ~ verbose ~ command =>
         SwitchJavaHome(v, verbose.isDefined, command)
       }
-    }
+    end versionAndCommand
     token(JavaSwitchCommand ~> OptSpace) flatMap { sp =>
       versionAndCommand(sp.nonEmpty)
     }
-  }
+  end switchParser
 
   private def getJavaHomes(
       extracted: Extracted,
       proj: ResolvedReference
-  ): Map[String, File] = {
+  ): Map[String, File] =
     import extracted.*
     (proj / Keys.fullJavaHomes).get(structure.data).get
-  }
 
   private def getJavaHomesTyped(
       extracted: Extracted,
       proj: ResolvedReference
-  ): Map[JavaVersion, File] = {
+  ): Map[JavaVersion, File] =
     getJavaHomes(extracted, proj) map { (k, v) => (JavaVersion(k), v) }
-  }
 
   private def getCrossJavaVersions(
       extracted: Extracted,
       proj: ResolvedReference
-  ): Seq[String] = {
+  ): Seq[String] =
     import extracted.*
     import Keys.*
     (proj / crossJavaVersions).get(structure.data).getOrElse(Nil)
-  }
 
-  private def getCrossJavaHomes(extracted: Extracted, proj: ResolvedReference): Seq[File] = {
+  private def getCrossJavaHomes(extracted: Extracted, proj: ResolvedReference): Seq[File] =
     import extracted.*
     import Keys.*
     val fjh = (proj / fullJavaHomes).get(structure.data).get
@@ -205,9 +191,8 @@ private[sbt] object CrossJava {
         lookupJavaHome(jv, fjh)
       }
     } getOrElse Vector()
-  }
 
-  private def switchCommandImpl(state: State, switch: SwitchJavaHome): State = {
+  private def switchCommandImpl(state: State, switch: SwitchJavaHome): State =
     val extracted = Project.extract(state)
     import extracted.*
     import Keys.javaHome
@@ -215,30 +200,27 @@ private[sbt] object CrossJava {
     // filter out subprojects based on switch target e.g. "10" vs what's in crossJavaVersions
     // for the subproject. Only if crossJavaVersions is non-empty, and does NOT include "10"
     // it will skip the subproject.
-    val projects: Seq[(ResolvedReference, Seq[String])] = {
+    val projects: Seq[(ResolvedReference, Seq[String])] =
       val projectJavaVersions =
         structure.allProjectRefs.map(proj => proj -> getCrossJavaVersions(extracted, proj))
-      if (switch.target.force) projectJavaVersions
+      if switch.target.force then projectJavaVersions
       else
-        switch.target.version match {
+        switch.target.version match
           case None    => projectJavaVersions
           case Some(v) =>
             projectJavaVersions flatMap { (proj, versions) =>
-              if (versions.isEmpty || versions.contains[String](v.toString))
+              if versions.isEmpty || versions.contains[String](v.toString) then
                 Vector(proj -> versions)
               else Vector()
             }
-        }
-    }
 
-    def setJavaHomeForProjects: State = {
+    def setJavaHomeForProjects: State =
       val newSettings = projects.flatMap { (proj, javaVersions) =>
         val fjh = getJavaHomesTyped(extracted, proj)
-        val home = switch.target match {
+        val home = switch.target match
           case SwitchTarget(Some(v), _, _) => lookupJavaHome(v, fjh)
           case SwitchTarget(_, Some(h), _) => h
           case _                           => sys.error(s"unexpected ${switch.target}")
-        }
         val scope = Scope(Select(proj), Zero, Zero, Zero)
         Seq(
           (scope / javaHome) := Some(home)
@@ -250,20 +232,19 @@ private[sbt] object CrossJava {
       val projectsContains: Reference => Boolean = projects.map(_._1).toSet[Reference].contains(_)
 
       // Filter out any old javaHome version settings that were added, this is just for hygiene.
-      val filteredRawAppend = session.rawAppend.filter(_.key match {
+      val filteredRawAppend = session.rawAppend.filter(_.key match
         case ScopedKey(Scope(Select(ref), Zero, Zero, Zero), key)
             if filterKeys.contains(key) && projectsContains(ref) =>
           false
-        case _ => true
-      })
+        case _ => true)
 
       val newSession = session.copy(rawAppend = filteredRawAppend ++ newSettings)
 
       BuiltinCommands.reapply(newSession, structure, state)
-    }
+    end setJavaHomeForProjects
 
     setJavaHomeForProjects
-  }
+  end switchCommandImpl
 
   def switchJavaHome: Command =
     Command.arb(requireSession(switchParser), javaSwitchHelp)(switchCommandImpl)
@@ -283,7 +264,7 @@ private[sbt] object CrossJava {
       } & spacedFirst(JavaCrossCommand)
     }
 
-  private def crossJavaHomeCommandImpl(state: State, args: CrossArgs): State = {
+  private def crossJavaHomeCommandImpl(state: State, args: CrossArgs): State =
     val x = Project.extract(state)
     import x.*
     val (aggs, aggCommand) = Cross.parseSlashCommand(x)(args.command)
@@ -299,18 +280,17 @@ private[sbt] object CrossJava {
     val verbose = ""
     // println(s"projVersions $projVersions")
 
-    if (projVersions.isEmpty) {
-      state
-    } else {
+    if projVersions.isEmpty then state
+    else
       // Detect whether a task or command has been issued
-      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(x)) match {
+      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(x)) match
         case Left(_) =>
           // It's definitely not a task, check if it's a valid command, because we don't want to emit the warning
           // message below for typos.
           val validCommand = Parser.parse(aggCommand, state.combinedParser).isRight
 
           val distinctCrossConfigs = projCrossVersions.map(_._2.toSet).distinct
-          if (validCommand && distinctCrossConfigs.size > 1) {
+          if validCommand && distinctCrossConfigs.size > 1 then
             state.log.warn(
               "Issuing a Java cross building command, but not all sub projects have the same cross build " +
                 "configuration. This could result in subprojects cross building against Java versions that they are " +
@@ -322,7 +302,6 @@ private[sbt] object CrossJava {
             projCrossVersions.foreach { (project, versions) =>
               state.log.debug(s"$project: $versions")
             }
-          }
 
           // Execute using a blanket switch
           projCrossVersions.toMap.apply(currentRef).flatMap { version =>
@@ -350,60 +329,50 @@ private[sbt] object CrossJava {
                 projects.map(_ + "/" + aggCommand).mkString("all ", " ", "")
               )
           }
-      }
 
       allCommands.toList ::: captureCurrentSession(state, x)
-    }
-  }
+    end if
+  end crossJavaHomeCommandImpl
 
   private val JavaCapturedSession = AttributeKey[Seq[Setting[?]]]("javaCrossCapturedSession")
 
-  private def captureCurrentSession(state: State, extracted: Extracted): State = {
+  private def captureCurrentSession(state: State, extracted: Extracted): State =
     state.put(JavaCapturedSession, extracted.session.rawAppend)
-  }
 
-  def discoverJavaHomes: ListMap[String, File] = {
+  def discoverJavaHomes: ListMap[String, File] =
     ListMap(JavaDiscoverConfig.configs flatMap { _.javaHomes } sortWith (versionOrder)*)
-  }
 
-  sealed trait JavaDiscoverConf {
+  sealed trait JavaDiscoverConf:
     def javaHomes: Vector[(String, File)]
-  }
 
   def versionOrder(left: (?, File), right: (?, File)): Boolean =
     versionOrder(left._2.getName, right._2.getName)
 
   // Sort version strings, considering 1.8.0 < 1.8.0_45 < 1.8.0_212
   @tailrec
-  def versionOrder(left: String, right: String): Boolean = {
+  def versionOrder(left: String, right: String): Boolean =
     val Pattern = """.*?([0-9]+)(.*)""".r
-    left match {
+    left match
       case Pattern(leftNumber, leftRest) =>
-        right match {
+        right match
           case Pattern(rightNumber, rightRest) =>
-            if (Integer.parseInt(leftNumber) < Integer.parseInt(rightNumber)) true
-            else if (Integer.parseInt(leftNumber) > Integer.parseInt(rightNumber)) false
+            if Integer.parseInt(leftNumber) < Integer.parseInt(rightNumber) then true
+            else if Integer.parseInt(leftNumber) > Integer.parseInt(rightNumber) then false
             else versionOrder(leftRest, rightRest)
           case _ =>
             false
-        }
       case _ =>
         true
-    }
-  }
 
-  object JavaDiscoverConfig {
-    object JavaHomeDir {
+  object JavaDiscoverConfig:
+    object JavaHomeDir:
       private val regex = """(\w+-)??(java-|(?:adoptopen)?jdk-?)?(bin-)?(1\.)?([0-9]+).*""".r
-      def unapply(s: CharSequence): Option[String] = {
-        s match {
+      def unapply(s: CharSequence): Option[String] =
+        s match
           case regex(vendor, _, _, m, n) => Some(JavaVersion(nullBlank(m) + n).toString)
           case _                         => None
-        }
-      }
-    }
 
-    class LinuxDiscoverConfig(base: File) extends JavaDiscoverConf {
+    class LinuxDiscoverConfig(base: File) extends JavaDiscoverConf:
       def candidates() = wrapNull(base.list())
 
       def javaHomes: Vector[(String, File)] =
@@ -411,9 +380,8 @@ private[sbt] object CrossJava {
           .collect { case dir @ JavaHomeDir(version) =>
             version -> (base / dir)
           }
-    }
 
-    class MacOsDiscoverConfig extends JavaDiscoverConf {
+    class MacOsDiscoverConfig extends JavaDiscoverConf:
       val base: File = file("/Library") / "Java" / "JavaVirtualMachines"
       // User-specific JDKs are installed, for example, by IntelliJ IDEA
       private val baseInUserHome: File = Path.userHome / "Library" / "Java" / "JavaVirtualMachines"
@@ -422,14 +390,12 @@ private[sbt] object CrossJava {
         findAllHomes(base) ++
           findAllHomes(baseInUserHome)
 
-      private def findAllHomes(root: File): Vector[(String, File)] = {
+      private def findAllHomes(root: File): Vector[(String, File)] =
         wrapNull(root.list()).collect { case dir @ JavaHomeDir(version) =>
           version -> (root / dir / "Contents" / "Home")
         }
-      }
-    }
 
-    class JabbaDiscoverConfig extends JavaDiscoverConf {
+    class JabbaDiscoverConfig extends JavaDiscoverConf:
       val base: File = Path.userHome / ".jabba" / "jdk"
       val JabbaJavaHomeDir = """([\w\-]+)\@(1\.)?([0-9]+).*""".r
 
@@ -437,26 +403,24 @@ private[sbt] object CrossJava {
         wrapNull(base.list())
           .collect { case dir @ JabbaJavaHomeDir(vendor, m, n) =>
             val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
-            if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
+            if (base / dir / "Contents" / "Home").exists then
+              v -> (base / dir / "Contents" / "Home")
             else v -> (base / dir)
           }
-    }
 
-    class SdkmanDiscoverConfig extends JavaDiscoverConf {
+    class SdkmanDiscoverConfig extends JavaDiscoverConf:
       val base: File = Path.userHome / ".sdkman" / "candidates" / "java"
       def candidates(): Vector[String] = wrapNull(base.list())
       def javaHomes: Vector[(String, File)] =
         candidates().collect {
           case dir if dir.contains("-") =>
-            CrossJava.parseSdkmanString(dir) match {
+            CrossJava.parseSdkmanString(dir) match
               case Success(v) => Some(v.toString -> (base / dir))
               case Failure(_) => None
-            }
         }.flatten
-    }
 
     class WindowsDiscoverConfig(base: File, vendors: Seq[String] = Seq.empty)
-        extends JavaDiscoverConf {
+        extends JavaDiscoverConf:
 
       def candidates() = wrapNull(base.list())
 
@@ -471,9 +435,8 @@ private[sbt] object CrossJava {
               val jv = JavaVersion(version)
               vendors.map(jv.withVendor(_).toString -> home)
           }
-    }
 
-    class JavaHomeDiscoverConfig extends JavaDiscoverConf {
+    class JavaHomeDiscoverConfig extends JavaDiscoverConf:
       def home() = sys.env.get("JAVA_HOME")
 
       def javaHomes: Vector[(String, File)] =
@@ -481,25 +444,22 @@ private[sbt] object CrossJava {
           .map(new java.io.File(_))
           .flatMap { javaHome =>
             val base = javaHome.getParentFile
-            javaHome.getName match {
+            javaHome.getName match
               case dir @ JavaHomeDir(version) =>
                 Some(version -> (base / dir))
               case _ => None
-            }
           }
           .toVector
-    }
 
-    class SetupJavaDiscoverConfig(base: File) extends JavaDiscoverConf {
+    class SetupJavaDiscoverConfig(base: File) extends JavaDiscoverConf:
       private val SetupJavaVendorDir =
         """Java_(Zulu|Temurin-Hotspot|Temurin|Adopt|Corretto|Liberica|Microsoft|Semeru)_jdk""".r
       private val SetupJavaVersionDir = """([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9]+)?""".r
 
-      private def normalizeVendor(vendor: String): String = vendor.toLowerCase match {
+      private def normalizeVendor(vendor: String): String = vendor.toLowerCase match
         case "temurin-hotspot" => "temurin"
         case "adopt"           => "temurin"
         case other             => other
-      }
 
       def candidates(): Vector[String] = wrapNull(base.list())
 
@@ -522,7 +482,7 @@ private[sbt] object CrossJava {
             }
           case _ => Vector.empty
         }
-    }
+    end SetupJavaDiscoverConfig
 
     val configs = Vector(
       new JabbaDiscoverConfig,
@@ -533,7 +493,7 @@ private[sbt] object CrossJava {
       new MacOsDiscoverConfig,
       new JavaHomeDiscoverConfig,
     ) ++ {
-      if (IO.isWindows) {
+      if IO.isWindows then
         def discover(dir: String, vendors: String*) = new WindowsDiscoverConfig(file(dir), vendors)
         Vector(
           new SetupJavaDiscoverConfig(file("C:") / "hostedtoolcache" / "windows"),
@@ -548,25 +508,25 @@ private[sbt] object CrossJava {
           discover("C://Program Files (x86)/Eclipse Foundation", "temurin", "adopt"),
           discover("C://Program Files (x86)/Semeru", "semeru", "adopt-openj9"),
         )
-      } else Vector.empty
+      else Vector.empty
     }
-  }
+  end JavaDiscoverConfig
 
   def nullBlank(s: String): String =
-    if (s eq null) ""
+    if s eq null then ""
     else s
 
-  def expandJavaHomes(hs: Map[String, File]): Map[String, File] = {
+  def expandJavaHomes(hs: Map[String, File]): Map[String, File] =
     val parsed = hs map { (k, v) =>
       JavaVersion(k) -> v
     }
     // first ignore vnd
     val withAndWithoutVnd = parsed flatMap { (k, v) =>
-      if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
+      if k.vendor.isDefined then Vector(k -> v, k.withVendor(None) -> v)
       else Vector(k -> v)
     }
     val normalizeNumbers = withAndWithoutVnd flatMap { (k, v) =>
-      k.numbers match {
+      k.numbers match
         case Vector(1L, minor, _*) =>
           Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
         case Vector(major) if major > 1 =>
@@ -575,15 +535,14 @@ private[sbt] object CrossJava {
           Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
         case _ =>
           Vector(k -> v)
-      }
     }
     val result: Map[String, File] = normalizeNumbers map { (k, v) =>
       (k.toString -> v)
     }
     result
-  }
+  end expandJavaHomes
 
   def wrapNull(a: Array[String]): Vector[String] =
-    if (a eq null) Vector()
+    if a eq null then Vector()
     else a.toVector
-}
+end CrossJava

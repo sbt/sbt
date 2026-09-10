@@ -21,25 +21,23 @@ import sbt.internal.util.Util.nilSeq
  * This means that a command can look at or modify other sbt settings, for example.
  * Typically you would resort to a command when you need to do something that's impossible in a regular task.
  */
-sealed trait Command {
+sealed trait Command:
   def help: State => Help
   def parser: State => Parser[() => State]
 
   def tags: AttributeMap
   def tag[T](key: AttributeKey[T], value: T): Command
 
-  def nameOption: Option[String] = this match {
+  def nameOption: Option[String] = this match
     case sc: SimpleCommand => Some(sc.name)
     case _                 => None
-  }
-}
 
 private[sbt] final class SimpleCommand(
     val name: String,
     private[sbt] val help0: Help,
     val parser: State => Parser[() => State],
     val tags: AttributeMap
-) extends Command {
+) extends Command:
 
   assert(Command.validID(name), s"'$name' is not a valid command name.")
 
@@ -49,21 +47,19 @@ private[sbt] final class SimpleCommand(
     new SimpleCommand(name, help0, parser, tags.put(key, value))
 
   override def toString = s"SimpleCommand($name)"
-}
 
 private[sbt] final class ArbitraryCommand(
     val parser: State => Parser[() => State],
     val help: State => Help,
     val tags: AttributeMap,
     override val nameOption: Option[String]
-) extends Command {
+) extends Command:
   def this(parser: State => Parser[() => State], help: State => Help, tags: AttributeMap) =
     this(parser, help, tags, None)
   def tag[T](key: AttributeKey[T], value: T): ArbitraryCommand =
     new ArbitraryCommand(parser, help, tags.put(key, value))
-}
 
-object Command {
+object Command:
   import DefaultParsers.*
 
   // Lowest-level command construction
@@ -148,10 +144,9 @@ object Command {
   )(effect: (State, T) => State): State => Parser[() => State] =
     s => applyEffect(parser(s))(t => effect(s, t))
 
-  def combine(cmds: Seq[Command]): State => Parser[() => State] = {
+  def combine(cmds: Seq[Command]): State => Parser[() => State] =
     val (simple, arbs) = separateCommands(cmds)
     state => arbs.map(_.parser(state)).foldLeft(simpleParser(simple)(state))(_ | _)
-  }
 
   private def separateCommands(
       cmds: Seq[Command]
@@ -163,43 +158,38 @@ object Command {
   def simpleParser(cmds: Seq[SimpleCommand]): State => Parser[() => State] =
     simpleParser(cmds.map(sc => (sc.name, argParser(sc))).toMap)
 
-  private def argParser(sc: SimpleCommand): State => Parser[() => State] = {
+  private def argParser(sc: SimpleCommand): State => Parser[() => State] =
     def usageError = s"${sc.name} usage:" + Help.message(sc.help0, None)
     s => (Parser.softFailure(usageError, definitive = true): Parser[() => State]) | sc.parser(s)
-  }
 
   def simpleParser(
       commandMap: Map[String, State => Parser[() => State]]
   ): State => Parser[() => State] =
     state =>
       token(OpOrID.examples(commandMap.keys.toSet)).flatMap: id =>
-        (commandMap get id) match {
+        (commandMap get id) match
           case None    => failure(invalidValue("command", commandMap.keys)(id))
           case Some(c) => c(state)
-        }
 
   // overload instead of default parameter to keep binary compatibility
   @deprecated("Use overload that takes the onParseError callback", since = "1.9.4")
   def process(command: String, state: State): State = process(command, state, _ => ())
 
-  def process(command: String, state: State, onParseError: String => Unit): State = {
-    (if (command.contains(";")) parse(command, state.combinedParser)
-     else parse(command, state.nonMultiParser)) match {
+  def process(command: String, state: State, onParseError: String => Unit): State =
+    (if command.contains(";") then parse(command, state.combinedParser)
+     else parse(command, state.nonMultiParser)) match
       case Right(s)     => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log.error(errMsg)
         onParseError(errMsg)
         state.fail
-    }
-  }
 
   def invalidValue(label: String, allowed: Iterable[String])(value: String): String =
     s"Not a valid $label: $value" + similar(value, allowed)
 
-  def similar(value: String, allowed: Iterable[String]): String = {
-    val suggested = if (value.length > 2) suggestions(value, allowed.toSeq) else nilSeq
-    if (suggested.isEmpty) "" else suggested.mkString(" (similar: ", ", ", ")")
-  }
+  def similar(value: String, allowed: Iterable[String]): String =
+    val suggested = if value.length > 2 then suggestions(value, allowed.toSeq) else nilSeq
+    if suggested.isEmpty then "" else suggested.mkString(" (similar: ", ", ", ")")
 
   def suggestions(
       a: String,
@@ -227,29 +217,27 @@ object Command {
 
   def spacedC(name: String, c: Parser[Char]): Parser[String] =
     ((c & opOrIDSpaced(name)) ~ c.+) map { (f, rem) => (f +: rem).mkString }
-}
+end Command
 
-trait Help {
+trait Help:
   def detail: Map[String, String]
   def brief: Seq[(String, String)]
   def more: Set[String]
   def ++(o: Help): Help
-}
 
 private final class Help0(
     val brief: Seq[(String, String)],
     val detail: Map[String, String],
     val more: Set[String]
-) extends Help {
+) extends Help:
   def ++(h: Help): Help =
     new Help0(
       Help0.this.brief ++ h.brief,
       Map(Help0.this.detail.toSeq ++ h.detail.toSeq*),
       more ++ h.more
     )
-}
 
-object Help {
+object Help:
   val empty: Help = briefDetail(Nil)
 
   def apply(name: String, briefHelp: (String, String), detail: String): Help =
@@ -277,22 +265,18 @@ object Help {
   import CommandUtil.*
 
   def message(h: Help, arg: Option[String]): String =
-    arg match {
+    arg match
       case Some(x) => detail(x, h.detail)
       case None    =>
         val brief = aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
         val more = h.more
-        if (more.isEmpty)
-          brief
-        else
-          brief + "\n" + moreMessage(more.toSeq.sorted)
-    }
+        if more.isEmpty then brief
+        else brief + "\n" + moreMessage(more.toSeq.sorted)
 
   def moreMessage(more: Seq[String]): String =
     more.mkString("More command help available using 'help <command>' for:\n  ", ", ", "\n")
-}
+end Help
 
-trait CommandDefinitions extends (State => State) {
+trait CommandDefinitions extends (State => State):
   def commands: Seq[Command] = ReflectUtilities.allValsC(this, classOf[Command]).values.toSeq
   def apply(s: State): State = s ++ commands
-}

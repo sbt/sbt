@@ -56,7 +56,7 @@ object ActionCacheTest extends BasicTestSuite:
     var b: String = null
     var i = 0
     val cap = 5000000
-    while (b == null && i < cap) do
+    while b == null && i < cap do
       val key = s"input-$i"
       Hasher.hashUnsafe[String](key) match
         case h if seen.contains(h) => a = seen(h); b = key
@@ -209,10 +209,9 @@ object ActionCacheTest extends BasicTestSuite:
   def testActionCacheBasic(cache: ActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
     var called = 0
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       InternalActionResult(a + b, Nil)
-    }
     IO.withTemporaryDirectory: (tempDir) =>
       val config = getCacheConfig(cache, tempDir)
       val v1 =
@@ -231,11 +230,10 @@ object ActionCacheTest extends BasicTestSuite:
     import sjsonnew.BasicJsonProtocol.*
     IO.withTemporaryDirectory: (tempDir) =>
       var called = 0
-      val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+      val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
         called += 1
         val out = StringVirtualFile1(s"$tempDir/a.txt", (a + b).toString)
         InternalActionResult(a + b, Seq(out))
-      }
       val config = getCacheConfig(cache, tempDir)
       val v1 =
         ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
@@ -252,6 +250,7 @@ object ActionCacheTest extends BasicTestSuite:
       assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
+  end testActionCacheWithBlob
 
   test("Disk cache can recover gracefully from invalid JSON"):
     withDiskCache(testActionCacheInvalidJson)
@@ -262,10 +261,9 @@ object ActionCacheTest extends BasicTestSuite:
   def testActionCacheInvalidJson(cache: DiskActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
     var called = 0
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       InternalActionResult(a + b, Nil)
-    }
     IO.withTemporaryDirectory: tempDir =>
       val config = getCacheConfig(cache, tempDir)
 
@@ -302,10 +300,9 @@ object ActionCacheTest extends BasicTestSuite:
       override def problems(): Array[Problem] = Array(testProblem)
       override def getMessage(): String = "Compilation failed"
 
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       throw testException
-    }
     IO.withTemporaryDirectory: tempDir =>
       val config = getCacheConfig(cache, tempDir)
 
@@ -333,6 +330,7 @@ object ActionCacheTest extends BasicTestSuite:
       assert(caught2.problems().length == 1)
       assert(caught2.problems()(0).message() == "Test error message")
       assert(caught2.getMessage() == "Compilation failed")
+  end testCachedCompileFailure
 
   test("Disk cache does not cache an environmental (position-less) CompileFailed"):
     withDiskCache(testEnvironmentalCompileFailureNotCached)
@@ -359,10 +357,9 @@ object ActionCacheTest extends BasicTestSuite:
       override def problems(): Array[Problem] = Array(ioProblem)
       override def getMessage(): String = "Compilation failed"
 
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (_, _) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (_, _) =>
       called += 1
       throw ioException
-    }
     IO.withTemporaryDirectory: tempDir =>
       val config = getCacheConfig(cache, tempDir)
 
@@ -382,6 +379,7 @@ object ActionCacheTest extends BasicTestSuite:
         called == 2,
         s"environmental failure must not be cached; action should re-run (called=$called)"
       )
+  end testEnvironmentalCompileFailureNotCached
 
   test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
     withDiskCache(testLegacyPoisonedFailureCured)
@@ -407,10 +405,9 @@ object ActionCacheTest extends BasicTestSuite:
       override def problems(): Array[Problem] = Array(ioProblem)
       override def getMessage(): String = "Compilation failed"
 
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       InternalActionResult(a + b, Nil)
-    }
     IO.withTemporaryDirectory: tempDir =>
       val config = getCacheConfig(cache, tempDir)
 
@@ -435,6 +432,7 @@ object ActionCacheTest extends BasicTestSuite:
       val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v2 == 2)
       assert(called == 1, s"expected a success cache hit after the cure (called=$called)")
+  end testLegacyPoisonedFailureCured
 
   test("A file vanishing after its blob is stored no longer breaks the cache write"):
     withDiskCache: cache =>
@@ -454,10 +452,9 @@ object ActionCacheTest extends BasicTestSuite:
           override def contentHashStr: String = maybeThrow(goodHash)
           override def input: java.io.InputStream =
             new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
-        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
           called += 1
           InternalActionResult(a + b, Seq(vanishing))
-        }
         val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
         assert(v1 == 2)
         assert(called == 1)
@@ -476,10 +473,9 @@ object ActionCacheTest extends BasicTestSuite:
           override def sizeBytes: Long = throw new NoSuchFileException(id)
           override def contentHashStr: String = throw new NoSuchFileException(id)
           override def input: java.io.InputStream = throw new NoSuchFileException(id)
-        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
           called += 1
           InternalActionResult(a + b, Seq(gone))
-        }
         val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
         assert(v1 == 2)
         assert(called == 1)
@@ -519,11 +515,10 @@ object ActionCacheTest extends BasicTestSuite:
         val midnightUTC = java.nio.file.attribute.FileTime.from(
           java.time.Instant.parse("2026-08-01T00:00:00Z")
         )
-        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
           Files.writeString(outPath, "foo")
           Files.setLastModifiedTime(outPath, midnightUTC)
           InternalActionResult(a + b, Seq(binaryConverter.toVirtualFile(outPath)))
-        }
         val config = getCacheConfig(cache, tempDir, converter = binaryConverter)
         val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
         assert(v1 == 2)
@@ -548,10 +543,9 @@ object ActionCacheTest extends BasicTestSuite:
             unbuilder: sjsonnew.Unbuilder[J]
         ): Unserializable = Unserializable(0)
       import sjsonnew.BasicJsonProtocol.*
-      val action: ((Int, Int)) => InternalActionResult[Unserializable] = { (a, b) =>
+      val action: ((Int, Int)) => InternalActionResult[Unserializable] = (a, b) =>
         called += 1
         InternalActionResult(Unserializable(a + b), Nil)
-      }
       IO.withTemporaryDirectory: tempDir =>
         val config = getCacheConfig(cache, tempDir)
         val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
@@ -567,10 +561,9 @@ object ActionCacheTest extends BasicTestSuite:
   def testSyncBlobsThrowsFallback(underlying: DiskActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
     var called = 0
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       InternalActionResult(a + b, Nil)
-    }
     class ThrowingSyncStore extends AbstractActionCacheStore:
       override def storeName: String = "throwing-sync"
       override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
@@ -591,6 +584,7 @@ object ActionCacheTest extends BasicTestSuite:
       val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v2 == 2)
       assert(called == 2)
+  end testSyncBlobsThrowsFallback
 
   test(
     "readFromSymlink fast path falls back to recompute when syncBlobs throws FileNotFoundException"
@@ -608,10 +602,9 @@ object ActionCacheTest extends BasicTestSuite:
         StringVirtualFile1(path.toString, content)
     val diskCache = DiskActionCacheStore(cacheDir.toPath, absConverter)
     var called = 0
-    val action: Unit => InternalActionResult[Int] = { _ =>
+    val action: Unit => InternalActionResult[Int] = _ =>
       called += 1
       InternalActionResult(42, Nil)
-    }
     val logger = new Logger:
       override def trace(t: => Throwable): Unit = ()
       override def success(message: => String): Unit = ()
@@ -650,6 +643,7 @@ object ActionCacheTest extends BasicTestSuite:
     val v2 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config2)(action)
     assert(v2 == 42)
     assert(called == 2)
+  end testReadFromSymlinkFallback
 
   test("packageDirectory is safe when many threads package the same directory concurrently"):
     IO.withTemporaryDirectory: tmp =>
@@ -707,7 +701,7 @@ object ActionCacheTest extends BasicTestSuite:
         val classesDir = outDir.toPath.resolve("classes")
         val classFile = classesDir.resolve("pkg/A.class")
         var called = 0
-        val action: Unit => InternalActionResult[Int] = { _ =>
+        val action: Unit => InternalActionResult[Int] = _ =>
           called += 1
           Files.createDirectories(classFile.getParent)
           Files.writeString(classFile, "compiled")
@@ -718,7 +712,6 @@ object ActionCacheTest extends BasicTestSuite:
               outDir.toPath
             )
           InternalActionResult(1, Seq(dirzip))
-        }
         val config = getCacheConfig(cache, outDir, converter = conv)
         val v1 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config)(action)
         assert(v1 == 1)
@@ -752,11 +745,10 @@ object ActionCacheTest extends BasicTestSuite:
               outputDirectory: Path,
           ): Path = throw mkError(ref)
         var called = 0
-        val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
           called += 1
           val out = StringVirtualFile1(s"$outDir/a.txt", (a + b).toString)
           InternalActionResult(a + b, Seq(out))
-        }
         val config = getCacheConfig(broken, outDir)
         val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
         assert(v1 == 2)
@@ -764,6 +756,7 @@ object ActionCacheTest extends BasicTestSuite:
         val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
         assert(v2 == 2)
         assert(called == 2, s"broken restore must degrade to onsite recompute (called=$called)")
+  end testBrokenRestoreDegrades
 
   test("Changing cacheVersion invalidates the cache"):
     withDiskCache(testCacheVersionInvalidation)
@@ -771,10 +764,9 @@ object ActionCacheTest extends BasicTestSuite:
   def testCacheVersionInvalidation(cache: ActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
     var called = 0
-    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       InternalActionResult(a + b, Nil)
-    }
     IO.withTemporaryDirectory: tempDir =>
       val config0 = getCacheConfig(cache, tempDir)
       // First call: computes the result
@@ -794,6 +786,7 @@ object ActionCacheTest extends BasicTestSuite:
       val v4 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config1)(action)
       assert(v4 == 2)
       assert(called == 2)
+  end testCacheVersionInvalidation
 
   // Adversarial cache entries: a poisoned shared/remote cache must not escape the output
   // directory (zip-slip / path traversal) or restore blobs whose bytes do not match their

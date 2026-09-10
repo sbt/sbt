@@ -11,19 +11,18 @@ package complete
 
 import Completion.*
 
-class ParserWithExamplesTest extends UnitSpec {
+class ParserWithExamplesTest extends UnitSpec:
 
   "listing a limited number of completions" should
     "grab only the needed number of elements from the iterable source of examples" in {
-      val _ = new ParserWithLazyExamples {
+      val _ = new ParserWithLazyExamples:
         parserWithExamples.completions(0)
         examples.size shouldEqual maxNumberOfExamples
-      }
     }
 
   "listing only valid completions" should
     "use the delegate parser to remove invalid examples" in {
-      val _ = new ParserWithValidExamples {
+      val _ = new ParserWithValidExamples:
         val validCompletions = Completions(
           Set(
             suggestion("blue"),
@@ -31,32 +30,29 @@ class ParserWithExamplesTest extends UnitSpec {
           )
         )
         parserWithExamples.completions(0) shouldEqual validCompletions
-      }
     }
 
   "listing valid completions in a derived parser" should
     "produce only valid examples that start with the character of the derivation" in {
-      val _ = new ParserWithValidExamples {
+      val _ = new ParserWithValidExamples:
         val derivedCompletions = Completions(
           Set(
             suggestion("lue")
           )
         )
         parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
-      }
     }
 
   "listing valid and invalid completions" should
     "produce the entire source of examples" in {
-      val _ = new parserWithAllExamples {
+      val _ = new parserWithAllExamples:
         val completions = Completions(examples.map(suggestion(_)).toSet)
         parserWithExamples.completions(0) shouldEqual completions
-      }
     }
 
   "listing valid and invalid completions in a derived parser" should
     "produce only examples that start with the character of the derivation" in {
-      val _ = new parserWithAllExamples {
+      val _ = new parserWithAllExamples:
         val derivedCompletions = Completions(
           Set(
             suggestion("lue"),
@@ -64,7 +60,6 @@ class ParserWithExamplesTest extends UnitSpec {
           )
         )
         parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
-      }
     }
 
   class ParserWithLazyExamples
@@ -82,7 +77,7 @@ class ParserWithExamplesTest extends UnitSpec {
       examples: Iterable[String] = Set("blue", "yellow", "green_", "block", "red"),
       maxNumberOfExamples: Int = 25,
       removeInvalidExamples: Boolean
-  ) {
+  ):
 
     import DefaultParsers.*
 
@@ -93,26 +88,20 @@ class ParserWithExamplesTest extends UnitSpec {
       maxNumberOfExamples,
       removeInvalidExamples
     )
-  }
 
-  case class GrowableSourceOfExamples() extends Iterable[String] {
+  case class GrowableSourceOfExamples() extends Iterable[String]:
     private var numberOfIteratedElements: Int = 0
 
-    override def iterator: Iterator[String] = {
-      new Iterator[String] {
+    override def iterator: Iterator[String] =
+      new Iterator[String]:
         var currentElement = 0
 
-        override def next(): String = {
+        override def next(): String =
           currentElement += 1
           numberOfIteratedElements = Math.max(currentElement, numberOfIteratedElements)
           numberOfIteratedElements.toString
-        }
 
         override def hasNext: Boolean = true
-      }
-    }
 
     override def size: Int = numberOfIteratedElements
-  }
-
-}
+end ParserWithExamplesTest

@@ -17,23 +17,20 @@ import java.util.concurrent.TimeUnit
 import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
 
-class InstallSbtnSpec extends AnyFlatSpec {
-  private def withTemp[R](ext: String)(f: Path => R): R = {
+class InstallSbtnSpec extends AnyFlatSpec:
+  private def withTemp[R](ext: String)(f: Path => R): R =
     val tmp = Files.createTempFile("sbt-1.4.1-", ext)
     try f(tmp)
-    finally {
+    finally
       Files.deleteIfExists(tmp)
       ()
-    }
-  }
-  private val term = new Terminal {
+  private val term = new Terminal:
     def getHeight: Int = 0
     def getWidth: Int = 0
     def inputStream: InputStream = () => -1
     def printStream: PrintStream = new PrintStream((_ => {}): OutputStream)
     def setMode(canonical: Boolean, echo: Boolean): Unit = {}
 
-  }
   // This test has issues in ci but runs ok locally on all platforms
   "InstallSbtn" should "extract native sbtn" ignore
     withTemp(".zip") { tmp =>
@@ -49,7 +46,7 @@ class InstallSbtnSpec extends AnyFlatSpec {
           tmpDir.resolve("project").resolve("build.properties").toFile,
           "sbt.version=1.9.0"
         )
-        try {
+        try
           val proc =
             new ProcessBuilder(sbtn.toString, "foo;shutdown")
               .redirectInput(Redirect.INHERIT)
@@ -60,9 +57,7 @@ class InstallSbtnSpec extends AnyFlatSpec {
           proc.waitFor(1, TimeUnit.MINUTES)
           assert(proc.exitValue == 0)
           assert(IO.read(foo.toFile) == "foo")
-        } finally {
-          sbt.io.IO.delete(tmpDir.toFile)
-        }
+        finally sbt.io.IO.delete(tmpDir.toFile)
       }
     }
-}
+end InstallSbtnSpec

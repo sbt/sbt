@@ -132,6 +132,7 @@ object Digest:
         val md = MessageDigest.getInstance(jvmAlgo(algo))
         val size = transfer((buf, n) => md.update(buf, 0, n))
         apply(algo, md.digest(), size)
+  end transferAndHash
 
   // first check the file size, then the hash
   def sameDigest(path: Path, digest: Digest): Boolean =
@@ -205,7 +206,10 @@ object Digest:
           case (a @ Sha512) :: value :: sizeBytes :: Nil =>
             (a, value, sizeBytes.toLong, parseHex(value, 512))
           case _ => throw IllegalArgumentException(s"unexpected digest: $s")
+        end match
       case _ => throw IllegalArgumentException(s"unexpected digest: $s")
+    end match
+  end parse
 
   private def jvmAlgo(algo: String): String =
     algo match

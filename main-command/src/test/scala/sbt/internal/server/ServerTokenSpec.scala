@@ -49,6 +49,7 @@ object ServerTokenSpec extends BasicTestSuite:
     finally
       instance.shutdown()
       sbt.io.IO.delete(dir)
+  end withServer
 
   private def tokenIn(tokenfile: File): String =
     import Server.JsonProtocol.given

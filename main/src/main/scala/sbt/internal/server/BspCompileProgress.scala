@@ -13,27 +13,22 @@ import xsbti.compile.CompileProgress
 private[sbt] final class BspCompileProgress(
     task: BspCompileTask,
     underlying: Option[CompileProgress]
-) extends CompileProgress {
+) extends CompileProgress:
   override def advance(
       current: Int,
       total: Int,
       prevPhase: String,
       nextPhase: String
-  ): Boolean = {
+  ): Boolean =
     val percentage = current * 100 / total
     // Report percentages every 5% increments
     val shouldReportPercentage = percentage % 5 == 0
-    if (shouldReportPercentage) {
-      task.notifyProgress(percentage, total)
-    }
+    if shouldReportPercentage then task.notifyProgress(percentage, total)
     underlying.fold(true)(_.advance(current, total, prevPhase, nextPhase))
-  }
 
-  override def startUnit(phase: String, unitPath: String): Unit = {
+  override def startUnit(phase: String, unitPath: String): Unit =
     underlying.foreach(_.startUnit(phase, unitPath))
-  }
 
-  override def afterEarlyOutput(success: Boolean): Unit = {
+  override def afterEarlyOutput(success: Boolean): Unit =
     underlying.foreach(_.afterEarlyOutput(success))
-  }
-}
+end BspCompileProgress

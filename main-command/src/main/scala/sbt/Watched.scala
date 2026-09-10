@@ -24,7 +24,7 @@ object Watched:
 
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
 
-  object WatchSource {
+  object WatchSource:
 
     /**
      * Creates a new `WatchSource` for watching files, with the given filters.
@@ -45,16 +45,14 @@ object Watched:
      */
     def apply(base: File): Source = apply(base, AllPassFilter, NothingFilter)
 
-  }
-
   private val defaultPollInterval: FiniteDuration = 500.milliseconds
 
   // @nowarn
   private[sbt] val newWatchService: () => WatchService =
     (() => createWatchService(defaultPollInterval)).label("Watched.newWatchService")
-  def createWatchService(pollDelay: FiniteDuration): WatchService = {
+  def createWatchService(pollDelay: FiniteDuration): WatchService =
     def closeWatch = new MacOSXWatchService()
-    sys.props.get("sbt.watch.mode") match {
+    sys.props.get("sbt.watch.mode") match
       case Some("polling") =>
         new PollingWatchService(pollDelay)
       case Some("nio") =>
@@ -63,7 +61,5 @@ object Watched:
       case _ if Properties.isMac => closeWatch
       case _                     =>
         FileSystems.getDefault.newWatchService()
-    }
-  }
 
 end Watched

@@ -24,16 +24,16 @@ import sbt.SlashSyntax0.*
 import sbt.io.{ Hash, IO }
 import scala.annotation.tailrec
 
-object Script {
+object Script:
   final val Name = "script"
   // When shebang is stripped, compiler error line numbers may be off by one for the original file;
   // position mapping could be added in a future improvement (see sbt/sbt#6274).
   /** If the first line is a shebang (#!), drop it so the compiler never sees it. */
   private[internal] def stripShebang(lines: Seq[String]): Seq[String] =
-    if (lines.nonEmpty && lines.head.startsWith("#!")) lines.drop(1) else lines
+    if lines.nonEmpty && lines.head.startsWith("#!") then lines.drop(1) else lines
 
   /** Lines that are not inside any /*** ... */ block (i.e. the executable script body). */
-  private[internal] def scriptBodyLines(file: File): Seq[String] = {
+  private[internal] def scriptBodyLines(file: File): Seq[String] =
     val lines = IO.readLines(file).toIndexedSeq
     // Block(offset, lines): offset = index of /*** line, lines = content between /*** and */ (excl. both).
     // Exclude /*** (off), content (off+1..off+ls.size), and */ (off+1+ls.size).
@@ -41,10 +41,9 @@ object Script {
       case Block(off, ls) => (off until off + 2 + ls.size)
     }.toSet
     lines.indices.filterNot(blockSet).map(lines)
-  }
 
   /** Write a Scala 3 compilable file that wraps the script body in object Main { def main(...) = { ... } }. */
-  private def writeWrappedScript(body: Seq[String], out: File): Unit = {
+  private def writeWrappedScript(body: Seq[String], out: File): Unit =
     val indent = "  "
     val inner = body.map(line => indent + line).mkString("\n")
     val content =
@@ -55,7 +54,6 @@ object Script {
          |}
          |""".stripMargin
     IO.write(out, content)
-  }
 
   lazy val command =
     Command.command(Name) { state =>
@@ -69,11 +67,10 @@ object Script {
       val src = new File(base, "src_managed")
       IO.createDirectory(src)
       // handle any script extension or none
-      val scalaFile = {
+      val scalaFile =
         val dotIndex = scriptArg.lastIndexOf(".")
-        if (dotIndex == -1) scriptArg + ".scala"
+        if dotIndex == -1 then scriptArg + ".scala"
         else scriptArg.substring(0, dotIndex) + ".scala"
-      }
       val script = new File(src, scalaFile)
       val linesWithoutShebang = stripShebang(IO.readLines(scriptFile))
       IO.write(script, linesWithoutShebang.mkString("", "\n", "\n"))
@@ -92,16 +89,16 @@ object Script {
       }
       val scriptBaseName = script.getName.stripSuffix(".scala")
       val scriptAsSource = (Compile / sources) := Def.uncached {
-        if (ScalaArtifacts.isScala3(scalaVersion.value)) scriptMain :: Nil else script :: Nil
+        if ScalaArtifacts.isScala3(scalaVersion.value) then scriptMain :: Nil else script :: Nil
       }
       val asScript = scalacOptions := Def.uncached {
         val extra =
-          if (ScalaArtifacts.isScala3(scalaVersion.value)) Nil
+          if ScalaArtifacts.isScala3(scalaVersion.value) then Nil
           else Seq("-Xscript", scriptBaseName)
         scalacOptions.value ++ extra
       }
       val scriptMainClass = (run / mainClass) := Def.uncached {
-        if (ScalaArtifacts.isScala3(scalaVersion.value)) Some("Main") else Some(scriptBaseName)
+        if ScalaArtifacts.isScala3(scalaVersion.value) then Some("Main") else Some(scriptBaseName)
       }
       val scriptSettings = Seq(
         asScript,
@@ -124,12 +121,12 @@ object Script {
     }
 
   final case class Block(offset: Int, lines: Seq[String])
-  def blocks(file: File): Seq[Block] = {
+  def blocks(file: File): Seq[Block] =
     val lines = IO.readLines(file).toIndexedSeq
     @tailrec
     def blocks(b: Block, acc: List[Block]): List[Block] =
-      if (b.lines.isEmpty) acc.reverse
-      else {
+      if b.lines.isEmpty then acc.reverse
+      else
         val (dropped, blockToEnd) = b.lines.span { line =>
           !line.startsWith(BlockStart)
         }
@@ -138,13 +135,10 @@ object Script {
         }
         val offset = b.offset + dropped.length
         blocks(Block(offset + block.length, remaining), Block(offset, block.drop(1)) :: acc)
-      }
     blocks(Block(0, lines), Nil)
-  }
   val BlockStart = "/***"
   val BlockEnd = "*/"
-  def fail(s: State, msg: String): State = {
+  def fail(s: State, msg: String): State =
     System.err.println(msg)
     s.fail
-  }
-}
+end Script

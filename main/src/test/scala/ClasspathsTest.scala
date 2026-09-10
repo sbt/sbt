@@ -17,9 +17,9 @@ class ClasspathsTest[T](
     taskKey: TaskKey[Seq[T]],
     initVal: Initialize[Seq[T]],
     taskVal: Initialize[Task[Seq[T]]],
-) {
+):
 
-  def testConcat() = {
+  def testConcat() =
     concat(settKey, settKey)
     concat(settKey, taskKey)
     concat(settKey, initVal)
@@ -36,12 +36,10 @@ class ClasspathsTest[T](
     concat(taskVal, taskKey)
     concat(taskVal, initVal)
     concat(taskVal, taskVal)
-  }
 
-  def testConcatSettings() = {
+  def testConcatSettings() =
     concatSettings(settKey, settKey)
     concatSettings(settKey, initVal)
     concatSettings(initVal, settKey)
     concatSettings(initVal, initVal)
-  }
-}
+end ClasspathsTest

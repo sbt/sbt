@@ -19,7 +19,7 @@ import java.util.function.Supplier
  * This is intended to be the simplest logging interface for use by code that wants to log. It does
  * not include configuring the logger.
  */
-abstract class Logger extends xLogger {
+abstract class Logger extends xLogger:
   final def verbose(message: => String): Unit = debug(message)
   final def debug(message: => String): Unit = log(Level.Debug, message)
   final def info(message: => String): Unit = log(Level.Info, message)
@@ -43,15 +43,14 @@ abstract class Logger extends xLogger {
   def trace(msg: Supplier[Throwable]): Unit = trace(msg.get())
   def success(msg: Supplier[String]): Unit = success(msg.get())
   def log(level: Level.Value, msg: Supplier[String]): Unit = log(level, msg.get)
-}
+end Logger
 
-object Logger {
-  def transferLevels(oldLog: AbstractLogger, newLog: AbstractLogger): Unit = {
+object Logger:
+  def transferLevels(oldLog: AbstractLogger, newLog: AbstractLogger): Unit =
     newLog.setLevel(oldLog.getLevel)
     newLog.setTrace(oldLog.getTrace)
-  }
 
-  val Null: AbstractLogger = new AbstractLogger {
+  val Null: AbstractLogger = new AbstractLogger:
     def getLevel: Level.Value = Level.Error
     def setLevel(newLevel: Level.Value): Unit = ()
     def getTrace: Int = 0
@@ -63,19 +62,17 @@ object Logger {
     def trace(t: => Throwable): Unit = ()
     def success(message: => String): Unit = ()
     def log(level: Level.Value, message: => String): Unit = ()
-  }
 
   implicit def absLog2PLog(log: AbstractLogger): ProcessLogger =
     new BufferedLogger(log) with ProcessLogger
 
   implicit def log2PLog(log: Logger): ProcessLogger = absLog2PLog(new FullLogger(log))
 
-  implicit def xlog2Log(lg: xLogger): Logger = lg match {
+  implicit def xlog2Log(lg: xLogger): Logger = lg match
     case l: Logger => l
     case _         => wrapXLogger(lg)
-  }
 
-  private def wrapXLogger(lg: xLogger): Logger = new Logger {
+  private def wrapXLogger(lg: xLogger): Logger = new Logger:
     import InterfaceUtil.toSupplier
     override def debug(msg: Supplier[String]): Unit = lg.debug(msg)
     override def warn(msg: Supplier[String]): Unit = lg.warn(msg)
@@ -85,17 +82,14 @@ object Logger {
     override def log(level: Level.Value, msg: Supplier[String]): Unit = lg.log(level, msg)
     def trace(t: => Throwable): Unit = trace(toSupplier(t))
     def success(s: => String): Unit = info(toSupplier(s))
-    def log(level: Level.Value, msg: => String): Unit = {
+    def log(level: Level.Value, msg: => String): Unit =
       val fmsg = toSupplier(msg)
-      level match {
+      level match
         case Level.Debug => lg.debug(fmsg)
         case Level.Info  => lg.info(fmsg)
         case Level.Warn  => lg.warn(fmsg)
         case Level.Error => lg.error(fmsg)
-      }
-    }
-  }
 
   def jo2o[A](o: Optional[A]): Option[A] = InterfaceUtil.jo2o(o)
   def o2jo[A](o: Option[A]): Optional[A] = InterfaceUtil.o2jo(o)
-}
+end Logger

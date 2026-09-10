@@ -24,159 +24,135 @@ import sbt.internal.util.Terminal.hasConsole
 import scala.jdk.CollectionConverters.*
 import java.util.concurrent.LinkedBlockingQueue
 
-private[sbt] object JLine3 {
+private[sbt] object JLine3:
   private[util] val initialAttributes = new AtomicReference[Attributes]
-  private[util] def system: org.jline.terminal.Terminal = {
+  private[util] def system: org.jline.terminal.Terminal =
     val term =
       org.jline.terminal.TerminalBuilder
         .builder()
         .system(hasConsole)
         .paused(true)
         .build()
-    initialAttributes.get match {
+    initialAttributes.get match
       case null => initialAttributes.set(term.getAttributes)
       case _    =>
-    }
     term
-  }
-  private[sbt] def apply(term: Terminal): JTerminal = {
-    if (System.getProperty("jline.terminal", "") == "none")
+  private[sbt] def apply(term: Terminal): JTerminal =
+    if System.getProperty("jline.terminal", "") == "none" then
       new DumbTerminal(term.inputStream, term.outputStream)
     else wrapTerminal(term)
-  }
-  private[util] def decodeInput(decoder: CharsetDecoder, inputStream: InputStream): Int = {
+  private[util] def decodeInput(decoder: CharsetDecoder, inputStream: InputStream): Int =
     val bytes = new Array[Byte](4)
     var i = 0
     var res = -2
-    while (i < 4 && res == -2) {
-      inputStream.read() match {
+    while i < 4 && res == -2 do
+      inputStream.read() match
         case -1   => res = -1
         case byte =>
           bytes(i) = byte.toByte
           i += 1
           val bb = ByteBuffer.wrap(bytes, 0, i)
-          try {
+          try
             val cb = decoder.decode(bb)
             val it = cb.codePoints().iterator
-            if (it.hasNext) res = it.next
-          } catch { case _: CharacterCodingException => }
-      }
-    }
+            if it.hasNext then res = it.next
+          catch
+            case _: CharacterCodingException =>
     res
-  }
-  private def wrapTerminal(term: Terminal): JTerminal = {
+  private def wrapTerminal(term: Terminal): JTerminal =
     new AbstractTerminal(
       term.name,
       "nocapabilities",
       Charset.forName("UTF-8"),
       SignalHandler.SIG_DFL
-    ) {
+    ):
       val closed = new AtomicBoolean(false)
       setOnClose { () =>
         doClose()
         reader.close()
-        if (closed.compareAndSet(false, true)) {
+        if closed.compareAndSet(false, true) then
           // This is necessary to shutdown the non blocking input reader
           // so that it doesn't keep blocking
-          term.inputStream match {
+          term.inputStream match
             case w: Terminal.WriteableInputStream => w.cancel()
             case _                                =>
-          }
-        }
       }
 
       // returns 'null' if the terminal was created with no provider
       override def getProvider(): TerminalProvider = null
       // returns 'null' if the terminal is not bound to a system stream.
       override def getSystemStream(): SystemStream = null
-      override val input: InputStream = new InputStream {
-        override def read: Int = {
-          val res = term.inputStream match {
+      override val input: InputStream = new InputStream:
+        override def read: Int =
+          val res = term.inputStream match
             case w: Terminal.WriteableInputStream =>
               val result = new LinkedBlockingQueue[Integer]
-              try {
+              try
                 w.read(result)
-                result.poll match {
+                result.poll match
                   case null => throw new ClosedException
                   case i    => i.toInt
-                }
-              } catch {
+              catch
                 case _: InterruptedException =>
                   w.cancel()
                   throw new ClosedException
-              }
             case _ => throw new ClosedException
-          }
-          res match {
+          res match
             case 3 /* ctrl+c */ => throw new ClosedException
             case r              => r
-          }
-        }
-      }
-      override val output: OutputStream = new OutputStream {
+      override val output: OutputStream = new OutputStream:
         override def write(b: Int): Unit = write(Array[Byte](b.toByte))
-        override def write(b: Array[Byte]): Unit = if (!closed.get) term.withPrintStream { ps =>
-          ps.write(b)
-          term.prompt match {
-            case a: Prompt.AskUser => a.write(b)
-            case _                 =>
+        override def write(b: Array[Byte]): Unit = if !closed.get then
+          term.withPrintStream { ps =>
+            ps.write(b)
+            term.prompt match
+              case a: Prompt.AskUser => a.write(b)
+              case _                 =>
           }
-        }
         override def write(b: Array[Byte], offset: Int, len: Int) =
           write(Arrays.copyOfRange(b, offset, offset + len))
         override def flush(): Unit = term.withPrintStream(_.flush())
-      }
 
-      override val reader = new NonBlockingReader {
+      override val reader = new NonBlockingReader:
         val buffer = new LinkedBlockingQueue[Integer]
         val thread = new AtomicReference[Thread]
         private def fillBuffer(): Unit = thread.synchronized {
           thread.set(Thread.currentThread)
           try buffer.put(decodeInput(encoding.newDecoder, term.inputStream))
-          catch { case _: InterruptedException => buffer.put(-3) }
+          catch case _: InterruptedException => buffer.put(-3)
         }
-        override def close(): Unit = thread.get match {
+        override def close(): Unit = thread.get match
           case null =>
           case t    => t.interrupt()
-        }
-        override def read(timeout: Long, peek: Boolean) = {
-          if (buffer.isEmpty && !peek) fillBuffer()
-          (if (peek) buffer.peek else buffer.take) match {
+        override def read(timeout: Long, peek: Boolean) =
+          if buffer.isEmpty && !peek then fillBuffer()
+          (if peek then buffer.peek else buffer.take) match
             case null => -2
-            case i    => if (i == -3) throw new InterruptedException else i
-          }
-        }
-        override def peek(timeout: Long): Int = buffer.peek() match {
+            case i    => if i == -3 then throw new InterruptedException else i
+        override def peek(timeout: Long): Int = buffer.peek() match
           case null => -1
           case i    => i.toInt
-        }
-        override def readBuffered(buf: Array[Char], off: Int, len: Int, timeout: Long): Int = {
-          if (buffer.isEmpty) fillBuffer()
-          buffer.take match {
+        override def readBuffered(buf: Array[Char], off: Int, len: Int, timeout: Long): Int =
+          if buffer.isEmpty then fillBuffer()
+          buffer.take match
             case i if i == -1 => -1
             case i            =>
               buf(0) = i.toChar
               1
-          }
-        }
-      }
       override val writer: PrintWriter = new PrintWriter(output, true)
       /*
        * For now assume that the terminal capabilities for client and server
        * are the same.
        */
-      override def getStringCapability(cap: Capability): String = {
-        term.getStringCapability(cap.toString) match {
+      override def getStringCapability(cap: Capability): String =
+        term.getStringCapability(cap.toString) match
           case null if cap == Capability.key_dc && Util.isWindows  => "\\E[3~"
           case null if cap == Capability.key_end && Util.isWindows => "\\E[4~"
           case null if cap == Capability.key_ic && Util.isWindows  => "\\E[2~"
           case c                                                   => c
-        }
-      }
-      override def getNumericCapability(cap: Capability): Integer = {
-        if (cap == Capability.max_colors && !term.isColorEnabled) 1
+      override def getNumericCapability(cap: Capability): Integer =
+        if cap == Capability.max_colors && !term.isColorEnabled then 1
         else term.getNumericCapability(cap.toString)
-      }
       override def getBooleanCapability(cap: Capability): Boolean =
         term.getBooleanCapability(cap.toString)
       def getAttributes(): Attributes = attributesFromMap(term.getAttributes)
@@ -186,19 +162,15 @@ private[sbt] object JLine3 {
       ): Unit = {} // don't allow the jline line reader to change attributes
       def setSize(size: Size): Unit = term.setSize(size.getColumns, size.getRows)
 
-      override def enterRawMode(): Attributes = {
+      override def enterRawMode(): Attributes =
         // don't actually modify the term, that is handled by LineReader
         attributesFromMap(term.getAttributes)
-      }
-    }
-  }
   // We need to set the ENABLE_PROCESS_INPUT flag for ctrl+c to be treated as a signal in windows
   // https://docs.microsoft.com/en-us/windows/console/setconsolemode
   private val ENABLE_PROCESS_INPUT = 1
-  private[util] def setEnableProcessInput(): Unit = if (Util.isWindows) {
+  private[util] def setEnableProcessInput(): Unit = if Util.isWindows then
     WindowsSupport.setConsoleMode(WindowsSupport.getConsoleMode | ENABLE_PROCESS_INPUT)
-  }
-  private[util] def enterRawMode(term: JTerminal): Unit = {
+  private[util] def enterRawMode(term: JTerminal): Unit =
     val prevAttr = initialAttributes.get
     val newAttr = new Attributes(prevAttr)
     // These flags are copied from the jline3 enterRawMode but the jline implementation
@@ -207,15 +179,13 @@ private[sbt] object JLine3 {
     newAttr.setInputFlags(EnumSet.of(InputFlag.IXON, InputFlag.ICRNL, InputFlag.INLCR), false)
     term.setAttributes(newAttr)
     setEnableProcessInput()
-  }
-  private[util] def exitRawMode(term: JTerminal): Unit = {
+  private[util] def exitRawMode(term: JTerminal): Unit =
     val initAttr = initialAttributes.get
     val newAttr = new Attributes(initAttr)
     newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.ECHO), true)
     term.setAttributes(newAttr)
     setEnableProcessInput()
-  }
-  private[util] def toMap(jattributes: Attributes): Map[String, String] = {
+  private[util] def toMap(jattributes: Attributes): Map[String, String] =
     val result = new java.util.LinkedHashMap[String, String]
     result.put(
       "iflag",
@@ -242,7 +212,7 @@ private[sbt] object JLine3 {
         .mkString(" ")
     )
     result.asScala.toMap
-  }
+  end toMap
   private val iflagMap: Map[String, InputFlag] =
     InputFlag.values.map(f => f.name.toLowerCase -> f).toMap
   private val oflagMap: Map[String, Attributes.OutputFlag] =
@@ -253,14 +223,13 @@ private[sbt] object JLine3 {
     LocalFlag.values.map(f => f.name.toLowerCase -> f).toMap
   private val charMap: Map[String, Attributes.ControlChar] =
     Attributes.ControlChar.values().map(f => f.name.toLowerCase -> f).toMap
-  private[sbt] def setMode(term: Terminal, canonical: Boolean, echo: Boolean): Unit = {
+  private[sbt] def setMode(term: Terminal, canonical: Boolean, echo: Boolean): Unit =
     val prev = attributesFromMap(term.getAttributes)
     val newAttrs = new Attributes(prev)
     newAttrs.setLocalFlag(LocalFlag.ICANON, canonical)
     newAttrs.setLocalFlag(LocalFlag.ECHO, echo)
     term.setAttributes(toMap(newAttrs))
-  }
-  private[util] def attributesFromMap(map: Map[String, String]): Attributes = {
+  private[util] def attributesFromMap(map: Map[String, String]): Attributes =
     val attributes = new Attributes
     map.get("iflag").foreach { flags =>
       flags.split(" ").foreach(f => iflagMap.get(f).foreach(attributes.setInputFlag(_, true)))
@@ -276,16 +245,14 @@ private[sbt] object JLine3 {
     }
     map.get("cchars").foreach { chars =>
       chars.split(" ").foreach { keyValue =>
-        keyValue.split(",") match {
+        keyValue.split(",") match
           case Array(k, v) =>
             v.toIntOption.foreach(i => charMap.get(k).foreach(c => attributes.setControlChar(c, i)))
           case _ =>
-        }
       }
     }
     attributes
-  }
-  private[sbt] def isEchoEnabled(map: Map[String, String]): Boolean = {
+  end attributesFromMap
+  private[sbt] def isEchoEnabled(map: Map[String, String]): Boolean =
     attributesFromMap(map).getLocalFlag(LocalFlag.ECHO)
-  }
-}
+end JLine3

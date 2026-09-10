@@ -6,7 +6,8 @@ package codec
 import java.nio.ByteBuffer
 import sjsonnew.{ BasicJsonProtocol, BUtil, IsoString }
 
-trait ByteBufferFormats { self: BasicJsonProtocol =>
+trait ByteBufferFormats:
+  self: BasicJsonProtocol =>
 
   /**
    * A string representation of HashedVirtualFileRef, delimited by `>`.
@@ -19,4 +20,3 @@ trait ByteBufferFormats { self: BasicJsonProtocol =>
 
   given byteBufferIsoString: IsoString[ByteBuffer] =
     IsoString.iso(byteBufferToStr, strToByteBuffer)
-}

@@ -72,8 +72,8 @@ object TaskMacro:
     val cl = cu0.cacheLevels(key.asTerm)
     val cached = ContextUtil.isTaskCacheByDefault && !isUncacheApplied && cl.nonEmpty
     t match
-      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
-      case _                                       =>
+      case '{ if $cond then $thenp else $elsep } => taskIfImpl[A1](t, cached)
+      case _                                     =>
         val convert1 = new FullConvert(qctx, 0)
         if cached then
           convert1.contMapN[A1, F, Id](
@@ -86,13 +86,14 @@ object TaskMacro:
             })
           )
         else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
+  end taskMacroImpl
 
   def taskMacroImpl[A1: Type](t: Expr[A1], cached: Boolean)(using
       qctx: Quotes
   ): Expr[Initialize[Task[A1]]] =
     t match
-      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
-      case _                                       =>
+      case '{ if $cond then $thenp else $elsep } => taskIfImpl[A1](t, cached)
+      case _                                     =>
         val convert1 = new FullConvert(qctx, 0)
         if cached then
           convert1.contMapN[A1, F, Id](
@@ -112,11 +113,11 @@ object TaskMacro:
     import qctx.reflect.*
     val convert1 = new FullConvert(qctx, 1000)
     expr match
-      case '{ if ($cond) then $thenp else $elsep } =>
+      case '{ if $cond then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
-      case '{ ${ stats }: a; if ($cond) then $thenp else $elsep } =>
+      case '{ ${ stats }: a; if $cond then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task { $stats; $cond })(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
@@ -200,6 +201,7 @@ object TaskMacro:
         '{
           $rec.append1[A2]($init)(using $ev)
         }
+  end settingAppend1Impl
 
   private[sbt] def sourcePosition(using qctx: Quotes): Expr[SourcePosition] =
     SourcePositionImpl.fromEnclosingImpl

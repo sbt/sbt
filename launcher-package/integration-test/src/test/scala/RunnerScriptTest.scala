@@ -29,7 +29,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
 
   testOutput("sbt --no-colors in SBT_OPTS", sbtOpts = "--no-colors")("compile", "-v"):
     (out: List[String]) =>
-      if (isWindows) cancel("Test not supported on windows")
+      if isWindows then cancel("Test not supported on windows")
       assert(out.contains[String]("-Dsbt.log.noformat=true"))
 
   testOutput("sbt --no-server")("compile", "--no-server", "-v"): (out: List[String]) =>
@@ -92,7 +92,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     javaOpts = "",
     sbtOpts = "-debug"
   )("compile", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
 
     // Debug argument must appear in the 'commands' section (after the sbt-launch.jar argument) to work
     val sbtLaunchMatcher = """^.+sbt-launch.jar["]{0,1}$""".r
@@ -138,7 +138,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
 
   testOutput("accept `--ivy` in `SBT_OPTS`", sbtOpts = "--ivy /ivy/dir")("-v"):
     (out: List[String]) =>
-      if (isWindows) cancel("Test not supported on windows")
+      if isWindows then cancel("Test not supported on windows")
       else assert(out.contains[String]("-Dsbt.ivy.home=/ivy/dir"))
 
   testOutput(
@@ -270,7 +270,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     distSbtoptsContents = "-Dsbt.test.config=dist-default",
     sbtOptsFileContents = "-Dsbt.test.config=project-local"
   )("-d", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       // Find the command line section
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
@@ -292,7 +292,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     machineSbtoptsContents = "-Dsbt.test.config=machine-config",
     sbtOptsFileContents = "-Dsbt.test.config=project-local"
   )("-d", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       // Find the command line section
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
@@ -315,7 +315,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     machineSbtoptsContents = "-Dsbt.test.config=machine-config",
     sbtOptsFileContents = "-Dsbt.test.config=project-local"
   )("-d", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       // Find the command line section
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
@@ -341,7 +341,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     sbtOptsFileContents =
       "-J-Xmx2g\n-J-XX:ReservedCodeCacheSize=1g\n-J-XX:MaxMetaspaceSize=2g\n-J-Xss512m\n-J-XX:+UseG1GC"
   )("-d", "-v", "-mem", "12288"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
       assert(cmdLineStart >= 0, "Command line section not found")

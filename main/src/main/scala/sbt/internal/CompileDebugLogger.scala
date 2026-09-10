@@ -16,24 +16,21 @@ import sbt.util.{ Level, Logger }
  * Used so that incremental compiler output (e.g. "compiling X sources", invalidations)
  * can be attributed to a project in multi-project builds (fixes #408).
  */
-private[sbt] object CompileDebugLogger {
+private[sbt] object CompileDebugLogger:
   def apply(prefix: String, delegate: Logger): Logger =
-    new Logger {
+    new Logger:
       private def prefixed(msg: String): String =
-        if (msg == null || msg.isEmpty) s"[$prefix]"
+        if msg == null || msg.isEmpty then s"[$prefix]"
         else s"[$prefix] $msg"
 
       override def log(level: Level.Value, message: => String): Unit =
-        if (level == Level.Debug || level == Level.Info)
-          delegate.log(level, prefixed(message))
+        if level == Level.Debug || level == Level.Info then delegate.log(level, prefixed(message))
         else delegate.log(level, message)
 
       override def log(level: Level.Value, msg: Supplier[String]): Unit =
-        if (level == Level.Debug || level == Level.Info)
+        if level == Level.Debug || level == Level.Info then
           delegate.log(level, () => prefixed(msg.get()))
         else delegate.log(level, msg)
 
       def trace(t: => Throwable): Unit = delegate.trace(t)
       def success(message: => String): Unit = delegate.success(message)
-    }
-}

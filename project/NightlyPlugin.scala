@@ -2,15 +2,15 @@ import sbt.*
 import Keys.*
 import Dependencies.*
 
-object NightlyPlugin extends AutoPlugin {
+object NightlyPlugin extends AutoPlugin:
   override def trigger = allRequirements
   override def requires = plugins.JvmPlugin
 
-  object autoImport {
+  object autoImport:
     val includeTestDependencies = settingKey[Boolean]("Doesn't declare test dependencies.")
 
     def testDependencies = libraryDependencies ++= (
-      if (includeTestDependencies.value)
+      if includeTestDependencies.value then
         Seq(
           scalacheck % Test,
           junit % Test,
@@ -19,7 +19,6 @@ object NightlyPlugin extends AutoPlugin {
         ) ++ scalatest
       else Seq()
     )
-  }
   import autoImport.*
 
   override def buildSettings: Seq[Setting[?]] = Seq(
@@ -28,4 +27,4 @@ object NightlyPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Setting[?]] = Seq(
   )
-}
+end NightlyPlugin

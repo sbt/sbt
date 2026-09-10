@@ -21,7 +21,7 @@ import sbt.Keys.*
 import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0.*
 
-object CoursierArtifactsTasks {
+object CoursierArtifactsTasks:
   def coursierPublicationsTask(
       configsMap: (sbt.librarymanagement.Configuration, CConfiguration)*
   ): Def.Initialize[sbt.Task[Seq[(CConfiguration, CPublication)]]] =
@@ -37,66 +37,56 @@ object CoursierArtifactsTasks {
       import extracted.*
 
       val sourcesConfigOpt =
-        if (ivyConfigurations.value.exists(_.name == "sources"))
-          Some(CConfiguration("sources"))
-        else
-          None
+        if ivyConfigurations.value.exists(_.name == "sources") then Some(CConfiguration("sources"))
+        else None
 
       val docsConfigOpt =
-        if (ivyConfigurations.value.exists(_.name == "docs"))
-          Some(CConfiguration("docs"))
-        else
-          None
+        if ivyConfigurations.value.exists(_.name == "docs") then Some(CConfiguration("docs"))
+        else None
 
       val sbtBinArtifacts =
-        for ((config, targetConfig) <- configsMap) yield {
+        for (config, targetConfig) <- configsMap yield
 
           val publish = getOpt(
             projectRef / config / packageBin / publishArtifact
           ).getOrElse(false)
 
-          if (publish)
+          if publish then
             getOpt(
               projectRef / config / packageBin / artifact
             ).map(targetConfig -> _)
-          else
-            None
-        }
+          else None
 
       val sbtSourceArtifacts =
-        for ((config, targetConfig) <- configsMap) yield {
+        for (config, targetConfig) <- configsMap yield
 
           val publish = getOpt(
             projectRef / config / packageSrc / publishArtifact
           ).getOrElse(false)
 
-          if (publish)
+          if publish then
             getOpt(
               projectRef / config / packageSrc / artifact
             ).map(sourcesConfigOpt.getOrElse(targetConfig) -> _)
-          else
-            None
-        }
+          else None
 
       val sbtDocArtifacts =
-        for ((config, targetConfig) <- configsMap) yield {
+        for (config, targetConfig) <- configsMap yield
 
           val publish =
             getOpt(
               projectRef / config / packageDoc / publishArtifact
             ).getOrElse(false)
 
-          if (publish)
+          if publish then
             getOpt(
               projectRef / config / packageDoc / artifact
             ).map(docsConfigOpt.getOrElse(targetConfig) -> _)
-          else
-            None
-        }
+          else None
 
       val sbtArtifacts = sbtBinArtifacts ++ sbtSourceArtifacts ++ sbtDocArtifacts
 
-      def artifactPublication(artifact: Artifact) = {
+      def artifactPublication(artifact: Artifact) =
 
         // Platform suffix before cross suffix, matching the coordinate
         val base = projId.crossVersion match
@@ -112,7 +102,6 @@ object CoursierArtifactsTasks {
           CExtension(artifact.extension),
           artifact.classifier.fold(CClassifier(""))(CClassifier(_))
         )
-      }
 
       val sbtArtifactsPublication = sbtArtifacts.collect { case Some((config, artifact)) =>
         config -> artifactPublication(artifact)
@@ -132,15 +121,15 @@ object CoursierArtifactsTasks {
       // it puts it in all of them. See for example what happens to
       // the standalone JAR artifact of the coursier cli module.
       def allConfigsIfEmpty(configs: Iterable[ConfigRef]): Iterable[ConfigRef] =
-        if (configs.isEmpty) ivyConfs.withFilter(_.isPublic).map(c => ConfigRef(c.name))
+        if configs.isEmpty then ivyConfs.withFilter(_.isPublic).map(c => ConfigRef(c.name))
         else configs
 
-      val extraSbtArtifactsPublication = for {
+      val extraSbtArtifactsPublication = for
         artifact <- extraSbtArtifacts
         config <- allConfigsIfEmpty(artifact.configurations.map(x => ConfigRef(x.name)))
-        // FIXME If some configurations from artifact.configurations are not public, they may leak here :\
-      } yield CConfiguration(config.name) -> artifactPublication(artifact)
+      // FIXME If some configurations from artifact.configurations are not public, they may leak here :\
+      yield CConfiguration(config.name) -> artifactPublication(artifact)
 
       sbtArtifactsPublication ++ extraSbtArtifactsPublication
     }
-}
+end CoursierArtifactsTasks

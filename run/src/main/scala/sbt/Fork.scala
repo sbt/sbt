@@ -27,7 +27,7 @@ import java.util.Locale
  * @param runnerClass
  *   If Some, this will be prepended to the `arguments` passed to the `apply` or `fork` methods.
  */
-final class Fork(val commandName: String, val runnerClass: Option[String]) {
+final class Fork(val commandName: String, val runnerClass: Option[String]):
 
   /**
    * Forks the configured process, waits for it to complete, and returns the exit code. The command
@@ -67,14 +67,11 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
     val (classpathEnv, options) = Fork.fitClasspath(preOptions)
     val command = executable +: options
     val jpb =
-      if (
-        config.canUseArgumentsFile.getOrElse(false) &&
+      if config.canUseArgumentsFile.getOrElse(false) &&
         Fork.booleanOpt("sbt.argsfile").getOrElse(true) &&
         Fork.shouldUseArgumentsFile(options)
-      )
-        new JProcessBuilder(executable, Fork.createArgumentsFile(options))
-      else
-        new JProcessBuilder(command.toArray*)
+      then new JProcessBuilder(executable, Fork.createArgumentsFile(options))
+      else new JProcessBuilder(command.toArray*)
     val extraEnv = classpathEnv.toList.map { value =>
       Fork.ClasspathEnvKey -> value
     }
@@ -84,15 +81,14 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       jvmOptions: Seq[String],
       bootJars: Iterable[File],
       arguments: Seq[String]
-  ): Seq[String] = {
+  ): Seq[String] =
     val boot =
-      if (bootJars.isEmpty) none[String]
+      if bootJars.isEmpty then none[String]
       else
         ("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator)).some
     jvmOptions ++ boot.toList ++ runnerClass.toList ++ arguments
-  }
-}
-object Fork {
+end Fork
+object Fork:
   private val ScalacMainClass = "scala.tools.nsc.Main"
   private val ScalaMainClass = "scala.tools.nsc.MainGenericRunner"
   private val JavaCommandName = "java"
@@ -115,45 +111,38 @@ object Fork {
   private val MaxConcatenatedOptionLength = 5000
 
   private def fitClasspath(options: Seq[String]): (Option[String], Seq[String]) =
-    if (Util.isWindows && optionsTooLong(options))
-      convertClasspathToEnv(options)
-    else
-      (None, options)
+    if Util.isWindows && optionsTooLong(options) then convertClasspathToEnv(options)
+    else (None, options)
   private def optionsTooLong(options: Seq[String]): Boolean =
     options.mkString(" ").length > MaxConcatenatedOptionLength
 
-  private def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) = {
+  private def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) =
     val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
     val postCP = cpAndPost.drop(2)
     val classpathOption = cpAndPost.drop(1).headOption
-    val newOptions = if (classpathOption.isDefined) preCP ++ postCP else options
+    val newOptions = if classpathOption.isDefined then preCP ++ postCP else options
     (classpathOption, newOptions)
-  }
 
-  private[sbt] def javaCommand(javaHome: Option[File], name: String): File = {
+  private[sbt] def javaCommand(javaHome: Option[File], name: String): File =
     val home = javaHome.getOrElse(new File(System.getProperty("java.home")))
     new File(new File(home, "bin"), name)
-  }
 
   /* copied from SysProp.scala for consistency while avoiding
    * introducing a circular dependency
    */
   private def parseBoolean(value: String): Option[Boolean] =
-    value.toLowerCase(Locale.ENGLISH) match {
+    value.toLowerCase(Locale.ENGLISH) match
       case "1" | "always" | "true" => Some(true)
       case "0" | "never" | "false" => Some(false)
       case "auto"                  => None
       case _                       => None
-    }
   private def booleanOpt(name: String): Option[Boolean] =
-    sys.props.get(name) match {
+    sys.props.get(name) match
       case Some(x) => parseBoolean(x)
       case _       =>
-        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
+        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match
           case Some(x) => parseBoolean(x)
           case _       => None
-        }
-    }
 
   /**
    * Use an arguments file if:
@@ -171,7 +160,7 @@ object Fork {
    * @param options command line options to write to the args file
    * @return
    */
-  private def createArgumentsFile(options: Seq[String]): String = {
+  private def createArgumentsFile(options: Seq[String]): String =
     val file = File.createTempFile(s"sbt-args", ".tmp")
     file.deleteOnExit()
 
@@ -185,21 +174,19 @@ object Fork {
     pw.flush()
     pw.close()
     s"@${file.getAbsolutePath}"
-  }
 
   private[sbt] def forkInternal(
       config: ForkOptions,
       extraEnv: List[(String, String)],
       jpb: JProcessBuilder
-  ): Process = {
+  ): Process =
     import config.{ envVars as env, * }
     val environment: List[(String, String)] = env.toList ++ extraEnv
     workingDirectory.foreach(jpb.directory(_))
     environment.foreach { case (k, v) => jpb.environment.put(k, v) }
-    if (connectInput) {
+    if connectInput then
       jpb.redirectInput(Redirect.INHERIT)
       ()
-    }
     val process = Process(jpb)
     outputStrategy.getOrElse(StdoutOutput: OutputStrategy) match
       case StdoutOutput        => process.run(connectInput = false)
@@ -208,7 +195,6 @@ object Fork {
       case out: LoggedOutput      => process.run(out.logger, connectInput = false)
       case out: CustomOutput      => (process #> out.output).run(connectInput = false)
       case out: CustomInputOutput => process.run(out.processIO)
-  }
 
   private[sbt] def forkInternalInteractive(
       config: ForkOptions,
@@ -222,23 +208,19 @@ object Fork {
     jpb.inheritIO()
     jpb.start()
 
-  private[sbt] def blockJForExitCode(p: JProcess): Int = {
+  private[sbt] def blockJForExitCode(p: JProcess): Int =
     RunningProcesses.add(p)
     try
       p.waitFor()
       p.exitValue()
-    finally {
-      if (p.isAlive()) p.destroy()
+    finally
+      if p.isAlive() then p.destroy()
       RunningProcesses.remove(p)
-    }
-  }
 
-  private[sbt] def blockForExitCode(p: Process): Int = {
+  private[sbt] def blockForExitCode(p: Process): Int =
     RunningProcesses.add(p)
     try p.exitValue()
-    finally {
-      if (p.isAlive()) p.destroy()
+    finally
+      if p.isAlive() then p.destroy()
       RunningProcesses.remove(p)
-    }
-  }
-}
+end Fork

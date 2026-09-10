@@ -17,7 +17,7 @@ object Runner:
       if quoted.startsWith("1.") && parts.nonEmpty then
         scala.util.Try(parts(0).toInt).toOption.getOrElse(major)
       else major
-    catch { case _: Exception => 0 }
+    catch case _: Exception => 0
 
   /** Returns the minimum JDK version required for the given sbt version. */
   def minimumJdkVersion(sbtVersion: Option[String]): Int =
@@ -51,6 +51,7 @@ object Runner:
     if opts.noServer then s = s ++ Seq("-Dsbt.io.virtual=false", "-Dsbt.server.autostart=false")
     if opts.jvmClient then s = s :+ "--client"
     s
+  end buildSbtOpts
 
   def runNativeClient(
       sbtBinDir: File,
@@ -73,6 +74,7 @@ object Runner:
       val extraEnv = ("SBT_SCRIPT" -> scriptPath) +: selected.handoffEnv
       val proc = Process(cmd, None, extraEnv*)
       proc.!
+  end runNativeClient
 
   def runJvm(
       selected: SelectedJava,
@@ -99,6 +101,7 @@ object Runner:
       p.waitFor()
       p.exitValue()
     finally if p.isAlive then p.destroy()
+  end runJvm
 
   def shutdownAll(selected: SelectedJava): Int =
     try
@@ -111,10 +114,11 @@ object Runner:
         .toList
       pids.foreach: pid =>
         try Process(Seq("taskkill", "/F", "/PID", pid.toString)).!
-        catch { case _: Exception => }
+        catch
+          case _: Exception =>
       System.err.println(s"shutdown ${pids.size} sbt processes")
       0
-    catch { case _: Exception => 1 }
+    catch case _: Exception => 1
 
   def splitResidual(residual: Seq[String]): (Seq[String], Seq[String]) =
     var javaOpts: Seq[String] = Nil

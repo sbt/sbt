@@ -16,11 +16,9 @@ import sbt.internal.util.Types.{ const, idFun }
 import sbt.util.Logger
 import sbt.librarymanagement.ModuleID
 
-private[internal] object Alternatives {
-  extension [A, B](f: A => Option[B]) {
+private[internal] object Alternatives:
+  extension [A, B](f: A => Option[B])
     def |(g: A => Option[B]): A => Option[B] = (a: A) => f(a) orElse g(a)
-  }
-}
 import Alternatives.*
 final class MultiHandler[S, T](
     builtIn: S => Option[T],
@@ -28,13 +26,13 @@ final class MultiHandler[S, T](
     nonRoots: List[(URI, S => Option[T])],
     getURI: S => URI,
     log: S => Logger
-) {
+):
   def applyFun: S => Option[T] = apply
   def apply(info: S): Option[T] =
-    (baseLoader(info), applyNonRoots(info)) match {
+    (baseLoader(info), applyNonRoots(info)) match
       case (None, Nil)                     => None
       case (None, xs @ (_, nr) :: ignored) =>
-        if (ignored.nonEmpty)
+        if ignored.nonEmpty then
           warn(
             "Using first of multiple matching non-root build resolvers for " + getURI(info),
             log(info),
@@ -42,14 +40,13 @@ final class MultiHandler[S, T](
           )
         Some(nr)
       case (Some(b), xs) =>
-        if (xs.nonEmpty)
+        if xs.nonEmpty then
           warn("Ignoring shadowed non-root build resolver(s) for " + getURI(info), log(info), xs)
         Some(b)
-    }
 
-  def baseLoader: S => Option[T] = root match {
-    case Some(rl) => rl | builtIn; case None => builtIn
-  }
+  def baseLoader: S => Option[T] = root match
+    case Some(rl) => rl | builtIn;
+    case None     => builtIn
 
   def addNonRoot(uri: URI, loader: S => Option[T]) =
     new MultiHandler(builtIn, root, (uri, loader) :: nonRoots, getURI, log)
@@ -62,14 +59,13 @@ final class MultiHandler[S, T](
       }
     }
 
-  private def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
+  private def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit =
     log.warn(baseMessage)
     log.debug("Non-root build resolvers defined in:")
     log.debug(matching.map(_._1).mkString("\n\t"))
-  }
-}
+end MultiHandler
 
-object BuildLoader {
+object BuildLoader:
 
   /**
    * in: Build URI and staging directory
@@ -87,7 +83,7 @@ object BuildLoader {
       val transformer: Transformer,
       val full: Loader,
       val transformAll: TransformAll
-  ) {
+  ):
     def |(cs: Components): Components =
       new Components(
         resolver | cs.resolver,
@@ -96,7 +92,6 @@ object BuildLoader {
         full | cs.full,
         transformAll andThen cs.transformAll
       )
-  }
   def transform(t: Transformer): Components = components(transformer = t)
   def resolve(r: Resolver): Components = components(resolver = r)
   def build(b: Builder): Components = components(builder = b)
@@ -113,11 +108,10 @@ object BuildLoader {
 
   def seq(a: Transformer, b: Transformer): Transformer = info => b(info.setUnit(a(info)))
 
-  sealed trait Info {
+  sealed trait Info:
     def uri: URI
     def config: LoadBuildConfiguration
     def state: State
-  }
   final class ResolveInfo(
       val uri: URI,
       val staging: File,
@@ -136,10 +130,9 @@ object BuildLoader {
       val unit: BuildUnit,
       val config: LoadBuildConfiguration,
       val state: State
-  ) extends Info {
+  ) extends Info:
     def setUnit(newUnit: BuildUnit): TransformInfo =
       new TransformInfo(uri, base, newUnit, config, state)
-  }
 
   final class LoadInfo(
       val uri: URI,
@@ -154,7 +147,7 @@ object BuildLoader {
       fail: URI => Nothing,
       s: State,
       config: LoadBuildConfiguration
-  ): BuildLoader = {
+  ): BuildLoader =
     def makeMulti[S <: Info, T](base: S => Option[T]) =
       new MultiHandler[S, T](base, None, Nil, _.uri, _.config.log)
     new BuildLoader(
@@ -167,21 +160,18 @@ object BuildLoader {
       makeMulti(base.full),
       base.transformAll
     )
-  }
 
-  def componentLoader: Loader = (info: LoadInfo) => {
+  def componentLoader: Loader = (info: LoadInfo) =>
     import info.{ config, staging, state, uri }
     val cs = info.components
-    for {
+    for
       resolve <- cs.resolver(new ResolveInfo(uri, staging, config, state))
       base = resolve()
       build <- cs.builder(new BuildInfo(uri, base, config, state))
-    } yield () => {
+    yield () =>
       val unit = build()
       cs.transformer(new TransformInfo(uri, base, unit, config, state))
-    }
-  }
-}
+end BuildLoader
 
 /**
  * Defines the responsible for loading builds.
@@ -204,7 +194,7 @@ final class BuildLoader(
     val transformer: Transformer,
     val full: MultiHandler[LoadInfo, () => BuildUnit],
     val transformAll: TransformAll
-) {
+):
   def addNonRoot(uri: URI, loaders: Components): BuildLoader =
     new BuildLoader(
       fail,
@@ -229,20 +219,17 @@ final class BuildLoader(
     )
   def resetPluginDepth: BuildLoader = copyWithNewPM(config.pluginManagement.resetDepth)
 
-  def updatePluginManagement(overrides: Set[ModuleID]): BuildLoader = {
+  def updatePluginManagement(overrides: Set[ModuleID]): BuildLoader =
     val mgmt = config.pluginManagement
     copyWithNewPM(mgmt.copy(overrides = mgmt.overrides ++ overrides))
-  }
-  private def copyWithNewPM(newpm: PluginManagement): BuildLoader = {
+  private def copyWithNewPM(newpm: PluginManagement): BuildLoader =
     val newConfig = config.copy(pluginManagement = newpm)
     new BuildLoader(fail, state, newConfig, resolvers, builders, transformer, full, transformAll)
-  }
 
   def components =
     new Components(resolvers.applyFun, builders.applyFun, transformer, full.applyFun, transformAll)
-  def apply(uri: URI): BuildUnit = {
+  def apply(uri: URI): BuildUnit =
     val info = new LoadInfo(uri, config.stagingDirectory, config, state, components)
     val load = full(info) getOrElse fail(uri)
     load()
-  }
-}
+end BuildLoader

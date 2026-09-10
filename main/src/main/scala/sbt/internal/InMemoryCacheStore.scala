@@ -18,8 +18,8 @@ import sbt.io.IO
 import sbt.util.{ CacheStore, CacheStoreFactory, DirectoryStoreFactory, GzipFileInput }
 import sjsonnew.{ JsonReader, JsonWriter }
 
-private[sbt] object InMemoryCacheStore {
-  private class InMemoryCacheStore(maxSize: Long) extends AutoCloseable {
+private[sbt] object InMemoryCacheStore:
+  private class InMemoryCacheStore(maxSize: Long) extends AutoCloseable:
     private val weigher: Weigher[Path, (Any, Long, Int)] = { case (_, (_, _, size)) => size }
     private val files: Cache[Path, (Any, Long, Int)] = Caffeine
       .newBuilder()
@@ -30,22 +30,15 @@ private[sbt] object InMemoryCacheStore {
       files.getIfPresent(path) match
         case null                     => None
         case (value, lastModified, _) => Some((value.asInstanceOf[A1], lastModified))
-    def put(path: Path, value: Any, lastModified: Long): Unit = {
-      try {
-        if (lastModified > 0) {
-          files.put(path, (value, lastModified, toIntExact(weightOf(path))))
-        }
-      } catch {
-        case _: IOException | _: ArithmeticException => files.invalidate(path)
-      }
-    }
+    def put(path: Path, value: Any, lastModified: Long): Unit =
+      try
+        if lastModified > 0 then files.put(path, (value, lastModified, toIntExact(weightOf(path))))
+      catch case _: IOException | _: ArithmeticException => files.invalidate(path)
     def remove(path: Path): Unit = files.invalidate(path)
 
-    override def close(): Unit = {
+    override def close(): Unit =
       files.invalidateAll()
       files.cleanUp()
-    }
-  }
 
   /**
    * An entry costs its serialized size, uncompressed -- the unit the budget was denominated in before
@@ -54,24 +47,22 @@ private[sbt] object InMemoryCacheStore {
   private def weightOf(path: Path): Long = GzipFileInput.uncompressedSize(path.toFile)
 
   private class CacheStoreImpl(path: Path, store: InMemoryCacheStore, cacheStore: CacheStore)
-      extends CacheStore {
+      extends CacheStore:
     override def delete(): Unit = cacheStore.delete()
 
     /**
      * A miss populates the cache. `write` is otherwise the only thing that fills it, and a task whose stored
      * output is already up to date never writes -- so it would re-deserialise that output on every invocation.
      */
-    override def read[T]()(using reader: JsonReader[T]): T = {
+    override def read[T]()(using reader: JsonReader[T]): T =
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
-      store.get[T](path) match {
+      store.get[T](path) match
         case Some((value, `lastModified`)) => value
         case _                             =>
           val value = cacheStore.read[T]()
           store.put(path, value, lastModified)
           value
-      }
-    }
-    override def write[T](value: T)(using writer: JsonWriter[T]): Unit = {
+    override def write[T](value: T)(using writer: JsonWriter[T]): Unit =
       /*
        * This may be inefficient if multiple threads are concurrently modifying the file.
        * There is an assumption that there will be little to no concurrency at the file level
@@ -79,7 +70,7 @@ private[sbt] object InMemoryCacheStore {
        * complicated.
        */
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
-      store.get[T](path) match {
+      store.get[T](path) match
         case Some((v, `lastModified`)) if v == value => // nothing has changed
         case _                                       =>
           store.remove(path)
@@ -87,20 +78,17 @@ private[sbt] object InMemoryCacheStore {
           val newLastModified = System.currentTimeMillis
           IO.setModifiedTimeOrFalse(path.toFile, newLastModified)
           store.put(path, value, newLastModified)
-      }
-    }
-    override def close(): Unit = {
+    override def close(): Unit =
       store.remove(path)
       cacheStore.close()
-    }
-  }
+  end CacheStoreImpl
 
   private def factory(
       store: InMemoryCacheStore,
       path: Path
-  ): CacheStoreFactory = {
+  ): CacheStoreFactory =
     val delegate = new DirectoryStoreFactory(path.toFile)
-    new CacheStoreFactory {
+    new CacheStoreFactory:
       override def make(identifier: String): CacheStore =
         new CacheStoreImpl(path.resolve(identifier), store, delegate.make(identifier))
       // Without this the inherited default calls `make`, wrapping an uncompressed delegate.
@@ -108,40 +96,32 @@ private[sbt] object InMemoryCacheStore {
         new CacheStoreImpl(path.resolve(identifier), store, delegate.makeCompressed(identifier))
       override def sub(identifier: String): CacheStoreFactory =
         factory(store, path.resolve(identifier))
-    }
-  }
-  private[sbt] trait CacheStoreFactoryFactory extends AutoCloseable {
+  private[sbt] trait CacheStoreFactoryFactory extends AutoCloseable:
     def apply(path: Path): CacheStoreFactory
-  }
-  private class CacheStoreFactoryFactoryImpl(size: Long) extends CacheStoreFactoryFactory {
+  private class CacheStoreFactoryFactoryImpl(size: Long) extends CacheStoreFactoryFactory:
     private val storeRef = new AtomicReference[InMemoryCacheStore]
     override def close(): Unit = Option(storeRef.get).foreach(_.close())
     def apply(
         path: Path,
-    ): CacheStoreFactory = {
-      val store = storeRef.get match {
+    ): CacheStoreFactory =
+      val store = storeRef.get match
         case null =>
           storeRef.synchronized {
-            storeRef.get match {
+            storeRef.get match
               case null =>
                 val s = new InMemoryCacheStore(size)
                 storeRef.set(s)
                 s
               case s => s
-            }
           }
         case s => s
-      }
       factory(store, path)
-    }
-  }
-  private object DirectoryFactory extends CacheStoreFactoryFactory {
+  private object DirectoryFactory extends CacheStoreFactoryFactory:
     override def apply(
         path: Path,
     ): CacheStoreFactory = new DirectoryStoreFactory(path.toFile)
     override def close(): Unit = {}
-  }
   def factory(size: Long): CacheStoreFactoryFactory =
-    if (size > 0) new CacheStoreFactoryFactoryImpl(size)
+    if size > 0 then new CacheStoreFactoryFactoryImpl(size)
     else DirectoryFactory
-}
+end InMemoryCacheStore
