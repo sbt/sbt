@@ -14,7 +14,23 @@ General style
 ### Functional programming
 
 - Prefer succinct and pure functions.
-- Prefer the use of `Option` and `Either`, rather than `null` and `Exception`.
+- Use `Option` instead of `null` check.
+- Prefer the use `Either` rather than `Exception`.
+- Prefer scala.util.Using over try-finally.
+
+```scala
+import scala.util.Using
+
+private def withLog[A1](f: Capture => A1): A1 =
+  Using.resource(new Capture): log =>
+    f(log)
+```
+
+- Prefer functional constructs such as `.map` and `.foldLeft`, instead of a while loop.
+
+### Scala data types
+
+- Prefer Scala collection library over Java data structures. For example prefer `scala.collection.concurrent.TrieMap` over `java.util.concurrent.ConcurrentHashMap`.
 
 ### Import
 
@@ -22,7 +38,7 @@ General style
 
 ### Braces
 
-- Prefer to omit braces in Scala 3.x, that is use SIP-44 Fewer Braces syntax, especially for fresh code.
+- For newly written code, avoid braces in Scala 3.x, that is use SIP-44 Fewer Braces syntax.
 
 ```scala
 // BAD
@@ -76,6 +92,18 @@ Because sbt has 100+ plugins, we have to be careful not to break them when we ma
 
 sbt build.sbt DSL
 -----------------
+
+### Macros
+
+- When defining a key, use `taskKey[A1](...)` and `settingKey[A1](...)` macros over `TaskKey[A1](...)`.
+- In scripted tests, mark the task key used for testing as `@transient`, instead of using `Def.uncached(...)`.
+
+```scala
+@transient
+lazy val check = taskKey[Unit]("")
+```
+
+### Scoping
 
 - Set the default value in the widest scope, such as the global scope.
 

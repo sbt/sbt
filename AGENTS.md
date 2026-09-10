@@ -28,6 +28,8 @@ sbt --client --color=false --supershell=false --batch scalafmtAll
 ```
 
 - Follow [Coding style and best practices](contributing-docs/03_coding_style.md)
+- For newly written code, avoid braces in Scala 3.x, that is use SIP-44 Fewer Braces syntax.
+- Prefer scala.util.Using over try-finally.
 - Avoid inline comments!
 
 Tests
