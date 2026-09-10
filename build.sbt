@@ -1165,7 +1165,12 @@ def otherRootSettings =
     scriptedUnpublished / watchTriggers := (scripted / watchTriggers).value,
     scripted / includeFilter := AllPassFilter,
     scripted / excludeFilter := Scripted.sbtWindowsExcludeFilter,
-    scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
+    scriptedLaunchOpts := List(
+      "-Xmx1500M",
+      "-Xms512M",
+      "-server",
+      s"-Dsbt.build.root=${(ThisBuild / baseDirectory).value.getAbsolutePath}"
+    ) :::
       (sys.props.get("sbt.ivy.home") match {
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
         case _          => Nil
