@@ -28,7 +28,7 @@ Don't hardcode any of these — derive them fresh every run, since they all roll
 Each in-progress release has a directory `notes/<version>/` containing:
 
 - `meta.md` — a running log of checkpoints reached, one line per update: `- Updated to up <src-branch-sha> (<src-branch>) / <prev-branch-sha> (<prev-branch>)`.
-- `<version>-<sha8>-all.md` — a checkpoint snapshot in raw GitHub-auto-generated-release-notes style, covering every PR merged into `<src-branch>` from the start of the release up through commit `<sha8>` (first 8 hex chars). A new checkpoint file is a copy of the previous one with only the new commit range's entries appended and the `Full Changelog` compare line updated. Note that `<src-branch>` can change between checkpoints of the same `<version>` (e.g. from `develop` to a freshly-cut `<major>.<minor>.x`, once the user has switched their checkout over) — a commit range spanning that switch should be read from whichever branch actually contains it (the old checkpoint's sha may no longer be an ancestor of the new branch tip if history diverges at the cut; if so, treat the branch-cut point itself as the range boundary and note the switch when reporting).
+- `<version>-<sha8>-all.md` — exactly ONE checkpoint snapshot file at any time, in raw GitHub-auto-generated-release-notes style, covering every PR merged into `<src-branch>` from the start of the release up through commit `<sha8>` (first 8 hex chars) — i.e. it's cumulative from the very start of `<version>`, not just since the last checkpoint. Rolling the checkpoint forward renames this one file to the new `<sha8>` and appends the new commit range's entries to it; it never leaves an old-sha copy behind. If more than one `<version>-*-all.md` file is ever found (e.g. left over from before this rule existed, or from a manual process), merge them into one before doing anything else — see step 3.
 - `<version>-draft.md` — the hand-curated, cumulative draft for the whole release. It opens with hand-written prose highlight sections (e.g. "Test summary", "Ivyless publishing") that are NOT auto-updated by this skill, followed by catch-all sections (`## 🚀 Other updates`, `## 🐛 Bug fixes`, `## ⚡ Performance improvements`, `## Behind the scenes`) that ARE auto-updated by this skill — but only with PRs that are fresh to `<src-branch>`/`<version>` and have not already been backported to `<prev-branch>` (backported fixes ship to users via `<prev-branch>` already, so they don't need separate `<version>` release-note billing).
 - `backported-to-<prev-branch>.md` — every PR from `<src-branch>` that has already shipped on `<prev-branch>`, so it can be cross-checked/excluded from the fresh-in-`<version>` story. Grouped the same way, each entry suffixed `(released in <prev-branch version>)`.
 
@@ -59,12 +59,19 @@ Entry format:
    ```
    If that tip commit is itself a prior "Update release notes" bookkeeping commit (touches only `notes/`, no `(#N)` PR reference), it's not a real checkpoint target — use its parent instead, or ask the user which sha they meant.
 
-3. **Find the last checkpoint.** Read `notes/<version>/meta.md` for the most recent sha and the branch it was taken from. If that branch differs from the just-resolved `<src-branch>` (e.g. the release was cut to its own branch since the last run), note the switch and confirm the old sha is still an ancestor of the current `<src-branch>` tip before treating it as the range start — otherwise use the branch-cut commit itself as the range start, and flag the discrepancy to the user rather than silently proceeding. Confirm the matching `notes/<version>/<version>-<oldsha8>-all.md` file exists.
-
-4. **Copy forward.**
+3. **Find the last checkpoint, and make sure there's only one.**
    ```bash
-   cp notes/<version>/<version>-<oldsha8>-all.md notes/<version>/<version>-<newsha8>-all.md
+   ls notes/<version>/<version>-*-all.md
    ```
+   This must return exactly one file. If it returns more than one, consolidate first: read every one of them, and for each section concatenate their entries in file order from oldest sha to newest (each file's own entries are already chronological internally, and the files themselves don't overlap in PR coverage — verify that by comparing their `pull/<N>` references before assuming it), drop the trailing `(#N)` self-reference on any entry that has one (keep any other, non-self-referencing parenthetical numbers in a title as-is), set the `Full Changelog` line to span from the oldest file's start sha to the newest file's end sha, write the result to the newest file's name, delete the rest, and log the consolidation as a `meta.md` line before continuing to step 1 above with the now-single file in place. Never proceed to step 4 with more than one checkpoint file present.
+
+   Then read `notes/<version>/meta.md` for the most recent sha and the branch it was taken from. If that branch differs from the just-resolved `<src-branch>` (e.g. the release was cut to its own branch since the last run), note the switch and confirm the old sha is still an ancestor of the current `<src-branch>` tip before treating it as the range start — otherwise use the branch-cut commit itself as the range start, and flag the discrepancy to the user rather than silently proceeding. Confirm the sha in that single checkpoint file's name matches the sha from `meta.md`.
+
+4. **Roll the checkpoint file forward in place** — rename it, don't copy it, so there is still only one when this step finishes:
+   ```bash
+   git mv notes/<version>/<version>-<oldsha8>-all.md notes/<version>/<version>-<newsha8>-all.md
+   ```
+   (plain `mv` if the file isn't tracked yet). The new entries get appended to this same renamed file in step 7 — there is never a second `-all.md` file coexisting even momentarily as a deliberate step.
 
 5. **Enumerate the new commit range** in chronological order, resolving merge commits to the single PR they bundle:
    ```bash
