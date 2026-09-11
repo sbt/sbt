@@ -32,11 +32,11 @@ class PortfileTest extends AbstractServerTest:
   test("a portfile deleted twice") {
     val published = IO.read(portfile)
     IO.delete(portfile)
-    assert(!waitUntil(settle)(portfile.exists), "the portfile stays deleted")
-    IO.write(portfile, published)
+    assert(waitUntil(settle)(portfile.exists), "the server writes its portfile again")
+    assert(IO.read(portfile) == published, "the portfile still names this server")
     Thread.sleep(1000)
     IO.delete(portfile)
-    assert(!waitUntil(settle)(portfile.exists), "it stays deleted the second time")
+    assert(waitUntil(settle)(portfile.exists), "it writes the portfile again the second time")
   }
 
   test("a portfile that names another server") {

@@ -12,6 +12,7 @@ package server
 
 import java.io.{ File, IOException }
 import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
+import java.nio.file.FileAlreadyExistsException
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.security.SecureRandom
 import java.math.BigInteger
@@ -34,6 +35,7 @@ import xsbti.AppConfiguration
 private[sbt] sealed trait ServerInstance:
   def shutdown(): Unit
   def serverId: String
+  def writePortfileIfAbsent(): Unit
   def ready: Future[Unit]
   def authenticate(challenge: String): Boolean
 
@@ -100,7 +102,7 @@ private[sbt] object Server:
               serverSocket.setSoTimeout(5000)
               serverSocketHolder.set(serverSocket)
               log.debug(s"sbt server started at ${connection.shortName}")
-              writePortfile()
+              writePortfile(replace = true)
               if connection.bspEnabled then
                 log.debug("Writing bsp connection file")
                 BuildServerConnection.writeConnectionFile(
@@ -172,7 +174,9 @@ private[sbt] object Server:
         )
 
       // This file exists through the lifetime of the server.
-      private def writePortfile(): Unit =
+      override def writePortfileIfAbsent(): Unit = writePortfile(replace = false)
+
+      private def writePortfile(replace: Boolean): Unit =
         import JsonProtocol.given
 
         val uri = connection.shortName
@@ -189,7 +193,8 @@ private[sbt] object Server:
         // business taking down one whose options it never saw
         val sysPropsRecorded = Option(startedByThisBuild)
         val authOK = auth(ServerAuthentication.Token)
-        if authOK then writeTokenfile()
+        // the token is spent on first use, so a server keeps the one its clients hold
+        if authOK && (replace || !tokenfile.exists) then writeTokenfile()
         val p = PortFile(
           uri,
           if authOK then Some(tokenfile.toString) else None,
@@ -199,7 +204,11 @@ private[sbt] object Server:
           Some(serverId)
         )
         val json = Converter.toJson(p).get
-        IO.writeFileAtomically(portfile)(tmp => IO.write(tmp, CompactPrinter(json)))
+        def write(tmp: File): Unit = IO.write(tmp, CompactPrinter(json))
+        if replace then IO.writeFileAtomically(portfile)(write)
+        else
+          try IO.createFileAtomically(portfile, ownerOnly = false)(write)
+          catch case _: FileAlreadyExistsException => ()
       end writePortfile
 
       private[sbt] def prepareSocketfile(): Unit =

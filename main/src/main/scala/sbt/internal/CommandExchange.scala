@@ -10,7 +10,7 @@ package sbt
 
 package internal
 
-import java.io.{ File, IOException }
+import java.io.{ File, FileNotFoundException, IOException }
 import java.net.Socket
 import java.util.concurrent.atomic.*
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
@@ -294,6 +294,8 @@ private[sbt] final class CommandExchange:
       repo: FileTreeRepository[FileAttributes]
   ): Unit =
     def check(): Unit = Server.serverIdOf(portfile) match
+      case Failure(_: FileNotFoundException) =>
+        Util.ignoreTry(instance.writePortfileIfAbsent()) // a throw here would end the watch
       case Success(id) if !id.contains(instance.serverId) =>
         exitServer("another sbt server took over this build")
       case _ =>
