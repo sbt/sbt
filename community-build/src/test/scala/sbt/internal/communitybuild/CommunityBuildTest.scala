@@ -11,7 +11,8 @@ import CommunityBuildRunner.run
 class TestCategory
 
 given testRunner: CommunityBuildRunner with
-  override def failWith(msg: String) = { fail(msg); ??? }
+  override def failWith(msg: String) =
+    fail(msg); ???
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA:
