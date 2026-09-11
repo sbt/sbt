@@ -1,0 +1,3 @@
+$ mkdir src/main/scala
+$ touch src/main/scala/ExcludedSource.scala
+> check

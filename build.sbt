@@ -867,6 +867,14 @@ lazy val sbtProj = (project in file("sbt-app"))
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
+    Test / resourceGenerators += Def.task {
+      val converter = fileConverter.value
+      val classpath = (Compile / fullClasspathAsJars).value
+        .map(entry => converter.toPath(entry.data).toAbsolutePath.toString)
+      val resource = (Test / resourceManaged).value / "sbt-eval-classpath.txt"
+      IO.writeLines(resource, classpath)
+      Seq(resource)
+    }.taskValue,
     Test / testOptions ++= {
       val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val framework = TestFrameworks.ScalaTest
