@@ -54,7 +54,6 @@ private[sbt] final class CommandExchange:
     sys.props get "sbt.server.autostart" forall (_.toLowerCase == "true")
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
-  private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
   private val watchedRepository = new AtomicReference[AnyRef]
   private val portfileWatch = AtomicCloseable[AutoCloseable]()
   private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
@@ -276,23 +275,6 @@ private[sbt] final class CommandExchange:
 
       s.get(Keys.bootServerSocket).foreach(_.close())
     end if
-    if server.isEmpty && !monitoringActiveJson.get then
-      s.get(sbt.nio.Keys.globalFileTreeRepository) match
-        case Some(r) =>
-          r.register(sbt.nio.file.Glob(portfile)) match
-            case Right(o) =>
-              o.addObserver { event =>
-                if !event.exists then
-                  firstInstance.set(true)
-                  monitoringActiveJson.set(false)
-                  // FailureWall is effectively a no-op command that will
-                  // cause shell to re-run which should start the server
-                  commandQueue.add(Exec(BasicCommandStrings.FailureWall, None))
-                  o.close()
-              }
-              monitoringActiveJson.set(true)
-            case _ =>
-        case _ =>
     server.foreach { instance =>
       s.get(sbt.nio.Keys.globalFileTreeRepository).foreach { repo =>
         if watchedRepository.get ne repo then watchPortfile(instance, portfile, repo)

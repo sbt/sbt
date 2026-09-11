@@ -104,8 +104,7 @@ class PortfileTakeoverTest extends AbstractTakeoverTest:
         assert(waitUntil(settle)(marker.exists), "another sbt server loads the build")
         val owner = IO.read(portfile)
         IO.delete(portfile)
-        assert(waitUntil(settle)(portfile.exists), "a portfile appears again")
-        assert(IO.read(portfile) != owner, "it names the sbt server that was waiting")
+        assert(!waitUntil(settle)(portfile.exists), "the portfile stays deleted")
       finally another.destroy()
   }
 end PortfileTakeoverTest
