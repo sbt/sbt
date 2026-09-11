@@ -735,7 +735,12 @@ object ProjectMatrix:
             if crossVersion == Some(CrossVersion.full) then VirtualAxis.scalaVersionAxis(sv, sv)
             else VirtualAxis.scalaABIVersion(sv)
           acc.customRow(autoScalaLibrary, axisValues ++ Seq(scalaAxis), process1)
-      else customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.jvm), process1)
+      else
+        // the caller may have named the platform already, and a second one renames the
+        // generated directories to `scalajvm-jvm`, which no source tree is called
+        val hasPlatform = axisValues.exists(_.isInstanceOf[VirtualAxis.PlatformAxis])
+        val axes = if hasPlatform then axisValues else axisValues :+ VirtualAxis.jvm
+        customRow(autoScalaLibrary, axes, process1)
     end customRow
 
     override def customRow(

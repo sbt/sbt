@@ -7,8 +7,8 @@ lazy val app = (projectMatrix in file("app"))
     scalaVersions = Nil,
     settings = Seq(check := Def.uncached {
       val axes = virtualAxes.value
-      assert(axes == Seq(VirtualAxis.jvm, VirtualAxis.jvm), s"axes: $axes")
+      assert(axes == Seq(VirtualAxis.jvm), s"axes: $axes")
       val dirs = (Compile / unmanagedSourceDirectories).value.map(_.getName).distinct.sorted
-      assert(dirs == Seq("java", "javajvm-jvm", "scala", "scalajvm-jvm"), s"dirs: $dirs")
+      assert(dirs == Seq("java", "javajvm", "scala", "scalajvm"), s"dirs: $dirs")
     }),
   )
