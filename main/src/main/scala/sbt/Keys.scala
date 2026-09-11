@@ -90,6 +90,8 @@ object Keys {
   val configuration = settingKey[Configuration]("Provides the current configuration of the referencing scope.").withRank(CSetting)
   val commands = settingKey[Seq[Command]]("Defines commands to be registered when this project or build is the current selected one.").withRank(CSetting)
   val initialize = settingKey[Unit]("A convenience setting for performing side-effects during initialization.").withRank(BSetting)
+  @transient
+  val initialProject = settingKey[Option[ProjectReference]]("Project to select when the build is first loaded. Must be in the root build. Defaults to the root project; not re-read on reload.").withRank(DSetting)
   val onLoad = settingKey[State => State]("Transformation to apply to the build state when the build is loaded.").withRank(DSetting)
   val onUnload = settingKey[State => State]("Transformation to apply to the build state when the build is unloaded.").withRank(DSetting)
   val onLoadMessage = settingKey[String]("Message to display when the project is loaded.").withRank(DSetting)

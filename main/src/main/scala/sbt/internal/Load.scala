@@ -38,6 +38,7 @@ import java.net.URI
 import java.nio.file.Path
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.util.{ Failure, Success, Try }
 import sbt.internal.util.Util
 
 /**
@@ -1587,7 +1588,9 @@ private[sbt] object Load {
 
   def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
     val session = s.get(Keys.sessionSettings)
-    val currentProject = session map (_.currentProject) getOrElse Map.empty
+    val initial = if (session.isDefined) None else configuredInitialProject(structure, s.log)
+    val currentProject = session map (_.currentProject) getOrElse
+      initial.map(structure.root -> _).toMap
     val currentBuild = session
       .map(_.currentBuild)
       .filter(uri => structure.units.keys.exists(uri == _))
@@ -1600,6 +1603,42 @@ private[sbt] object Load {
       Nil,
       rootEval
     )
+  }
+
+  /**
+   * Resolves `initialProject` to a project id in the root build, on the first load.
+   * Warns and yields None rather than failing the load when it cannot be resolved.
+   *
+   * Read at the root project's scope so that a value set there, on `ThisBuild` or on
+   * `Global` is all honoured, since a project axis delegates to the build and to `Zero`.
+   * A value set on any other project is not read.
+   *
+   * The existence check is for the diagnostic: `projectMap` already falls back to the
+   * root project for an unknown id, so without it a typo would be silently ignored.
+   */
+  private def configuredInitialProject(
+      structure: BuildStructure,
+      log: Logger
+  ): Option[String] = {
+    val root = structure.root
+    def fallback(ref: ProjectReference, why: String): Option[String] = {
+      log.warn(s"initialProject is set to $ref, $why; using the root project")
+      None
+    }
+    val rootRef = ProjectRef(root, structure.rootProject(root))
+    (rootRef / Keys.initialProject).get(structure.data).flatten.flatMap { ref =>
+      Try(Scope.resolveProjectRef(root, structure.rootProject, ref)) match {
+        case Success(resolved) if resolved.build != root =>
+          fallback(ref, "which is in another build; only the root build is supported")
+        case Success(resolved) =>
+          if (structure.units.get(root).exists(_.defined.contains(resolved.project)))
+            Some(resolved.project)
+          else fallback(ref, "which is not a project in this build")
+        case Failure(e) =>
+          val cause = Option(e.getMessage).getOrElse(e.toString)
+          fallback(ref, s"which cannot be resolved ($cause)")
+      }
+    }
   }
 
   def initialSession(structure: BuildStructure, rootEval: () => Eval): SessionSettings =

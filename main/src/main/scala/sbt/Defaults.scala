@@ -323,6 +323,7 @@ object Defaults extends BuildCommon with DefExtra {
       sbtVersion := appConfiguration.value.provider.id.version,
       sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
       pluginCrossBuild / sbtVersion := sbtVersion.value,
+      initialProject :== None,
       onLoad := idFun[State],
       onUnload := idFun[State],
       onUnload := { s =>

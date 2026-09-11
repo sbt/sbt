@@ -38,6 +38,7 @@ object LintUnused {
       allowUnsafeScalaLibUpgrade,
       evictionWarningOptions,
       initialize,
+      initialProject,
       lintUnusedKeysOnLoad,
       localDigestCacheByteSize,
       onLoad,
