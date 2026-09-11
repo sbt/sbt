@@ -13,12 +13,14 @@ import java.nio.file.{
 }
 import java.nio.file.attribute.{ BasicFileAttributes, FileTime }
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.zip.ZipFile
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 import scala.collection.mutable
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.parallel.CollectionConverters.*
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 import sbt.internal.io.Retry
 import sbt.io.IO
@@ -469,7 +471,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if path.toString().endsWith(ActionCache.dirZipExt) then unpackageDirZip(path, outputDirectory)
     else ()
 
-  /** Re-extract a dirzip whose extracted directory is missing: one stat on the warm path. */
+  /** Re-extract a dirzip whose extracted tree is missing or no longer matches it. */
   private def afterFileUpToDate(
       ref: HashedVirtualFileRef,
       path: Path,
@@ -477,7 +479,25 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
   ): Unit =
     if path.toString().endsWith(ActionCache.dirZipExt) then
       val dirPath = Paths.get(path.toString.dropRight(ActionCache.dirZipExt.size))
-      if !Files.isDirectory(dirPath) then Util.ignoreResult(unpackageDirZip(path, outputDirectory))
+      if !Files.isDirectory(dirPath) || !dirZipIsExtracted(path, outputDirectory) then
+        Util.ignoreResult(unpackageDirZip(path, outputDirectory))
+
+  /**
+   * Compares the tree a dirzip describes against the files on disk, using the sizes recorded in
+   * its central directory: a warm hit costs one stat per file rather than reading any of them
+   * back.
+   */
+  private def dirZipIsExtracted(dirzip: Path, outputDirectory: Path): Boolean =
+    try
+      Using.resource(ZipFile(dirzip.toFile())): zip =>
+        zip.entries.asScala.forall: entry =>
+          entry.isDirectory || entry.getName == ActionCache.manifestFileName || {
+            try
+              val size = Files.size(outputDirectory.resolve(entry.getName))
+              entry.getSize < 0L || size == entry.getSize
+            catch case _: IOException => false
+          }
+    catch case NonFatal(_) => false
 
   /**
    * Given a dirzip, unzip it in a temp directory, and sync each items to the outputDirectory.

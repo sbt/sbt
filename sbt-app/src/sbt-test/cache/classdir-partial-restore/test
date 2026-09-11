@@ -1,0 +1,18 @@
+# sbt/sbt#9607: a class directory that diverged from its packaged zip has to be repaired on a
+# cache hit. sbt/sbt#9473 only restores it when the whole directory goes missing.
+> compile
+> run
+> recordHashes
+
+# a deleted class file
+> delMixin
+> compile
+> showClasses
+> checkHashes
+> run
+
+# a class file left with stale (here: junk) content
+> corruptTrait
+> compile
+> checkHashes
+> run

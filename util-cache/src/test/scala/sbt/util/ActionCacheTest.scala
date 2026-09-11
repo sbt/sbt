@@ -143,7 +143,7 @@ object ActionCacheTest extends BasicTestSuite:
         assert((dir / "b.txt").exists, "b.txt not re-extracted after the directory was deleted")
         assertMaterialized(cache, (dir / "a.txt").toPath)
 
-  test("Disk cache does not re-extract a dirzip whose archive digest already matches"):
+  test("Disk cache does not re-extract a dirzip whose extracted tree still matches"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: tempDir =>
         val outputDirectory = tempDir.toPath()
@@ -156,11 +156,47 @@ object ActionCacheTest extends BasicTestSuite:
         )
         val refs = cache.putBlobs(Seq(zipVf))
 
-        // packageDirectory leaves a regular file whose digest already matches the blob, so the
-        // extracted tree is in sync by construction and syncing must not unpackage it again.
+        // unpackaging removes files the archive does not list, so a surviving stray file is the
+        // observable sign that a matching tree was left alone.
+        IO.write(dir / "stray.txt", "stray")
+        cache.syncBlobs(refs, outputDirectory)
+        assert((dir / "stray.txt").exists, "in-sync tree was unpackaged again")
+
+  test("Disk cache re-extracts a dirzip missing one of its files"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        IO.write(dir / "b.txt", "contents B")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+
+        // the archive is untouched, so only the tree it describes can say the directory is stale
+        IO.delete(dir / "a.txt")
+        cache.syncBlobs(refs, outputDirectory)
+        assert(IO.read(dir / "a.txt") == "contents A", "deleted file was not restored")
+
+  test("Disk cache re-extracts a dirzip whose file was replaced"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val outputDirectory = tempDir.toPath()
+        val dir = tempDir / "gen-dir"
+        IO.write(dir / "a.txt", "contents A")
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        val refs = cache.putBlobs(Seq(zipVf))
+
         IO.write(dir / "a.txt", "diverged")
         cache.syncBlobs(refs, outputDirectory)
-        assert(IO.read(dir / "a.txt") == "diverged")
+        assert(IO.read(dir / "a.txt") == "contents A", "diverged file was not restored")
 
   test("Disk cache materializes a digest-matching dirzip from the CAS"):
     withDiskCache: cache =>
