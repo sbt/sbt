@@ -669,6 +669,8 @@ lazy val commandProj = (project in file("main-command"))
         "sbt.internal.client.NetworkClient#RawInputThread.stopped"
       ),
       exclude[DirectMissingMethodProblem]("sbt.internal.client.NetworkClient.<clinit>"),
+      // private[client], but NetworkClient's public constructors take one, so it escapes
+      exclude[DirectMissingMethodProblem]("sbt.internal.client.NetworkClient#Arguments.this"),
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
