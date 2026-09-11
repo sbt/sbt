@@ -144,6 +144,8 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings
     else versions.map(v => (organization.value % moduleName.value % v).cross(crossVersion)).toSet
   },
   mimaBinaryIssueFilters ++= Seq(
+    // sbt.internal is not API
+    (x: Problem) => !x.matchName.exists(_.startsWith("sbt.internal.")),
   ),
 )
 
@@ -433,11 +435,6 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
     libraryDependencies += scalaParsers,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[DirectMissingMethodProblem](
-        "sbt.internal.scripted.BasicStatementHandler.initialState"
-      ),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.scripted.CommentHandler.initialState"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.scripted.FileCommands.initialState"),
     ),
   )
   .configure(addSbtIO)
@@ -611,11 +608,6 @@ lazy val actionsProj = (project in file("main-actions"))
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // WorkerConnection gained an Ipc(path) case; mixing a parameterized case into
-      // the enum drops the synthetic values()/valueOf() Java-enum forwarders. This is
-      // an internal (sbt.internal) type not meant for external consumption.
-      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.valueOf"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.values"),
     ),
   )
   .dependsOn(lmCore)
@@ -656,19 +648,6 @@ lazy val commandProj = (project in file("main-command"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerCallback.*"),
-      exclude[MissingClassProblem]("sbt.internal.util.JoinThread"),
-      exclude[MissingClassProblem]("sbt.internal.util.JoinThread$"),
-      exclude[MissingClassProblem]("sbt.internal.util.ReadJsonFromInputStream"),
-      exclude[MissingClassProblem]("sbt.internal.util.ReadJsonFromInputStream$"),
-      exclude[MissingClassProblem]("sbt.internal.client.ServerConnection"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.connection"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.init"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.*"),
-      exclude[DirectMissingMethodProblem](
-        "sbt.internal.client.NetworkClient#RawInputThread.stopped"
-      ),
-      exclude[DirectMissingMethodProblem]("sbt.internal.client.NetworkClient.<clinit>"),
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
@@ -818,27 +797,13 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.depMap"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.ivySbt0"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.mkIvyConfiguration"),
-      exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml"),
-      exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml$"),
       // Removed projectDescriptors key (sbt#8865)
       exclude[DirectMissingMethodProblem]("sbt.Keys.projectDescriptors"),
-      // Removed descriptors field from GlobalPluginData (sbt#8865)
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.apply"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.this"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.descriptors"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy$default$7"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData._7"),
       // Updating remote vcs projects (sbt#1284)
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.creates"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.uniqueSubdirectoryFor"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.run"),
       exclude[MissingClassProblem]("sbt.Resolvers$DistributedVCS"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.GlobalPluginData.*"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.*"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
@@ -857,7 +822,6 @@ lazy val sbtProj = (project in file("sbt-app"))
     crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
-    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
     mimaBinaryIssueFilters ++= Vector(
       // Dropped the top-level Ivy-specific UpdateOptions alias; use
       // sbt.internal.librarymanagement.ivy.UpdateOptions directly if needed.
@@ -1055,11 +1019,6 @@ lazy val upperModules = (project in (file("internal") / "upper"))
   .settings(
     scalaVersion := scala3,
     Utils.noPublish
-  )
-
-lazy val sbtIgnoredProblems =
-  import com.typesafe.tools.mima.core.*
-  Vector(
   )
 
 def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
