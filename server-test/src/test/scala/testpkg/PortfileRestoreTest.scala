@@ -48,7 +48,7 @@ class PortfileRestoreTest extends AbstractServerTest:
     val script = scriptWriting(marker)
     IO.delete(socketfile)
     IO.delete(portfile)
-    assert(!waitUntil(settle)(portfile.exists), "the portfile stays deleted")
+    assert(waitUntil(settle)(portfile.exists), "the server writes its portfile again")
     /*
      * The client fails either way, having spent its attempts on a server it cannot reach. What
      * matters is that the restored file does not stop it starting a server of its own: it looks
