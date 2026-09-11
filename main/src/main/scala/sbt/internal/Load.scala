@@ -358,8 +358,9 @@ private[sbt] object Load:
       [a] =>
         (key: ScopedKey[a]) =>
           key.key match
-            case resolvedScoped.key => Some(defining.asInstanceOf[a])
-            case _                  => None
+            case resolvedScoped.key    => Some(defining.asInstanceOf[a])
+            case resolvedScopedStr.key => Some(Def.displayFull(defining).asInstanceOf[a])
+            case _                     => None
     ss.map(s =>
       s.mapConstant(setResolved(s.key))
         .mapReferenced(mapSpecial(s.key))

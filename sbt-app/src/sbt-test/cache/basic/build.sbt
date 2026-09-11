@@ -37,5 +37,7 @@ checkMapN1 := Def.uncached {
   val prev = config.cacheEventLog.previous match
     case s: CacheEventSummary.Data => s
     case s                         => sys.error(s"empty event log")
-  assert(prev.hitCount == 2, s"prev.hitCount = ${prev.hitCount} (expected 2)")
+  // The preceding `clean` invalidates this subproject's disk cache for one command, so
+  // mapN1's own dependencies (pure1, map1) are forced to miss here too, not resurrected from disk.
+  assert(prev.hitCount == 0, s"prev.hitCount = ${prev.hitCount} (expected 0)")
 }

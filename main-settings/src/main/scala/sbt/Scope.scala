@@ -297,6 +297,15 @@ object Scope:
 
   def showProject012Style = (ref: Reference) => Reference.display(ref) + "/"
 
+  /** Extract the slash prefix, which would be used to invalidate tasks. */
+  private[sbt] def projectScopePrefix(scope: Scope): String =
+    scope.project match
+      case Select(ref) =>
+        scope.config match
+          case Select(c) => s"${showProject(ref)} ${display(c)}"
+          case _         => showProject(ref)
+      case _ => ""
+
   // *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
   def delegates[Proj](
       refs: Seq[(ProjectRef, Proj)],

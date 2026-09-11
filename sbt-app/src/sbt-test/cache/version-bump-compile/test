@@ -1,14 +1,15 @@
 # warm the disk cache
 > app/compile
 
-# after a clean, recompiling app (and foo) should fully restore from the disk cache
+# after a clean, recompiling app (and foo) forces a fresh recompute for one command,
+# instead of resurrecting the pre-clean disk-cached result
 > clean
 > app/compile
-> checkMiss 0
+> checkMiss 21
 
 # bumping foo's version alone (e.g. what sbt-dynver would do on a new commit) must not
 # invalidate app's compile cache entry, since foo's jar content hasn't changed
 > set foo / version := "0.2.0"
 > clean
 > app/compile
-> checkMiss 0
+> checkMiss 21
