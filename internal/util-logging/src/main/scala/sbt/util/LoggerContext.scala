@@ -24,6 +24,12 @@ import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
 sealed trait LoggerContext extends AutoCloseable:
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger
   def clearAppenders(loggerName: String): Unit
+
+  /**
+   * Removes a single appender from the logger, leaving the other appenders in place, and closes it.
+   * Does nothing if the appender is not bound to the logger.
+   */
+  def removeAppender(loggerName: String, appender: Appender): Unit
   def addAppender(
       loggerName: String,
       appender: (Appender, Level.Value)
@@ -51,7 +57,11 @@ object LoggerContext:
       def clearAppenders(): Unit =
         consoleAppenders.get.foreach { case (a, _) => a.close() }
         consoleAppenders.set(Vector.empty)
+      def removeAppender(toRemove: Appender): Unit =
+        val previous = consoleAppenders.getAndUpdate(_.filterNot { (a, _) => a eq toRemove })
+        previous.foreach { (a, _) => if a eq toRemove then a.close() }
       def appenders: Seq[Appender] = consoleAppenders.get.map(_._1)
+    end Log
     private val loggers = new ConcurrentHashMap[String, Log]
     private val closed = new AtomicBoolean(false)
     override def logger(
@@ -68,6 +78,10 @@ object LoggerContext:
       loggers.get(loggerName) match
         case null =>
         case l    => l.clearAppenders()
+    override def removeAppender(loggerName: String, appender: Appender): Unit =
+      loggers.get(loggerName) match
+        case null =>
+        case l    => l.removeAppender(appender)
     override def addAppender(
         loggerName: String,
         appender: (Appender, Level.Value)

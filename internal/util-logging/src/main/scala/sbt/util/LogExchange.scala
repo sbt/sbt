@@ -19,8 +19,14 @@ sealed abstract class LogExchange:
   def logger(name: String): ManagedLogger = logger(name, None, None)
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger =
     LoggerContext.globalContext.logger(name, channelName, execId)
+
+  /** Removes and closes every appender bound to the logger, including ones bound by sbt itself. */
   def unbindLoggerAppenders(loggerName: String): Unit =
     LoggerContext.globalContext.clearAppenders(loggerName)
+
+  /** Removes and closes only the given appenders, leaving the rest of the logger's appenders. */
+  def unbindLoggerAppenders(loggerName: String, appenders: Seq[Appender]): Unit =
+    appenders.foreach(LoggerContext.globalContext.removeAppender(loggerName, _))
 
   def bindLoggerAppenders(
       loggerName: String,
