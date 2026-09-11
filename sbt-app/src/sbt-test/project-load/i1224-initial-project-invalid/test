@@ -1,0 +1,52 @@
+# An unresolvable initialProject must warn and fall back to the root project,
+# never fail the load. reboot re-reads the build from disk with no session, which
+# is the only state in which initialProject is consulted.
+> reboot
+> checkCurrent i1224Root
+
+# Resolves cleanly, then fails the existence check. Note this pins the WARNING, not
+# the fallback: projectMap already replaces an unknown id with the root project, so
+# the load would recover either way - silently, which is the point of the check.
+$ copy-file changes/local.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+
+# The next three throw inside Scope.resolveProjectRef, before any existence check
+# can run. A fixture testing only the case above would pass with the Try wrapper
+# removed, which is what makes these three the point of this file.
+$ copy-file changes/rooturi.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+
+$ copy-file changes/thisproject.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+
+$ copy-file changes/aggregate.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+
+# A reference into a build that was never loaded RESOLVES cleanly - resolveProjectRef
+# does not validate the URI - so it reaches the root-build guard, not the existence
+# check. This case discriminates only because it borrows an id that DOES exist in the
+# root build: drop the guard and the existence check passes, and sbt silently selects
+# the root build's project of that name. Keep the id in step with build.sbt.
+$ copy-file changes/unloadeduri.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+
+# Criterion 4: Global works as well as ThisBuild. The read is at the root project's
+# scope, which delegates project -> build -> Zero, so it sees all three spellings.
+$ copy-file changes/global.sbt ip.sbt
+> reboot
+> checkCurrent i1224SubA
+
+# An unscoped setting lands at root-PROJECT scope. The read is at that scope
+# precisely so this spelling works; a build-scoped read would not see it, and the
+# excludeLintKeys entry means nothing would warn about it either.
+$ copy-file changes/bare.sbt ip.sbt
+> reboot
+> checkCurrent i1224SubA
+
+# Leave the shared batch session on the root project, as the sibling fixture does.
+> project i1224Root
