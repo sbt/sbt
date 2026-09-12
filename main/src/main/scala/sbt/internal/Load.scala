@@ -22,6 +22,7 @@ import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUtil }
 import lmcoursier.{ CoursierConfiguration, CoursierDependencyResolution }
 import lmcoursier.syntax.*
+import sbt.coursierint.LMCoursier
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.Attributed
@@ -106,6 +107,9 @@ private[sbt] object Load:
     val csrConfig = CoursierConfiguration()
       .withResolvers(Resolver.combineDefaultResolvers(Vector.empty).toVector)
       .withLog(log)
+      .withUserAgent(
+        Some(LMCoursier.userAgent(provider.id.version, sys.props.get("coursier.http.agent")))
+      )
     val dependencyResolution = CoursierDependencyResolution(csrConfig)
     val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     val zincDir = BuildPaths.getZincDirectory(state, globalBase)
