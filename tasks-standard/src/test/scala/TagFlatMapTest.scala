@@ -16,7 +16,7 @@ import ConcurrentRestrictions.{ Span, Tag, tagged }
 import org.scalacheck.*
 import Prop.*
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, TimeUnit }
 import java.util.concurrent.atomic.AtomicInteger
 import scala.jdk.CollectionConverters.*
 
@@ -104,4 +104,33 @@ object TagFlatMapTest extends Properties("flatMap tag handling"):
     val ev = probe.eventList
     (s"events=$ev" |: spansDisjoint(ev)) &&
     (s"maxActive=${probe.maxActive.get}" |: probe.maxActive.get == 1)
+
+  /**
+   * Regression: a held Span node must not count toward Tags.All, or a lone Span bracket run
+   * under limitAll(1) (sbt's serial-execution restriction) deadlocks itself -- the bracket
+   * parks holding All, and its own continuation can never be admitted. Run off-thread with a
+   * timeout since a regression here hangs rather than fails.
+   */
+  property("span bracket does not deadlock under limitAll(1)") =
+    val limitAll1 = tagged(_.getOrElse(ConcurrentRestrictions.All, 0) <= 1)
+    val probe = new Probe
+    val root = spanSubproject("a", probe)
+    val done = new CountDownLatch(1)
+    val runner = new Thread(() =>
+      tryRun(root, true, limitAll1)
+      done.countDown()
+    )
+    runner.setDaemon(true)
+    runner.start()
+    val completed = done.await(5, TimeUnit.SECONDS)
+    val ev = probe.eventList
+    (s"completed=$completed events=$ev" |: completed) &&
+    (completed ==> (s"events=$ev" |: ev == List(
+      "a-setup:start",
+      "a-setup:end",
+      "a-main:start",
+      "a-main:end",
+      "a-cleanup:start",
+      "a-cleanup:end"
+    )))
 end TagFlatMapTest

@@ -42,6 +42,12 @@ trait ConcurrentRestrictions:
    *      valid(empty) 5. forall g: G, a: A, b: A; !valid(add(g,a)) => !valid(add(add(g,b), a))
    */
   def valid(g: G): Boolean
+
+  /** Like `remove`, but keeps `a`'s restriction in effect (see ConcurrentRestrictions.Span). */
+  def hold(g: G, a: TaskId[?]): G = remove(g, a)
+
+  /** Reverses what `hold` retained. The default is a no-op, matching the default `hold`. */
+  def unhold(g: G, a: TaskId[?]): G = g
 end ConcurrentRestrictions
 
 private[sbt] sealed trait CancelSentinels:
@@ -116,6 +122,10 @@ object ConcurrentRestrictions:
       def add(g: TagMap, a: TaskId[?]) = merge(g, a)(_ + _)
       def remove(g: TagMap, a: TaskId[?]) = merge(g, a)(_ - _)
       def valid(g: TagMap) = validF(g)
+      // Drop the execution-accounting bump (All/Untagged) but keep `a`'s own tags, so a held
+      // task no longer counts as running while its restriction is still enforced.
+      override def hold(g: TagMap, a: TaskId[?]): TagMap = merge(remove(g, a), a.tags)(_ + _)
+      override def unhold(g: TagMap, a: TaskId[?]): TagMap = merge(g, a.tags)(_ - _)
 
   private def merge(m: TagMap, a: TaskId[?])(
       f: (Int, Int) => Int
@@ -268,8 +278,8 @@ object ConcurrentRestrictions:
         CompletionService.submitFuture(wrappedWork, jservice)
         ()
 
-      private def removeTags(node: TaskId[?]): Unit =
-        tagState = tags.remove(tagState, node)
+      private def applyTags[A1](f: tags.G => tags.G): Unit =
+        tagState = f(tagState)
         if !tags.valid(tagState) then
           warn(
             "Invalid restriction: removing a completed node from a valid system must result in a valid system."
@@ -277,13 +287,15 @@ object ConcurrentRestrictions:
 
       private def cleanup(node: TaskId[?]): Unit = synchronized:
         running -= 1
-        if node.tags.contains(Span) then spanning += node
-        else removeTags(node)
+        if node.tags.contains(Span) then
+          applyTags(tags.hold(_, node))
+          spanning += node
+        else applyTags(tags.remove(_, node))
         submitValid(new LinkedList)
 
       override def release(node: TaskId[?]): Unit = synchronized:
         if spanning -= node then
-          removeTags(node)
+          applyTags(tags.unhold(_, node))
           submitValid(new LinkedList)
 
       private def errorAddingToIdle() =
