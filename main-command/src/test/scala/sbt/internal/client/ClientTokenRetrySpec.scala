@@ -165,14 +165,14 @@ object ClientTokenRetrySpec extends BasicTestSuite:
         assert(waitUntil(!handshakes.presented.isEmpty))
         // the token it presented was the one the file named, and it was refused anyway
         assert(handshakes.presented.peek == first)
-        // the client never reads the token again, so the server never accepts it
-        assert(!waitUntil(!handshakes.accepted.isEmpty))
+        // the client reads the token again, so the server accepts it on the second try
+        assert(waitUntil(!handshakes.accepted.isEmpty))
 
   test("a command run while the first token is refused"):
     if !isWindows then
       withRefusingServer(): (client, _, _) =>
         Util.ignoreTry(client.connection)
-        assert(client.batchExecute(List("compile")) == 1)
+        assert(client.batchExecute(List("compile")) == 0)
 
   test("two connections handshaking at once"):
     if !isWindows then
@@ -190,8 +190,8 @@ object ClientTokenRetrySpec extends BasicTestSuite:
         assert(done.await(20, TimeUnit.SECONDS), handshakes.presented.toString)
         // the first refusal is held back, so the second handshake is sent inside that window
         assert(waitUntil(handshakes.presented.size >= 2), handshakes.presented.toString)
-        // a refused connection is never retried, so it stays unauthenticated
-        assert(!waitUntil(handshakes.accepted.size == 2))
+        // each connection retries its own refusal, so both end up authenticated
+        assert(waitUntil(handshakes.accepted.size == 2))
         threads.foreach(_.join(1000))
 
   test("a completion query"):
@@ -210,8 +210,8 @@ object ClientTokenRetrySpec extends BasicTestSuite:
     if !isWindows then
       withRefusingServer(every = true): (client, _, handshakes) =>
         Util.ignoreTry(client.connection)
-        assert(waitUntil(!handshakes.presented.isEmpty))
-        // the client presents the one token and gives up without a word
-        assert(!waitUntil(handshakes.presented.size > 1))
-        assert(handshakes.errors.isEmpty, handshakes.errors.toString)
+        // the client presents a token once per attempt, then reports the refusal
+        assert(waitUntil(handshakes.presented.size == NetworkClient.handshakeAttemptLimit))
+        assert(!waitUntil(handshakes.presented.size > NetworkClient.handshakeAttemptLimit))
+        assert(handshakes.errors.stream.anyMatch(_.contains("refused the connection")))
 end ClientTokenRetrySpec
