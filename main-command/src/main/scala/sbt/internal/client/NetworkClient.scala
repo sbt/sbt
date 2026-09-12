@@ -19,8 +19,14 @@ import java.nio.file.Files
 import java.nio.file.StandardOpenOption.{ CREATE, WRITE }
 import java.security.{ MessageDigest, SecureRandom }
 import java.util.{ Base64, UUID }
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, Semaphore, TimeUnit }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
+import java.util.concurrent.{
+  ConcurrentHashMap,
+  CountDownLatch,
+  LinkedBlockingQueue,
+  Semaphore,
+  TimeUnit,
+}
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
@@ -148,6 +154,8 @@ class NetworkClient(
     new ConcurrentHashMap[String, (LinkedBlockingQueue[Integer], Long, String)]
   private val pendingCancellations = new ConcurrentHashMap[String, LinkedBlockingQueue[Boolean]]
   private val pendingCompletions = new ConcurrentHashMap[String, CompletionResponse => Unit]
+  private val pendingResponseHandlers =
+    new ConcurrentHashMap[String, JsonRpcResponseMessage => Unit]
   private val attached = new AtomicBoolean(false)
   private val attachUUID = new AtomicReference[String](null)
   private val connectionHolder = AtomicCloseable[ServerSession]()
@@ -510,9 +518,42 @@ class NetworkClient(
         running.set(false)
         Option(interactiveThread.get).foreach(_.interrupt())
     // initiate handshake
-    conn.sendCommand(initCommand(tkn, UUID.randomUUID.toString))
+    val settled = CountDownLatch(1)
+    initiateHandshake(Handshake(conn, settled), tkn)
+    // the server refuses every other request until the handshake settles, retries included
+    if !settled.await(connectTimeout.toMillis, TimeUnit.MILLISECONDS) then
+      console.appendLog(Level.Error, "sbt server did not answer the handshake")
     conn
   end initImpl
+
+  private final class Handshake(session: ServerSession, settled: CountDownLatch):
+    private val attempt = new AtomicInteger(1)
+    def release(): Unit = settled.countDown()
+    def release(msg: String): Unit =
+      release()
+      console.appendLog(Level.Error, msg)
+    def nextAttempt: Boolean = attempt.getAndIncrement < NetworkClient.handshakeAttemptLimit
+    def initiateFailed(command: CommandMessage): Boolean =
+      val failed = session.sendCommand(command).isFailure
+      if failed then release()
+      failed
+
+  private def initiateHandshake(handshake: Handshake, token: Option[String]): Unit =
+    val execId = UUID.randomUUID.toString
+    // one entry per handshake in flight, so two connections cannot overwrite each other
+    def handleHandshakeResponse(msg: JsonRpcResponseMessage): Unit =
+      msg.error match
+        case Some(err) => // Another client could have spent the token, so read it again
+          if handshake.nextAttempt then
+            Try(ClientSocket.token(portfile)).fold(
+              e => handshake.release(s"sbt client could not read the token: $e"),
+              token => initiateHandshake(handshake, token)
+            )
+          else handshake.release(s"sbt server refused the connection: ${err.message}")
+        case _ => handshake.release()
+    pendingResponseHandlers.put(execId, handleHandshakeResponse)
+    if handshake.initiateFailed(initCommand(token, execId)) then
+      pendingResponseHandlers.remove(execId)
 
   /** The handshake, carrying the token the server is asked to accept. */
   private def initCommand(tkn: Option[String], execId: String): InitCommand =
@@ -855,7 +896,11 @@ class NetworkClient(
     onCompletionResponse,
     { case _ => () },
   )
-  def onResponse(msg: JsonRpcResponseMessage): Unit = responsePlan(msg)
+
+  def onResponse(msg: JsonRpcResponseMessage): Unit =
+    pendingResponseHandlers.remove(msg.id) match
+      case null    => responsePlan(msg)
+      case handler => handler(msg)
 
   def onNotification(msg: JsonRpcNotificationMessage): Unit =
     def splitToMessage: Vector[(Level.Value, String)] =
@@ -1308,6 +1353,7 @@ end NetworkClient
 
 object NetworkClient:
   private[sbt] val CancelAll = "__CancelAll"
+  private[sbt] val handshakeAttemptLimit = 3
   private def consoleAppenderInterface(printStream: PrintStream): ConsoleInterface =
     val appender = ConsoleAppender("thin", ConsoleOut.printStreamOut(printStream))
     new ConsoleInterface:
