@@ -33,6 +33,12 @@ object Tags:
   val ExclusiveTestGroup = Tag("exclusive-test-group")
 
   /**
+   * Marker tag: keeps a task's tags held until it retires, spanning any flatMap continuation.
+   * Tasks inside the span must not carry tags conflicting with the held ones, or execution deadlocks.
+   */
+  val Span = ConcurrentRestrictions.Span
+
+  /**
    * Describes a restriction on concurrently executing tasks.
    * A Rule is constructed using one of the Tags.limit* methods.
    */

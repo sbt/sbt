@@ -156,12 +156,16 @@ private[sbt] final class Execute(
     state(node) = Done
     progress.afterCompleted(node, result)
     remove(reverse, node).foreach(dep => notifyDone(node, dep))
-    callers.remove(node).toList.flatten.foreach { c =>
-      retire(c, callerResult(c, result))
-    }
-    triggeredBy(node) foreach { t =>
+    if node.tags.contains(ConcurrentRestrictions.Span) then strategy.release(node)
+
+    callers
+      .remove(node)
+      .toList
+      .flatten
+      .foreach: c =>
+        retire(c, callerResult(c, result))
+    triggeredBy(node).foreach: t =>
       addChecked(t)
-    }
 
     post {
       assert(done(node))
@@ -172,6 +176,7 @@ private[sbt] final class Execute(
       assert(triggeredBy(node) forall added)
     }
   end retire
+
   def callerResult[A](node: TaskId[A], result: Result[A]): Result[A] =
     result match
       case _: Result.Value[A] => result

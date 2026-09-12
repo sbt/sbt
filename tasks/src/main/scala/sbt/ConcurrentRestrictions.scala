@@ -10,7 +10,7 @@ package sbt
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import sbt.internal.util.AttributeKey
+import sbt.internal.util.{ AttributeKey, IDSet }
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ Future as JFuture, RejectedExecutionException, CancellationException }
 import scala.collection.mutable
@@ -42,6 +42,12 @@ trait ConcurrentRestrictions:
    *      valid(empty) 5. forall g: G, a: A, b: A; !valid(add(g,a)) => !valid(add(add(g,b), a))
    */
   def valid(g: G): Boolean
+
+  /** Like `remove`, but keeps `a`'s restriction in effect (see ConcurrentRestrictions.Span). */
+  def hold(g: G, a: TaskId[?]): G = remove(g, a)
+
+  /** Reverses what `hold` retained. The default is a no-op, matching the default `hold`. */
+  def unhold(g: G, a: TaskId[?]): G = g
 end ConcurrentRestrictions
 
 private[sbt] sealed trait CancelSentinels:
@@ -95,6 +101,12 @@ object ConcurrentRestrictions:
   /** A standard tag describing the total number of tasks. */
   val All = Tag("all")
 
+  /**
+   * Marker tag: keeps a task's tags held until it retires, spanning any flatMap continuation.
+   * Tasks inside the span must not carry tags conflicting with the held ones, or execution deadlocks.
+   */
+  val Span = Tag("span")
+
   type TagMap = Map[Tag, Int]
   val TagMap = Map.empty[Tag, Int]
 
@@ -110,6 +122,10 @@ object ConcurrentRestrictions:
       def add(g: TagMap, a: TaskId[?]) = merge(g, a)(_ + _)
       def remove(g: TagMap, a: TaskId[?]) = merge(g, a)(_ - _)
       def valid(g: TagMap) = validF(g)
+      // Drop the execution-accounting bump (All/Untagged) but keep `a`'s own tags, so a held
+      // task no longer counts as running while its restriction is still enforced.
+      override def hold(g: TagMap, a: TaskId[?]): TagMap = merge(remove(g, a), a.tags)(_ + _)
+      override def unhold(g: TagMap, a: TaskId[?]): TagMap = merge(g, a.tags)(_ - _)
 
   private def merge(m: TagMap, a: TaskId[?])(
       f: (Int, Int) => Int
@@ -224,6 +240,9 @@ object ConcurrentRestrictions:
        */
       private val pending = new LinkedList[Enqueue]
 
+      /** Span-tagged nodes whose tags remain held until Execute retires them. */
+      private val spanning = IDSet.create[TaskId[?]]
+
       private val sentinels: mutable.ListBuffer[JFuture[?]] = mutable.ListBuffer.empty
 
       def cancelSentinels(): Unit =
@@ -246,7 +265,7 @@ object ConcurrentRestrictions:
             submitValid(node, work)
             ()
           else
-            if running == 0 then errorAddingToIdle()
+            if running == 0 && spanning.isEmpty then errorAddingToIdle()
             pending.add(new Enqueue(node, work))
             ()
         ()
@@ -258,16 +277,27 @@ object ConcurrentRestrictions:
           finally cleanup(node)
         CompletionService.submitFuture(wrappedWork, jservice)
         ()
-      private def cleanup(node: TaskId[?]): Unit = synchronized {
-        running -= 1
-        tagState = tags.remove(tagState, node)
+
+      private def applyTags[A1](f: tags.G => tags.G): Unit =
+        tagState = f(tagState)
         if !tags.valid(tagState) then
           warn(
             "Invalid restriction: removing a completed node from a valid system must result in a valid system."
           )
-          ()
+
+      private def cleanup(node: TaskId[?]): Unit = synchronized:
+        running -= 1
+        if node.tags.contains(Span) then
+          applyTags(tags.hold(_, node))
+          spanning += node
+        else applyTags(tags.remove(_, node))
         submitValid(new LinkedList)
-      }
+
+      override def release(node: TaskId[?]): Unit = synchronized:
+        if spanning -= node then
+          applyTags(tags.unhold(_, node))
+          submitValid(new LinkedList)
+
       private def errorAddingToIdle() =
         warn("Invalid restriction: adding a node to an idle system must be allowed.")
 
@@ -275,7 +305,7 @@ object ConcurrentRestrictions:
       @tailrec private def submitValid(tried: Queue[Enqueue]): Unit =
         if pending.isEmpty then
           if !tried.isEmpty then
-            if running == 0 then errorAddingToIdle()
+            if running == 0 && spanning.isEmpty then errorAddingToIdle()
             pending.addAll(tried)
             ()
         else

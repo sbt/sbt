@@ -21,6 +21,13 @@ trait CompletionService:
    * In Execute this is used for tasks returning sbt.Completed.
    */
   def take(): Completed
+
+  /**
+   * Releases any concurrency-restriction tags still held for a retired node. Called by Execute
+   * when a node tagged with ConcurrentRestrictions.Span retires. Only meaningful for services
+   * enforcing concurrency restrictions; the default does nothing.
+   */
+  def release(node: TaskId[?]): Unit = ()
 end CompletionService
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -94,6 +101,8 @@ object CompletionService:
       service: CompletionService
   )(w: (TaskId[?], () => Completed) => (() => Completed)): CompletionService =
     new CompletionService:
-      def submit(node: TaskId[?], work: () => Completed) = service.submit(node, w(node, work))
-      def take() = service.take()
+      override def submit(node: TaskId[?], work: () => Completed) =
+        service.submit(node, w(node, work))
+      override def take() = service.take()
+      override def release(node: TaskId[?]): Unit = service.release(node)
 end CompletionService
