@@ -14,9 +14,7 @@ check := Def.uncached {
     case s: CacheEventSummary.Data => s
     case s                         => sys.error(s"empty event log")
   s.log.info(s"prev.missCount = ${prev.missCount}")
-  // clean invalidates this subproject's disk cache for one command, so the following
-  // foo/compile is forced to miss instead of resurrecting the pre-clean disk-cached result.
-  assert(prev.missCount > 0, s"prev.missCount = ${prev.missCount}")
+  assert(prev.missCount == 0, s"prev.missCount = ${prev.missCount}")
 }
 
 lazy val foo = (project in file("foo"))

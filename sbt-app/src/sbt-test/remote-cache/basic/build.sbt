@@ -5,7 +5,7 @@ scalaVersion := "3.9.0"
 Global / remoteCache := Some(new java.net.URI("grpc://127.0.0.1:2024"))
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
-val checkHit = taskKey[Unit]("asserts the previous compile was forced to recompute by clean")
+val checkHit = taskKey[Unit]("asserts the previous compile was served from the remote cache")
 
 checkHit := Def.uncached {
   val config = Def.cacheConfiguration.value
@@ -15,9 +15,9 @@ checkHit := Def.uncached {
   streams.value.log.info(
     s"prev hitCount=${prev.hitCount} missCount=${prev.missCount} remoteHitCount=${prev.remoteHitCount}"
   )
-  // clean invalidates this subproject's disk cache for one command, forcing a full recompute
-  // even though a matching remote cache entry exists: clean isn't meant to be defeated by
-  // either cache backend.
-  assert(prev.missCount > 0, s"expected clean to force a miss but missCount=${prev.missCount}")
-  assert(prev.remoteHitCount == 0, s"expected no remote hits but remoteHitCount=${prev.remoteHitCount}")
+  assert(prev.missCount == 0, s"expected 100% hit rate but missCount=${prev.missCount}")
+  assert(
+    prev.remoteHitCount == prev.hitCount,
+    s"expected 100% remote hit rate but remoteHitCount=${prev.remoteHitCount} hitCount=${prev.hitCount}"
+  )
 }
