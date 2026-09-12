@@ -425,20 +425,21 @@ class NetworkClient(
               rebooting.set(false)
               rebootCommands match
                 case Some((execId, cmd)) if execId.nonEmpty =>
-                  if batchMode.get && !pendingResults.containsKey(execId) && cmd.nonEmpty then
+                  if cmd.isEmpty then completeExec(execId, 0)
+                  else if !batchMode.get then
+                    inLock.synchronized {
+                      val toSend = cmd.getBytes :+ '\r'.toByte
+                      toSend.foreach(b => sendNotification(systemIn, b.toString))
+                    }
+                  else if pendingResults.containsKey(execId) then
+                    self.sendCommand(ExecCommand(cmd, execId))
+                  else
                     console.appendLog(
                       Level.Error,
                       s"received request to re-run unknown command '$cmd' after reboot"
                     )
-                  else if cmd.nonEmpty then
-                    if batchMode.get then self.sendCommand(ExecCommand(cmd, execId))
-                    else
-                      inLock.synchronized {
-                        val toSend = cmd.getBytes :+ '\r'.toByte
-                        toSend.foreach(b => sendNotification(systemIn, b.toString))
-                      }
-                  else completeExec(execId, 0)
                 case _ =>
+              end match
             else
               if !rebooting.get() && running.compareAndSet(true, false) && log then
                 if !arguments.commandArguments.contains(Shutdown) then
@@ -464,7 +465,12 @@ class NetworkClient(
         running.set(false)
         Option(interactiveThread.get).foreach(_.interrupt())
     // initiate handshake
-    val execId = UUID.randomUUID.toString
+    conn.sendCommand(initCommand(tkn, UUID.randomUUID.toString))
+    conn
+  end initImpl
+
+  /** The handshake, carrying the token the server is asked to accept. */
+  private def initCommand(tkn: Option[String], execId: String): InitCommand =
     val skipAnalysis = true
     val opts = InitializeOption(
       token = tkn,
@@ -472,15 +478,12 @@ class NetworkClient(
       canWork = Some(true),
       subscribeToAll = Some(false),
     )
-    val initCommand = InitCommand(
+    InitCommand(
       token = tkn, // duplicated with opts for compatibility
       execId = Option(execId),
       skipAnalysis = Some(skipAnalysis), // duplicated with opts for compatibility
       initializationOptions = Some(opts),
     )
-    conn.sendCommand(initCommand)
-    conn
-  end initImpl
 
   def init(promptCompleteUsers: Boolean, retry: Boolean): ServerSession =
     val conn = initImpl(promptCompleteUsers = promptCompleteUsers, retry = retry)

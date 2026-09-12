@@ -39,19 +39,27 @@ object ClientSocket:
     parsed.flatMap(Converter.fromJson[PortFile])
 
   def socket(portfile: File, useJNI: Boolean): (Socket, Option[String]) =
-    import fileFormats.given
-    val p = loadPortFile(portfile) match
-      case Success(p) => p
-      case Failure(e) => throw new ConnectionFileReadException(portfile, e)
+    val p = readPortFile(portfile)
     val uri = new URI(p.uri)
-    val token = p.tokenfilePath map { tp =>
+    val token = readToken(p)
+    (connect(uri, useJNI), token)
+
+  private def readPortFile(portfile: File): PortFile = loadPortFile(portfile) match
+    case Success(p) => p
+    case Failure(e) => throw new ConnectionFileReadException(portfile, e)
+
+  private def readToken(p: PortFile): Option[String] =
+    import fileFormats.given
+    p.tokenfilePath map { tp =>
       val tokeFile = new File(tp)
       try
         val json: JValue = Parser.parseFromFile(tokeFile).get
         Converter.fromJson[TokenFile](json).get.token
       catch case NonFatal(e) => throw new ConnectionFileReadException(tokeFile, e)
     }
-    (connect(uri, useJNI), token)
+
+  /** Reads the token that the portfile names, if it names one. */
+  private[sbt] def token(portfile: File): Option[String] = readToken(readPortFile(portfile))
 
   private def connect(uri: URI, useJNI: Boolean): Socket =
     uri.getScheme match
