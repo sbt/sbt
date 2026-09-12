@@ -1005,6 +1005,8 @@ object Defaults extends BuildCommon with DefExtra:
             c.toVirtualFile(inputs.setup.cacheFile.toPath),
             extraIncOptions.value.toVector,
             scalaVersion.value,
+            compileOrder.value.name,
+            incOptions.value.pipelining,
           )
         }
       )
@@ -2570,6 +2572,8 @@ object Defaults extends BuildCommon with DefExtra:
           c.toVirtualFile(inputs.setup.cacheFile.toPath),
           incrementalOptions,
           scalaVersion.value,
+          compileOrder.value.name,
+          incOptions.value.pipelining,
         )
       },
       bspCompileTask :=
