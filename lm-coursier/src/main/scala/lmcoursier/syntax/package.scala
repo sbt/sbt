@@ -79,6 +79,7 @@ package object syntax:
         sameVersions = Nil,
         localArtifactsShouldBeCached = false,
         lockFile = None,
+        userAgent = None,
       )
   end extension
 

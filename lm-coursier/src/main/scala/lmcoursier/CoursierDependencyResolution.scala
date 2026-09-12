@@ -256,9 +256,6 @@ class CoursierDependencyResolution(
       .withCredentials(conf.credentials.map(ToCoursier.credentials))
       .withFollowHttpToHttpsRedirections(conf.followHttpToHttpsRedirections.getOrElse(true))
       .withLocalArtifactsShouldBeCached(conf.localArtifactsShouldBeCached)
-    val cache1 = conf.userAgent match
-      case Some(ua) => cache0.withUserAgent(ua)
-      case None     => cache0
 
     val excludeDependencies = conf.excludeDependencies.map { (strOrg, strName) =>
       (coursier.Organization(strOrg), coursier.ModuleName(strName))
@@ -278,7 +275,7 @@ class CoursierDependencyResolution(
       sbtClassifiers = conf.sbtClassifiers,
       projectName = projectName,
       loggerOpt = loggerOpt,
-      cache = cache1,
+      cache = cache0,
       parallel = conf.parallelDownloads,
       params = coursier.params
         .ResolutionParams()
@@ -309,7 +306,7 @@ class CoursierDependencyResolution(
         loggerOpt = loggerOpt,
         projectName = projectName,
         sbtClassifiers = conf.sbtClassifiers,
-        cache = cache1,
+        cache = cache0,
         parallel = conf.parallelDownloads,
         classpathOrder = conf.classpathOrder,
         missingOk = conf.missingOk
@@ -358,7 +355,7 @@ class CoursierDependencyResolution(
       )
       artifactResult0 <- lockDataOpt match
         case Some(lockData) =>
-          LockedArtifactsRun.fetchFromLockFile(lockData, cache1, verbosityLevel, log) match
+          LockedArtifactsRun.fetchFromLockFile(lockData, cache0, verbosityLevel, log) match
             case Right(arts) => Right(arts)
             case Left(err)   =>
               if verbosityLevel >= 1 then

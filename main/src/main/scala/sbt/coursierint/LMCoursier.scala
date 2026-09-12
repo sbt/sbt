@@ -67,6 +67,13 @@ object LMCoursier:
   def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
     Vector((ModuleMatchers.all, Reconciliation.Relaxed))
 
+  private val coursierProductVersion = "2.1"
+
+  def userAgent(sbtVersion: String, httpAgentOverride: Option[String]): String =
+    httpAgentOverride.getOrElse(
+      s"Coursier/$coursierProductVersion (+https://github.com/coursier) sbt/$sbtVersion (+https://www.scala-sbt.org/)"
+    )
+
   def coursierConfiguration(
       rs: Seq[Resolver],
       interProjectDependencies: Seq[CProject],
@@ -114,7 +121,7 @@ object LMCoursier:
     val sbtScalaVersion = internalSbtScalaProvider.version()
     val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
     val sbtVersion = appConfig.provider.id.version
-    val userAgent = Some(s"sbt/$sbtVersion (+https://www.scala-sbt.org/)")
+    val resolvedUserAgent = Some(userAgent(sbtVersion, sys.props.get("coursier.http.agent")))
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
     Classpaths.errorInsecureProtocol(rs, log)
@@ -146,7 +153,7 @@ object LMCoursier:
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
       .withLockFile(lockFile)
-      .withUserAgent(userAgent)
+      .withUserAgent(resolvedUserAgent)
   end coursierConfiguration
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
