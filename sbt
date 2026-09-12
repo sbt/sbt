@@ -222,7 +222,7 @@ acquire_sbtn () {
   else
     dlog "downloading sbtn ${sbtn_v} for ${arch}"
     download_url "$url" "$archive_target"
-    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "$OSTYPE" == "linux"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
       tar zxf "$archive_target" --directory "$p"
     else
       unzip "$archive_target" -d "$p"
@@ -905,7 +905,7 @@ projectSbtVersion() {
 detectNativeClient() {
   if [[ "$sbtn_command" != "" ]]; then
     :
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  elif [[ "$OSTYPE" == "linux"* ]]; then
     arch=$(uname -m)
     [[ -f "${sbt_bin_dir}/sbtn-${arch}-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-pc-linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then
