@@ -29,9 +29,20 @@ class PortfileTest extends AbstractServerTest:
     assert(id.exists(_.nonEmpty), s"the portfile names its writer: ${IO.read(portfile)}")
   }
 
+  test("a portfile deleted twice") {
+    val published = IO.read(portfile)
+    IO.delete(portfile)
+    assert(waitUntil(settle)(portfile.exists), "the server writes its portfile again")
+    assert(IO.read(portfile) == published, "the portfile still names this server")
+    Thread.sleep(1000)
+    IO.delete(portfile)
+    assert(waitUntil(settle)(portfile.exists), "it writes the portfile again the second time")
+  }
+
   test("a portfile that names another server") {
     val replacement = """{"uri":"local:///displaced","serverId":"another-server"}"""
     IO.write(portfile, replacement)
     assert(waitUntil(settle)(!svr.isAlive), "the displaced server exits")
     assert(IO.read(portfile) == replacement, "the displaced server does not delete the portfile")
   }
+end PortfileTest
