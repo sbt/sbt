@@ -53,7 +53,7 @@ import sbt.internal.util.{ AttributeKey, AttributeMap, Relation }
 import sbt.internal.util.Types.const
 import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.Configuration
-import sbt.util.{ ActionCacheStore, Show, Level }
+import sbt.util.{ ActionCacheStore, Digest, Show, Level }
 import sjsonnew.JsonFormat
 import scala.annotation.targetName
 import scala.concurrent.{ Await, TimeoutException }
@@ -393,6 +393,7 @@ trait ProjectExtra extends Scoped.Syntax:
       )
       val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
       val useJni = get(serverUseJni).getOrElse(false)
+      val (metaBuildDigest, buildDefinitionDigest) = metaBuildDigests(structure)
       val newAttrs =
         s.attributes
           .put(historyPath.key, history)
@@ -414,11 +415,43 @@ trait ProjectExtra extends Scoped.Syntax:
           .setCond(cacheStores.key, caches)
           .setCond(rootOutputDirectory.key, rod)
           .setCond(BasicKeys.fileConverter, fileConverter)
+          .put(BasicKeys.metaBuildClasspathDigest, metaBuildDigest)
+          .put(BasicKeys.buildDefinitionDigest, buildDefinitionDigest)
       s.copy(
         attributes = newAttrs,
         definedCommands = newDefinedCommands
       )
     end updateCurrent
+
+    /**
+     * Digests of the build definition, both incorporated into action cache keys.
+     * The first covers the metabuild classpath (plugin jars and compiled build definition
+     * products), whose code can change task behavior without changing any task tree hash.
+     * The second additionally covers the classes compiled from .sbt files and keys cached
+     * failures, so a failure is only replayed while the build definition is unchanged.
+     */
+    private def metaBuildDigests(structure: BuildStructure): (String, String) = {
+      val units = structure.units.values.toSeq
+      val classpathDigests = units
+        .flatMap(_.unit.plugins.pluginData.classpath)
+        .flatMap { a =>
+          try Some(Digest(a.data))
+          catch { case _: Exception => None }
+        }
+        .distinct
+        .sorted
+      val dslDigests = units
+        .flatMap(_.unit.definitions.dslDefinitions.generated)
+        .flatMap { p =>
+          try Some(Digest.sha256Hash(p))
+          catch { case _: java.io.IOException => None }
+        }
+        .distinct
+        .sorted
+      val metaBuildDigest = Digest.sha256Hash(classpathDigests*)
+      val buildDefinitionDigest = Digest.sha256Hash((classpathDigests ++ dslDigests)*)
+      (metaBuildDigest.toString, buildDefinitionDigest.toString)
+    }
 
     def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
       attributes.setCond(key, vopt)

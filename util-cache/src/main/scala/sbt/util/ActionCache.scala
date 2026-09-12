@@ -71,19 +71,21 @@ object ActionCache:
   ): O =
     import config.*
 
-    val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion)
+    val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion, metaBuildDigest)
+    // Failures are keyed strictly on the full build definition so that a recorded failure is
+    // never replayed for inputs whose real compilation succeeds.
+    val failureDigest = Digest.sha256Hash(inputDigest, buildDefinitionDigest)
 
     def cacheFailure(e: CompileFailed): Nothing =
       // Cache the failure so subsequent builds don't re-run failed compilation
       // This fixes https://github.com/sbt/sbt/issues/7662
-      // Use the same input digest as success, distinguished by exitCode
       cacheEventLog.append(ActionCacheEvent.OnsiteTask)
       val cachedFailure = CachedCompileFailure.fromException(e)
       val json = Converter.toJsonUnsafe(cachedFailure)
-      val valuePath = mkValuePath(inputDigest)
+      val valuePath = mkValuePath(failureDigest)
       val failureFile = StringVirtualFile1(valuePath, CompactPrinter(json))
       store.put(
-        UpdateActionResultRequest(inputDigest, Vector(failureFile), exitCode = failureExitCode)
+        UpdateActionResultRequest(failureDigest, Vector(failureFile), exitCode = failureExitCode)
       )
       throw e
 
@@ -159,7 +161,9 @@ object ActionCache:
     inline def logExec(inline event: SpawnExec): Unit =
       execLog.foreach: log =>
         logEvent(event, log)
-    // Single cache lookup - use exitCode to distinguish success from failure
+    // Successes live under inputDigest; failures under the stricter failureDigest.
+    // A failure entry found under inputDigest was written by an older sbt whose key
+    // was not sound for failures, so it is treated as a miss.
     getWithFailure(inputDigest, tags, config) match
       case Right((value, result)) =>
         logExec(
@@ -171,15 +175,17 @@ object ActionCache:
           )
         )
         value
-      case Left(Some(failure)) if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
-        config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
-        // Replay problems to the logger so users see the cached errors/warnings
-        failure.replay(config.logger)
-        logExec(
-          SpawnExec(input = spawnInput, cacheHit = true, exitCode = 1)
-        )
-        throw failure.toException
-      case Left(_) => organicTask
+      case Left(_) =>
+        getWithFailure(failureDigest, tags, config) match
+          case Left(Some(failure)) if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
+            config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
+            // Replay problems to the logger so users see the cached errors/warnings
+            failure.replay(config.logger)
+            logExec(
+              SpawnExec(input = spawnInput, cacheHit = true, exitCode = 1)
+            )
+            throw failure.toException
+          case _ => organicTask
   end cache
 
   /**
@@ -247,7 +253,8 @@ object ActionCache:
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
   ): Option[O] =
-    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+    val inputDigest =
+      mkInput(key, codeContentHash, extraHash, config.cacheVersion, config.metaBuildDigest)
     getWithFailure(inputDigest, tags, config) match
       case Right(value) => Some(value._1)
       case Left(_)      => None
@@ -261,7 +268,8 @@ object ActionCache:
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
   ): Boolean =
-    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+    val inputDigest =
+      mkInput(key, codeContentHash, extraHash, config.cacheVersion, config.metaBuildDigest)
     findActionResult(inputDigest, config) match
       case Right(_) => true
       case Left(_)  => false
@@ -289,7 +297,8 @@ object ActionCache:
   ): Either[Throwable, ActionResult] =
     // val logger = config.logger
     CacheImplicits.setCacheSize(config.localDigestCacheByteSize)
-    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+    val inputDigest =
+      mkInput(key, codeContentHash, extraHash, config.cacheVersion, config.metaBuildDigest)
     val getRequest =
       GetActionResultRequest(
         inputDigest,
@@ -304,6 +313,15 @@ object ActionCache:
       codeContentHash: Digest,
       extraHash: Digest,
       cacheVersion: Long,
+  ): Digest =
+    mkInput(key, codeContentHash, extraHash, cacheVersion, Digest.zero)
+
+  private[sbt] inline def mkInput[I: HashWriter](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      cacheVersion: Long,
+      metaBuildDigest: Digest,
   ): Digest =
     // Hashing serializes every task input; surface a missing input file directly rather than as an
     // opaque serialization failure that buries it.
@@ -323,6 +341,9 @@ object ActionCache:
       ) ++ {
         if cacheVersion == 0 then Vector.empty
         else Vector(Digest.dummy(cacheVersion))
+      } ++ {
+        if metaBuildDigest == Digest.zero then Vector.empty
+        else Vector(metaBuildDigest)
       })*
     )
   end mkInput
@@ -439,7 +460,30 @@ class BuildWideCacheConfiguration(
     val cacheEventLog: CacheEventLog,
     val localDigestCacheByteSize: Long,
     val cacheVersion: Long,
+    val metaBuildDigest: Digest,
+    val buildDefinitionDigest: Digest,
 ):
+  def this(
+      store: ActionCacheStore,
+      outputDirectory: Path,
+      fileConverter: FileConverter,
+      logger: Logger,
+      cacheEventLog: CacheEventLog,
+      localDigestCacheByteSize: Long,
+      cacheVersion: Long,
+  ) =
+    this(
+      store,
+      outputDirectory,
+      fileConverter,
+      logger,
+      cacheEventLog,
+      localDigestCacheByteSize,
+      cacheVersion,
+      Digest.zero,
+      Digest.zero,
+    )
+
   def this(
       store: ActionCacheStore,
       outputDirectory: Path,

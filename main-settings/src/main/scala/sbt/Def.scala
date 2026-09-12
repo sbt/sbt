@@ -19,6 +19,7 @@ import sbt.internal.util.{ Terminal as ITerminal, * }
 import sbt.util.{
   AggregateActionCacheStore,
   BuildWideCacheConfiguration,
+  Digest,
   DiskActionCacheStore,
   Uncached,
 }
@@ -295,6 +296,14 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       )
     val cacheByteSize = localDigestCacheByteSizeKey.value
     val cv = cacheVersionKey.value
+    val metaBuildDigest = state
+      .get(BasicKeys.metaBuildClasspathDigest)
+      .map(Digest.apply)
+      .getOrElse(Digest.zero)
+    val buildDefinitionDigest = state
+      .get(BasicKeys.buildDefinitionDigest)
+      .map(Digest.apply)
+      .getOrElse(Digest.zero)
     BuildWideCacheConfiguration(
       cacheStore,
       outputDirectory,
@@ -303,6 +312,8 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       cacheEventLog,
       cacheByteSize,
       cv,
+      metaBuildDigest,
+      buildDefinitionDigest,
     )
   }
 

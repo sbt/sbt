@@ -1,0 +1,24 @@
+# warm the disk cache with the lenient options
+> compile
+
+# switching the helper the plugin calls must invalidate the cache: the recompile
+# picks up -Wnonunit-statement -Xfatal-warnings and fails
+$ copy-file changes/OptsHelperStrict.scala project/OptsHelper.scala
+> reload
+-> compile
+
+# toggling back must compile with the lenient options again: neither the stale
+# strict options nor the cached failure may be replayed
+$ copy-file changes/OptsHelperLenient.scala project/OptsHelper.scala
+> reload
+> compile
+
+# clean must not resurrect the cached failure
+> clean
+> compile
+
+# switching to the strict helper again must fail again, whether recompiled or
+# replayed from the cached failure recorded for this exact build definition
+$ copy-file changes/OptsHelperStrict.scala project/OptsHelper.scala
+> reload
+-> compile
