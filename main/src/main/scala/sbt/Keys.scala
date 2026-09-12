@@ -774,6 +774,7 @@ object Keys {
 
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped
+  private[sbt] val resolvedScopedStr = Def.resolvedScopedStr
   val pluginData = taskKey[PluginData]("Information from the plugin build needed in the main build definition.").withRank(DTask)
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
   private[sbt] val taskCancelStrategy = settingKey[State => TaskCancellationStrategy]("Experimental task cancellation handler.").withRank(DTask)

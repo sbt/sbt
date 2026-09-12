@@ -1,5 +1,5 @@
 > compile
 $ delete diskcache
-> clean
+$ delete target/out
 > compile
 > checkHit

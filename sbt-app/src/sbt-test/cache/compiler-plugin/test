@@ -1,4 +1,4 @@
 > foo/compile
-> clean
+$ delete target/out
 > foo/compile
 > check

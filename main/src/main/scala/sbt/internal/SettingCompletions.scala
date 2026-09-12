@@ -93,7 +93,10 @@ private[sbt] object SettingCompletions:
     val append =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newSession = session.appendSettings(append map (a => (a, arg.split('\n').toList)))
-    val r = Project.relation(newSession.mergeSettings, true)(using
+    // Settings freshly appended by `set` (unlike `structure.settings`) haven't been through
+    // `finalTransforms` yet, so references like `resolvedScoped`/`resolvedScopedStr` that
+    // `finalTransforms` resolves to constants would otherwise look undefined here.
+    val r = Project.relation(Load.finalTransforms(newSession.mergeSettings), true)(using
       structure.delegates,
       structure.scopeLocal,
       summon[Show[ScopedKey[?]]],
