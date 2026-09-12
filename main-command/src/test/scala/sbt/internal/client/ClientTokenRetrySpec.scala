@@ -69,6 +69,15 @@ object ClientTokenRetrySpec extends BasicTestSuite:
         while running.get do
           val request = Try(JsonRpcReader.readAsString(in, running)).getOrElse("")
           if request.isEmpty then running.set(false)
+          else if fieldOpt("method", request).contains("sbt/completion") then
+            val id = field("id", request)
+            val body =
+              s"""{"jsonrpc":"2.0","id":"$id","result":{"items":["compile","console"]}}"""
+            Try(JsonRpcWriter.write(out, body)).failed.foreach(_ => running.set(false))
+          else if fieldOpt("method", request).contains("sbt/cancelRequest") then
+            val id = field("id", request)
+            val body = s"""{"jsonrpc":"2.0","id":"$id","result":{"status":"Task cancelled"}}"""
+            Try(JsonRpcWriter.write(out, body)).failed.foreach(_ => running.set(false))
           else if fieldOpt("method", request).contains("sbt/exec") then
             val id = field("id", request)
             val body =
@@ -184,6 +193,18 @@ object ClientTokenRetrySpec extends BasicTestSuite:
         // a refused connection is never retried, so it stays unauthenticated
         assert(!waitUntil(handshakes.accepted.size == 2))
         threads.foreach(_.join(1000))
+
+  test("a completion query"):
+    if !isWindows then
+      withRefusingServer(): (client, _, _) =>
+        Util.ignoreTry(client.connection)
+        assert(client.getCompletions("com").contains("compile"))
+
+  test("a cancellation the server reports as cancelled"):
+    if !isWindows then
+      withRefusingServer(): (client, _, _) =>
+        Util.ignoreTry(client.connection)
+        assert(client.sendCancelAllCommand().poll(3, TimeUnit.SECONDS))
 
   test("a token the server always refuses"):
     if !isWindows then
