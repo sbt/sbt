@@ -14,6 +14,8 @@ case class CompileInputs2(
     cachePath: VirtualFileRef,
     incrementalOptions: Vector[(String, String)],
     scalaVersion: String,
+    compileOrder: String,
+    pipelining: Boolean,
 )
 
 object CompileInputs2:
@@ -23,7 +25,7 @@ object CompileInputs2:
     CompileInputs2,
     Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
       Vector[String] :*: VirtualFileRef :*: VirtualFileRef :*: Vector[(String, String)] :*:
-      String :*: LNil
+      String :*: String :*: Boolean :*: LNil
   ] =
     LList.iso(
       { (v: CompileInputs2) =>
@@ -35,12 +37,14 @@ object CompileInputs2:
           ("cachePath", v.cachePath) :*:
           ("incrementalOptions", v.incrementalOptions) :*:
           ("scalaVersion", v.scalaVersion) :*:
+          ("compileOrder", v.compileOrder) :*:
+          ("pipelining", v.pipelining) :*:
           LNil
       },
       {
         (in: Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
           Vector[String] :*: VirtualFileRef :*: VirtualFileRef :*: Vector[(String, String)] :*:
-          String :*: LNil) =>
+          String :*: String :*: Boolean :*: LNil) =>
           CompileInputs2(
             in.head,
             in.tail.head,
@@ -50,6 +54,8 @@ object CompileInputs2:
             in.tail.tail.tail.tail.tail.head,
             in.tail.tail.tail.tail.tail.tail.head,
             in.tail.tail.tail.tail.tail.tail.tail.head,
+            in.tail.tail.tail.tail.tail.tail.tail.tail.head,
+            in.tail.tail.tail.tail.tail.tail.tail.tail.tail.head,
           )
       }
     )
