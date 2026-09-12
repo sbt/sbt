@@ -101,6 +101,8 @@ object CompletionService:
       service: CompletionService
   )(w: (TaskId[?], () => Completed) => (() => Completed)): CompletionService =
     new CompletionService:
-      def submit(node: TaskId[?], work: () => Completed) = service.submit(node, w(node, work))
-      def take() = service.take()
+      override def submit(node: TaskId[?], work: () => Completed) =
+        service.submit(node, w(node, work))
+      override def take() = service.take()
+      override def release(node: TaskId[?]): Unit = service.release(node)
 end CompletionService
