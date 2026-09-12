@@ -113,6 +113,8 @@ object LMCoursier:
     val sbtBootJars = internalSbtScalaProvider.jars()
     val sbtScalaVersion = internalSbtScalaProvider.version()
     val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
+    val sbtVersion = appConfig.provider.id.version
+    val userAgent = Some(s"sbt/$sbtVersion (+https://www.scala-sbt.org/)")
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
     Classpaths.errorInsecureProtocol(rs, log)
@@ -144,6 +146,7 @@ object LMCoursier:
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
       .withLockFile(lockFile)
+      .withUserAgent(userAgent)
   end coursierConfiguration
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
