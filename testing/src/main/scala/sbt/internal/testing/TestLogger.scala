@@ -15,7 +15,7 @@ import sbt.util.{ Level, ShowLines }
 import sbt.protocol.testing.*
 import java.util.concurrent.atomic.AtomicInteger
 
-object TestLogger {
+object TestLogger:
   import sbt.protocol.testing.codec.JsonProtocol.given
 
   given testStringEventShowLines: ShowLines[TestStringEvent] =
@@ -39,10 +39,10 @@ object TestLogger {
       global: ManagedLogger,
       perTest: TestDefinition => PerTest,
       level: Level.Value
-  ): TestLogger = {
+  ): TestLogger =
     val context = global.context
     val as = context.appenders(global.name)
-    def makePerTest(tdef: TestDefinition): ContentLogger = {
+    def makePerTest(tdef: TestDefinition): ContentLogger =
       val per = perTest(tdef)
       val l0 = per.log
       val buffs = as.map(a => BufferedAppender(generateBufferName, a)).toList
@@ -51,19 +51,15 @@ object TestLogger {
       buffs.foreach { b =>
         context.addAppender(newLog.name, b -> level)
       }
-      if (per.buffered) {
-        buffs foreach { _.record() }
-      }
+      if per.buffered then buffs foreach { _.record() }
       new ContentLogger(
         wrap(newLog),
-        () => {
+        () =>
           buffs foreach { _.stopQuietly() }
           per.flush()
           // do not unbind here. since there's a delay in the async appender,
           // it will result in missing log output.
-        }
       )
-    }
 
     global.registerStringCodec[TestStringEvent]
 
@@ -81,10 +77,10 @@ object TestLogger {
 
     val config = new TestLogging(wrap(global), global, makePerTest)
     new TestLogger(config)
-  }
+  end make
 
   def wrap(logger: ManagedLogger): TLogger =
-    new TLogger {
+    new TLogger:
       def error(s: String) = log(Level.Error, TestStringEvent(s))
       def warn(s: String) = log(Level.Warn, TestStringEvent(s))
       def info(s: String) = log(Level.Info, TestStringEvent(s))
@@ -92,7 +88,6 @@ object TestLogger {
       def trace(t: Throwable) = logger.trace(t)
       private def log(level: Level.Value, event: TestStringEvent) = logger.logEvent(level, event)
       def ansiCodesSupported() = Terminal.isAnsiSupported
-    }
 
   private[sbt] def toTestItemEvent(event: TestEvent): TestItemEvent =
     TestItemEvent(
@@ -101,21 +96,20 @@ object TestLogger {
         TestItemDetail(
           d.fullyQualifiedName,
           d.status,
-          d.duration match {
+          d.duration match
             case -1 => (None: Option[Long]) // util.Util is not in classpath
             case x  => (Some(x): Option[Long])
-          }
         )
       }
     )
-}
+end TestLogger
 final class TestLogging(
     val global: TLogger,
     val managed: ManagedLogger,
     val logTest: TestDefinition => ContentLogger
 )
 
-class TestLogger(val logging: TestLogging) extends TestsListener {
+class TestLogger(val logging: TestLogging) extends TestsListener:
   import TestLogger.*
   import logging.{ global, logTest, managed }
   import sbt.protocol.testing.codec.JsonProtocol.given
@@ -129,7 +123,7 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
   def endGroup(name: String, result: TestResult): Unit =
     managed.logEvent(Level.Info, EndTestGroupEvent(name, result))
 
-  def endGroup(name: String, t: Throwable): Unit = {
+  def endGroup(name: String, t: Throwable): Unit =
     global.trace(t)
     global.error(s"Could not run test $name: $t")
     managed.logEvent(
@@ -137,10 +131,9 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
       EndTestGroupErrorEvent(name, (t.getMessage + t.getStackTrace.toString).mkString("\n"))
     )
     ()
-  }
 
   def doComplete(finalResult: TestResult): Unit =
     managed.logEvent(Level.Info, TestCompleteEvent(finalResult))
 
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
-}
+end TestLogger

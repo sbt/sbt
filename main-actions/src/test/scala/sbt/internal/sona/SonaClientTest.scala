@@ -123,10 +123,10 @@ final class RecordingLogger extends BasicLogger:
   private var events: List[LogEvent] = Nil
 
   def getEvents: List[LogEvent] = events.reverse
-  def trace(t: => Throwable): Unit = { events ::= new Trace(t) }
-  def log(level: Level.Value, message: => String): Unit = { events ::= new Log(level, message) }
-  def success(message: => String): Unit = { events ::= new Success(message) }
-  def logAll(es: Seq[LogEvent]): Unit = { events :::= es.toList }
+  def trace(t: => Throwable): Unit = events ::= new Trace(t)
+  def log(level: Level.Value, message: => String): Unit = events ::= new Log(level, message)
+  def success(message: => String): Unit = events ::= new Success(message)
+  def logAll(es: Seq[LogEvent]): Unit = events :::= es.toList
 
   def control(event: ControlEvent.Value, message: => String): Unit =
     events ::= new ControlEvent(event, message)

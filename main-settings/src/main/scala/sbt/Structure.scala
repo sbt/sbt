@@ -27,10 +27,9 @@ sealed trait Scoped extends Equals:
   val key: AttributeKey[?]
 
   override def equals(that: Any): Boolean =
-    (this eq that.asInstanceOf[AnyRef]) || (that match {
+    (this eq that.asInstanceOf[AnyRef]) || (that match
       case that: Scoped => scope == that.scope && key == that.key && canEqual(that)
-      case _            => false
-    })
+      case _            => false)
 
   override def hashCode(): Int = (scope, key).##
 
@@ -43,15 +42,16 @@ sealed trait Taskable[A]:
   def toTask: Initialize[Task[A]]
 end Taskable
 
-sealed trait TaskableImplicits { self: Taskable.type =>
+sealed trait TaskableImplicits:
+  self: Taskable.type =>
   implicit def fromInit[A](x: Initialize[A]): Taskable[A] =
-    new Taskable[A] { def toTask = Def.toITask(x) }
-}
+    new Taskable[A]:
+      def toTask = Def.toITask(x)
 
-object Taskable extends TaskableImplicits {
+object Taskable extends TaskableImplicits:
   implicit def fromITask[A](x: Initialize[Task[A]]): Taskable[A] =
-    new Taskable[A] { def toTask = x }
-}
+    new Taskable[A]:
+      def toTask = x
 
 /** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks. */
 sealed trait ScopedTaskable[A] extends Scoped with Taskable[A]
@@ -276,18 +276,22 @@ object Scoped:
   end ScopingSetting
 
   def scopedSetting[T](s: Scope, k: AttributeKey[T]): SettingKey[T] =
-    new SettingKey[T] { val scope = s; val key = k }
+    new SettingKey[T]:
+      val scope = s; val key = k
 
   def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): InputKey[T] =
-    new InputKey[T] { val scope = s; val key = k }
+    new InputKey[T]:
+      val scope = s; val key = k
 
   def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): TaskKey[T] =
-    new TaskKey[T] { val scope = s; val key = k }
+    new TaskKey[T]:
+      val scope = s; val key = k
 
   /**
    * Mixin trait for adding convenience vocabulary associated with applying a setting to a configuration item.
    */
-  sealed trait DefinableSetting[A1] { self =>
+  sealed trait DefinableSetting[A1]:
+    self =>
     def scopedKey: ScopedKey[A1]
 
     private[sbt] final inline def :==(inline app: A1): Setting[A1] =
@@ -336,7 +340,7 @@ object Scoped:
       Def.optional(scopedKey)(_ getOrElse or)
 
     final def ??[A2 >: A1](or: => A2): Initialize[A2] = getOrElse(or)
-  }
+  end DefinableSetting
 
   private[sbt] trait Syntax:
 
@@ -384,6 +388,7 @@ object Scoped:
         Initialize
           .joinAny[Task](coerceToAnyTaskSeq(tasks))
           .zipWith(init)((ts, i) => i.set(key, ts))
+    end extension
 
     extension [A1](init: Initialize[InputTask[A1]])
       @targetName("onTaskInitializeInputTask")
@@ -423,12 +428,14 @@ object Scoped:
         init.zipWith(Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks)))((thisTask, deps) =>
           thisTask.mapTask(_.dependsOn(deps*))
         )
+    end extension
   end Syntax
 
   // Duplicated with ProjectExtra.
   private[sbt] object syntax extends Syntax
 
-  sealed trait DefinableTask[A1] { self: TaskKey[A1] =>
+  sealed trait DefinableTask[A1]:
+    self: TaskKey[A1] =>
 
     /** Internal function for the task macro. */
     inline def taskMacro[A2](inline a: A2): Initialize[Task[A2]] =
@@ -487,7 +494,7 @@ object Scoped:
           oa1.getOrElse(a2)
         }
       }
-  }
+  end DefinableTask
 
   private def coerceToAnyTaskSeq(tasks: Seq[AnyInitTask]): Seq[Def.Initialize[Task[Any]]] =
     tasks.asInstanceOf[Seq[Def.Initialize[Task[Any]]]]
@@ -495,18 +502,16 @@ object Scoped:
   type AnyInitTask = Initialize[Task[?]]
 
   implicit def richTaskSeq[T](in: Seq[Initialize[Task[T]]]): RichTaskSeq[T] = new RichTaskSeq(in)
-  final class RichTaskSeq[T](keys: Seq[Initialize[Task[T]]]) {
+  final class RichTaskSeq[T](keys: Seq[Initialize[Task[T]]]):
     def join: Initialize[Task[Seq[T]]] = tasks(_.join)
     def tasks: Initialize[Seq[Task[T]]] = Initialize.join(keys)
-  }
 
   implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
-  final class RichAnyTaskSeq(keys: Seq[AnyInitTask]) {
+  final class RichAnyTaskSeq(keys: Seq[AnyInitTask]):
     def dependOn: Initialize[Task[Unit]] =
       Initialize
         .joinAny[Task](coerceToAnyTaskSeq(keys))
         .apply(deps => nop.dependsOn(deps*))
-  }
 
   sealed abstract class RichTaskables[Tup <: Tuple](final val keys: Tuple.Map[Tup, Taskable]):
 

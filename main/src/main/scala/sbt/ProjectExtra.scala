@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import java.nio.file.Path as NioPath
 import java.net.URI
+import scala.annotation.tailrec
 // import Project._
 import Keys.{
   stateBuildStructure,
@@ -288,12 +289,11 @@ trait ProjectExtra extends Scoped.Syntax:
         yield key
         globalKeys ++ projectKeys
 
-    def extract(state: State): Extracted = {
+    def extract(state: State): Extracted =
       val se = Project.session(state)
       val st = Project.structure(state)
       val currentRef = internal.ProjectNavigation.effectiveCurrentRef(state)
       Extracted(st, se, currentRef)(using Project.showContextKey2(se, st.index.keyIndex, None))
-    }
 
     private[sbt] def extract(se: SessionSettings, st: BuildStructure): Extracted =
       Extracted(st, se, se.current)(using Project.showContextKey2(se, st.index.keyIndex, None))
@@ -324,7 +324,7 @@ trait ProjectExtra extends Scoped.Syntax:
         structure: BuildStructure,
         s: State,
         preOnLoad: State => State
-    ): State = {
+    ): State =
       val unloaded = Project.runUnloadHooks(s)
       val (onLoad, onUnload) = getHooks(structure.data)
       val newAttrs = unloaded.attributes
@@ -337,7 +337,6 @@ trait ProjectExtra extends Scoped.Syntax:
           updateCurrent(newState)
         )
       )
-    }
 
     def orIdentity[A](opt: Option[A => A]): A => A =
       opt.getOrElse(identity)
@@ -350,12 +349,12 @@ trait ProjectExtra extends Scoped.Syntax:
 
     def current(state: State): ProjectRef = session(state).current
 
-    def updateCurrent(s: State): State = {
+    def updateCurrent(s: State): State =
       val structure = Project.structure(s)
       val ref = Project.current(s)
       Load.getProject(structure.units, ref.build, ref.project)
       val msg = (ref / Keys.onLoadMessage).get(structure.data).getOrElse("")
-      if (!msg.isEmpty) s.log.info(msg)
+      if !msg.isEmpty then s.log.info(msg)
       def get[T](k: SettingKey[T]): Option[T] = (ref / k).get(structure.data)
       def commandsIn(axis: ResolvedReference) = (axis / commands).get(structure.data).toList
 
@@ -376,6 +375,15 @@ trait ProjectExtra extends Scoped.Syntax:
       val srvLogLevel: Option[Level.Value] = (ref / serverLog / logLevel).get(structure.data)
       val hs: Option[Seq[ServerHandler]] = get(ThisBuild / fullServerHandlers)
       val caches: Option[Seq[ActionCacheStore]] = get(cacheStores)
+      // cacheStores is recomputed on every reload; close any store dropped from the new value.
+      s.attributes.get(cacheStores.key) match
+        case Some(oldCaches) =>
+          val kept = caches.getOrElse(Nil)
+          oldCaches.foreach {
+            case store: AutoCloseable if !kept.exists(_ eq store) => store.close()
+            case _                                                => ()
+          }
+        case None => ()
       val rod: Option[NioPath] = get(rootOutputDirectory)
       val fileConverter: Option[FileConverter] = get(Keys.fileConverter)
       val commandDefs = allCommands.distinct.flatten[Command].map(_.tag(projectCommand, true))
@@ -410,7 +418,7 @@ trait ProjectExtra extends Scoped.Syntax:
         attributes = newAttrs,
         definedCommands = newDefinedCommands
       )
-    }
+    end updateCurrent
 
     def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
       attributes.setCond(key, vopt)
@@ -433,7 +441,7 @@ trait ProjectExtra extends Scoped.Syntax:
 
     def details(structure: BuildStructure, actual: Boolean, key: ScopedKey[?])(using
         display: Show[ScopedKey[?]]
-    ): String = {
+    ): String =
       val data = scopedKeyData(structure, key).map(_.description).getOrElse("No entry for key.")
       val description = key.key.description match
         case Some(desc) => s"Description:\n\t$desc\n"
@@ -458,7 +466,7 @@ trait ProjectExtra extends Scoped.Syntax:
       def derivedDependencies(c: ScopedKey[?]): List[ScopedKey[?]] =
         comp
           .get(c)
-          .map(_.settings.flatMap(s => if (s.isDerived) s.dependencies else Nil))
+          .map(_.settings.flatMap(s => if s.isDerived then s.dependencies else Nil))
           .toList
           .flatten
 
@@ -476,12 +484,11 @@ trait ProjectExtra extends Scoped.Syntax:
           derivedLabel: String,
           scopes: Iterable[ScopedKey[?]],
           derived: Set[ScopedKey[?]]
-      ): String = {
-        val label = s"$baseLabel${if (derived.isEmpty) "" else s" (D=$derivedLabel)"}"
+      ): String =
+        val label = s"$baseLabel${if derived.isEmpty then "" else s" (D=$derivedLabel)"}"
         val prefix: ScopedKey[?] => String =
-          if (derived.isEmpty) const("") else sk => if (derived(sk)) "D " else "  "
+          if derived.isEmpty then const("") else sk => if derived(sk) then "D " else "  "
         printScopes(label, scopes, prefix = prefix)
-      }
 
       def printScopes(
           label: String,
@@ -489,12 +496,11 @@ trait ProjectExtra extends Scoped.Syntax:
           max: Int = Int.MaxValue,
           prefix: ScopedKey[?] => String = const("")
       ) =
-        if (scopes.isEmpty) ""
-        else {
+        if scopes.isEmpty then ""
+        else
           val (limited, more) =
-            if (scopes.size <= max) (scopes, "\n") else (scopes.take(max), "\n...\n")
+            if scopes.size <= max then (scopes, "\n") else (scopes.take(max), "\n...\n")
           limited.map(sk => prefix(sk) + display.show(sk)).mkString(label + ":\n\t", "\n\t", more)
-        }
 
       data + "\n" +
         description +
@@ -504,7 +510,7 @@ trait ProjectExtra extends Scoped.Syntax:
         printDepScopes("Reverse dependencies", "derives", reverse, derivedReverse) +
         printScopes("Delegates", delegates(structure, key.scope, key.key)) +
         printScopes("Related", related, 10)
-    }
+    end details
 
     def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[?])(using
         display: Show[ScopedKey[?]]
@@ -564,24 +570,24 @@ trait ProjectExtra extends Scoped.Syntax:
         using display: Show[ScopedKey[?]]
     ): Seq[Scope] =
       relation(structure, actual)(using display)._1s.toSeq flatMap { sk =>
-        if (sk.key == key) sk.scope :: Nil else Nil
+        if sk.key == key then sk.scope :: Nil else Nil
       }
 
     private[sbt] def usedBy(structure: BuildStructure, actual: Boolean, key: AttributeKey[?])(using
         display: Show[ScopedKey[?]]
     ): Seq[ScopedKey[?]] =
       relation(structure, actual)(using display).all.toSeq flatMap { (a, b) =>
-        if (b.key == key) List[ScopedKey[?]](a) else Nil
+        if b.key == key then List[ScopedKey[?]](a) else Nil
       }
 
     def reverseDependencies(
         cMap: Map[ScopedKey[?], Flattened],
         scoped: ScopedKey[?]
     ): Iterable[ScopedKey[?]] =
-      for {
+      for
         (key, compiled) <- cMap
         dep <- compiled.dependencies if dep == scoped
-      } yield key
+      yield key
 
     /*
     def setAll(extracted: Extracted, settings: Seq[Def.Setting[_]]): SessionSettings =
@@ -605,22 +611,20 @@ trait ProjectExtra extends Scoped.Syntax:
     private[sbt] def transitiveInterDependencies(
         state: State,
         projectRef: ProjectRef
-    ): Seq[ProjectRef] = {
-      def dependencies(map: Map[ProjectRef, Seq[ProjectRef]], id: ProjectRef): Set[ProjectRef] = {
+    ): Seq[ProjectRef] =
+      def dependencies(map: Map[ProjectRef, Seq[ProjectRef]], id: ProjectRef): Set[ProjectRef] =
+        @tailrec
         def helper(map: Map[ProjectRef, Seq[ProjectRef]], acc: Set[ProjectRef]): Set[ProjectRef] =
-          if (acc.exists(map.contains)) {
+          if acc.exists(map.contains) then
             val (kept, rem) = map.partition { case (k, _) => acc(k) }
             helper(rem, acc ++ kept.valuesIterator.flatten)
-          } else acc
+          else acc
         helper(map - id, map.getOrElse(id, Nil).toSet)
-      }
       val allProjectsDeps: Map[ProjectRef, Seq[ProjectRef]] =
-        (for {
-          (p, ref) <- Project.structure(state).allProjectPairs
-        } yield ref -> p.dependencies.map(_.project)).toMap
+        (for (p, ref) <- Project.structure(state).allProjectPairs
+        yield ref -> p.dependencies.map(_.project)).toMap
       val deps = dependencies(allProjectsDeps.toMap, projectRef)
       Project.structure(state).allProjectRefs.filter(p => deps(p))
-    }
 
     def projectReturn(s: State): List[File] = getOrNil(s, projectReturnKey)
     def inPluginProject(s: State): Boolean = projectReturn(s).length > 1
@@ -677,6 +681,7 @@ trait ProjectExtra extends Scoped.Syntax:
     def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
 
      */
+  end extension
 
   given projectToLocalProject: Conversion[Project, LocalProject] =
     (p: Project) => LocalProject(p.id)
@@ -716,6 +721,7 @@ trait ProjectExtra extends Scoped.Syntax:
             SessionVar.set(SessionVar.resolveContext(key, scoped.scope, state), state, value)
         )
       }
+  end extension
 
   /**
    * implicitly injected to tasks that return PromiseWrap.
@@ -729,12 +735,10 @@ trait ProjectExtra extends Scoped.Syntax:
           var result: Option[A1] = None
           if atMost == Duration.Inf then
             while result.isEmpty do
-              try {
+              try
                 result = Some(Await.result(p.underlying.future, Duration("1s")))
                 Thread.sleep(10)
-              } catch {
-                case _: TimeoutException => ()
-              }
+              catch case _: TimeoutException => ()
           else result = Some(Await.result(p.underlying.future, atMost))
           result.get
         })

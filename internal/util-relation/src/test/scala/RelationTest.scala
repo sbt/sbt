@@ -11,12 +11,12 @@ package sbt.internal.util
 import org.scalacheck.*
 import Prop.*
 
-object RelationTest extends Properties("Relation") {
+object RelationTest extends Properties("Relation"):
   property("Added entry check") = forAll { (pairs: List[(Int, Double)]) =>
     val r = Relation.empty[Int, Double] ++ pairs
     check(r, pairs)
   }
-  def check(r: Relation[Int, Double], pairs: Seq[(Int, Double)]) = {
+  def check(r: Relation[Int, Double], pairs: Seq[(Int, Double)]) =
     val _1s = pairs.map(_._1).toSet
     val _2s = pairs.map(_._2).toSet
 
@@ -28,7 +28,6 @@ object RelationTest extends Properties("Relation") {
       (r.forwardMap(a) contains b) &&
       (r.reverseMap(b) contains a)
     }
-  }
 
   property("Does not contain removed entries") = forAll { (pairs: List[(Int, Double, Boolean)]) =>
     val add = pairs.map { (a, b, c) => (a, b) }
@@ -71,10 +70,10 @@ object RelationTest extends Properties("Relation") {
   }
 
   def all[T](s: Seq[T])(p: T => Prop): Prop =
-    if (s.isEmpty) true else s.map(p).reduceLeft(_ && _)
-}
+    if s.isEmpty then true else s.map(p).reduceLeft(_ && _)
+end RelationTest
 
-object EmptyRelationTest extends Properties("Empty relation") {
+object EmptyRelationTest extends Properties("Empty relation"):
   lazy val e = Relation.empty[Int, Double]
 
   property("Forward empty") = forAll((i: Int) => e.forward(i).isEmpty)
@@ -83,4 +82,3 @@ object EmptyRelationTest extends Properties("Empty relation") {
   property("Reverse map empty") = e.reverseMap.isEmpty
   property("_1 empty") = e._1s.isEmpty
   property("_2 empty") = e._2s.isEmpty
-}

@@ -23,30 +23,28 @@ final case class UpdateParams(
     classpathOrder: Boolean,
     missingOk: Boolean,
     classLoaders: Seq[ClassLoader]
-) {
+):
 
   def artifactFileOpt(
       module: Module,
       version: String,
       attributes: Attributes,
       artifact: Artifact
-  ): Option[File] = {
+  ): Option[File] =
 
     // Under some conditions, SBT puts the scala JARs of its own classpath
     // in the application classpath. Ensuring we return SBT's jars rather than
     // JARs from the coursier cache, so that a same JAR doesn't land twice in the
     // application classpath (once via SBT jars, once via coursier cache).
     val fromBootJars =
-      if (attributes.classifier.isEmpty && attributes.`type` == Type.jar)
+      if attributes.classifier.isEmpty && attributes.`type` == Type.jar then
         sbtBootJarOverrides.get((module, version))
-      else
-        None
+      else None
 
     val artifact0 =
-      if (missingOk) artifact.withOptional(true)
+      if missingOk then artifact.withOptional(true)
       else artifact
 
     fromBootJars.orElse(artifacts.get(artifact0))
-  }
-
-}
+  end artifactFileOpt
+end UpdateParams

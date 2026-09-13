@@ -1,0 +1,12 @@
+# a forked test's working directory remains the project's baseDirectory
+> sub/testFull
+$ exists sub/cwd-marker
+$ absent cwd-marker
+$ delete sub/cwd-marker
+
+# Test / forkOptions configures the forked working directory
+$ copy-file changes/forkdir.sbt sub/forkdir.sbt
+> reload
+> sub/testFull
+$ exists cwd-marker
+$ absent sub/cwd-marker

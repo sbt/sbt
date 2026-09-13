@@ -10,21 +10,18 @@ package sbt.internal.util.complete
 
 import sbt.internal.util.complete.DefaultParsers.*
 
-private[sbt] object SizeParser {
+private[sbt] object SizeParser:
   def apply(s: String): Option[Long] = Parser.parse(s, value).toOption
-  private enum SizeUnit {
+  private enum SizeUnit:
     case Bytes, KiloBytes, MegaBytes, GigaBytes
-  }
   private def parseDouble(s: String): Parser[Either[Double, Long]] =
-    s.toDoubleOption match {
+    s.toDoubleOption match
       case Some(x) => Parser.success(Left(x))
       case _       => Parser.failure(s"Couldn't parse $s as double.")
-    }
   private def parseLong(s: String): Parser[Either[Double, Long]] =
-    s.toLongOption match {
+    s.toLongOption match
       case Some(x) => Parser.success(Right(x))
       case _       => Parser.failure(s"Couldn't parse $s as double.")
-    }
   private val digit = charClass(_.isDigit, "digit")
   private val numberParser: Parser[Either[Double, Long]] =
     (digit.+ ~ ('.'.examples() ~> digit.+).?).flatMap {
@@ -39,20 +36,18 @@ private[sbt] object SizeParser {
       case "k" | "K" => SizeUnit.KiloBytes
       case "m" | "M" => SizeUnit.MegaBytes
     }
-  private def multiply(left: Either[Double, Long], right: Long): Long = left match {
+  private def multiply(left: Either[Double, Long], right: Long): Long = left match
     case Left(d)  => (d * right).toLong
     case Right(l) => l * right
-  }
   private[sbt] val value: Parser[Long] =
     ((numberParser <~ SpaceClass
       .examples(" ", "b", "B", "g", "G", "k", "K", "m", "M")
       .*) ~ unitParser.?)
       .map { (number, unit) =>
-        unit match {
+        unit match
           case None | Some(SizeUnit.Bytes) => multiply(number, right = 1L)
           case Some(SizeUnit.KiloBytes)    => multiply(number, right = 1024L)
           case Some(SizeUnit.MegaBytes)    => multiply(number, right = 1024L * 1024)
           case Some(SizeUnit.GigaBytes)    => multiply(number, right = 1024L * 1024 * 1024)
-        }
       }
-}
+end SizeParser

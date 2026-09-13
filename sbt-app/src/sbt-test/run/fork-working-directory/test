@@ -1,0 +1,20 @@
+# app sets Compile / run / baseDirectory to its own baseDirectory, so
+# `app/run` is expected to execute with app/ as its working directory.
+
+$ copy-file changes/a.sbt build.sbt
+> reload
+> app/check
+
+> app/run
+$ exists flag
+$ absent app/flag
+$ delete flag
+
+$ copy-file changes/b.sbt build.sbt
+> reload
+> app/check
+
+> app/run
+$ exists app/flag
+$ absent flag
+$ delete app/flag

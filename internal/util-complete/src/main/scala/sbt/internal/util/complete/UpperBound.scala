@@ -9,7 +9,7 @@
 package sbt.internal.util
 package complete
 
-sealed trait UpperBound {
+sealed trait UpperBound:
 
   /** True if and only if the given value meets this bound. */
   def >=(min: Int): Boolean
@@ -30,10 +30,8 @@ sealed trait UpperBound {
   /** True if and only if this is unbounded. */
   def isInfinite: Boolean
 
-}
-
 /** Represents unbounded. */
-case object Infinite extends UpperBound {
+case object Infinite extends UpperBound:
 
   /** All finite numbers meet this bound. */
   def >=(min: Int) = true
@@ -44,13 +42,12 @@ case object Infinite extends UpperBound {
   def isInfinite = true
 
   override def toString = "Infinity"
-}
 
 /**
  * Represents a finite upper bound. The maximum allowed value is 'value', inclusive. It must
  * positive.
  */
-final case class Finite(value: Int) extends UpperBound {
+final case class Finite(value: Int) extends UpperBound:
   assume(value >= 0, "Maximum occurrences must be nonnegative.")
 
   def >=(min: Int) = value >= min
@@ -59,8 +56,6 @@ final case class Finite(value: Int) extends UpperBound {
   def decrement = Finite(scala.math.max(0, value - 1))
   def isInfinite = false
   override def toString = value.toString
-}
 
-object UpperBound {
+object UpperBound:
   implicit def intToFinite(i: Int): Finite = Finite(i)
-}

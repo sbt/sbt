@@ -21,6 +21,13 @@ trait CompletionService:
    * In Execute this is used for tasks returning sbt.Completed.
    */
   def take(): Completed
+
+  /**
+   * Releases any concurrency-restriction tags still held for a retired node. Called by Execute
+   * when a node tagged with ConcurrentRestrictions.Span retires. Only meaningful for services
+   * enforcing concurrency restrictions; the default does nothing.
+   */
+  def release(node: TaskId[?]): Unit = ()
 end CompletionService
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -34,73 +41,68 @@ import java.util.concurrent.{
   CompletionService as JCompletionService
 }
 
-object CompletionService {
+object CompletionService:
   val poolID = new AtomicInteger(1)
-  def apply(poolSize: Int): (CompletionService, () => Unit) = {
+  def apply(poolSize: Int): (CompletionService, () => Unit) =
     val i = new AtomicInteger(1)
     val id = poolID.getAndIncrement()
     val pool = Executors.newFixedThreadPool(
       poolSize,
       (r: Runnable) => new Thread(r, s"sbt-completion-thread-$id-${i.getAndIncrement}")
     )
-    (apply(pool), () => { pool.shutdownNow(); () })
-  }
+    (
+      apply(pool),
+      () =>
+        pool.shutdownNow(); ()
+    )
 
   def apply(x: Executor): CompletionService =
     apply(new ExecutorCompletionService[Completed](x))
 
   def apply(completion: JCompletionService[Completed]): CompletionService =
-    new CompletionService {
-      def submit(node: TaskId[?], work: () => Completed) = {
+    new CompletionService:
+      def submit(node: TaskId[?], work: () => Completed) =
         CompletionService.submit(work, completion); ()
-      }
       def take() = completion.take().get()
-    }
 
-  def submit(work: () => Completed, completion: JCompletionService[Completed]): () => Completed = {
+  def submit(work: () => Completed, completion: JCompletionService[Completed]): () => Completed =
     val future = submitFuture(work, completion)
     () => future.get
-  }
 
   private[sbt] def submitFuture(
       work: () => Completed,
       completion: JCompletionService[Completed]
-  ): JFuture[Completed] = {
+  ): JFuture[Completed] =
     val future =
       try
         completion.submit {
-          new Callable[Completed] {
+          new Callable[Completed]:
             def call =
-              try {
-                work()
-              } catch {
+              try work()
+              catch
                 case _: InterruptedException =>
                   throw Incomplete(None, message = Some("cancelled"))
-              }
-          }
         }
-      catch {
+      catch
         case _: RejectedExecutionException =>
           throw Incomplete(None, message = Some("cancelled"))
-      }
     future
-  }
   def manage(
       service: CompletionService
   )(setup: TaskId[?] => Unit, cleanup: TaskId[?] => Unit): CompletionService =
     wrap(service) { (node, work) => () =>
       setup(node)
-      try {
+      try
         work()
-      } finally {
+      finally
         cleanup(node)
-      }
     }
   def wrap(
       service: CompletionService
   )(w: (TaskId[?], () => Completed) => (() => Completed)): CompletionService =
-    new CompletionService {
-      def submit(node: TaskId[?], work: () => Completed) = service.submit(node, w(node, work))
-      def take() = service.take()
-    }
-}
+    new CompletionService:
+      override def submit(node: TaskId[?], work: () => Completed) =
+        service.submit(node, w(node, work))
+      override def take() = service.take()
+      override def release(node: TaskId[?]): Unit = service.release(node)
+end CompletionService

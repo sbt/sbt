@@ -10,7 +10,7 @@ package sbt.internal.util
 
 import verify.BasicTestSuite
 
-object CleanStringSpec extends BasicTestSuite {
+object CleanStringSpec extends BasicTestSuite:
   test("EscHelpers should not modify normal strings") {
     val cleanString = s"1234"
     assert(EscHelpers.stripColorsAndMoves(cleanString) == cleanString)
@@ -108,4 +108,4 @@ object CleanStringSpec extends BasicTestSuite {
     val expected2 = "[info] + com.acme.CoyoteTest.makeTrap 9ms  \n"
     assert(new String(bytes2, 0, len2) == expected2)
   }
-}
+end CleanStringSpec

@@ -1,0 +1,87 @@
+package sbt
+package internal
+package communitybuild
+
+import java.nio.file.*
+
+object CommunityBuildRunner:
+
+  /** Depending on the mode of operation, either
+   *  runs the test or updates the project. Updating
+   *  means that all the dependencies are fetched but
+   *  minimal other extra other work is done. Updating
+   *  is necessary since we run tests each time on a fresh
+   *  Docker container. We run the update on Docker container
+   *  creation time to create the cache of the dependencies
+   *  and avoid network overhead.
+   */
+  extension (self: CommunityProject)
+    def run()(using suite: CommunityBuildRunner): Unit =
+      suite.runProject(self)
+  end extension
+
+trait CommunityBuildRunner:
+
+  /** fails the current operation, can be specialised in a concrete Runner
+   *  - overridden in `CommunityBuildTest`
+   */
+  def failWith(msg: String): Nothing = throw IllegalStateException(msg)
+
+  /** Build the given project with the published local compiler and sbt plugin.
+   *
+   *  This test reads the compiler version from community-build/dotty-bootstrapped.version
+   *  and expects community-build/sbt-injected-plugins to set any necessary plugins.
+   *
+   *  @param project    The project name, should be a git submodule in community-build/
+   *  @param command    The binary file of the program used to test the project – usually
+   *                    a build tool like SBT or Mill
+   *  @param arguments  Arguments to pass to the testing program
+   */
+  def runProject(projectDef: CommunityProject): Unit =
+    val project = projectDef.project
+    val command = projectDef.binaryName
+    val arguments = projectDef.buildCommands
+
+    @annotation.tailrec
+    def execTimes(task: () => Int, timesToRerun: Int): Boolean =
+      val exitCode = task()
+      if exitCode == 0
+      then true
+      else if timesToRerun == 0
+        then false
+        else
+          log(s"Rerunning tests in $project because of a previous run failure.")
+          execTimes(task, timesToRerun - 1)
+
+    log(s"Building $project ...")
+
+    val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
+
+    if !Files.exists(projectDir.resolve(".git")) then
+      failWith(s"""
+        |
+        |Missing $project submodule at $projectDir. You can initialize this module using
+        |
+        |    git submodule update --init community-build/community-projects/$project
+        |
+        |""".stripMargin)
+
+    val testsCompletedSuccessfully = execTimes(projectDef.build, 3)
+
+    if !testsCompletedSuccessfully then
+      failWith(s"""
+          |
+          |$command exited with an error code. To reproduce without JUnit, use:
+          |
+          |    sbt community-build/prepareCommunityBuild
+          |    cd community-build/community-projects/$project
+          |    $command ${arguments.init.mkString(" ")} "${arguments.last}"
+          |
+          |For a faster feedback loop on sbt projects, one can try to extract a direct call to dotc
+          |using the sbt export command. For instance, for scalacheck, use
+          |    sbt export jvm/Test/compileIncremental
+          |
+          |""".stripMargin)
+  end runProject
+
+end CommunityBuildRunner

@@ -9,4 +9,5 @@ jobs:
       - uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: sbt.sbt
+          fork-user: sbt-winget-dist-bot
           token: ${{ secrets.WINGET_TOKEN }}

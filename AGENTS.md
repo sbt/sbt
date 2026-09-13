@@ -9,7 +9,7 @@ Compiling with sbt
 ------------------
 
 ```bash
-sbt compile
+sbt --client --color=false --supershell=false --batch compile
 ```
 
 Pull request guideline
@@ -24,10 +24,12 @@ Coding style
 ------------
 
 ```bash
-sbt scalafmtAll
+sbt --client --color=false --supershell=false --batch scalafmtAll
 ```
 
 - Follow [Coding style and best practices](contributing-docs/03_coding_style.md)
+- For newly written code, avoid braces in Scala 3.x, that is use SIP-44 Fewer Braces syntax.
+- Prefer scala.util.Using over try-finally.
 - Avoid inline comments!
 
 Tests
@@ -39,6 +41,12 @@ For changes that require coordination with file changes and tasks, use scripted 
 - [contributing-docs/04_unit_tests.md](contributing-docs/04_unit_tests.md)
 - [contributing-docs/05_scripted_tests.md](contributing-docs/05_scripted_tests.md)
 - [contributing-docs/06_manual_tests.md](contributing-docs/06_manual_tests.md)
+
+For example, here's how to run "actions/compile" scripted test:
+
+```bash
+sbt --color=false --supershell=false --client --batch scripted actions/compile
+```
 
 Tech stack
 ----------
@@ -54,7 +62,7 @@ This means removing public method signature MUST be avoided.
 Use mima to check:
 
 ```bash
-sbt mimaReportBinaryIssues
+sbt --client --color=false --supershell=false --batch mimaReportBinaryIssues
 ```
 
 Copyright

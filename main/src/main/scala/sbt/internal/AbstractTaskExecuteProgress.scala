@@ -19,63 +19,56 @@ import scala.concurrent.duration.*
 
 private[sbt] abstract class AbstractTaskExecuteProgress(
     configNameToIdent: String => String = Scope.guessConfigIdent
-) extends ExecuteProgress {
+) extends ExecuteProgress:
   import AbstractTaskExecuteProgress.Timer
 
   private val showScopedKey = Def.showShortKey(None, configNameToIdent)
   private val anonOwners = new ConcurrentHashMap[TaskId[?], TaskId[?]]
   private val calledBy = new ConcurrentHashMap[TaskId[?], TaskId[?]]
   private val timings = new ConcurrentHashMap[TaskId[?], Timer]
-  private[sbt] def timingsByName: mutable.Map[String, AtomicLong] = {
+  private[sbt] def timingsByName: mutable.Map[String, AtomicLong] =
     val result = new ConcurrentHashMap[String, AtomicLong]
     timings.forEach { (task, timing) =>
       val duration = timing.durationNanos
-      result.putIfAbsent(taskName(task), new AtomicLong(duration)) match {
+      result.putIfAbsent(taskName(task), new AtomicLong(duration)) match
         case null =>
         case t    => t.getAndAdd(duration); ()
-      }
     }
     result.asScala
-  }
   private[sbt] def anyTimings = !timings.isEmpty
   def currentTimings: Iterator[(TaskId[?], Timer)] = timings.asScala.iterator
 
   private[internal] def exceededThreshold(task: TaskId[?], threshold: FiniteDuration): Boolean =
-    timings.get(task) match {
+    timings.get(task) match
       case null => false
       case t    => t.durationMicros > threshold.toMicros
-    }
   private[internal] def timings(
       tasks: java.util.Set[TaskId[?]],
       thresholdMicros: Long
-  ): Vector[(TaskId[?], Long)] = {
+  ): Vector[(TaskId[?], Long)] =
     val result = new VectorBuilder[(TaskId[?], Long)]
     val now = System.nanoTime
     tasks.forEach { t =>
-      timings.get(t) match {
+      timings.get(t) match
         case null   =>
         case timing =>
-          if (timing.isActive) {
+          if timing.isActive then
             val elapsed = (now - timing.startNanos) / 1000
-            if (elapsed > thresholdMicros) result += t -> elapsed
-          }
-      }
+            if elapsed > thresholdMicros then result += t -> elapsed
     }
     result.result()
-  }
-  def activeTasks(now: Long) = {
+  def activeTasks(now: Long) =
     val result = new VectorBuilder[(TaskId[?], FiniteDuration)]
     timings.forEach { (task, timing) =>
-      if (timing.isActive) result += task -> (now - timing.startNanos).nanos
+      if timing.isActive then result += task -> (now - timing.startNanos).nanos
     }
     result.result()
-  }
 
   override def afterRegistered(
       task: TaskId[?],
       allDeps: Iterable[TaskId[?]],
       pendingDeps: Iterable[TaskId[?]]
-  ): Unit = {
+  ): Unit =
     // we need this to infer anonymous task names
     pendingDeps
       .withFilter {
@@ -83,37 +76,32 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
         case _          => true
       }
       .foreach(anonOwners.put(_, task))
-  }
 
-  override def beforeWork(task: TaskId[?]): Unit = {
+  override def beforeWork(task: TaskId[?]): Unit =
     timings.put(task, new Timer)
     ()
-  }
 
   protected def clearTimings: Boolean = false
-  override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit = {
-    if (clearTimings) timings.remove(task)
+  override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit =
+    if clearTimings then timings.remove(task)
     else
-      timings.get(task) match {
+      timings.get(task) match
         case null =>
         case t    => t.stop()
-      }
 
     // we need this to infer anonymous task names
     result.left.foreach { t =>
       calledBy.put(t, task)
     }
-  }
 
   private val taskNameCache = new ConcurrentHashMap[TaskId[?], String]
-  protected def taskName(t: TaskId[?]): String = taskNameCache.get(t) match {
+  protected def taskName(t: TaskId[?]): String = taskNameCache.get(t) match
     case null =>
       val name = taskName0(t)
       taskNameCache.putIfAbsent(t, name)
       name
     case name => name
-  }
-  private def taskName0(t: TaskId[?]): String = {
+  private def taskName0(t: TaskId[?]): String =
     def definedName(node: Task[?]): Option[String] =
       node.name.orElse(TaskName.transformNode(node).map(showScopedKey.show))
     def inferredName(t: Task[?]): Option[String] = nameDelegate(t) map taskName
@@ -122,23 +110,19 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     t match
       case t: Task[?] => definedName(t).orElse(inferredName(t)).getOrElse(TaskName.anonymousName(t))
       case _          => TaskName.anonymousName(t)
-  }
-}
+end AbstractTaskExecuteProgress
 
-object AbstractTaskExecuteProgress {
-  private[sbt] class Timer() {
+object AbstractTaskExecuteProgress:
+  private[sbt] class Timer():
     val startNanos: Long = System.nanoTime()
     val threadName: String = Thread.currentThread().getName
     val threadId: Long = Util.threadId
     var endNanos: Long = 0L
-    def stop(): Unit = {
+    def stop(): Unit =
       endNanos = System.nanoTime()
-    }
     def isActive = endNanos == 0L
     def durationNanos: Long = endNanos - startNanos
     def startMicros: Long = (startNanos.toDouble / 1000).toLong
     def durationMicros: Long = (durationNanos.toDouble / 1000).toLong
     def currentElapsedMicros: Long =
       ((System.nanoTime() - startNanos).toDouble / 1000).toLong
-  }
-}

@@ -64,10 +64,13 @@ trait Convert[C <: Quotes & Singleton] extends ContextUtil[C]:
                     report.errorAndAbort(message, position)
                   case _ =>
                     super.transformTerm(tree)(owner)
+              case _ =>
+                super.transformTerm(tree)(owner)
           case _ =>
             super.transformTerm(tree)(owner)
     end appTransformer
     appTransformer.transformTerm(tree)(owner)
+  end transformWrappers
 
   object Converted:
     def success(tree: Term) = Converted.Success(tree, Types.idFun)

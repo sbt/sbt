@@ -1,0 +1,13 @@
+# Regression test for https://github.com/sbt/sbt/issues/9343
+# With usePipelining := true, a downstream Scala source that references a
+# Java class defined in an upstream project must still compile; the early
+# pickle artifacts from upstream must stay visible on the pipelined classpath.
+# Three downstream projects exercise Transitive, Direct, and PlusOne modes.
+# A single aggregate compile fans out from one upstream pickle-producing task
+# to all three downstream compilations without reusing a pipelining promise.
+
+> compile
+
+$ exists target/**/downstream-transitive/classes/example/Main.class
+$ exists target/**/downstream-direct/classes/example/Main.class
+$ exists target/**/downstream-plusone/classes/example/Main.class

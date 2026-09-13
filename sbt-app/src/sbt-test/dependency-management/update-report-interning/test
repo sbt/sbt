@@ -1,0 +1,6 @@
+# Both projects resolve fresh here, so this exercises the coursier construction path
+# rather than the cached-read path.
+> checkSharedAcrossProjects
+
+# And again with the reports coming back from the cache.
+> checkSharedAcrossProjects

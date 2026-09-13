@@ -19,7 +19,7 @@ else
 fi
 
 # publishing locally to ensure shading runs fine
-./lm-coursier/metadata/scripts/with-test-repo.sh $SBT \
+./lm-coursier/metadata/scripts/with-test-repo.sh $SBT --server \
   lmCoursierShadedPublishing/publishLocal \
   lmCoursier/test \
   'scripted lm-coursier/*'

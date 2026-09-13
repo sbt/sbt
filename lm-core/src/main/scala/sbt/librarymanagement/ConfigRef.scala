@@ -9,29 +9,24 @@ import scala.collection.concurrent.TrieMap
  * A reference to Configuration.
  * @param name The name of the configuration that eventually get used by Maven.
  */
-final class ConfigRef private (val name: String) extends Serializable {
+final class ConfigRef private (val name: String) extends Serializable:
 
   override def equals(o: Any): Boolean =
     this.eq(o.asInstanceOf[AnyRef])
 
-  override val hashCode: Int = {
+  override val hashCode: Int =
     37 * (37 * (17 + "sbt.librarymanagement.ConfigRef".##) + name.##)
-  }
 
-  override def toString: String = {
+  override def toString: String =
     name
-  }
 
-  private def copy(name: String = name): ConfigRef = {
+  private def copy(name: String = name): ConfigRef =
     ConfigRef(name)
-  }
 
-  def withName(name: String): ConfigRef = {
+  def withName(name: String): ConfigRef =
     copy(name = name)
-  }
-}
 
-object ConfigRef extends sbt.librarymanagement.ConfigRefFunctions {
+object ConfigRef extends sbt.librarymanagement.ConfigRefFunctions:
   // cache the reference to ConfigRefs
   private val cache = new TrieMap[String, ConfigRef]
   private lazy val Default = new ConfigRef("default")
@@ -52,7 +47,7 @@ object ConfigRef extends sbt.librarymanagement.ConfigRefFunctions {
   private lazy val CompileInternal = new ConfigRef("compile-internal")
   private lazy val ZincTool = new ConfigRef("zinc-tool")
 
-  def apply(name: String): ConfigRef = name match {
+  def apply(name: String): ConfigRef = name match
     case "default"          => Default
     case "compile"          => Compile
     case "provided"         => Provided
@@ -71,5 +66,4 @@ object ConfigRef extends sbt.librarymanagement.ConfigRefFunctions {
     case "compile-internal" => CompileInternal
     case "zinc-tool"        => ZincTool
     case _                  => cache.getOrElseUpdate(name, new ConfigRef(name))
-  }
-}
+end ConfigRef

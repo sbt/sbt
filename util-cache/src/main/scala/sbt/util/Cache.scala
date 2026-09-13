@@ -24,15 +24,14 @@ case class Miss[O](update: O => Unit) extends CacheResult[O]
 /**
  * A simple cache with keys of type `I` and values of type `O`
  */
-trait Cache[I, O] {
+trait Cache[I, O]:
 
   /**
    * Queries the cache backed with store `store` for key `key`.
    */
   def apply(store: CacheStore)(key: I): CacheResult[O]
-}
 
-object Cache {
+object Cache:
 
   /**
    * Materializes a cache.
@@ -60,7 +59,7 @@ object Cache {
    */
   def cached[I, O](store: CacheStore)(default: I => O)(using cache: Cache[I, O]): I => O =
     key =>
-      cache(store)(key) match {
+      cache(store)(key) match
         case Hit(value) =>
           value
 
@@ -68,19 +67,15 @@ object Cache {
           val result = default(key)
           update(result)
           result
-      }
 
   def debug[I](label: String, cache: SingletonCache[I]): SingletonCache[I] =
-    new SingletonCache[I] {
-      override def read(from: Input): I = {
+    new SingletonCache[I]:
+      override def read(from: Input): I =
         val value = cache.read(from)
         println(label + ".read: " + value)
         value
-      }
 
-      override def write(to: Output, value: I): Unit = {
+      override def write(to: Output, value: I): Unit =
         println(label + ".write: " + value)
         cache.write(to, value)
-      }
-    }
-}
+end Cache

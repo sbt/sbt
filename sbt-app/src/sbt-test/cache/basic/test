@@ -1,17 +1,17 @@
 > startServer
 > pure1
 $ exists target/out/a.txt
-> clean
+$ delete target/out
 > pure1
 $ exists target/out/a.txt
 
-> clean
+$ delete target/out
 > map1
 $ exists target/out/a.txt
 $ exists target/out/b1.txt
 $ exists target/out/b2.txt
 
-> clean
+$ delete target/out
 > mapN1
 $ exists target/out/a.txt
 $ exists target/out/b1.txt

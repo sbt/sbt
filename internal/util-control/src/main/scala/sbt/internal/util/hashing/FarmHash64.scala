@@ -143,6 +143,7 @@ object FarmHash64:
         off += 64
         off != fin
       do ()
+      end while
 
       off = last64.toInt
 
@@ -183,6 +184,8 @@ object FarmHash64:
       z = x
       x = t
       hashLen16(hashLen16(v1, w1, m) + shiftMix(y) * K0 + z, hashLen16(v2, w2, m) + x, m)
+    end if
+  end naHash64
 end FarmHash64
 
 object FarmNaSeedlessHash64:

@@ -12,21 +12,16 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import java.util.concurrent.TimeoutException
 
-private[sbt] object JoinThread {
-  extension (t: Thread) {
-    def joinFor(duration: FiniteDuration): Unit = {
+private[sbt] object JoinThread:
+  extension (t: Thread)
+    def joinFor(duration: FiniteDuration): Unit =
       val deadline = duration.fromNow
-      @tailrec def impl(): Unit = {
-        try {
+      @tailrec def impl(): Unit =
+        try
           t.interrupt()
           t.join(10)
-        } catch { case e: InterruptedException => }
-        if (t.isAlive && !deadline.isOverdue()) impl()
-      }
+        catch
+          case e: InterruptedException =>
+        if t.isAlive && !deadline.isOverdue() then impl()
       impl()
-      if (t.isAlive) {
-        throw new TimeoutException(s"Unable to join thread $t after $duration")
-      }
-    }
-  }
-}
+      if t.isAlive then throw new TimeoutException(s"Unable to join thread $t after $duration")

@@ -17,7 +17,7 @@ final class EvictionWarningOptions private[sbt] (
     val infoAllEvictions: Boolean,
     val showCallers: Boolean,
     val guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean]
-) {
+):
   def withConfigurations(configurations: Seq[ConfigRef]): EvictionWarningOptions =
     copy(configurations = configurations)
   def withWarnScalaVersionEviction(warnScalaVersionEviction: Boolean): EvictionWarningOptions =
@@ -58,9 +58,9 @@ final class EvictionWarningOptions private[sbt] (
       showCallers = showCallers,
       guessCompatible = guessCompatible
     )
-}
+end EvictionWarningOptions
 
-object EvictionWarningOptions {
+object EvictionWarningOptions:
   def empty: EvictionWarningOptions =
     new EvictionWarningOptions(
       Vector(),
@@ -106,24 +106,22 @@ object EvictionWarningOptions {
   lazy val guessSecondSegment
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), Some(_)) if isNameScalaSuffixed(m2.name) =>
-      (m1.revision, m2.revision) match {
+      (m1.revision, m2.revision) match
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.SecondSegment
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
-      }
   }
 
   /** A partial function that checks two versions match pvp. */
   private[sbt] lazy val evalPvp
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), _) =>
-      (m1.revision, m2.revision) match {
+      (m1.revision, m2.revision) match
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.SecondSegment
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
-      }
   }
 
   lazy val guessSbtOne
@@ -132,45 +130,41 @@ object EvictionWarningOptions {
         if (m2.organization == "org.scala-sbt") &&
           (m2.name.endsWith("_" + scalaModuleInfo.scalaFullVersion) ||
             m2.name.endsWith("_" + scalaModuleInfo.scalaBinaryVersion)) =>
-      (m1.revision, m2.revision) match {
+      (m1.revision, m2.revision) match
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.SemVer
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
-      }
   }
 
   lazy val guessSemVer
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), _) =>
-      (m1.revision, m2.revision) match {
+      (m1.revision, m2.revision) match
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.SemVer
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
-      }
   }
 
   lazy val guessEarlySemVer
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), _) =>
-      (m1.revision, m2.revision) match {
+      (m1.revision, m2.revision) match
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.EarlySemVer
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
-      }
   }
 
   lazy val guessStrict
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), _) =>
-      (m1.revision, m2.revision) match {
+      (m1.revision, m2.revision) match
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.Strict
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
-      }
   }
 
   lazy val guessFalse
@@ -182,7 +176,7 @@ object EvictionWarningOptions {
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (_, _, _) => true
   }
-}
+end EvictionWarningOptions
 
 final class EvictionPair private[sbt] (
     val organization: String,
@@ -191,49 +185,43 @@ final class EvictionPair private[sbt] (
     val evicteds: Vector[ModuleReport],
     val includesDirect: Boolean,
     val showCallers: Boolean
-) {
-  val evictedRevs: String = {
+):
+  val evictedRevs: String =
     val revs = evicteds map { _.module.revision }
-    if (revs.size <= 1) revs.mkString else revs.distinct.mkString("{", ", ", "}")
-  }
+    if revs.size <= 1 then revs.mkString else revs.distinct.mkString("{", ", ", "}")
 
   override def toString: String =
     EvictionPair.evictionPairLines.showLines(this).mkString
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = o match
     case o: EvictionPair =>
       (this.organization == o.organization) &&
       (this.name == o.name)
     case _ => false
-  }
-  override def hashCode: Int = {
+  override def hashCode: Int =
     var hash = 1
     hash = hash * 31 + this.organization.##
     hash = hash * 31 + this.name.##
     hash
-  }
-}
+end EvictionPair
 
-object EvictionPair {
+object EvictionPair:
   given evictionPairLines: ShowLines[EvictionPair] = ShowLines { (a: EvictionPair) =>
     val seen: mutable.Set[ModuleID] = mutable.Set()
     val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
       val rev = r.module.revision
       r.callers.toList flatMap { caller =>
-        if (seen(caller.caller)) Nil
-        else {
+        if seen(caller.caller) then Nil
+        else
           seen += caller.caller
           List(f"\t    +- ${caller}%-50s (depends on $rev)")
-        }
       }
     }
-    val winnerRev = a.winner match {
+    val winnerRev = a.winner match
       case Some(r) => s":${r.module.revision} is selected over ${a.evictedRevs}"
       case _       => " is evicted for all versions"
-    }
     val title = s"\t* ${a.organization}:${a.name}$winnerRev"
-    title :: (if (a.showCallers) callers.reverse else Nil) ::: List("")
+    title :: (if a.showCallers then callers.reverse else Nil) ::: List("")
   }
-}
 
 final class EvictionWarning private[sbt] (
     val options: EvictionWarningOptions,
@@ -242,7 +230,7 @@ final class EvictionWarning private[sbt] (
     val transitiveEvictions: Seq[EvictionPair],
     val allEvictions: Seq[EvictionPair],
     val binaryIncompatibleEvictionExists: Boolean
-) {
+):
   private[sbt] def this(
       options: EvictionWarningOptions,
       scalaEvictions: Seq[EvictionPair],
@@ -253,9 +241,8 @@ final class EvictionWarning private[sbt] (
   def reportedEvictions: Seq[EvictionPair] =
     scalaEvictions ++ directEvictions ++ transitiveEvictions
   private[sbt] def infoAllTheThings: List[String] = EvictionWarning.infoAllTheThings(this)
-}
 
-object EvictionWarning {
+object EvictionWarning:
   @deprecated("Use variant that doesn't take an unused logger", "1.2.0")
   def apply(
       module: ModuleDescriptor,
@@ -268,51 +255,45 @@ object EvictionWarning {
       module: ModuleDescriptor,
       options: EvictionWarningOptions,
       report: UpdateReport
-  ): EvictionWarning = {
+  ): EvictionWarning =
     val evictions = buildEvictions(options.configurations, report)
     processEvictions(module, options, evictions)
-  }
 
   private[sbt] def buildEvictions(
       configurations: Seq[ConfigRef],
       report: UpdateReport
-  ): Seq[(ConfigRef, OrganizationArtifactReport)] = {
+  ): Seq[(ConfigRef, OrganizationArtifactReport)] =
     val confs = report.configurations filter { x =>
       configurations.contains[ConfigRef](x.configuration)
     }
     confs.flatMap { confReport =>
       confReport.details.map(report => (confReport.configuration, report))
     }.toVector
-  }
 
   private[sbt] def isScalaArtifact(
       module: ModuleDescriptor,
       organization: String,
       name: String
   ): Boolean =
-    module.scalaModuleInfo match {
+    module.scalaModuleInfo match
       case Some(s) =>
         organization == s.scalaOrganization &&
         (name == LibraryID) || (name == CompilerID)
       case _ => false
-    }
 
   private[sbt] def processEvictions(
       module: ModuleDescriptor,
       options: EvictionWarningOptions,
       configsAndReports: Seq[(ConfigRef, OrganizationArtifactReport)]
-  ): EvictionWarning = {
+  ): EvictionWarning =
     val directDependencies = module.directDependencies
     val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
     configsAndReports.foreach { case (_, detail) =>
-      if (
-        (detail.modules exists { _.evicted }) &&
+      if (detail.modules exists { _.evicted }) &&
         !(buffer exists { x =>
           (x.organization == detail.organization) && (x.name == detail.name)
         })
-      ) {
-        buffer += detail
-      }
+      then buffer += detail
     }
     val reports = buffer.toList.toVector
     val pairs = reports map { detail =>
@@ -345,23 +326,20 @@ object EvictionWarning {
         // Check if the evicted module's revision is a version range and if the winner satisfies it
         // This handles cases like [4.1.0,5) where 4.2.1 would be within range (fixes #3978)
         // and [1.3.1,2.3] where 2.3 is valid (fixes #6244)
-        val winnerSatisfiesRange: Boolean = winnerOpt match {
+        val winnerSatisfiesRange: Boolean = winnerOpt match
           case Some(winner) if VersionRange.isVersionRange(evictedRev) =>
             VersionRange.versionSatisfiesRange(winner.revision, evictedRev)
           case _ => false
-        }
-        if (sameVersion || winnerSatisfiesRange) {
-          true
-        } else {
-          val extraAttributes = ((p.winner match {
+        if sameVersion || winnerSatisfiesRange then true
+        else
+          val extraAttributes = ((p.winner match
             case Some(r) => r.extraAttributes
             case _       => Map.empty
-          }): collection.immutable.Map[String, String]) ++ (winnerOpt match {
+          ): collection.immutable.Map[String, String]) ++ (winnerOpt match
             case Some(w) => w.extraAttributes
-            case _       => Map.empty
-          })
+            case _       => Map.empty)
           val schemeOpt = VersionSchemes.extractFromExtraAttributes(extraAttributes)
-          val f = (winnerOpt, schemeOpt) match {
+          val f = (winnerOpt, schemeOpt) match
             case (Some(_), Some(VersionSchemes.Always)) =>
               EvictionWarningOptions.guessTrue
             case (Some(_), Some(VersionSchemes.Strict)) =>
@@ -373,36 +351,26 @@ object EvictionWarning {
             case (Some(_), Some(VersionSchemes.PackVer)) =>
               EvictionWarningOptions.evalPvp
             case _ => options.guessCompatible(_)
-          }
           f((r.module, winnerOpt, module.scalaModuleInfo))
-        }
+        end if
       }
     pairs foreach {
       case p if isScalaArtifact(module, p.organization, p.name) =>
-        (module.scalaModuleInfo, p.winner) match {
+        (module.scalaModuleInfo, p.winner) match
           case (Some(s), Some(winner)) if (s.scalaFullVersion != winner.module.revision) =>
-            if (options.warnScalaVersionEviction)
-              scalaEvictions += p
-            if (options.warnEvictionSummary)
-              binaryIncompatibleEvictionExists = true
+            if options.warnScalaVersionEviction then scalaEvictions += p
+            if options.warnEvictionSummary then binaryIncompatibleEvictionExists = true
           case _ =>
-        }
       case p if p.includesDirect =>
-        if (!guessCompatible(p)) {
-          if (options.warnDirectEvictions)
-            directEvictions += p
-          if (options.warnEvictionSummary)
-            binaryIncompatibleEvictionExists = true
-        }
+        if !guessCompatible(p) then
+          if options.warnDirectEvictions then directEvictions += p
+          if options.warnEvictionSummary then binaryIncompatibleEvictionExists = true
       case p =>
         // don't report on a transitive eviction that does not have a winner
         // https://github.com/sbt/sbt/issues/4946
-        if (!guessCompatible(p) && p.winner.isDefined) {
-          if (options.warnTransitiveEvictions)
-            transitiveEvictions += p
-          if (options.warnEvictionSummary)
-            binaryIncompatibleEvictionExists = true
-        }
+        if !guessCompatible(p) && p.winner.isDefined then
+          if options.warnTransitiveEvictions then transitiveEvictions += p
+          if options.warnEvictionSummary then binaryIncompatibleEvictionExists = true
     }
     new EvictionWarning(
       options,
@@ -412,47 +380,42 @@ object EvictionWarning {
       pairs,
       binaryIncompatibleEvictionExists
     )
-  }
+  end processEvictions
 
   given evictionWarningLines: ShowLines[EvictionWarning] = ShowLines { (a: EvictionWarning) =>
     import ShowLines.*
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-    if (a.options.warnEvictionSummary && a.binaryIncompatibleEvictionExists) {
+    if a.options.warnEvictionSummary && a.binaryIncompatibleEvictionExists then
       out += "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
-    }
 
-    if (a.scalaEvictions.nonEmpty) {
+    if a.scalaEvictions.nonEmpty then
       out += "Scala version was updated by one of library dependencies:"
       out ++= (a.scalaEvictions flatMap { _.lines })
       out += "To force scalaVersion, add the following:"
       out += "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
-    }
 
-    if (a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty) {
+    if a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty then
       out += "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
       out += ""
       out ++= (a.directEvictions flatMap { _.lines })
       out ++= (a.transitiveEvictions flatMap { _.lines })
-    }
 
     out.toList
   }
 
   private[sbt] def infoAllTheThings(a: EvictionWarning): List[String] =
-    if (a.options.infoAllEvictions) {
+    if a.options.infoAllEvictions then
       import ShowLines.*
       val evo = a.options
       val out: mutable.ListBuffer[String] = mutable.ListBuffer()
       a.allEvictions foreach { ev =>
-        if ((a.scalaEvictions.contains[EvictionPair](ev)) && evo.warnScalaVersionEviction) ()
-        else if ((a.directEvictions.contains[EvictionPair](ev)) && evo.warnDirectEvictions) ()
-        else if ((a.transitiveEvictions.contains[EvictionPair](ev)) && evo.warnTransitiveEvictions)
-          ()
-        else {
-          out ++= ev.lines
-        }
+        if (a.scalaEvictions.contains[EvictionPair](ev)) && evo.warnScalaVersionEviction then ()
+        else if (a.directEvictions.contains[EvictionPair](ev)) && evo.warnDirectEvictions then ()
+        else if (a.transitiveEvictions.contains[EvictionPair](ev)) && evo.warnTransitiveEvictions
+        then ()
+        else out ++= ev.lines
       }
-      if (out.isEmpty) Nil
+      if out.isEmpty then Nil
       else List("Here are other dependency conflicts that were resolved:", "") ::: out.toList
-    } else Nil
-}
+    else Nil
+end EvictionWarning

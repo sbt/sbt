@@ -15,26 +15,17 @@ import sbt.util.*
  * means that messages are logged at the higher of the two levels set by this logger and its
  * delegate.
  */
-class FilterLogger(delegate: AbstractLogger) extends BasicLogger {
-  def trace(t: => Throwable): Unit = {
-    if (traceEnabled)
-      delegate.trace(t)
-  }
+class FilterLogger(delegate: AbstractLogger) extends BasicLogger:
+  def trace(t: => Throwable): Unit =
+    if traceEnabled then delegate.trace(t)
   override def setSuccessEnabled(flag: Boolean): Unit = delegate.setSuccessEnabled(flag)
   override def successEnabled = delegate.successEnabled
   override def setTrace(level: Int): Unit = delegate.setTrace(level)
   override def getTrace = delegate.getTrace
-  def log(level: Level.Value, message: => String): Unit = {
-    if (atLevel(level))
-      delegate.log(level, message)
-  }
-  def success(message: => String): Unit = {
-    if (successEnabled)
-      delegate.success(message)
-  }
-  def control(event: ControlEvent.Value, message: => String): Unit = {
-    if (atLevel(Level.Info))
-      delegate.control(event, message)
-  }
+  def log(level: Level.Value, message: => String): Unit =
+    if atLevel(level) then delegate.log(level, message)
+  def success(message: => String): Unit =
+    if successEnabled then delegate.success(message)
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    if atLevel(Level.Info) then delegate.control(event, message)
   def logAll(events: Seq[LogEvent]): Unit = delegate.logAll(events)
-}

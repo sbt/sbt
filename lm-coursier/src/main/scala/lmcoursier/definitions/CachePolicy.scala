@@ -2,7 +2,7 @@ package lmcoursier.definitions
 
 sealed abstract class CachePolicy extends Serializable
 
-object CachePolicy {
+object CachePolicy:
   /* NOTE: the following comments are copied from coursier.cache.CachePolicy for the benefit of users within an IDE
   that reads the javadocs. Please keep in sync from the original ADT.
    */
@@ -69,4 +69,4 @@ object CachePolicy {
    * Erases files already in cache.
    */
   case object ForceDownload extends CachePolicy
-}
+end CachePolicy

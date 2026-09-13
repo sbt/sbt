@@ -16,7 +16,7 @@ import Def.Setting
  *
  * Can control task-level parallelism, logging, etc.
  */
-object CorePlugin extends AutoPlugin {
+object CorePlugin extends AutoPlugin:
   // This is included by default
   override def trigger = allRequirements
   override def requires = empty
@@ -25,4 +25,3 @@ object CorePlugin extends AutoPlugin {
     Defaults.coreDefaultSettings
   override lazy val globalSettings: Seq[Setting[?]] =
     Defaults.globalSbtCore
-}

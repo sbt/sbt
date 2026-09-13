@@ -1,7 +1,7 @@
 
 lazy val b = project
   .settings(
-    apiURL := Some(url(s"http://example.org/b")),
+    apiURL := Some(uri(s"http://example.org/b")),
     publishMavenStyle := false,
     publishTo := Some(bResolver.value),
     organization := "b",

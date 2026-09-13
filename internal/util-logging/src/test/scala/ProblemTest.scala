@@ -15,7 +15,7 @@ import _root_.sbt.util.InterfaceUtil
 import InterfaceUtil.{ jl2l, jo2o, l2jl }
 import xsbti.*
 
-object ProblemTest extends Properties {
+object ProblemTest extends Properties:
   override def tests: List[Test] = List(
     property(
       "All problems can toString",
@@ -42,7 +42,7 @@ object ProblemTest extends Properties {
   def toStringCheck(p: Problem): Result =
     Result.assert(p.toString() != "")
 
-  def equalityCheck(p: Problem): Result = {
+  def equalityCheck(p: Problem): Result =
     val other = InterfaceUtil.problem(
       p.category,
       p.position,
@@ -56,25 +56,21 @@ object ProblemTest extends Properties {
     Result
       .assert(p == other)
       .log(s"$p == $other")
-  }
 
-  def equalityCheck(c: DiagnosticCode): Result = {
+  def equalityCheck(c: DiagnosticCode): Result =
     val other = copy(c)
     Result.assert(c == other)
-  }
 
-  def equalityCheck(info: DiagnosticRelatedInformation): Result = {
+  def equalityCheck(info: DiagnosticRelatedInformation): Result =
     val other = copy(info)
     Result.assert(info == other)
-  }
 
-  def equalityCheck(a: Action): Result = {
+  def equalityCheck(a: Action): Result =
     val other = copy(a)
     Result.assert(a == other)
-  }
 
   lazy val genProblem: Gen[Problem] =
-    for {
+    for
       cat <- genString
       pos <- genPosition
       msg <- genString
@@ -83,7 +79,7 @@ object ProblemTest extends Properties {
       code <- optDiagnosticCode
       info <- listDiagnosticRelatedInformation
       actions <- listAction
-    } yield InterfaceUtil.problem(
+    yield InterfaceUtil.problem(
       cat,
       pos,
       msg,
@@ -98,19 +94,18 @@ object ProblemTest extends Properties {
     Gen.choice1(genDiagnosticCode.map(Some(_)), Gen.constant(None))
 
   lazy val genDiagnosticCode: Gen[DiagnosticCode] =
-    for {
-      code <- Gen.int(Range.linear(0, 1024))
-    } yield InterfaceUtil.diagnosticCode("E" + code.toString, None)
+    for code <- Gen.int(Range.linear(0, 1024))
+    yield InterfaceUtil.diagnosticCode("E" + code.toString, None)
 
   lazy val genSeverity: Gen[Severity] =
     Gen.element(Severity.Info, List(Severity.Warn, Severity.Error))
 
   lazy val genPosition: Gen[Position] =
-    for {
+    for
       line <- optIntGen
       content <- genString
       offset <- optIntGen
-    } yield InterfaceUtil.position(
+    yield InterfaceUtil.position(
       line,
       content,
       offset,
@@ -130,39 +125,37 @@ object ProblemTest extends Properties {
     Gen.list(genDiagnosticRelatedInformation, Range.linear(0, 2))
 
   lazy val genDiagnosticRelatedInformation: Gen[DiagnosticRelatedInformation] =
-    for {
+    for
       pos <- genPosition
       message <- genString
-    } yield InterfaceUtil.diagnosticRelatedInformation(pos, message)
+    yield InterfaceUtil.diagnosticRelatedInformation(pos, message)
 
   lazy val listAction: Gen[List[Action]] =
     Gen.list(genAction, Range.linear(0, 2))
 
   lazy val genAction: Gen[Action] =
-    for {
+    for
       title <- genString
       description <- optString
       edit <- genWorkspaceEdit
-    } yield InterfaceUtil.action(title, description, edit)
+    yield InterfaceUtil.action(title, description, edit)
 
   lazy val genWorkspaceEdit: Gen[WorkspaceEdit] =
-    for {
-      changes <- listTextEdit
-    } yield InterfaceUtil.workspaceEdit(changes)
+    for changes <- listTextEdit
+    yield InterfaceUtil.workspaceEdit(changes)
 
   lazy val listTextEdit: Gen[List[TextEdit]] =
     Gen.list(genTextEdit, Range.linear(0, 2))
 
   lazy val genTextEdit: Gen[TextEdit] =
-    for {
+    for
       pos <- genPosition
       newText <- genString
-    } yield InterfaceUtil.textEdit(pos, newText)
+    yield InterfaceUtil.textEdit(pos, newText)
 
   lazy val genUri: Gen[URI] =
-    for {
-      ssp <- genString
-    } yield new URI("file", "///" + ssp, null)
+    for ssp <- genString
+    yield new URI("file", "///" + ssp, null)
 
   lazy val optString: Gen[Option[String]] =
     Gen.choice1(genString.map(Some(_)), Gen.constant(None))
@@ -173,30 +166,26 @@ object ProblemTest extends Properties {
     Gen.choice1(Gen.int(Range.linear(0, 1024)).map(Some(_)), Gen.constant(None))
 
   private def copy(c: DiagnosticCode): DiagnosticCode =
-    new DiagnosticCode() {
+    new DiagnosticCode():
       val code = c.code
       override def explanation = c.explanation
-    }
 
   private def copy(info: DiagnosticRelatedInformation): DiagnosticRelatedInformation =
-    new DiagnosticRelatedInformation() {
+    new DiagnosticRelatedInformation():
       override def position = info.position
       override def message = info.message
-    }
 
   private def copy(a: Action): Action =
-    new Action {
+    new Action:
       override def title = a.title
       override def description = a.description
       override def edit = copy(a.edit)
-    }
 
   private def copy(edit: WorkspaceEdit): WorkspaceEdit =
     () => l2jl(jl2l(edit.changes).map(copy))
 
   private def copy(edit: TextEdit): TextEdit =
-    new TextEdit {
+    new TextEdit:
       override val position = edit.position
       override val newText = edit.newText
-    }
-}
+end ProblemTest

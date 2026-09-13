@@ -14,7 +14,6 @@ import scala.xml.{ Elem, Node, NodeSeq }
 
 /**
  * Generates Maven POM XML from sbt's own types, without requiring Ivy.
- * This is used by the default publisher when the sbt-ivy plugin is not loaded.
  */
 private[sbt] object PomGenerator:
 
@@ -59,16 +58,12 @@ private[sbt] object PomGenerator:
       {makeDependencyManagement(bomDeps)}
       {makeDependencies(regularDeps)}
     </project>
+  end makePom
 
   private def crossVersionDep(dep: ModuleID, scalaInfo: Option[ScalaModuleInfo]): ModuleID =
-    // Platform suffix before cross suffix, matching the coordinate (sbt/sbt#9117).
-    val base = dep.crossVersion match
-      case _: Disabled => dep.name
-      case _           =>
-        CrossVersion.addPlatformSuffix(dep.name, dep.platformOpt, scalaInfo.flatMap(_.platform))
     val crossFn = CrossVersion(dep, scalaInfo)
     val crossDep = crossFn match
-      case Some(fn) => dep.withName(fn(base)).withCrossVersion(CrossVersion.disabled)
+      case Some(fn) => dep.withName(fn(dep.name)).withCrossVersion(CrossVersion.disabled)
       case None     => dep
     if crossDep.exclusions.isEmpty || scalaInfo.isEmpty then crossDep
     else
@@ -264,13 +259,12 @@ private[sbt] object PomGenerator:
       val base = version.stripSuffix("+").stripSuffix(".")
       val parts = base.split('.')
       if parts.nonEmpty then
-        parts.last.toIntOption.map(_ + 1) match {
+        parts.last.toIntOption.map(_ + 1) match
           case Some(last) =>
             val upper = (parts.init :+ last.toString).mkString(".")
             s"[$base,$upper)"
           case None =>
             version
-        }
       else version
     else if version == "latest.integration" || version == "latest.release" then ""
     else version

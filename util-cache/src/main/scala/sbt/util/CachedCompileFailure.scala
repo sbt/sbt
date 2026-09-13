@@ -59,16 +59,16 @@ object CachedCompileFailure
       s"$file$line$pointer: ${problem.message}$lineContent$pointerLine"
 
   /**
-   * Check if the problems contain enough information to be useful when replayed.
-   * For Scala 2.13, the `rendered` field is empty, so we check if position info exists.
+   * Whether a compile failure carries enough source information to be safely cached and replayed.
+   * It is a function of the sources only when every error has a source position; a position-less
+   * error such as "error writing X.class" is an environmental I/O fault, and caching it replays a
+   * stale failure on every later build until the global cache is cleared by hand (sbt/sbt#9455).
+   * Such failures are treated as not cacheable.
    */
   def hasSufficientInfo(e: CompileFailed): Boolean =
     import sbt.util.InterfaceUtil.toOption
-    e.problems()
-      .forall: problem =>
-        // Either has rendered text (Scala 3) or has position info (Scala 2.13)
-        toOption(problem.rendered).isDefined ||
-          (toOption(problem.position.sourcePath).isDefined && problem.message.nonEmpty)
+    val errors = e.problems().filter(_.severity == Severity.Error)
+    errors.nonEmpty && errors.forall(p => toOption(p.position.sourcePath).isDefined)
 
   def fromException(e: CompileFailed): CachedCompileFailure =
     CachedCompileFailure(

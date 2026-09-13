@@ -5,7 +5,7 @@ package sbt.librarymanagement
 
 import sbt.io.{ AllPassFilter, NameFilter }
 
-trait DependencyFilterExtra {
+trait DependencyFilterExtra:
   // See http://www.scala-lang.org/news/2.12.0#traits-compile-to-interfaces
   // Avoid defining fields (val or var, but a constant is ok – final val without result type)
   // Avoid calling super
@@ -33,9 +33,9 @@ trait DependencyFilterExtra {
 
   def configurationFilter(name: NameFilter = AllPassFilter): ConfigurationFilter =
     (c: ConfigRef) => name.accept(c.name)
-}
+end DependencyFilterExtra
 
-object DependencyFilter extends DependencyFilterExtra {
+object DependencyFilter extends DependencyFilterExtra:
   def make(
       configuration: ConfigurationFilter = configurationFilter(),
       module: ModuleFilter = moduleFilter(),
@@ -56,14 +56,13 @@ object DependencyFilter extends DependencyFilterExtra {
   implicit def fnToConfigurationFilter(f: ConfigRef => Boolean): ConfigurationFilter =
     (c: ConfigRef) => f(c)
   implicit def subDepFilterToFn[Arg](f: SubDepFilter[Arg, ?]): Arg => Boolean = f.apply(_)
-}
-trait DependencyFilter {
+end DependencyFilter
+trait DependencyFilter:
   def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean
   final def &&(o: DependencyFilter) = DependencyFilter(this, o, _ && _)
   final def ||(o: DependencyFilter) = DependencyFilter(this, o, _ || _)
   final def --(o: DependencyFilter) = DependencyFilter(this, o, _ && !_)
-}
-sealed trait SubDepFilter[Arg, Self <: SubDepFilter[Arg, Self]] extends DependencyFilter {
+sealed trait SubDepFilter[Arg, Self <: SubDepFilter[Arg, Self]] extends DependencyFilter:
   self: Self =>
   def apply(a: Arg): Boolean
   protected def make(f: Arg => Boolean): Self
@@ -72,22 +71,18 @@ sealed trait SubDepFilter[Arg, Self <: SubDepFilter[Arg, Self]] extends Dependen
   final def -(o: Self): Self = combine(o, _ && !_)
   private def combine(o: Self, f: (Boolean, Boolean) => Boolean): Self =
     make((m: Arg) => f(this(m), o(m)))
-}
-trait ModuleFilter extends SubDepFilter[ModuleID, ModuleFilter] {
+trait ModuleFilter extends SubDepFilter[ModuleID, ModuleFilter]:
   protected final def make(f: ModuleID => Boolean) =
     (m: ModuleID) => f(m)
   final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(module)
-}
-trait ArtifactFilter extends SubDepFilter[Artifact, ArtifactFilter] {
+trait ArtifactFilter extends SubDepFilter[Artifact, ArtifactFilter]:
   protected final def make(f: Artifact => Boolean) =
     (m: Artifact) => f(m)
   final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(artifact)
-}
-trait ConfigurationFilter extends SubDepFilter[ConfigRef, ConfigurationFilter] {
+trait ConfigurationFilter extends SubDepFilter[ConfigRef, ConfigurationFilter]:
   protected final def make(f: ConfigRef => Boolean) =
     (m: ConfigRef) => f(m)
   final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(configuration)
-}

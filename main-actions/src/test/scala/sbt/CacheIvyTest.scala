@@ -14,36 +14,37 @@ import Prop.*
 import sbt.librarymanagement.*
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
-class CacheIvyTest extends Properties("CacheIvy") {
+class CacheIvyTest extends Properties("CacheIvy"):
   import sbt.util.{ CacheStore, SingletonCache }
   import SingletonCache.given
 
   import sjsonnew.*
   import sjsonnew.support.scalajson.unsafe.Converter
 
-  private class InMemoryStore(converter: SupportConverter[JValue]) extends CacheStore {
+  private class InMemoryStore(converter: SupportConverter[JValue]) extends CacheStore:
     private var content: JValue = scala.compiletime.uninitialized
     override def delete(): Unit = ()
     override def close(): Unit = ()
 
     override def read[T: JsonReader](): T =
       try converter.fromJsonUnsafe[T](content)
-      catch { case t: Throwable => t.printStackTrace(); throw t }
+      catch
+        case t: Throwable =>
+          t.printStackTrace()
+          throw t
 
     override def read[T: JsonReader](default: => T): T =
       try read[T]()
-      catch { case _: Throwable => default }
+      catch case _: Throwable => default
 
     override def write[T: JsonWriter](value: T): Unit =
       content = converter.toJsonUnsafe(value)
-  }
 
   private def testCache[T, U](
       f: (SingletonCache[T], CacheStore) => U
-  )(using cache: SingletonCache[T]): U = {
+  )(using cache: SingletonCache[T]): U =
     val store = new InMemoryStore(Converter)
     f(cache, store)
-  }
 
   private def cachePreservesEquality[T: JsonFormat](
       m: T,
@@ -56,19 +57,18 @@ class CacheIvyTest extends Properties("CacheIvy") {
   }
 
   given arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
-    for {
-      n <- Gen.alphaStr
-    } yield ConfigRef(n)
+    for n <- Gen.alphaStr
+    yield ConfigRef(n)
   )
 
   given arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
-    for {
+    for
       o <- Gen.alphaStr
       n <- Gen.alphaStr
       a <- Gen.alphaStr
       v <- arbCrossVersion.arbitrary
       cs <- arbitrary[List[ConfigRef]]
-    } yield InclExclRule(o, n, a, cs.toVector, v)
+    yield InclExclRule(o, n, a, cs.toVector, v)
   )
 
   given arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
@@ -77,16 +77,15 @@ class CacheIvyTest extends Properties("CacheIvy") {
   }
 
   given arbArtifact: Arbitrary[Artifact] = Arbitrary {
-    for {
-      (n, t, e, cls) <- arbitrary[(String, String, String, String)]
-    } yield Artifact(n, t, e, cls) // keep it simple
+    for (n, t, e, cls) <- arbitrary[(String, String, String, String)]
+    yield Artifact(n, t, e, cls) // keep it simple
   }
 
   given arbModuleID: Arbitrary[ModuleID] = Arbitrary {
-    for {
+    for
       o <- Gen.identifier
       n <- Gen.identifier
-      r <- for { n <- Gen.numChar; ns <- Gen.numStr } yield s"$n$ns"
+      r <- for n <- Gen.numChar; ns <- Gen.numStr yield s"$n$ns"
       cs <- arbitrary[Option[String]]
       branch <- arbitrary[Option[String]]
       isChanging <- arbitrary[Boolean]
@@ -97,7 +96,7 @@ class CacheIvyTest extends Properties("CacheIvy") {
       inclusions <- Gen.listOf(arbitrary[InclExclRule])
       extraAttributes <- Gen.mapOf(arbitrary[(String, String)])
       crossVersion <- arbitrary[CrossVersion]
-    } yield ModuleID(
+    yield ModuleID(
       organization = o,
       name = n,
       revision = r,
@@ -115,22 +114,19 @@ class CacheIvyTest extends Properties("CacheIvy") {
   }
 
   property("moduleIDFormat") = forAll { (m: ModuleID) =>
-    def str(m: ModuleID) = {
+    def str(m: ModuleID) =
       import m.*
       s"ModuleID($organization, ${m.name}, $revision, $configurations, $isChanging, $isTransitive, $isForce, $explicitArtifacts, $exclusions, " +
         s"$inclusions, $extraAttributes, $crossVersion, $branchName)"
-    }
-    def eq(a: ModuleID, b: ModuleID): Prop = {
+    def eq(a: ModuleID, b: ModuleID): Prop =
       def rest = a.withCrossVersion(b.crossVersion) == b
-      (a.crossVersion, b.crossVersion) match {
+      (a.crossVersion, b.crossVersion) match
         case (_: Disabled, _: Disabled) => rest
         case (_: Binary, _: Binary)     => rest
         case (_: Full, _: Full)         => rest
         case (a, b)                     => Prop(false) :| s"CrossVersions don't match: $a vs $b"
-      }
 
-    }
     import sbt.librarymanagement.LibraryManagementCodec.given
     cachePreservesEquality(m, eq, str)
   }
-}
+end CacheIvyTest

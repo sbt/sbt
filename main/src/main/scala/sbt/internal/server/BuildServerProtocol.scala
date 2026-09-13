@@ -17,7 +17,6 @@ import sbt.Def.*
 import sbt.Keys.*
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make.*
-import sbt.Scoped.richTaskSeq
 import sbt.SlashSyntax0.*
 import sbt.StandardMain.exchange
 import sbt.internal.bsp.*
@@ -44,7 +43,7 @@ import scala.collection.immutable.ListSet
 import xsbti.VirtualFileRef
 import java.util.concurrent.atomic.AtomicReference
 
-object BuildServerProtocol {
+object BuildServerProtocol:
   import sbt.internal.bsp.codec.JsonProtocol.given
 
   private val capabilities = BuildServerCapabilities(
@@ -69,31 +68,29 @@ object BuildServerProtocol {
 
   lazy val commands: Seq[Command] = Seq(
     Command.single(bspReload) { (state, reqId) =>
-      try {
+      try
         val newState = BuiltinCommands.doLoadProject(state, Project.LoadAction.Current)
         exchange.respondEvent(JNull, Some(reqId), state.source)
         newState
-      } catch {
+      catch
         case NonFatal(e) =>
           val msg = ErrorHandling.reducedToString(e)
           exchange.respondError(ErrorCodes.InternalError, msg, Some(reqId), state.source)
           state.fail
-      }
     }
   )
 
   lazy val globalSettings: Seq[Def.Setting[?]] = Seq(
     bspConfig := {
-      if (bspEnabled.value) {
+      if bspEnabled.value then
         BuildServerConnection.writeConnectionFile(
           sbtVersion.value,
           (ThisBuild / baseDirectory).value
         )
-      } else {
+      else
         val logger = streams.value.log
         logger.warn("BSP is disabled for this build")
         logger.info("add 'Global / bspEnabled := true' to enable BSP")
-      }
     },
     bspEnabled := true,
     bspSbtEnabled := true,
@@ -185,10 +182,9 @@ object BuildServerProtocol {
       val s = state.value
       workspace.warnIfBuildsNonEmpty(Method.Compile, s.log)
       val statusCodes = Keys.bspBuildTargetCompileItem.result.all(filter).value
-      val aggregatedStatusCode = allOrThrow(statusCodes) match {
+      val aggregatedStatusCode = allOrThrow(statusCodes) match
         case Seq() => StatusCode.Success
         case codes => codes.max
-      }
       s.respondEvent(BspCompileResult(None, aggregatedStatusCode))
     }.evaluated,
     bspBuildTargetOutputPaths := bspInputTask { (_, filter) =>
@@ -219,9 +215,11 @@ object BuildServerProtocol {
       val items = bspBuildTargetScalacOptionsItem.result.all(filter).value
       val appProvider = appConfiguration.value.provider()
       val sbtJars = appProvider.mainClasspath()
+      val rootPaths = Keys.rootPaths.value
       val buildItems = workspace.builds.map { build =>
         val plugins: LoadedPlugins = build._2.unit.plugins
-        val scalacOptions = plugins.pluginData.scalacOptions
+        val scalacOptions =
+          Compiler.resolveVirtualizedScalacOptions(plugins.pluginData.scalacOptions, rootPaths)
         val pluginClasspath = plugins.classpath
         val converter = plugins.pluginData.converter
         val classpath =
@@ -330,7 +328,7 @@ object BuildServerProtocol {
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := {
       val target = Keys.bspTargetIdentifier.value
-      val scalacOptions = Keys.scalacOptions.value.toVector
+      val scalacOptions = Keys.resolvedScalacOptions.value.toVector
       val classDirectory = Keys.classDirectory.value
       val classpath = classpathTask.value
       ScalacOptionsItem(target, scalacOptions, classpath, classDirectory.toURI)
@@ -343,7 +341,7 @@ object BuildServerProtocol {
       JavacOptionsItem(target, javacOptions, classpath, classDirectory.toURI)
     },
     bspBuildTargetJVMRunEnvironment := bspInputTask { (_, filter) =>
-      val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+      val items = (run / bspBuildTargetJvmEnvironmentItem).result.all(filter).value
       val successfulItems = anyOrThrow(items)
       val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
       state.value.respondEvent(result)
@@ -354,7 +352,8 @@ object BuildServerProtocol {
       val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
       state.value.respondEvent(result)
     }.evaluated,
-    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem().value,
+    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem(forkOptions).value,
+    run / bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem(run / forkOptions).value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
     bspScalaMainClassesItem := scalaMainClassesTask.value,
@@ -366,7 +365,7 @@ object BuildServerProtocol {
       val logger = streams.value.log
       val meta = isMetaBuild.value
       val spms = sourcePositionMappers.value
-      if (bspEnabled.value) {
+      if bspEnabled.value then
         new BuildServerReporterImpl(
           targetId,
           bspCompileStateInstance,
@@ -376,12 +375,10 @@ object BuildServerProtocol {
           logger,
           underlying
         )
-      } else {
-        new BuildServerForwarder(meta, logger, underlying)
-      }
+      else new BuildServerForwarder(meta, logger, underlying)
     },
   )
-  private[sbt] object Method {
+  private[sbt] object Method:
     final val Initialize = "build/initialize"
     final val BuildTargets = "workspace/buildTargets"
     final val Reload = "workspace/reload"
@@ -401,7 +398,6 @@ object BuildServerProtocol {
     final val ScalaTestClasses = "buildTarget/scalaTestClasses"
     final val ScalaMainClasses = "buildTarget/scalaMainClasses"
     final val Exit = "build/exit"
-  }
   identity(
     Method
   ) // silence spurious "private object Method in object BuildServerProtocol is never used" warning!
@@ -412,7 +408,7 @@ object BuildServerProtocol {
       sbtVersion: String,
       semanticdbEnabled: Boolean,
       semanticdbVersion: String
-  ): ServerHandler = {
+  ): ServerHandler =
     val configurationMap: Map[ConfigKey, Configuration] =
       loadedBuild.allProjectRefs
         .flatMap { case (_, p) => p.configurations }
@@ -547,16 +543,15 @@ object BuildServerProtocol {
         },
       )
     }
-  }
+  end handler
 
   private def getStandaloneSourceFiles(
       sourceFiles: Seq[File],
       sourceDirs: Seq[File]
-  ): Seq[File] = {
+  ): Seq[File] =
     sourceFiles.filterNot { f =>
       sourceDirs.exists(dir => f.toPath.startsWith(dir.toPath))
     }
-  }
 
   private def toSourceItem(itemKind: Int, generated: Boolean)(file: File): SourceItem =
     SourceItem(file.toURI, itemKind, generated)
@@ -566,33 +561,29 @@ object BuildServerProtocol {
       semanticdbVersion: String,
       params: InitializeBuildParams,
       log: Logger
-  ): Unit = {
-    for {
+  ): Unit =
+    for
       data <- params.data
       // try parse metadata as MetalsMetadata
       metalsMetadata <- Converter.fromJson[MetalsMetadata](data).toOption
-    } {
-      if (metalsMetadata.semanticdbVersion.nonEmpty && !semanticdbEnabled) {
+    do
+      if metalsMetadata.semanticdbVersion.nonEmpty && !semanticdbEnabled then
         log.warn(s"${params.displayName} requires the semanticdb compiler plugin")
         log.warn(
           s"consider setting 'Global / semanticdbEnabled := true' in your global sbt settings ($$HOME/.sbt/1.0)"
         )
-      }
 
-      for {
+      for
         requiredVersion <- SemanticVersion.tryParse(metalsMetadata.semanticdbVersion)
         currentVersion <- SemanticVersion.tryParse(semanticdbVersion)
         if requiredVersion > currentVersion
-      } {
+      do
         log.warn(
           s"${params.displayName} requires semanticdb version ${metalsMetadata.semanticdbVersion}, current version is $semanticdbVersion"
         )
         log.warn(
           s"""consider setting 'Global / semanticdbVersion := "${metalsMetadata.semanticdbVersion}"' in your global sbt settings ($$HOME/.sbt/1.0)"""
         )
-      }
-    }
-  }
 
   private def json(r: JsonRpcRequestMessage): JValue =
     r.params.getOrElse(
@@ -607,11 +598,11 @@ object BuildServerProtocol {
       val loadedBuild = Keys.loadedBuild.value
 
       // list all defined scopes for setting bspTargetIdentifier for all projects
-      val scopes: Seq[Scope] = for {
+      val scopes: Seq[Scope] = for
         (ref, project) <- loadedBuild.allProjectRefs
         setting <- project.settings
         if setting.key.key.label == Keys.bspTargetIdentifier.key.label
-      } yield Scope.replaceThis(Scope.Global.rescope(ref))(setting.key.scope)
+      yield Scope.replaceThis(Scope.Global.rescope(ref))(setting.key.scope)
 
       import sbt.TupleSyntax.*
       t2ToApp2(
@@ -623,28 +614,23 @@ object BuildServerProtocol {
         val buildsMap =
           mutable.HashMap[BuildTargetIdentifier, mutable.ListBuffer[BuildTargetIdentifier]]()
 
-        val scopeMap = for {
+        val scopeMap = for
           (targetId, scope, bspEnabled) <- targetIds.lazyZip(scopes).lazyZip(bspEnabled)
           if bspEnabled
-        } yield {
-          (scope.project.toOption: @unchecked) match {
+        yield
+          (scope.project.toOption: @unchecked) match
             case Some(ProjectRef(buildUri, _)) =>
               val loadedBuildUnit = loadedBuild.units(buildUri)
               buildsMap.getOrElseUpdate(
                 toSbtTargetId(loadedBuildUnit),
                 new mutable.ListBuffer
               ) += targetId
-          }
           targetId -> scope
-        }
-        val buildMap = if (bspSbtEnabled.value) {
-          for (loadedBuildUnit <- loadedBuild.units.values) yield {
+        val buildMap = if bspSbtEnabled.value then
+          for loadedBuildUnit <- loadedBuild.units.values yield
             val rootProjectId = loadedBuildUnit.root
             toSbtTargetId(loadedBuildUnit) -> loadedBuildUnit
-          }
-        } else {
-          Nil
-        }
+        else Nil
         BspFullWorkspace(scopeMap.toMap, buildMap.toMap, buildsMap.view.mapValues(_.result()).toMap)
       }
     }
@@ -673,11 +659,11 @@ object BuildServerProtocol {
         val configuration = Keys.configuration.value
         val displayName = BuildTargetName.fromScope(thisProject.id, configuration.name)
         val baseDirectory = Keys.baseDirectory.value.toURI
-        val projectDependencies = for {
+        val projectDependencies = for
           (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
           config <- configs
           if dep != thisProjectRef || config.name != thisConfig.name
-        } yield (dep / config / Keys.bspTargetIdentifier)
+        yield (dep / config / Keys.bspTargetIdentifier)
         val capabilities =
           BuildTargetCapabilities(
             canCompile = true,
@@ -771,7 +757,7 @@ object BuildServerProtocol {
       sbtJars: Array[File],
       targetId: BuildTargetIdentifier,
       build: LoadedBuildUnit
-  ): JavacOptionsItem = {
+  ): JavacOptionsItem =
     val plugins: LoadedPlugins = build.unit.plugins
     val javacOptions = plugins.pluginData.javacOptions.toVector
     val converter = plugins.pluginData.converter
@@ -781,7 +767,6 @@ object BuildServerProtocol {
     val classDirectory = new File(build.localBase, "project/target").toURI
     val item = JavacOptionsItem(targetId, javacOptions, classpath, classDirectory)
     item
-  }
 
   private inline def bspInputTask[T](
       inline taskImpl: (BspFullWorkspace, ScopeFilter) => T
@@ -793,7 +778,12 @@ object BuildServerProtocol {
       Def.task(taskImpl(workspace, filter))
     }
 
-  private def jvmEnvironmentItem(): Initialize[Task[JvmEnvironmentItem]] = Def.task {
+  private def bspEnvironmentVariables(opts: ForkOptions): Vector[String] =
+    opts.envVars.map { (k, v) => s"$k=$v" }.toVector
+
+  private def jvmEnvironmentItem(
+      forkOptions: Initialize[Task[ForkOptions]]
+  ): Initialize[Task[JvmEnvironmentItem]] = Def.task {
     val target = Keys.bspTargetIdentifier.value
     val converter = fileConverter.value
     val classpath = Keys.fullClasspath.value
@@ -801,71 +791,28 @@ object BuildServerProtocol {
       .map(converter.toPath)
       .map(_.toFile.toURI)
       .toVector
-    val jvmOptions = Keys.javaOptions.value.toVector
-    val baseDir = Keys.baseDirectory.value.getAbsolutePath
-    val env = envVars.value
+    val opts = forkOptions.value
+    val workingDir = opts.workingDirectory
+      .getOrElse(new File(sys.props("user.dir")))
+      .getAbsolutePath
 
     JvmEnvironmentItem(
       target,
       classpath,
-      jvmOptions,
-      baseDir,
-      env
+      opts.runJVMOptions,
+      workingDir,
+      opts.envVars
     )
   }
-
-  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] =
-    Def
-      .task {
-        val target = Keys.bspTargetIdentifier.value
-        val scalacOptions = Keys.scalacOptions.value
-        val classDirectory = Keys.classDirectory.value
-        val externalDependencyClasspath = Keys.externalDependencyClasspath.value
-        val internalDependencyClasspath = for {
-          (ref, configs) <- bspInternalDependencyConfigurations.value
-          config <- configs
-        } yield ref / config / Keys.packageBin
-        (
-          target,
-          scalacOptions,
-          classDirectory,
-          externalDependencyClasspath,
-          internalDependencyClasspath
-        )
-      }
-      .flatMapTask {
-        (
-            target,
-            scalacOptions,
-            classDirectory,
-            externalDependencyClasspath,
-            internalDependencyClasspath
-        ) =>
-          Def.task {
-            val converter = fileConverter.value
-            val cp0 = internalDependencyClasspath.join.value.distinct ++
-              externalDependencyClasspath.map(_.data)
-            val classpath = cp0
-              .map(converter.toPath)
-              .map(_.toFile.toURI)
-              .toVector
-            ScalacOptionsItem(
-              target,
-              scalacOptions.toVector,
-              classpath,
-              classDirectory.toURI
-            )
-          }
-      }
 
   private lazy val classpathTask: Def.Initialize[Task[Vector[URI]]] = Def.taskDyn {
     val converter = fileConverter.value
     val externalDependencyClasspath = Keys.externalDependencyClasspath.value
       .map(f => converter.toPath(f.data).toFile.toURI)
-    val internalDependencyClasspath = for {
+    val internalDependencyClasspath = for
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
-    } yield ref / config / Keys.classDirectory
+    yield ref / config / Keys.classDirectory
     Def.task {
       internalDependencyClasspath.join.value.distinct.map(_.toURI).toVector ++
         externalDependencyClasspath
@@ -889,24 +836,23 @@ object BuildServerProtocol {
   private def getDependencySourceItem(
       targetId: BuildTargetIdentifier,
       updateReport: UpdateReport
-  ): DependencySourcesItem = {
-    val sources = for {
+  ): DependencySourcesItem =
+    val sources = for
       configuration <- updateReport.configurations.view
       module <- configuration.modules.view
       (artifact, file) <- module.artifacts
       classifier <- artifact.classifier if classifier == "sources"
-    } yield file.toURI
+    yield file.toURI
     DependencySourcesItem(targetId, sources.toVector.distinct)
-  }
 
   private def getDependencyModulesItem(
       targetId: BuildTargetIdentifier,
       updateReport: UpdateReport
-  ): DependencyModulesItem = {
-    val modules = for {
+  ): DependencyModulesItem =
+    val modules = for
       configuration <- updateReport.configurations.view
       module <- configuration.modules.view
-    } yield {
+    yield
       val moduleId = module.module
       DependencyModule(
         name = s"${moduleId.organization}:${moduleId.name}",
@@ -914,19 +860,17 @@ object BuildServerProtocol {
         dataKind = None,
         data = None,
       )
-    }
     DependencyModulesItem(targetId, modules.toVector.distinct)
-  }
 
   private def bspCompileState: Initialize[BuildServerProtocol.BspCompileState] = Def.setting {
     new BuildServerProtocol.BspCompileState()
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
-    Keys.compile.result.value match {
+    Keys.compile.result.value match
       case Result.Value(_)   => StatusCode.Success
       case Result.Inc(cause) =>
-        cause.getCause match {
+        cause.getCause match
           case _: InterruptedException => StatusCode.Cancelled
           case _: MessageOnlyException =>
             // Rethrow so task failure path sends JSON-RPC error (e.g. respondError project)
@@ -935,8 +879,6 @@ object BuildServerProtocol {
             // Return Error for any compile failure (CompileFailed or other Incomplete)
             // so BSP returns a proper BspCompileResult instead of a JSON-RPC error (#8104)
             StatusCode.Error
-        }
-    }
   }
 
   private val jsonParser: Parser[Try[JValue]] = Parsers.any.*.map(_.mkString)
@@ -947,22 +889,20 @@ object BuildServerProtocol {
       val json = jsonParser.parsed
       val runParams = json.flatMap(Converter.fromJson[RunParams]).get
       val defaultClass = Keys.mainClass.value
-      val defaultJvmOptions = Keys.javaOptions.value
+      val defaultOpts = (run / forkOptions).value
+      val defaultEnv = bspEnvironmentVariables(defaultOpts)
 
-      val mainClass = runParams.dataKind match {
+      val mainClass = runParams.dataKind match
         case Some("scala-main-class") =>
           val data = runParams.data.getOrElse(JNull)
-          Converter.fromJson[ScalaMainClass](data) match {
+          Converter.fromJson[ScalaMainClass](data) match
             case Failure(e) =>
               throw LangServerError(
                 ErrorCodes.ParseError,
                 e.getMessage
               )
             case Success(value) =>
-              value.withEnvironmentVariables(
-                envVars.value.map { (k, v) => s"$k=$v" }.toVector ++ value.environmentVariables
-              )
-          }
+              value.withEnvironmentVariables(defaultEnv ++ value.environmentVariables)
 
         case Some(dataKind) =>
           throw LangServerError(
@@ -979,10 +919,9 @@ object BuildServerProtocol {
               )
             ),
             runParams.arguments,
-            defaultJvmOptions.toVector,
-            envVars.value.map { (k, v) => s"$k=$v" }.toVector
+            defaultOpts.runJVMOptions,
+            defaultEnv
           )
-      }
       runMainClassTask(mainClass, runParams.originId)
     }
 
@@ -992,23 +931,21 @@ object BuildServerProtocol {
       val testParams = json.flatMap(Converter.fromJson[TestParams]).get
       val workspace = bspFullWorkspace.value
 
-      val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match {
+      val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match
         case Some("scala-test") =>
           val data = testParams.data.getOrElse(JNull)
-          val items = Converter.fromJson[ScalaTestParams](data) match {
+          val items = Converter.fromJson[ScalaTestParams](data) match
             case Failure(e) =>
               throw LangServerError(ErrorCodes.ParseError, e.getMessage)
             case Success(value) => value.testClasses
-          }
           val testTasks: Seq[Def.Initialize[Task[Unit]]] = items.map { item =>
             val scope = workspace.scopes(item.target)
-            item.classes.toList match {
+            item.classes.toList match
               case Nil     => Def.task(())
               case classes =>
                 (scope / testOnly)
                   .toTask(" " + classes.mkString(" "))
                   .map(r => ())
-            }
           }
           testTasks.joinWith(ts => TaskExtra.joinTasks(ts).join).result
 
@@ -1022,14 +959,12 @@ object BuildServerProtocol {
           // run allTests in testParams.targets
           val filter = ScopeFilter.in(testParams.targets.map(workspace.scopes))
           test.toTask("").map(r => ()).all(filter).result
-      }
 
       Def.task {
         val state = Keys.state.value
-        val statusCode = resultTask.value match {
+        val statusCode = resultTask.value match
           case Result.Value(_) => StatusCode.Success
           case Result.Inc(_)   => StatusCode.Error
-        }
         val _ = state.respondEvent(TestResult(testParams.originId, statusCode))
       }
     }
@@ -1038,21 +973,17 @@ object BuildServerProtocol {
     val state = Keys.state.value
     val logger = Keys.streams.value.log
     val classpath = Attributed.data(fullClasspath.value)
-    val forkOpts = ForkOptions(
-      javaHome = javaHome.value,
-      outputStrategy = outputStrategy.value,
-      // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
-      bootJars = Vector(),
-      workingDirectory = Some(baseDirectory.value),
-      runJVMOptions = mainClass.jvmOptions,
-      connectInput = connectInput.value,
-      envVars = mainClass.environmentVariables
-        .flatMap(_.split("=", 2).toList match {
-          case key :: value :: Nil => Some(key -> value)
-          case _                   => None
-        })
-        .toMap
-    )
+    // connectInput is disabled so non-interactive BSP output is captured as log messages
+    val forkOpts = (run / forkOptions).value
+      .withConnectInput(false)
+      .withRunJVMOptions(mainClass.jvmOptions)
+      .withEnvVars(
+        mainClass.environmentVariables
+          .flatMap(_.split("=", 2).toList match
+            case key :: value :: Nil => Some(key -> value)
+            case _                   => None)
+          .toMap
+      )
     val runner = new ForkRun(forkOpts)
     val converter = fileConverter.value
     val cp = classpath.map(converter.toPath)
@@ -1083,10 +1014,10 @@ object BuildServerProtocol {
       }
     val ref = Keys.thisProjectRef.value
     val thisConfig = Keys.configuration.value
-    val transitiveDependencies = for {
+    val transitiveDependencies = for
       (dep, configs) <- directDependencies
       config <- configs if dep != ref || config.name != thisConfig.name
-    } yield dep / config / Keys.bspInternalDependencyConfigurations
+    yield dep / config / Keys.bspInternalDependencyConfigurations
     Def.setting {
       val allDependencies = directDependencies ++
         transitiveDependencies.join.value.flatten
@@ -1102,7 +1033,7 @@ object BuildServerProtocol {
   }
 
   private def scalaTestClassesTask: Initialize[Task[Seq[ScalaTestClassesItem]]] = Def.task {
-    Keys.definedTests.?.value match {
+    Keys.definedTests.?.value match
       case None              => Vector.empty
       case Some(definitions) =>
         val frameworks: Seq[Framework] = Keys.loadedTestFrameworks.?.value
@@ -1118,17 +1049,17 @@ object BuildServerProtocol {
             framework.name()
           )
         }.toSeq
-    }
   }
 
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
-    val jvmOptions = Keys.javaOptions.value.toVector
+    val opts = (run / forkOptions).value
+    val env = bspEnvironmentVariables(opts)
     val mainClasses = Keys.discoveredMainClasses.value.map(
       ScalaMainClass(
         _,
         Vector(),
-        jvmOptions,
-        envVars.value.map { (k, v) => s"$k=$v" }.toVector
+        opts.runJVMOptions,
+        env
       )
     )
     ScalaMainClassesItem(
@@ -1140,12 +1071,11 @@ object BuildServerProtocol {
   private def extractJavaVersion(
       javacOptions: Seq[String],
       isForkedJava: Boolean
-  ): Option[String] = {
-    def getVersionAfterFlag(flag: String): Option[String] = {
+  ): Option[String] =
+    def getVersionAfterFlag(flag: String): Option[String] =
       val index = javacOptions.indexOf(flag)
-      if (index >= 0) javacOptions.lift(index + 1)
+      if index >= 0 then javacOptions.lift(index + 1)
       else None
-    }
 
     val versionFromJavacOption = getVersionAfterFlag("--release")
       .orElse(getVersionAfterFlag("--target"))
@@ -1153,90 +1083,73 @@ object BuildServerProtocol {
 
     versionFromJavacOption.orElse {
       // TODO: extract java version from forked javac
-      if (isForkedJava) None else sys.props.get("java.version")
+      if isForkedJava then None else sys.props.get("java.version")
     }
-  }
 
   // naming convention still seems like the only reliable way to get IntelliJ to import this correctly
   // https://github.com/JetBrains/intellij-scala/blob/a54c2a7c157236f35957049cbfd8c10587c9e60c/scala/scala-impl/src/org/jetbrains/sbt/language/SbtFileImpl.scala#L82-L84
-  private def toSbtTargetIdName(ref: LoadedBuildUnit): String = {
+  private def toSbtTargetIdName(ref: LoadedBuildUnit): String =
     ref.root + "-build"
-  }
-  private def toSbtTargetId(ref: LoadedBuildUnit): BuildTargetIdentifier = {
+  private def toSbtTargetId(ref: LoadedBuildUnit): BuildTargetIdentifier =
     val name = toSbtTargetIdName(ref)
     val build = ref.unit.uri
-    val sanitized = build.toString.indexOf("#") match {
+    val sanitized = build.toString.indexOf("#") match
       case i if i > 0 => build.toString.take(i)
       case _          => build.toString
-    }
     BuildTargetIdentifier(new URI(sanitized + "#" + name))
-  }
   private def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
-    ref match {
+    ref match
       case ProjectRef(build, project) =>
-        val sanitized = build.toString.indexOf("#") match {
+        val sanitized = build.toString.indexOf("#") match
           case i if i > 0 => build.toString.take(i)
           case _          => build.toString
-        }
         BuildTargetIdentifier(new URI(s"$sanitized#$project/${config.id}"))
       case _ => sys.error(s"unexpected $ref")
-    }
 
-  private def anyOrThrow[T](results: Seq[Result[T]]): Seq[T] = {
+  private def anyOrThrow[T](results: Seq[Result[T]]): Seq[T] =
     val successes = results.collect { case Result.Value(v) => v }
     val errors = results.collect { case Result.Inc(cause) => cause }
-    if (successes.nonEmpty || errors.isEmpty) successes
+    if successes.nonEmpty || errors.isEmpty then successes
     else throw Incomplete(None, causes = errors)
-  }
 
-  private def allOrThrow[T](results: Seq[Result[T]]): Seq[T] = {
+  private def allOrThrow[T](results: Seq[Result[T]]): Seq[T] =
     val successes = results.collect { case Result.Value(v) => v }
     val errors = results.collect { case Result.Inc(cause) => cause }
-    if (errors.isEmpty) successes
+    if errors.isEmpty then successes
     else throw Incomplete(None, causes = errors)
-  }
 
-  private case class SemanticVersion(major: Int, minor: Int) extends Ordered[SemanticVersion] {
-    override def compare(that: SemanticVersion): Int = {
-      if (that.major != major) major.compare(that.major)
+  private case class SemanticVersion(major: Int, minor: Int) extends Ordered[SemanticVersion]:
+    override def compare(that: SemanticVersion): Int =
+      if that.major != major then major.compare(that.major)
       else minor.compare(minor)
-    }
-  }
 
-  private object SemanticVersion {
-    def tryParse(versionStr: String): Option[SemanticVersion] = {
-      try {
+  private object SemanticVersion:
+    def tryParse(versionStr: String): Option[SemanticVersion] =
+      try
         val parts = versionStr.split('.')
         Some(SemanticVersion(parts(0).toInt, parts(1).toInt))
-      } catch {
-        case NonFatal(_) => None
-      }
-    }
-  }
+      catch case NonFatal(_) => None
 
   /** The regular targets for each scope and meta-targets for the SBT build. */
   private[sbt] final case class BspFullWorkspace(
       scopes: Map[BuildTargetIdentifier, Scope],
       builds: Map[BuildTargetIdentifier, LoadedBuildUnit],
       buildToScope: Map[BuildTargetIdentifier, Seq[BuildTargetIdentifier]]
-  ) {
-    def filter(targets: Seq[BuildTargetIdentifier]): BspFullWorkspace = {
+  ):
+    def filter(targets: Seq[BuildTargetIdentifier]): BspFullWorkspace =
       val set = targets.toSet
       def filterMap[T](map: Map[BuildTargetIdentifier, T]) = map.filter(x => set.contains(x._1))
       BspFullWorkspace(filterMap(scopes), filterMap(builds), buildToScope)
-    }
-    def warnIfBuildsNonEmpty(method: String, log: Logger): Unit = {
-      if (builds.nonEmpty)
+    def warnIfBuildsNonEmpty(method: String, log: Logger): Unit =
+      if builds.nonEmpty then
         log.warn(
           s"$method is a no-op for build.sbt targets: ${builds.keys.mkString("[", ",", "]")}"
         )
-    }
-  }
 
   /**
    * Additional information about compilation status for given build target.
    */
-  private[server] final class BspCompileState {
+  private[server] final class BspCompileState:
 
     /**
      * keeps track of problems in a given file in a map of virtual source file to text documents.
@@ -1255,5 +1168,4 @@ object BuildServerProtocol {
      * see: https://github.com/scalacenter/bloop/issues/726
      */
     val isFirstReport: AtomicBoolean = new AtomicBoolean(true)
-  }
-}
+end BuildServerProtocol

@@ -75,6 +75,7 @@ object TestKit:
       .withConfigurations(configurations)
       .withScalaModuleInfo(scalaModuleInfo)
     lmEngine.moduleDescriptor(moduleSetting)
+  end module
 
   def defaultModuleId: ModuleID =
     ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile"))

@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import scala.annotation.tailrec
 import scala.quoted.*
 
-object Configurations {
+object Configurations:
   inline def config(name: String): Configuration = ${
     ConfigurationMacro.configMacroImpl('{ name })
   }
@@ -23,12 +23,11 @@ object Configurations {
   lazy val TestInternal = fullInternal(Test)
   lazy val CompileInternal = fullInternal(Compile)
 
-  def internalMap(c: Configuration) = c match {
+  def internalMap(c: Configuration) = c match
     case Compile => CompileInternal
     case Test    => TestInternal
     case Runtime => RuntimeInternal
     case _       => c
-  }
 
   private[sbt] def internal(base: Configuration, ext: Configuration*) =
     Configuration.of(base.id + "Internal", base.name + "-internal").extend(ext*).hide
@@ -56,24 +55,23 @@ object Configurations {
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
   private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
   private[sbt] def DefaultConfiguration(mavenStyle: Boolean) =
-    if (mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
+    if mavenStyle then DefaultMavenConfiguration else DefaultIvyConfiguration
   private[sbt] def defaultConfiguration(mavenStyle: Boolean) =
-    if (mavenStyle) Configurations.Compile else Configurations.Default
+    if mavenStyle then Configurations.Compile else Configurations.Default
   private[sbt] def removeDuplicates(configs: Iterable[Configuration]) =
     configs.map(config => (config.name, config)).toMap.values.toSet
 
   /** Returns true if the configuration should be under the influence of scalaVersion. */
   private[sbt] def underScalaVersion(c: Configuration): Boolean =
-    c match {
+    c match
       case Default | Compile | Provided | Runtime | Test | Optional | CompilerPlugin |
           CompileInternal | RuntimeInternal | TestInternal =>
         true
       case config =>
         config.extendsConfigs.exists(underScalaVersion)
-    }
-}
+end Configurations
 
-private[librarymanagement] abstract class ConfigurationExtra {
+private[librarymanagement] abstract class ConfigurationExtra:
   def id: String
   def name: String
   def description: String
@@ -98,7 +96,7 @@ private[librarymanagement] abstract class ConfigurationExtra {
   def notTransitive = intransitive
   def intransitive = Configuration.of(id, name, description, isPublic, extendsConfigs, false)
   def hide = Configuration.of(id, name, description, false, extendsConfigs, transitive)
-}
+end ConfigurationExtra
 
 private[sbt] object ConfigurationMacro:
   def configMacroImpl(name: Expr[String])(using Quotes): Expr[Configuration] =
@@ -122,7 +120,6 @@ private[sbt] object ConfigurationMacro:
     '{ Configuration.of($id, $name) }
 end ConfigurationMacro
 
-private[librarymanagement] abstract class ConfigRefFunctions {
+private[librarymanagement] abstract class ConfigRefFunctions:
   implicit def configToConfigRef(c: Configuration): ConfigRef =
     c.toConfigRef
-}

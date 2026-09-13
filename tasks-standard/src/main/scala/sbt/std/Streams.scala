@@ -25,7 +25,7 @@ import sbt.util.*
  * a particular scoped key. For example, logging for Test/compile is by default sent to the "out"
  * stream in the Test/compile context.
  */
-sealed trait TaskStreams[Key] {
+sealed trait TaskStreams[Key]:
 
   /** The default stream ID, used when an ID is not provided. */
   def default = outID
@@ -75,50 +75,43 @@ sealed trait TaskStreams[Key] {
   def log(sid: String): ManagedLogger
 
   private def getID(s: Option[String]) = s getOrElse default
-}
-sealed trait ManagedStreams[Key] extends TaskStreams[Key] {
+end TaskStreams
+sealed trait ManagedStreams[Key] extends TaskStreams[Key]:
   def open(): Unit
   def close(): Unit
   def isClosed: Boolean
-}
 
-trait Streams[Key] {
+trait Streams[Key]:
   def apply(a: Key): ManagedStreams[Key]
-  def use[T](key: Key)(f: TaskStreams[Key] => T): T = {
+  def use[T](key: Key)(f: TaskStreams[Key] => T): T =
     val s = apply(key)
     s.open()
-    try {
+    try
       f(s)
-    } finally {
+    finally
       s.close()
-    }
-  }
-}
 trait CloseableStreams[Key] extends Streams[Key] with java.io.Closeable
-object Streams {
+object Streams:
   private val closeQuietly = (c: Closeable) =>
-    try {
-      c.close()
-    } catch { case _: IOException => () }
+    try c.close()
+    catch case _: IOException => ()
   private val streamLocks = new ConcurrentHashMap[File, AnyRef]()
 
-  def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
+  def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key]:
     private val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
 
     def apply(key: Key): ManagedStreams[Key] =
       synchronized {
-        streams.get(key) match {
+        streams.get(key) match
           case Some(s) if !s.isClosed => s
           case _                      =>
             val newS = delegate(key)
             streams.put(key, newS)
             newS
-        }
       }
 
     def close(): Unit =
       synchronized { streams.values.foreach(_.close()); streams.clear() }
-  }
 
   def apply[Key](
       taskDirectory: Key => File,
@@ -137,7 +130,7 @@ object Streams {
       mkLogger: (Key, PrintWriter) => ManagedLogger,
       mkFactory: File => CacheStoreFactory
   ): Streams[Key] = (a: Key) =>
-    new ManagedStreams[Key] {
+    new ManagedStreams[Key]:
       private var opened: List[Closeable] = nil
       private var closed = false
 
@@ -169,11 +162,10 @@ object Streams {
       def binary(sid: String = default): BufferedOutputStream =
         make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))
 
-      lazy val cacheDirectory: File = {
+      lazy val cacheDirectory: File =
         val dir = taskDirectory(a)
         IO.createDirectory(dir)
         dir
-      }
 
       lazy val cacheStoreFactory: CacheStoreFactory = mkFactory(cacheDirectory)
 
@@ -184,18 +176,16 @@ object Streams {
         val file = taskDirectory(a) / sid
         val parent = file.getParentFile
         val newLock = new AnyRef
-        val lock = streamLocks.putIfAbsent(parent, newLock) match {
+        val lock = streamLocks.putIfAbsent(parent, newLock) match
           case null => newLock
           case l    => l
-        }
         try
           lock.synchronized {
-            if (!file.exists) IO.touch(file, setModified = false)
+            if !file.exists then IO.touch(file, setModified = false)
           }
-        finally {
+        finally
           streamLocks.remove(parent)
           ()
-        }
         val t = f(file)
         opened ::= (t: Closeable)
         t
@@ -206,13 +196,11 @@ object Streams {
       def isClosed: Boolean = synchronized { closed }
 
       def close(): Unit = synchronized {
-        if (!closed) {
+        if !closed then
           closed = true
           opened foreach closeQuietly
-        }
       }
       def checkOpen(): Unit = synchronized {
-        if (closed) sys.error("Streams for '" + name(a) + "' have been closed.")
+        if closed then sys.error("Streams for '" + name(a) + "' have been closed.")
       }
-    }
-}
+end Streams

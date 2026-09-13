@@ -1,7 +1,7 @@
 // Regression test for #8921: pipelining flags must not leak into console/scalacOptions.
 
 ThisBuild / usePipelining := true
-ThisBuild / scalaVersion  := "3.8.1"
+ThisBuild / scalaVersion  := "3.9.0"
 
 val checkConsoleScalacOptions = taskKey[Unit](
   "Fails if console/scalacOptions still contains pipelining flags (-Ypickle-java / -Ypickle-write)"

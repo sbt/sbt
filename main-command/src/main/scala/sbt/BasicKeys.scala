@@ -19,7 +19,7 @@ import sbt.util.{ ActionCacheStore, Level }
 import scala.concurrent.duration.FiniteDuration
 import xsbti.{ FileConverter, VirtualFile }
 
-object BasicKeys {
+object BasicKeys:
   val historyPath = AttributeKey[Option[File]](
     "history",
     "The location where command line history is persisted.",
@@ -178,6 +178,6 @@ object BasicKeys {
     "Toggles whether or not to close system in, out and error when the server starts.",
     1000
   )
-}
+end BasicKeys
 
 case class TemplateResolverInfo(module: ModuleID, implementationClass: String)

@@ -7,15 +7,15 @@ lazy val root = (project in file(".")).settings(
     XML.loadFile(converter.toPath(vf).toFile)
   },
   description := "pom.xml test description",
-  homepage := Some(url("https://example.com/pom_test_url")),
+  homepage := Some(uri("https://example.com/pom_test_url")),
   TaskKey[Unit]("checkPom") := checkPom.value,
   TaskKey[Unit]("checkExtra") := checkExtra.value,
   TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,
   TaskKey[Unit]("checkAPIURL") := checkAPIURL.value,
   TaskKey[Unit]("checkReleaseNotesURL") := checkReleaseNotesURL.value,
   resolvers += Resolver.sonatypeRepo("snapshots"),
-  apiURL := Some(url("https://www.scala-sbt.org/1.x/api/")),
-  releaseNotesURL := Some(url("https://github.com/sbt/sbt/releases")),
+  apiURL := Some(uri("https://www.scala-sbt.org/1.x/api/")),
+  releaseNotesURL := Some(uri("https://github.com/sbt/sbt/releases")),
   makePomConfiguration := {
     val p = makePomConfiguration.value
     p.withExtra(<extra-tag/>)

@@ -9,6 +9,9 @@ lazy val runAndTest = project.in(file("run-and-test"))
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
     Compile / javaOptions := Vector("Xmx256M"),
     Compile / envVars := Map("KEY" -> "VALUE"),
+    Compile / run / forkOptions := Def.uncached(
+      (Compile / run / forkOptions).value.withWorkingDirectory(Some(baseDirectory.value))
+    ),
 
     Test / javaOptions := Vector("Xmx512M"),
     Test / envVars := Map("KEY_TEST" -> "VALUE_TEST"),
@@ -34,6 +37,12 @@ lazy val respondError = project.in(file("respond-error"))
 lazy val util = project.settings(
   Compile / classDirectory := baseDirectory.value / "classes"
 )
+
+lazy val scalacOptionsPlugin = project
+  .in(file("scalac-options-plugin"))
+  .settings(
+    addCompilerPlugin(("org.typelevel" % "kind-projector" % "0.13.3").cross(CrossVersion.full))
+  )
 
 lazy val diagnostics = project
 

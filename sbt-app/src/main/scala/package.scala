@@ -39,6 +39,8 @@ package object sbt
   // IO
   def uri(s: String): URI = new URI(s)
   def file(s: String): File = new File(s)
+
+  @deprecated("Use uri(...) instead", "2.0.2")
   def url(s: String): URI = new URI(s)
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
   implicit def filesToFinder(cc: Iterable[File]): sbt.io.PathFinder =
@@ -56,11 +58,10 @@ package object sbt
   given singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
   // others
 
-  object CompileOrder {
+  object CompileOrder:
     val JavaThenScala = xsbti.compile.CompileOrder.JavaThenScala
     val ScalaThenJava = xsbti.compile.CompileOrder.ScalaThenJava
     val Mixed = xsbti.compile.CompileOrder.Mixed
-  }
   type CompileOrder = xsbti.compile.CompileOrder
 
   final val ThisScope = Scope.ThisScope

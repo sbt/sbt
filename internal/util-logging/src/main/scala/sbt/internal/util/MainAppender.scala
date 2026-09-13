@@ -11,7 +11,7 @@ package sbt.internal.util
 import sbt.util.*
 import java.io.PrintWriter
 
-object MainAppender {
+object MainAppender:
   import java.util.concurrent.atomic.AtomicInteger
   private def generateGlobalBackingName: String =
     "GlobalBacking" + generateId.incrementAndGet
@@ -21,36 +21,32 @@ object MainAppender {
       log: ManagedLogger,
       config: MainAppenderConfig,
       context: LoggerContext
-  ): ManagedLogger = {
+  ): ManagedLogger =
     import config.*
     // TODO
     // backed setTrace backingTrace
     // multi: Logger
 
     context.clearAppenders(log.name)
-    consoleOpt match {
+    consoleOpt match
       case Some(a: ConsoleAppender) =>
         a.setTrace(screenTrace)
         context.addAppender(log.name, a -> screenLevel)
       case _ =>
-    }
     context.addAppender(log.name, backed -> backingLevel)
     extra.foreach(a => context.addAppender(log.name, a -> Level.Info))
     log
-  }
 
   def globalDefault(
       console: ConsoleOut
-  ): (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging = {
+  ): (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging =
     lazy val newAppender
         : (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging =
-      (log, writer, backing, lc) => {
+      (log, writer, backing, lc) =>
         val backed: Appender = defaultBacked(generateGlobalBackingName)(writer)
         val full = multiLogger(log, defaultMultiConfig(Option(console), backed, Nil), lc)
         GlobalLogging(full, console, backed, backing, newAppender)
-      }
     newAppender
-  }
 
   def defaultMultiConfig(
       consoleOpt: Option[ConsoleOut],
@@ -73,13 +69,12 @@ object MainAppender {
   def defaultScreen(
       console: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender = {
+  ): Appender =
     ConsoleAppender(
       ConsoleAppender.generateName(),
       console,
       suppressedMessage = suppressedMessage
     )
-  }
 
   def defaultScreen(
       name: String,
@@ -98,13 +93,12 @@ object MainAppender {
     defaultBacked(generateGlobalBackingName, useFormat)
 
   def defaultBacked(loggerName: String, useFormat: Boolean): PrintWriter => Appender =
-    to => {
+    to =>
       ConsoleAppender(
         ConsoleAppender.generateName(),
         ConsoleOut.printWriterOut(to),
         useFormat = useFormat
       )
-    }
 
   final case class MainAppenderConfig(
       consoleOpt: Option[Appender],
@@ -115,4 +109,4 @@ object MainAppender {
       screenTrace: Int,
       backingTrace: Int
   )
-}
+end MainAppender

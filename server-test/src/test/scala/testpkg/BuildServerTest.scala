@@ -11,6 +11,7 @@ import sbt.internal.bsp.*
 import sbt.internal.bsp.codec.JsonProtocol.given
 import sbt.internal.langserver.{ ErrorCodes, LogMessageParams }
 import sbt.internal.langserver.codec.JsonProtocol.given
+import sbt.internal.protocol.JsonRpcNotificationMessage
 import sbt.IO
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
@@ -18,10 +19,13 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import java.io.File
 import java.net.URI
 import java.nio.file.{ Files, Paths }
+import java.util.concurrent.TimeoutException
+import scala.annotation.tailrec
 import scala.concurrent.duration.*
+import scala.util.{ Failure, Success }
 
 // starts svr using server-test/buildserver and perform custom server tests
-class BuildServerTest extends AbstractServerTest {
+class BuildServerTest extends AbstractServerTest:
 
   override val testDirectory: String = "buildserver"
 
@@ -52,12 +56,11 @@ class BuildServerTest extends AbstractServerTest {
     val scalaBuildTarget =
       Converter.fromJsonOptionUnsafe[ScalaBuildTarget](utilTarget.data)
     val javaTarget = scalaBuildTarget.jvmBuildTarget
-    (javaTarget.flatMap(_.javaVersion), javaTarget.flatMap(_.javaHome)) match {
+    (javaTarget.flatMap(_.javaVersion), javaTarget.flatMap(_.javaHome)) match
       case (Some(javaVersion), Some(javaHome)) =>
         assert(javaVersion.equals(sys.props("java.version")))
         assert(javaHome.equals(Paths.get(sys.props("java.home")).toUri))
       case _ => fail("JVM build target should contain javaVersion and javaHome")
-    }
   }
 
   test("buildTarget/sources") {
@@ -200,11 +203,11 @@ class BuildServerTest extends AbstractServerTest {
 
     svr.session
       .waitForNotificationMsg(20.seconds) { n =>
-        n.method match {
+        n.method match
           case "build/publishDiagnostics" =>
             n.params.flatMap(Converter.fromJson[PublishDiagnosticsParams](_).toOption).foreach {
               p =>
-                if (p.textDocument.uri.toString.contains("Diagnostics.scala"))
+                if p.textDocument.uri.toString.contains("Diagnostics.scala") then
                   throw new Exception("shouldn't send publishDiagnostics if noOp compilation")
             }
             false
@@ -213,7 +216,6 @@ class BuildServerTest extends AbstractServerTest {
               .flatMap(Converter.fromJson[TaskFinishParams](_).toOption)
               .exists(_.data.exists(d => CompactPrinter(d).contains("\"noOp\":true")))
           case _ => false
-        }
       }
       .get
   }
@@ -260,7 +262,7 @@ class BuildServerTest extends AbstractServerTest {
     val buildTarget = buildTargetUri("diagnostics", "Compile")
     val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
     val original = IO.read(mainFile)
-    try {
+    try
       IO.write(
         mainFile,
         """|object Diagnostics {
@@ -273,9 +275,95 @@ class BuildServerTest extends AbstractServerTest {
         res.statusCode == StatusCode.Error,
         s"expected StatusCode.Error, got ${res.statusCode}"
       )
-    } finally {
-      IO.write(mainFile, original)
-    }
+    finally IO.write(mainFile, original)
+  }
+
+  // 1. Cause a real compile error and observe non-empty diagnostics.
+  // 2. Request buildTarget/scalaMainClasses.
+  // 3. Watch any notifications emitted while that request is processed.
+  // 4. Fail if one of them is the forbidden empty diagnostic reset.
+  test("buildTarget/scalaMainClasses does not clear compile diagnostics (#9345)") {
+    def isForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Boolean =
+      n.method == "build/publishDiagnostics" &&
+        n.params
+          .flatMap(Converter.fromJson[PublishDiagnosticsParams](_).toOption)
+          .exists(p =>
+            p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+              p.reset &&
+              p.diagnostics.isEmpty
+          )
+
+    def failIfForbiddenDiagnosticReset(n: JsonRpcNotificationMessage): Unit =
+      if isForbiddenDiagnosticReset(n) then
+        fail(
+          "buildTarget/scalaMainClasses must not publish empty reset=true " +
+            "diagnostics for Diagnostics.scala after a failed compile (#9345)"
+        )
+
+    @tailrec
+    def drainQueuedNotificationsAndFailOnForbiddenReset(): Unit =
+      svr.session.waitForNotificationMsg(Duration.Zero)(_ => true) match
+        case Success(n) =>
+          failIfForbiddenDiagnosticReset(n)
+          drainQueuedNotificationsAndFailOnForbiddenReset()
+        case Failure(_: TimeoutException) => ()
+        case Failure(e)                   => throw e
+
+    val buildTarget = buildTargetUri("diagnostics", "Compile")
+    val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
+    val original = IO.read(mainFile)
+    try
+      IO.write(
+        mainFile,
+        """|object Diagnostics {
+           |  private val a: Int = ""
+           |}""".stripMargin
+      )
+
+      val compileId = compile(buildTarget)
+      val res = svr.session.waitForResultInResponseMsg[BspCompileResult](30.seconds, compileId).get
+      assert(
+        res.statusCode == StatusCode.Error,
+        s"expected StatusCode.Error, got ${res.statusCode}"
+      )
+
+      svr.session
+        .waitForParamsInNotificationMsg[PublishDiagnosticsParams](30.seconds) { p =>
+          p.textDocument.uri.toString.contains("Diagnostics.scala") &&
+          p.diagnostics.exists(d =>
+            d.severity.contains(DiagnosticSeverity.Error) &&
+              (d.message.contains("type mismatch") ||
+                d.message.contains("Found:") ||
+                d.message.contains("Required:"))
+          )
+        }
+        .get
+
+      svr.session
+        .waitForParamsInNotificationMsg[TaskFinishParams](30.seconds) { p =>
+          p.message.contains("Compiled diagnostics")
+        }
+        .get
+
+      val targets = Vector(BuildTargetIdentifier(buildTarget))
+      val mainClassesId =
+        sendRequest("buildTarget/scalaMainClasses", ScalaMainClassesParams(targets, None))
+
+      svr.session
+        .waitForNotificationMsg(30.seconds) { n =>
+          failIfForbiddenDiagnosticReset(n)
+          n.method == "build/taskFinish" &&
+          n.params
+            .flatMap(Converter.fromJson[TaskFinishParams](_).toOption)
+            .exists(_.message.contains("Compiled diagnostics"))
+        }
+        .get
+
+      svr.session.waitForResponseMsg(30.seconds, mainClassesId).get
+
+      drainQueuedNotificationsAndFailOnForbiddenReset()
+    finally IO.write(mainFile, original)
+    end try
   }
 
   test("buildTarget/compile: Java diagnostics") {
@@ -338,6 +426,39 @@ class BuildServerTest extends AbstractServerTest {
     )
   }
 
+  test("buildTarget/scalacOptions resolves cache placeholders (#9578)") {
+    val buildTargets = Seq(buildTargetUri("scalacOptionsPlugin", "Compile"))
+    val id = scalacOptions(buildTargets)
+    val result =
+      svr.session.waitForResultInResponseMsg[ScalacOptionsResult](30.seconds, id).get
+    val options = result.items.head.options
+
+    assert(
+      options.forall(!_.contains("${")),
+      s"buildTarget/scalacOptions returned an unresolved cache placeholder: $options"
+    )
+
+    // The kind-projector compiler plugin must be reported as a concrete, absolute,
+    // existing jar path — not a virtualized ${CSR_CACHE}/... reference.
+    val xplugin = options
+      .find(_.startsWith("-Xplugin:"))
+      .getOrElse(fail(s"expected a -Xplugin compiler-plugin option, got: $options"))
+    val pluginPath = xplugin.stripPrefix("-Xplugin:")
+    val pluginFile = new File(pluginPath)
+    assert(
+      pluginFile.isAbsolute,
+      s"resolved -Xplugin path is not absolute: $pluginPath"
+    )
+    assert(
+      pluginFile.getName.startsWith("kind-projector"),
+      s"expected the kind-projector plugin jar, got: $pluginPath"
+    )
+    assert(
+      pluginFile.exists,
+      s"resolved -Xplugin jar does not exist on disk: $pluginPath"
+    )
+  }
+
   test("buildTarget/cleanCache") {
     def classFile = svr.baseDirectory.toPath.resolve(
       "target/out/jvm/scala-2.13.11/runandtest/classes/main/Main.class"
@@ -380,8 +501,12 @@ class BuildServerTest extends AbstractServerTest {
     val id = sendRequest("buildTarget/scalaMainClasses", ScalaMainClassesParams(targets, None))
     val res =
       svr.session.waitForResultInResponseMsg[ScalaMainClassesResult](30.seconds, id).get
-    val classes = res.items.flatMap(_.classes.map(_.`class`))
-    assert(classes.contains("main.Main"))
+    val mainClasses = res.items.flatMap(_.classes)
+    assert(mainClasses.map(_.`class`).contains("main.Main"))
+    // JVM options and environment are derived from run / forkOptions
+    val main = mainClasses.find(_.`class` == "main.Main").get
+    assert(main.jvmOptions.contains("Xmx256M"))
+    assert(main.environmentVariables.contains("KEY=VALUE"))
   }
 
   test("buildTarget/run") {
@@ -406,18 +531,23 @@ class BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/jvmRunEnvironment") {
     val buildTarget = buildTargetUri("runAndTest", "Compile")
-    val targets = Vector(BuildTargetIdentifier(buildTarget))
+    val utilTarget = buildTargetUri("util", "Compile")
+    val targets = Vector(buildTarget, utilTarget).map(BuildTargetIdentifier.apply)
     val id = sendRequest("buildTarget/jvmRunEnvironment", JvmRunEnvironmentParams(targets, None))
     val res =
       svr.session.waitForResultInResponseMsg[JvmRunEnvironmentResult](10.seconds, id).get
-    val item = res.items.head
+    val item = res.items.find(_.target.uri == buildTarget).get
     assert(
       item.classpath.exists(_.toString.contains("jsoniter-scala-core_2.13-2.13.11.jar")),
       "classpath should contain compile dependency"
     )
     assert(item.jvmOptions.contains("Xmx256M"))
     assert(item.environmentVariables == Map("KEY" -> "VALUE"))
-    assert(item.workingDirectory.contains("/buildserver/run-and-test"))
+    // run / forkOptions is honored for the run environment
+    assert(item.workingDirectory.endsWith("/run-and-test"))
+    // by default, forked run inherits sbt's working directory
+    val utilItem = res.items.find(_.target.uri == utilTarget).get
+    assert(utilItem.workingDirectory.endsWith("/buildserver"))
   }
 
   test("buildTarget/jvmTestEnvironment") {
@@ -437,6 +567,8 @@ class BuildServerTest extends AbstractServerTest {
     )
     assert(item.jvmOptions.contains("Xmx512M"))
     assert(item.environmentVariables == Map("KEY_TEST" -> "VALUE_TEST"))
+    // forked tests keep the project's baseDirectory as their working directory
+    assert(item.workingDirectory.endsWith("/run-and-test"))
   }
 
   test("buildTarget/scalaTestClasses") {
@@ -721,7 +853,7 @@ class BuildServerTest extends AbstractServerTest {
   }
    */
 
-  private def initializeRequest(): String = {
+  private def initializeRequest(): String =
     val params = InitializeBuildParams(
       "test client",
       "1.0.0",
@@ -731,7 +863,6 @@ class BuildServerTest extends AbstractServerTest {
       None
     )
     sendRequest("build/initialize", params)
-  }
 
   private def assertProcessing(method: String): Unit =
     svr.session
@@ -743,47 +874,40 @@ class BuildServerTest extends AbstractServerTest {
   private def reloadWorkspace(): String =
     sendRequest("workspace/reload")
 
-  private def compile(buildTarget: URI): String = {
+  private def compile(buildTarget: URI): String =
     val params =
       CompileParams(targets = Vector(BuildTargetIdentifier(buildTarget)), None, Vector.empty)
     sendRequest("buildTarget/compile", params)
-  }
 
-  private def scalacOptions(buildTargets: Seq[URI]): String = {
+  private def scalacOptions(buildTargets: Seq[URI]): String =
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
-  }
 
   // sbt serves javac options via buildTarget/scalacOptions (no separate javacOptions endpoint)
-  private def javacOptions(buildTargets: Seq[URI]): String = {
+  private def javacOptions(buildTargets: Seq[URI]): String =
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
-  }
 
-  private def buildTargetSources(buildTargets: Seq[URI]): String = {
+  private def buildTargetSources(buildTargets: Seq[URI]): String =
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/sources", SourcesParams(targets))
-  }
 
-  private def dependencyModules(buildTargets: Seq[URI]): String = {
+  private def dependencyModules(buildTargets: Seq[URI]): String =
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/dependencyModules", DependencyModulesParams(targets))
-  }
 
-  private def sendRequest(method: String): String = {
+  private def sendRequest(method: String): String =
     val id = svr.session.nextId()
     svr.session.sendJsonRpc(id, method, "{}").get
-    if (method != "build/initialize") assertProcessing(method)
+    if method != "build/initialize" then assertProcessing(method)
     id
-  }
 
-  private def sendRequest[T: JsonWriter](method: String, params: T): String = {
+  private def sendRequest[T: JsonWriter](method: String, params: T): String =
     val id = svr.session.nextId()
     svr.session.sendJsonRpc(id, method, params).get
-    if (method != "build/initialize") assertProcessing(method)
+    if method != "build/initialize" then assertProcessing(method)
     id
-  }
 
   private def buildTargetUri(project: String, config: String): URI =
     new URI(s"${svr.baseDirectory.getAbsoluteFile.toURI}#$project/$config")
-}
+end BuildServerTest

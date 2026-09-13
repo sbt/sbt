@@ -4,7 +4,7 @@ import lmcoursier.definitions.{ Configuration, Info, Module, ModuleName, Organiz
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 
-class IvyXmlTests extends AnyPropSpec with Matchers {
+class IvyXmlTests extends AnyPropSpec with Matchers:
 
   property("no truncation") {
     val project = Project(
@@ -26,5 +26,4 @@ class IvyXmlTests extends AnyPropSpec with Matchers {
 
     assert(!content.contains("</conf>"))
   }
-
-}
+end IvyXmlTests

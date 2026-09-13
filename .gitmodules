@@ -1,3 +1,12 @@
 [submodule "lm-coursier/metadata"]
 	path = lm-coursier/metadata
 	url = https://github.com/coursier/handmade-metadata.git
+[submodule "community-build/community-projects/parboiled2"]
+	path = community-build/community-projects/parboiled2
+	url = https://github.com/sbt-2-builds/parboiled2.git
+[submodule "community-build/community-projects/scalaz"]
+	path = community-build/community-projects/scalaz
+	url = https://github.com/sbt-2-builds/scalaz.git
+[submodule "community-build/community-projects/sbt-compile-benchmark"]
+	path = community-build/community-projects/sbt-compile-benchmark
+	url = https://github.com/sbt-2-builds/sbt-compile-benchmark.git

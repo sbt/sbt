@@ -17,7 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import verify.sourcecode.SourceLocation
 
-object SbtParserErrorSpec extends AbstractSpec {
+object SbtParserErrorSpec extends AbstractSpec:
 
   val converter = PlainVirtualFileConverter.converter
 
@@ -59,4 +59,4 @@ object SbtParserErrorSpec extends AbstractSpec {
       callback
       throw new AssertionError(s"$pos: expected a MessageOnlyException to be thrown")
     catch case ex: MessageOnlyException => ex.getMessage
-}
+end SbtParserErrorSpec

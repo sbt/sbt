@@ -11,7 +11,7 @@ import sbt.librarymanagement.syntax.*
 import sbt.util.Logger
 import sbt.librarymanagement.DependencyBuilders.OrganizationArtifactName
 
-private[librarymanagement] abstract class ModuleIDExtra {
+private[librarymanagement] abstract class ModuleIDExtra:
   def organization: String
   def name: String
   def revision: String
@@ -38,26 +38,21 @@ private[librarymanagement] abstract class ModuleIDExtra {
 
   protected def toStringImpl: String =
     s"""$organization:$name:$revision""" +
-      (configurations match { case Some(s) => ":" + s; case None => "" }) + {
+      (configurations match
+        case Some(s) => ":" + s;
+        case None    => "") + {
         val attr = attributeString
-        if (attr == "") ""
+        if attr == "" then ""
         else " " + attr
       } +
-      (if (extraAttributes.isEmpty) "" else " " + extraString)
+      (if extraAttributes.isEmpty then "" else " " + extraString)
 
-  protected def attributeString: String = {
+  protected def attributeString: String =
     val buffer = ListBuffer.empty[String]
-    if (isChanging) {
-      buffer += "changing"
-    }
-    if (!isTransitive) {
-      buffer += "intransitive"
-    }
-    if (isForce) {
-      buffer += "force"
-    }
+    if isChanging then buffer += "changing"
+    if !isTransitive then buffer += "intransitive"
+    if isForce then buffer += "force"
     buffer.toList.mkString(";")
-  }
 
   /** String representation of the extra attributes, excluding any information only attributes. */
   def extraString: String =
@@ -71,7 +66,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
     "Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.",
     "0.12.0"
   )
-  def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else Disabled())
+  def cross(v: Boolean): ModuleID = cross(if v then CrossVersion.binary else Disabled())
 
   /**
    * Specifies the cross-version behavior for this module. See [CrossVersion] for details.
@@ -87,14 +82,12 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * This allows `.cross(...)` to play well with `%%%` operator provided by sbt-platform-deps.
    */
   def cross(v: CrossVersion): ModuleID =
-    withCrossVersion(CrossVersion.getPrefixSuffix(this.crossVersion) match {
+    withCrossVersion(CrossVersion.getPrefixSuffix(this.crossVersion) match
       case ("", "")         => v
       case (prefix, suffix) =>
-        CrossVersion.getPrefixSuffix(v) match {
+        CrossVersion.getPrefixSuffix(v) match
           case ("", "") => CrossVersion.setPrefixSuffix(v, prefix, suffix)
-          case _        => v
-        }
-    })
+          case _        => v)
 
   // () required for chaining
   /** Do not follow dependencies of this module.  Synonym for `intransitive`. */
@@ -117,9 +110,8 @@ private[librarymanagement] abstract class ModuleIDExtra {
    */
   def force(): ModuleID = withIsForce(true)
 
-  private[sbt] def validateProtocol(logger: Logger): Unit = {
+  private[sbt] def validateProtocol(logger: Logger): Unit =
     explicitArtifacts foreach { _.validateProtocol(logger) }
-  }
 
   /**
    * Specifies a URL from which the main artifact for this dependency can be downloaded.
@@ -161,9 +153,8 @@ private[librarymanagement] abstract class ModuleIDExtra {
     excludeAll(ExclusionRule().withOrganization(org).withName(name))
 
   /** Excludes the dependency from being introduced by this dependency during resolution. */
-  def exclude(rule: OrganizationArtifactName): ModuleID = {
+  def exclude(rule: OrganizationArtifactName): ModuleID =
     excludeAll(rule)
-  }
 
   /**
    * Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
@@ -202,7 +193,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
    */
   def withJavadoc(): ModuleID = jarIfEmpty.javadoc()
 
-  private def jarIfEmpty = if (explicitArtifacts.isEmpty) jar() else this
+  private def jarIfEmpty = if explicitArtifacts.isEmpty then jar() else this
 
   /**
    * Declares a dependency on the main artifact.  This is implied by default unless artifacts are explicitly declared, such
@@ -218,12 +209,11 @@ private[librarymanagement] abstract class ModuleIDExtra {
   def branch(branchName: Option[String]): ModuleID = withBranchName(branchName)
 
   def platform(platform: String): ModuleID = withPlatformOpt(Some(platform))
-}
+end ModuleIDExtra
 
-private[librarymanagement] abstract class ModuleIDFunctions {
+private[librarymanagement] abstract class ModuleIDFunctions:
 
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =
-    for ((key, value) <- attributes)
-      yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)
-}
+    for (key, value) <- attributes
+    yield if key.startsWith("e:") then (key, value) else ("e:" + key, value)

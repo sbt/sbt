@@ -50,10 +50,9 @@ object BuildPaths:
 
   import sbt.io.syntax.*
 
-  def getGlobalBase(state: State): File = {
+  def getGlobalBase(state: State): File =
     val default = defaultVersionedGlobalBase(binarySbtVersion(state))
     getFileSetting(globalBaseDirectory, GlobalBaseProperty, default)(state)
-  }
 
   def getStagingDirectory(state: State, globalBase: File): File =
     fileSetting(stagingDirectory, StagingProperty, defaultStaging(globalBase))(state)
@@ -86,30 +85,23 @@ object BuildPaths:
 
   def getFileProperty(name: String): Option[File] = Option(System.getProperty(name)) flatMap {
     path =>
-      if (path.isEmpty) None
-      else {
-        if (path.head == '~') {
-          val tildePath = expandTildePrefix(path)
-          Some(new File(tildePath))
-        } else {
-          Some(new File(path).getAbsoluteFile)
-        }
-      }
+      if path.isEmpty then None
+      else if path.head == '~' then
+        val tildePath = expandTildePrefix(path)
+        Some(new File(tildePath))
+      else Some(new File(path).getAbsoluteFile)
   }
 
-  def expandTildePrefix(path: String): String = {
-    val tildePath = path.split("\\/").headOption match {
+  def expandTildePrefix(path: String): String =
+    val tildePath = path.split("\\/").headOption match
       case Some("~")  => sys.env.getOrElse("HOME", "")
       case Some("~+") => sys.env.getOrElse("PWD", "")
       case Some("~-") => sys.env.getOrElse("OLDPWD", "")
       case _          => ""
-    }
 
-    path.indexOf("/") match {
+    path.indexOf("/") match
       case -1 => tildePath
       case _  => tildePath + path.substring(path.indexOf("/"))
-    }
-  }
 
   def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion
   def defaultGlobalBase: File = internal.SysProp.defaultGlobalBaseDirectory

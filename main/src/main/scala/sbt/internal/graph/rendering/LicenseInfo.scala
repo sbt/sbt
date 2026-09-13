@@ -13,7 +13,7 @@ package rendering
 
 import sbt.internal.graph.*
 
-object LicenseInfo {
+object LicenseInfo:
   def render(graph: ModuleGraph): String =
     graph.nodes
       .filter(_.isUsed)
@@ -26,7 +26,7 @@ object LicenseInfo {
       }
       .mkString("\n\n")
 
-  def renderJson(graph: ModuleGraph): String = {
+  def renderJson(graph: ModuleGraph): String =
     // Create JSON array manually: [{license: "...", modules: [...]}, ...]
     def escapeJson(str: String): String =
       str.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
@@ -46,5 +46,4 @@ object LicenseInfo {
       }
 
     groups.mkString("[", ",", "]")
-  }
-}
+end LicenseInfo

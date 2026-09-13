@@ -28,7 +28,7 @@ import lmcoursier.*
 abstract class BridgeProviderSpecification
     extends flatspec.FixtureAnyFlatSpec
     with fixture.TestDataFixture
-    with Matchers {
+    with Matchers:
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
@@ -39,7 +39,7 @@ abstract class BridgeProviderSpecification
     Resolver.mavenCentral: Resolver,
   )
 
-  def getZincProvider(bridge: ModuleID, targetDir: File, log: Logger): CompilerBridgeProvider = {
+  def getZincProvider(bridge: ModuleID, targetDir: File, log: Logger): CompilerBridgeProvider =
     val lock = ZincComponentCompiler.getDefaultLock
     val secondaryCache = Some(secondaryCacheDirectory)
     val componentProvider = ZincComponentCompiler.getDefaultComponentProvider(targetDir)
@@ -49,17 +49,15 @@ abstract class BridgeProviderSpecification
     )
     // IvyDependencyResolution(ivyConfiguration(log))
     ZincComponentCompiler.interfaceProvider(bridge, manager, dependencyResolution, currentManaged)
-  }
 
   def getCompilerBridge(
       targetDir: File,
       log: Logger,
       scalaVersion: String,
-  )(using td: TestData): File = {
-    val zincVersion = td.configMap.get("sbt.zinc.version") match {
+  )(using td: TestData): File =
+    val zincVersion = td.configMap.get("sbt.zinc.version") match
       case Some(v: String) => v
       case _               => throw new IllegalStateException("No zinc version specified")
-    }
     val bridge0 = ZincLmUtil.getDefaultBridgeSourceModule(ScalaArtifacts.Organization, scalaVersion)
     // redefine the compiler bridge version
     // using the version of zinc used during testing
@@ -74,6 +72,5 @@ abstract class BridgeProviderSpecification
     val target = targetDir / s"target-bridge-$scalaVersion.jar"
     IO.copyFile(bridge, target)
     target
-  }
-
-}
+  end getCompilerBridge
+end BridgeProviderSpecification

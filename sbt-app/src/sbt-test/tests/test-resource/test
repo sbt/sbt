@@ -1,0 +1,5 @@
+> test
+
+$ copy-file changes/bad.txt src/test/resources/hello.txt
+
+-> test

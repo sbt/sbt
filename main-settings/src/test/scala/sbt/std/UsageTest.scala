@@ -20,7 +20,7 @@ object UseTask:
   val set = Def.setting { 23 }
   val x = Def.task { set.value }
   val y = Def.task { true }
-  val z = Def.task { if (y.value) x.value else set.value }
+  val z = Def.task { if y.value then x.value else set.value }
   val a = Def.taskDyn {
     // if y.value then z
     // else x
@@ -29,7 +29,31 @@ object UseTask:
   }
 end UseTask
 
-object Assign {
+// https://github.com/sbt/sbt/issues/9375
+object UseHktTypeArgument:
+  final class IO[A]
+
+  object Builder:
+    def apply[F[_]](value: String): String = value
+
+  val settingWithHktTypeArgument: Def.Initialize[String] = Def.setting {
+    Builder[IO]("setting")
+  }
+
+  val taskWithHktTypeArgument: Def.Initialize[Task[String]] = Def.task {
+    Builder[IO]("task")
+  }
+
+  val name = Def.settingKey[String]("name")
+  val key = Def.taskKey[String]("key")
+  val settings = Seq(
+    key := Def.uncached {
+      Builder[IO](name.value)
+    }
+  )
+end UseHktTypeArgument
+
+object Assign:
   import java.io.File
 
   import Def.{
@@ -171,4 +195,4 @@ object Assign {
   trait HigherKind[B[_]]
   // https://github.com/sbt/sbt/issues/2188
   val issue2188 = settingKey[HigherKind[Option]]("asdf")
-}
+end Assign

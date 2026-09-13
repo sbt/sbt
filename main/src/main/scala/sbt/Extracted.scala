@@ -9,7 +9,6 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, Act, Aggregation, SessionSettings }
-import Scope.GlobalScope
 import sbt.ScopeAxis.This
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.complete.Parser
@@ -22,7 +21,7 @@ final case class Extracted(
     structure: BuildStructure,
     session: SessionSettings,
     currentRef: ProjectRef
-)(using val showKey: Show[ScopedKey[?]]) {
+)(using val showKey: Show[ScopedKey[?]]):
   def rootProject = structure.rootProject
   lazy val currentUnit = structure units currentRef.build
   lazy val currentProject = currentUnit defined currentRef.project
@@ -57,14 +56,13 @@ final case class Extracted(
    * This method requests execution of only the given task and does not aggregate execution.
    * See `runAggregated` for that.
    */
-  def runTask[T](key: TaskKey[T], state: State): (State, T) = {
+  def runTask[T](key: TaskKey[T], state: State): (State, T) =
     val rkey = resolve(key)
     val config = extractedTaskConfig(this, structure, state)
     val value: Option[(State, Result[T])] =
       EvaluateTask(structure, key.scopedKey, state, currentRef, config)
     val (newS, result) = getOrError(rkey.scopedKey, value)
     (newS, EvaluateTask.processResult2(result))
-  }
 
   /**
    * Runs the task specified by `key` and returns the unhandled direct result of EvaluateTask.
@@ -84,17 +82,16 @@ final case class Extracted(
    *
    * This method requests execution of only the given task and does not aggregate execution.
    */
-  def runInputTask[T](key: InputKey[T], input: String, state: State): (State, T) = {
+  def runInputTask[T](key: InputKey[T], input: String, state: State): (State, T) =
     val key2 = Scoped.scopedSetting(
       Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, rootProject)(key.scope),
       key.key
     )
     val rkey = resolve(key2)
     val inputTask = get(rkey)
-    val task = Parser.parse(input, inputTask.parser(state)) match {
+    val task = Parser.parse(input, inputTask.parser(state)) match
       case Right(t)  => t
       case Left(msg) => sys.error(s"Invalid programmatic input:\n$msg")
-    }
     val config = extractedTaskConfig(this, structure, state)
     EvaluateTask.withStreams(structure, state) { str =>
       val nv = EvaluateTask.nodeView(state, str, rkey.scopedKey :: Nil)
@@ -102,27 +99,34 @@ final case class Extracted(
         EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(using nv)
       (newS, EvaluateTask.processResult2(result))
     }
-  }
 
   /**
    * Runs the tasks selected by aggregating `key` and returns the transformed State.
    * If the project axis is not defined for the key, it is resolved to be the current project.
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
+   *
+   * Warns and runs nothing if the key selects no tasks.
    */
   def runAggregated[A1](key: TaskKey[A1], state: State): State =
     val rkey = resolve(key)
     val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
     val tasks = Act.keyValues(structure)(keys)
-    Aggregation.runTasks(
-      state,
-      tasks,
-      DummyTaskMap(Nil),
-      show = Aggregation.defaultShow(state, false),
-    )
+    if tasks.isEmpty then
+      val shown = showKey.show(rkey.scopedKey)
+      state.log.warn(s"$shown selected no tasks to aggregate; nothing was run")
+      state
+    else
+      Aggregation.runTasks(
+        state,
+        tasks,
+        DummyTaskMap(Nil),
+        show = Aggregation.defaultShow(state, false),
+      )
 
   private def resolve[K <: Scoped.ScopingSetting[K] & Scoped](key: K): K =
-    Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope) / key
+    val current = Load.projectScope(currentRef)
+    Scope.resolveScope(current, currentRef.build, rootProject)(key.scope) / key
 
   private def getOrError[T](key: ScopedKey[?], value: Option[T])(using
       display: Show[ScopedKey[?]]
@@ -149,10 +153,9 @@ final case class Extracted(
       settings: Seq[Setting[?]],
       state: State,
       sessionSettings: Seq[Setting[?]],
-  ): State = {
+  ): State =
     val appendSettings =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newStructure = Load.reapply(sessionSettings ++ appendSettings, structure)
     Project.setProject(session, newStructure, state)
-  }
-}
+end Extracted

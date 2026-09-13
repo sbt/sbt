@@ -8,7 +8,7 @@ import sbt.io.syntax.*
 /**
  * This is a list of functions with default values.
  */
-object InternalDefaults {
+object InternalDefaults:
   val sbtOrgTemp = JsonUtil.sbtOrgTemp
   val modulePrefixTemp = "temp-module-"
 
@@ -26,4 +26,3 @@ object InternalDefaults {
 
   def getDeliverStatus(opt: Option[String]): String =
     opt.getOrElse("release")
-}

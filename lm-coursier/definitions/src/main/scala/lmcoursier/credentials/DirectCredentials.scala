@@ -14,7 +14,6 @@ import dataclass.*
     matchHost: Boolean = false,
     @since("1.3")
     httpsOnly: Boolean = true
-) extends Credentials {
+) extends Credentials:
 
   override def toString(): String = s"DirectCredentials(host=$host, username=$username)"
-}

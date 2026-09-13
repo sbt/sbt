@@ -17,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.collection.mutable
 
 // private[coursier]
-object ResolutionRun {
+object ResolutionRun:
 
   private def resolution(
       params: ResolutionParams,
@@ -25,7 +25,7 @@ object ResolutionRun {
       log: Logger,
       configs: Set[Configuration],
       startingResolutionOpt: Option[Resolution]
-  ): Either[coursier.error.ResolutionError, Resolution] = {
+  ): Either[coursier.error.ResolutionError, Resolution] =
 
     val isScalaToolConfig = configs(Configuration("scala-tool"))
     // Ref coursier/coursier#1340 coursier/coursier#1442
@@ -36,7 +36,7 @@ object ResolutionRun {
     def isSandboxConfig: Boolean = isScalaToolConfig
 
     val repositories =
-      params.internalRepositories.drop(if (isSandboxConfig) 1 else 0) ++
+      params.internalRepositories.drop(if isSandboxConfig then 1 else 0) ++
         params.mainRepositories ++
         params.fallbackDependenciesRepositories
 
@@ -56,20 +56,17 @@ object ResolutionRun {
 
     val initialMessage =
       Seq(
-        if (verbosityLevel >= 0)
+        if verbosityLevel >= 0 then
           Seq(
-            s"Updating ${params.projectName}" + (if (params.sbtClassifiers) " (sbt classifiers)"
+            s"Updating ${params.projectName}" + (if params.sbtClassifiers then " (sbt classifiers)"
                                                  else "")
           )
-        else
-          Nil,
-        if (verbosityLevel >= 2)
-          depsRepr(params.dependencies).map(depRepr => s"  $depRepr")
-        else
-          Nil
+        else Nil,
+        if verbosityLevel >= 2 then depsRepr(params.dependencies).map(depRepr => s"  $depRepr")
+        else Nil
       ).flatten.mkString("\n")
 
-    if (verbosityLevel >= 2) {
+    if verbosityLevel >= 2 then
       val repoReprs = repositories.map {
         case r: IvyRepository =>
           s"ivy:${r.pattern}"
@@ -86,13 +83,11 @@ object ResolutionRun {
         "Repositories:\n" +
           repoReprs.map("  " + _).mkString("\n")
       )
-    }
 
-    if (verbosityLevel >= 2)
-      log.info(initialMessage)
+    if verbosityLevel >= 2 then log.info(initialMessage)
 
     @nowarn
-    val resolveTask: Resolve[Task] = {
+    val resolveTask: Resolve[Task] =
       Resolve()
         // re-using various caches from a resolution of a configuration we extend
         .withInitialResolution(startingResolutionOpt)
@@ -107,7 +102,7 @@ object ResolutionRun {
         .withResolutionParams(
           params.params
             .addForceVersion(
-              (if (isSandboxConfig) Nil
+              (if isSandboxConfig then Nil
                else params.interProjectDependencies.map(_.moduleVersion))*
             )
             .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
@@ -120,22 +115,20 @@ object ResolutionRun {
             .withLogger(
               params.loggerOpt.getOrElse {
                 RefreshLogger.create(
-                  if (RefreshLogger.defaultFallbackMode)
-                    new FallbackRefreshDisplay()
+                  if RefreshLogger.defaultFallbackMode then new FallbackRefreshDisplay()
                   else
                     ProgressBarRefreshDisplay.create(
-                      if (printOptionalMessage) log.info(initialMessage),
-                      if (printOptionalMessage || verbosityLevel >= 2)
+                      if printOptionalMessage then log.info(initialMessage),
+                      if printOptionalMessage || verbosityLevel >= 2 then
                         log.info(s"Resolved ${params.projectName} dependencies")
                     )
                 )
               }
             )
         )
-    }
 
     val (period, maxAttempts) = params.retry
-    val finalResult: Either[ResolutionError, Resolution] = {
+    val finalResult: Either[ResolutionError, Resolution] =
 
       def retry(
           attempt: Int,
@@ -144,18 +137,16 @@ object ResolutionRun {
         resolveTask.io.attempt
           .flatMap {
             case Left(e: ResolutionError) =>
-              if (isTransientResolutionError(e))
-                if (attempt + 1 >= maxAttempts) {
+              if isTransientResolutionError(e) then
+                if attempt + 1 >= maxAttempts then
                   log.error(s"Failed, maximum iterations ($maxAttempts) reached")
                   Task.point(Left(e))
-                } else {
+                else
                   log.warn(s"Attempt ${attempt + 1} failed: $e")
                   Task.completeAfter(retryScheduler, waitOnError).flatMap { _ =>
                     retry(attempt + 1, waitOnError * 2)
                   }
-                }
-              else
-                Task.point(Left(e))
+              else Task.point(Left(e))
             case Left(ex) =>
               Task.fail(ex)
             case Right(value) =>
@@ -163,28 +154,25 @@ object ResolutionRun {
           }
 
       retry(0, period).unsafeRun()(using resolveTask.cache.ec)
-    }
+    end finalResult
 
-    finalResult match {
+    finalResult match
       case Left(err) if params.missingOk => Right(err.resolution)
       case others                        => others
-    }
-  }
+  end resolution
 
   @nowarn
   def resolutions(
       params: ResolutionParams,
       verbosityLevel: Int,
       log: Logger
-  ): Either[coursier.error.ResolutionError, Map[Configuration, Resolution]] = {
+  ): Either[coursier.error.ResolutionError, Map[Configuration, Resolution]] =
 
     // TODO Warn about possible duplicated modules from source repositories?
 
-    if (verbosityLevel >= 2) {
+    if verbosityLevel >= 2 then
       log.info("InterProjectRepository")
-      for (p <- params.interProjectDependencies)
-        log.info(s"  ${p.module}:${p.version}")
-    }
+      for p <- params.interProjectDependencies do log.info(s"  ${p.module}:${p.version}")
 
     SbtCoursierCache.default.resolutionOpt(params.resolutionKey).map(Right(_)).getOrElse {
       val resOrError =
@@ -198,27 +186,24 @@ object ResolutionRun {
           val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](
             Right(())
           ) { case (acc, (config, extends0)) =>
-            for {
+            for
               _ <- acc
-              initRes = {
+              initRes =
                 val it = extends0.iterator.flatMap(map.get(_).iterator)
-                if (it.hasNext) Some(it.next())
+                if it.hasNext then Some(it.next())
                 else None
-              }
               allExtends = params.allConfigExtends.getOrElse(config, Set.empty)
               res <- resolution(params, verbosityLevel, log, allExtends, initRes)
-            } yield {
+            yield
               map += config -> res
               ()
-            }
           }
           either.map(_ => map.toMap)
         }
-      for (res <- resOrError)
-        SbtCoursierCache.default.putResolution(params.resolutionKey, res)
+      for res <- resOrError do SbtCoursierCache.default.putResolution(params.resolutionKey, res)
       resOrError
     }
-  }
+  end resolutions
 
   def resolutionsWithLockFile(
       params: ResolutionParams,
@@ -226,10 +211,9 @@ object ResolutionRun {
       log: Logger,
       lockFileOpt: Option[java.io.File],
       scalaVersion: Option[String]
-  ): Either[coursier.error.ResolutionError, (Map[Configuration, Resolution], Boolean)] = {
+  ): Either[coursier.error.ResolutionError, (Map[Configuration, Resolution], Boolean)] =
     resolutionsWithLockFileData(params, verbosityLevel, log, lockFileOpt, scalaVersion)
       .map { case (res, lockDataOpt) => (res, lockDataOpt.isDefined) }
-  }
 
   def resolutionsWithLockFileData(
       params: ResolutionParams,
@@ -240,42 +224,32 @@ object ResolutionRun {
   ): Either[
     coursier.error.ResolutionError,
     (Map[Configuration, Resolution], Option[LockFileData])
-  ] = {
+  ] =
     lockFileOpt
       .flatMap { lockFile =>
-        LockFile.read(lockFile) match {
+        LockFile.read(lockFile) match
           case Right(lockData) =>
-            if (
-              BuildClock.matches(
+            if BuildClock.matches(
                 lockData,
                 params.dependencies,
                 params.mainRepositories,
                 scalaVersion,
                 params
               )
-            ) {
-              if (verbosityLevel >= 1) {
-                log.info(s"Using lock file: ${lockFile.getAbsolutePath}")
-              }
+            then
+              if verbosityLevel >= 1 then log.info(s"Using lock file: ${lockFile.getAbsolutePath}")
               val reconstructed = ResolutionSerializer.reconstructResolutions(lockData, params)
               Some(Right((reconstructed, Some(lockData))))
-            } else {
-              if (verbosityLevel >= 1) {
-                log.info(s"Lock file outdated, performing resolution")
-              }
+            else
+              if verbosityLevel >= 1 then log.info(s"Lock file outdated, performing resolution")
               None
-            }
           case Left(err) =>
-            if (verbosityLevel >= 2) {
-              log.debug(s"Lock file error: $err")
-            }
+            if verbosityLevel >= 2 then log.debug(s"Lock file error: $err")
             None
-        }
       }
       .getOrElse {
         resolutions(params, verbosityLevel, log).map(res => (res, None))
       }
-  }
 
   private lazy val retryScheduler = ThreadUtil.fixedScheduledThreadPool(1)
 
@@ -290,4 +264,4 @@ object ResolutionRun {
 
   private def isServerError(err: CantDownloadModule): Boolean =
     err.perRepositoryErrors.exists(_.contains("Server returned HTTP response code: 5"))
-}
+end ResolutionRun

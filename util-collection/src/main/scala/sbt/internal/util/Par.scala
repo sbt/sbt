@@ -10,6 +10,5 @@ package sbt.internal.util
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
 
-private[util] object Par {
+private[util] object Par:
   def apply[R](s: Seq[R]): ParSeq[R] = s.par
-}

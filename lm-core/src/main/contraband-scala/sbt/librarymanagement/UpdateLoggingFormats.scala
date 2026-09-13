@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait UpdateLoggingFormats { self: sjsonnew.BasicJsonProtocol =>
+trait UpdateLoggingFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given UpdateLoggingFormat: JsonFormat[sbt.librarymanagement.UpdateLogging] = new JsonFormat[sbt.librarymanagement.UpdateLogging] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.UpdateLogging = {
     __jsOpt match {

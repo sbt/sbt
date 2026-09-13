@@ -10,7 +10,7 @@ package lmcoursier.internal
 
 import java.io.File
 
-object CacheUrlConversion {
+object CacheUrlConversion:
 
   final val FileUrlPrefix = "file:"
   final val UnconvertiblePrefix = "${CSR_CACHE}"
@@ -18,38 +18,32 @@ object CacheUrlConversion {
   private def normalizePathForComparison(path: String): String =
     path.replace('\\', '/')
 
-  private def normalizedFilePath(fileUrl: String): String = {
+  private def normalizedFilePath(fileUrl: String): String =
     val afterPrefix = fileUrl.stripPrefix(FileUrlPrefix).replaceFirst("^/+", "/")
     val withForwardSlash = normalizePathForComparison(afterPrefix)
-    if (
-      withForwardSlash.length >= 3 && withForwardSlash
+    if withForwardSlash.length >= 3 && withForwardSlash
         .charAt(0) == '/' && withForwardSlash.charAt(2) == ':'
-    )
-      withForwardSlash.substring(1)
-    else
-      withForwardSlash
-  }
+    then withForwardSlash.substring(1)
+    else withForwardSlash
 
-  def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String = {
-    if (!fileUrl.startsWith(FileUrlPrefix)) {
-      fileUrl
-    } else {
+  def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String =
+    if !fileUrl.startsWith(FileUrlPrefix) then fileUrl
+    else
       val filePath = normalizedFilePath(fileUrl)
       val cachePaths = Seq(
         cacheDir.getAbsolutePath,
         cacheDir.getCanonicalPath
       ).distinct.map(p =>
-        normalizePathForComparison(if (p.endsWith("/") || p.endsWith("\\")) p else p + "/")
+        normalizePathForComparison(if p.endsWith("/") || p.endsWith("\\") then p else p + "/")
       )
 
-      def extractHttpUrl(relativePath: String): Option[String] = {
+      def extractHttpUrl(relativePath: String): Option[String] =
         val protocolSepIndex = relativePath.indexOf('/')
-        if (protocolSepIndex > 0) {
+        if protocolSepIndex > 0 then
           val protocol = relativePath.substring(0, protocolSepIndex)
           val rest = relativePath.substring(protocolSepIndex + 1)
           Some(s"$protocol://$rest")
-        } else None
-      }
+        else None
 
       cachePaths
         .collectFirst {
@@ -59,9 +53,7 @@ object CacheUrlConversion {
         }
         .flatten
         .getOrElse(s"$UnconvertiblePrefix$filePath")
-    }
-  }
 
   def isPortableUrl(url: String): Boolean =
     !url.startsWith(FileUrlPrefix) && !url.contains(UnconvertiblePrefix)
-}
+end CacheUrlConversion

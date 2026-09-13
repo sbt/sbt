@@ -17,7 +17,7 @@ import sbt.internal.util.{ JLine3, Terminal as ITerminal }
  * Terminal is particularly useful whenever an sbt task needs to receive input from
  * the user.
  */
-trait Terminal {
+trait Terminal:
 
   /**
    * Returns the width of the terminal.
@@ -59,15 +59,13 @@ trait Terminal {
    * @param echo toggles whether or not to echo the characters received from the terminal input stream
    */
   def setMode(canonical: Boolean, echo: Boolean): Unit
+end Terminal
 
-}
-private[sbt] object Terminal {
-  private[sbt] def apply(term: ITerminal): Terminal = new Terminal {
+private[sbt] object Terminal:
+  private[sbt] def apply(term: ITerminal): Terminal = new Terminal:
     override def getHeight: Int = term.getHeight
     override def getWidth: Int = term.getWidth
     override def inputStream: InputStream = term.inputStream
     override def printStream: PrintStream = term.printStream
     override def setMode(canonical: Boolean, echo: Boolean): Unit =
       JLine3.setMode(term, canonical, echo)
-  }
-}

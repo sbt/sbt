@@ -56,6 +56,7 @@ class StreamingXXHash64VarHandle(seed: Long) extends AbstractStreamingXXHash64Sc
       h64 ^= v4
       h64 = h64 * PRIME64_1 + PRIME64_4
     else h64 = seed + PRIME64_5
+    end if
 
     h64 += totalLen
 
@@ -123,6 +124,7 @@ class StreamingXXHash64VarHandle(seed: Long) extends AbstractStreamingXXHash64Sc
         off += 32 - memSize
         memSize = 0
       else ()
+      end if
 
       {
         val limit: Int = end - 32

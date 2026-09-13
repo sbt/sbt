@@ -8,21 +8,19 @@ import scala.collection.mutable
 import scala.sys.process.{ BasicIO, Process, ProcessIO }
 import verify.BasicTestSuite
 
-trait ShellScriptUtil extends BasicTestSuite {
+trait ShellScriptUtil extends BasicTestSuite:
   val isWindows: Boolean =
     sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
 
   protected val javaBinDir = new File("bin").getAbsolutePath
 
   protected def retry[A1](f: () => A1, maxAttempt: Int = 10): A1 =
-    try {
-      f()
-    } catch {
+    try f()
+    catch
       case e: Exception if maxAttempt > 1 =>
         Thread.sleep(100)
         retry(f, maxAttempt - 1)
       case e: Exception => throw e
-    }
 
   def isGitBashTest: Boolean = false
   lazy val sbtScript = IntegrationTestPaths.sbtScript(isWindows && !isGitBashTest)
@@ -39,6 +37,8 @@ trait ShellScriptUtil extends BasicTestSuite {
       distSbtoptsContents: String = "",
       machineSbtoptsContents: String = "",
       jvmoptsFileContents: String = "",
+      buildPropsContents: String = "",
+      stagedRunnerVersionOverride: String = "",
       windowsSupport: Boolean = true,
       citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
@@ -54,31 +54,23 @@ trait ShellScriptUtil extends BasicTestSuite {
         val citestDir = IntegrationTestPaths.citestDir(citestVariant)
         // Clean target directory if it exists to avoid copying temporary files that may be deleted during copy
         val targetDir = new File(citestDir, "target")
-        if (targetDir.exists()) {
-          try {
-            IO.delete(targetDir)
-          } catch {
+        if targetDir.exists() then
+          try IO.delete(targetDir)
+          catch
             case _: Exception => // Ignore deletion errors, will retry copy
-          }
-        }
         // Retry copy operation to handle race conditions with temporary files
-        retry(() => {
-          try {
-            IO.copyDirectory(citestDir, workingDirectory)
-          } catch {
+        retry(() =>
+          try IO.copyDirectory(citestDir, workingDirectory)
+          catch
             case e: java.io.IOException if e.getMessage.contains("does not exist") =>
               // If a file doesn't exist during copy, clean target and retry
               val targetInCitest = new File(citestDir, "target")
-              if (targetInCitest.exists()) {
-                try {
-                  IO.delete(targetInCitest)
-                } catch {
+              if targetInCitest.exists() then
+                try IO.delete(targetInCitest)
+                catch
                   case _: Exception => // Ignore
-                }
-              }
               throw e // Re-throw to trigger retry
-          }
-        })
+        )
 
         var sbtHome: Option[File] = None
         var configHome: Option[File] = None
@@ -88,30 +80,32 @@ trait ShellScriptUtil extends BasicTestSuite {
           val sbtOptsFile = new File(workingDirectory, ".sbtopts")
           sbtOptsFile.createNewFile()
           val writer = new PrintWriter(sbtOptsFile)
-          try {
+          try
             writer.write(sbtOptsFileContents)
-          } finally {
+          finally
             writer.close()
-          }
 
           // Create .jvmopts file if contents provided
-          if (jvmoptsFileContents.nonEmpty) {
+          if jvmoptsFileContents.nonEmpty then
             val jvmoptsFile = new File(workingDirectory, ".jvmopts")
             jvmoptsFile.createNewFile()
             val jvmoptsWriter = new PrintWriter(jvmoptsFile)
-            try {
+            try
               jvmoptsWriter.write(jvmoptsFileContents)
-            } finally {
+            finally
               jvmoptsWriter.close()
-            }
-          }
+
+          if buildPropsContents.nonEmpty then
+            val projectDir = new File(workingDirectory, "project")
+            projectDir.mkdirs()
+            IO.write(new File(projectDir, "build.properties"), buildPropsContents)
 
           val envVars = scala.collection.mutable.Map[String, String]()
 
           // Set up dist sbtopts if provided
           // Note: sbt script derives sbt_home from script location, not SBT_HOME env var
           // Copy the sbt staging directory to a temp location to avoid modifying the staging directory
-          if (distSbtoptsContents.nonEmpty) {
+          if distSbtoptsContents.nonEmpty || stagedRunnerVersionOverride.nonEmpty then
             val originalSbtHome = sbtScript.getParentFile.getParentFile
             val tempSbtHomeDir = Files.createTempDirectory("sbt-home-test").toFile
             tempSbtHome = Some(tempSbtHomeDir)
@@ -120,20 +114,38 @@ trait ShellScriptUtil extends BasicTestSuite {
             // Get the script from the copied directory
             val binDir = new File(tempSbtHomeDir, "bin")
             testSbtScript = new File(binDir, sbtScript.getName)
-            // Create dist sbtopts in the copied directory
-            val distSbtoptsDir = new File(tempSbtHomeDir, "conf")
-            distSbtoptsDir.mkdirs()
-            val distSbtoptsFile = new File(distSbtoptsDir, "sbtopts")
-            IO.write(distSbtoptsFile, distSbtoptsContents)
+            if distSbtoptsContents.nonEmpty then
+              // Create dist sbtopts in the copied directory
+              val distSbtoptsDir = new File(tempSbtHomeDir, "conf")
+              distSbtoptsDir.mkdirs()
+              IO.write(new File(distSbtoptsDir, "sbtopts"), distSbtoptsContents)
+            if stagedRunnerVersionOverride.nonEmpty then
+              val isBat = testSbtScript.getName.endsWith(".bat")
+              val prefix =
+                if isBat then "set init_sbt_version=" else "declare init_sbt_version="
+              val pattern =
+                if isBat then "(?m)^set init_sbt_version=.*$"
+                else "(?m)^declare init_sbt_version=.*$"
+              val original = IO.read(testSbtScript)
+              val regex = pattern.r
+              assert(
+                regex.findFirstIn(original).nonEmpty,
+                s"init_sbt_version line not found in $testSbtScript"
+              )
+              val replacement =
+                java.util.regex.Matcher.quoteReplacement(prefix + stagedRunnerVersionOverride)
+              val updated = regex.replaceAllIn(original, replacement)
+              assert(updated.contains(prefix + stagedRunnerVersionOverride))
+              IO.write(testSbtScript, updated)
+              if !isBat then testSbtScript.setExecutable(true)
             // Store reference for cleanup
             sbtHome = Some(tempSbtHomeDir)
-          }
+          end if
 
           // Ensure no machine sbtopts exists when testing dist-only (unless explicitly provided)
           // The script only loads dist if machine doesn't exist
-          if (
-            distSbtoptsContents.nonEmpty && machineSbtoptsContents.isEmpty && configHome.isEmpty
-          ) {
+          if distSbtoptsContents.nonEmpty && machineSbtoptsContents.isEmpty && configHome.isEmpty
+          then
             // Set XDG_CONFIG_HOME to a temp directory without sbtopts to prevent default machine sbtopts from being found
             val emptyConfigHome = Files.createTempDirectory("empty-config-home").toFile
             envVars("XDG_CONFIG_HOME") = emptyConfigHome.getAbsolutePath
@@ -141,10 +153,9 @@ trait ShellScriptUtil extends BasicTestSuite {
             sys.env.get("SBT_ETC_FILE").foreach(_ => envVars("SBT_ETC_FILE") = "")
             // Store for cleanup
             configHome = Some(emptyConfigHome)
-          }
 
           // Set up machine sbtopts if provided
-          if (machineSbtoptsContents.nonEmpty) {
+          if machineSbtoptsContents.nonEmpty then
             val configHomeDir = Files.createTempDirectory("config-home").toFile
             configHome = Some(configHomeDir)
             val machineSbtoptsDir = new File(configHomeDir, "sbt")
@@ -152,7 +163,6 @@ trait ShellScriptUtil extends BasicTestSuite {
             val machineSbtoptsFile = new File(machineSbtoptsDir, "sbtopts")
             IO.write(machineSbtoptsFile, machineSbtoptsContents)
             envVars("XDG_CONFIG_HOME") = configHomeDir.getAbsolutePath
-          }
 
           val path = sys.env.getOrElse("PATH", sys.env.getOrElse("Path", ""))
           val javaHomeEnv = sys.env.getOrElse("JAVA_HOME", System.getProperty("java.home"))
@@ -168,9 +178,11 @@ trait ShellScriptUtil extends BasicTestSuite {
           val cmd =
             LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath, isGitBashTest) ++ args
           val lines = mutable.ListBuffer.empty[String]
-          def processLine(line: String): Unit =
+          def processLine(line: String): Unit = lines.synchronized {
             Console.err.println(line)
             lines.append(line)
+            ()
+          }
           val p = Process(cmd, workingDirectory, envVars.toSeq*)
             .run(
               new ProcessIO(
@@ -189,5 +201,6 @@ trait ShellScriptUtil extends BasicTestSuite {
           // Clean up temporary sbt home directory if we created one
           tempSbtHome.foreach(IO.delete)
           configHome.foreach(IO.delete)
+        end try
       }
-}
+end ShellScriptUtil

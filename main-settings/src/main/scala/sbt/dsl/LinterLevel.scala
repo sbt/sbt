@@ -45,16 +45,15 @@ package sbt.dsl
  * [[LinterLevel.Ignore]] using the low priority trait pattern.
  */
 sealed trait LinterLevel
-object LinterLevel extends LinterLevelLowPriority {
+object LinterLevel extends LinterLevelLowPriority:
 
   /**
    * Apply the linter but print warnings instead of aborting macro expansion when linter violations
    * are found.
    */
   implicit case object Warn extends LinterLevel
-}
 
-private[dsl] trait LinterLevelLowPriority {
+private[dsl] trait LinterLevelLowPriority:
 
   /**
    * Abort the macro expansion if any linter check fails.
@@ -65,4 +64,3 @@ private[dsl] trait LinterLevelLowPriority {
    * Do not perform any linting.
    */
   implicit case object Ignore extends LinterLevel
-}

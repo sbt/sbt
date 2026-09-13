@@ -5,7 +5,7 @@ lazy val checkMiss = inputKey[Unit]("")
 
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 checkMiss := {
   val expected: Int = (Space ~> NatBasic).parsed
   val s = streams.value

@@ -44,6 +44,7 @@ object BuildSettingsInstances:
       436 -> genLocalProject.map(x => x: Reference),
       1133 -> genRootProject.map(x => x: Reference),
     )
+  end given
 
   given Gen[ConfigKey] = Gen.frequency1(
     2 -> Gen.constant[ConfigKey](Compile),

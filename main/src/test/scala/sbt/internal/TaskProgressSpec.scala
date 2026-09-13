@@ -11,7 +11,7 @@ package sbt.internal
 import sbt.internal.util.ProgressItem
 import verify.BasicTestSuite
 
-object TaskProgressSpec extends BasicTestSuite {
+object TaskProgressSpec extends BasicTestSuite:
 
   // Reproduces the sorting logic from TaskProgress.report() so we can test it in isolation.
   // The real code sorts Vector[(TaskId[?], Long)] then maps to ProgressItem, but the
@@ -87,4 +87,4 @@ object TaskProgressSpec extends BasicTestSuite {
     val items = Vector(ProgressItem("compile", 5_000_000L))
     assert(sortItems(items) == items)
   }
-}
+end TaskProgressSpec

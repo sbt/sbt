@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait MavenRepoFormats { self: sjsonnew.BasicJsonProtocol =>
+trait MavenRepoFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given MavenRepoFormat: JsonFormat[sbt.librarymanagement.MavenRepo] = new JsonFormat[sbt.librarymanagement.MavenRepo] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.MavenRepo = {
     __jsOpt match {

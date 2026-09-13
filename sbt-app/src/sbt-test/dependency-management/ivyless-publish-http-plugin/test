@@ -1,0 +1,7 @@
+# Test ivyless publish to HTTP Ivy-style repo for an sbt 1 plugin (issue #9383)
+# When useIvy is false, the Ivy-pattern PUT path must include the
+# scala_2.12/sbt_1.0 cross suffixes for sbt 1 plugins.
+
+> cleanPublishRepo
+> publishToHttp
+> checkPublished

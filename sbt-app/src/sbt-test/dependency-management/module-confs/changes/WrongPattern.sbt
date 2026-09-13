@@ -1,6 +1,6 @@
 {
 	def snapshotPattern = "https://repo.typesafe.com/typesafe/scala-tools-snapshots/[organization]/[module]/2.10.a-SNAPSHOT/[artifact]-[revision].[ext]"
-	def scalaSnapshots = Resolver.url("Scala Tools Snapshots") artifacts(snapshotPattern) ivys(snapshotPattern) mavenStyle()
+	def scalaSnapshots = Resolver.uri("Scala Tools Snapshots") artifacts(snapshotPattern) ivys(snapshotPattern) mavenStyle()
 	moduleConfigurations += ModuleConfiguration("org.scala-lang", "*", "2.10.0-.*", scalaSnapshots)
 }
 

@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ArtifactTypeFilterFormats { self: sjsonnew.BasicJsonProtocol =>
+trait ArtifactTypeFilterFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given ArtifactTypeFilterFormat: JsonFormat[sbt.librarymanagement.ArtifactTypeFilter] = new JsonFormat[sbt.librarymanagement.ArtifactTypeFilter] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ArtifactTypeFilter = {
     __jsOpt match {

@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.15"
+ThisBuild / scalaVersion := "2.13.18"
 
 lazy val root = (project in file("."))
   .aggregate(macroProvider, macroClient)

@@ -31,7 +31,7 @@ import sbt.SlashSyntax0.*
 import sbt.io.IO
 import xsbti.HashedVirtualFileRef
 
-object IvyConsole {
+object IvyConsole:
   final val Name = "ivy-console"
   lazy val command =
     Command.command(Name) { state =>
@@ -80,23 +80,20 @@ object IvyConsole {
   def parseDependencies(args: Seq[String], log: Logger): Dependencies =
     args.foldLeft(Dependencies(Nil, Nil, Nil))(parseArgument(log))
   def parseArgument(log: Logger)(acc: Dependencies, arg: String): Dependencies =
-    arg match {
+    arg match
       case _ if arg.contains(" at ") => acc.copy(resolvers = parseResolver(arg) +: acc.resolvers)
       case _ if arg.endsWith(".jar") => acc.copy(unmanaged = new File(arg) +: acc.unmanaged)
       case _                         => acc.copy(managed = parseManaged(arg, log) ++ acc.managed)
-    }
 
-  private def parseResolver(arg: String): MavenRepository = {
+  private def parseResolver(arg: String): MavenRepository =
     val Array(name, url) = arg.split(" at ")
     MavenRepository(name.trim, url.trim)
-  }
 
   val DepPattern = """([^%]+)%(%?)([^%]+)%([^%]+)""".r
   def parseManaged(arg: String, log: Logger): Seq[ModuleID] =
-    arg match {
+    arg match
       case DepPattern(group, cross, name, version) =>
-        val crossV = if (cross.trim.isEmpty) Disabled() else CrossVersion.binary
+        val crossV = if cross.trim.isEmpty then Disabled() else CrossVersion.binary
         ModuleID(group.trim, name.trim, version.trim).withCrossVersion(crossV) :: Nil
       case _ => log.warn("Ignoring invalid argument '" + arg + "'"); Nil
-    }
-}
+end IvyConsole

@@ -1,0 +1,10 @@
+# publish under the default (Coursier/ivyless) engine
+> lib/publish
+
+# the organization must be laid out slash-separated (Maven layout) via mavenStylePatterns,
+# which stays Maven-compatible even though the Patterns default flipped to false
+$ exists repo/org/example/lib_2.12/1.0/lib_2.12-1.0.jar
+$ exists repo/org/example/lib_2.12/1.0/lib_2.12-1.0.pom
+
+# the literal dotted organization directory (Ivy layout) must NOT be produced
+-$ exists repo/org.example/lib_2.12/1.0/lib_2.12-1.0.jar

@@ -28,7 +28,6 @@ import scala.util.Random
 import scala.util.control.NonFatal
 import scala.jdk.CollectionConverters.*
 import scala.sys.process.Process
-import sbt.internal.WorkerConnection
 
 /**
  * This implements forked testing, in cooperation with the worker CLI,
@@ -52,31 +51,36 @@ private[sbt] object ForkTests:
       parallelism: Option[Int],
       virtualClasspath: Boolean,
       tags: (Tag, Int)*
-  ): Task[TestOutput] = {
+  ): Task[TestOutput] =
     import std.TaskExtra.*
     val dummyLoader =
       this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
-    def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
+    // Tag setup/cleanup the same as the actual test run -- otherwise a restriction like
+    // Tags.limit(Tags.ExclusiveTestGroup, 1) only ever sees the forked JVM in between them, and
+    // another subproject's setup/cleanup (or its own exclusive run) can freely overlap either end.
+    def all(work: Seq[ClassLoader => Unit]) =
+      work.fork(f => f(dummyLoader)).map(_.tagw(config.tags*).tagw(tags*))
 
-    val main =
-      if opts.tests.isEmpty then
-        constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
-      else
-        mainTestTask(
-          runners = runners,
-          opts = opts,
-          classpath = classpath,
-          converter = converter,
-          fork = fork,
-          log = log,
-          parallel = config.parallel,
-          parallelism = parallelism,
-          virtualClasspath = virtualClasspath,
-        ).tagw(config.tags*)
-    main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
-      all(opts.cleanup).join.map(_ => results)
-    }
-  }
+    if opts.tests.isEmpty then
+      // Nothing selected after filtering, so don't run setup/cleanup either.
+      constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
+    else
+      mainTestTask(
+        runners = runners,
+        opts = opts,
+        classpath = classpath,
+        converter = converter,
+        fork = fork,
+        log = log,
+        parallel = config.parallel,
+        parallelism = parallelism,
+        virtualClasspath = virtualClasspath,
+      ).tagw(config.tags*)
+        .tagw(tags*)
+        .dependsOn(all(opts.setup)*)
+        .flatMap: results =>
+          all(opts.cleanup).join.map(_ => results)
+  end apply
 
   private def mainTestTask(
       runners: Map[TestFramework, Runner],
@@ -141,8 +145,7 @@ private[sbt] object ForkTests:
       )
       testListeners.foreach(_.doInit())
       val result =
-        val ct = WorkerConnection.Tcp
-        val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles, ct)
+        val w = WorkerExchange.startWorker(fork, if virtualClasspath then Nil else cpFiles)
         val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
         try
           WorkerExchange.registerListener(wl)
@@ -152,7 +155,9 @@ private[sbt] object ForkTests:
           if wl.blockForResponse() != 0 then
             throw MessageOnlyException("Forked test harness failed")
           testOutputResult
-        finally WorkerExchange.unregisterListener(wl)
+        finally
+          w.close()
+          WorkerExchange.unregisterListener(wl)
       testListeners.foreach(_.doComplete(result.overall))
       result
     } // end task
@@ -257,6 +262,8 @@ private class React(
           promise.failure(info.error)
         else ()
       case _ => ()
+    end match
+  end processNotification
 
   def blockForResponse(): Int =
     Await.result(promise.future, Duration.Inf)

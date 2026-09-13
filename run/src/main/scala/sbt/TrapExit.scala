@@ -21,7 +21,7 @@ import sbt.util.Logger
  * concurrent AWT applications are run. This category of code should only be called by forking a new
  * JVM.
  */
-object TrapExit {
+object TrapExit:
 
   /**
    * Run `execute` in a managed context, using `log` for debugging messages. `installManager` must
@@ -43,15 +43,13 @@ object TrapExit {
   @deprecated("TrapExit feature is removed; just call the function instead", "1.6.0")
   def uninstallManager(previous: Any): Unit = ()
 
-  private def runUnmanaged(execute: => Unit, log: Logger): Int = {
+  private def runUnmanaged(execute: => Unit, log: Logger): Int =
     log.warn("Managed execution not possible: security manager not installed.")
-    try {
+    try
       execute; 0
-    } catch {
+    catch
       case e: Exception =>
         log.error("Error during execution: " + e.toString)
         log.trace(e)
         1
-    }
-  }
-}
+end TrapExit

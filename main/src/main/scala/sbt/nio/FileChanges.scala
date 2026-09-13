@@ -30,16 +30,15 @@ final case class FileChanges(
     deleted: Seq[Path],
     modified: Seq[Path],
     unmodified: Seq[Path]
-) {
+):
 
   /**
    * Return true either if there is no previous information or
    * @return true if there are no changes.
    */
   lazy val hasChanges: Boolean = created.nonEmpty || deleted.nonEmpty || modified.nonEmpty
-}
 
-object FileChanges {
+object FileChanges:
 
   /**
    * Creates an instance of [[FileChanges]] for a collection of files for which there were no
@@ -58,4 +57,3 @@ object FileChanges {
    */
   def unmodified(files: Seq[Path]): FileChanges =
     FileChanges(created = Nil, deleted = Nil, modified = Nil, unmodified = files)
-}

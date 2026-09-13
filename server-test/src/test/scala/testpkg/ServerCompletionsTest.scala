@@ -11,7 +11,7 @@ import sbt.protocol.{ CompletionParams, CompletionResponse }
 import sbt.protocol.codec.JsonProtocol.given
 
 // starts svr using server-test/completions and perform sbt/completion tests
-class ServerCompletionsTest extends AbstractServerTest {
+class ServerCompletionsTest extends AbstractServerTest:
   override val testDirectory: String = "completions"
 
   test("return basic completions on request") {
@@ -37,4 +37,4 @@ class ServerCompletionsTest extends AbstractServerTest {
       .get
     assert(response.items.contains("testOnly org.sbt.ExampleSpec"))
   }
-}
+end ServerCompletionsTest

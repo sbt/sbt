@@ -5,16 +5,15 @@ import org.scalatest.propspec.AnyPropSpec
 import sbt.librarymanagement.*
 import sbt.util.Logger
 
-class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
+class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers:
 
-  private val logger: Logger = new Logger {
+  private val logger: Logger = new Logger:
     def log(level: sbt.util.Level.Value, message: => String): Unit =
       System.err.println(s"${level.id} $message")
     def success(message: => String): Unit =
       System.err.println(message)
     def trace(t: => Throwable): Unit =
       System.err.println(s"trace $t")
-  }
 
   private val conf211 =
     CoursierConfiguration().withAutoScalaLibrary(true).withScalaVersion(Some("2.11.12"))
@@ -66,14 +65,13 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
       .withConfigurations(Vector(Configuration.of("Compile", "compile")))
     val module = depRes.moduleDescriptor(desc)
 
-    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
+    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match
       case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
             m.revision
         } should (contain(conf211.scalaVersion.get) and have length 1) // from config
-    }
   }
 
   property("get scalalib at local version, scalaModuleInfo:overrideScalaVersion") {
@@ -86,7 +84,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
       .withScalaModuleInfo(scalaModuleInfo213.withOverrideScalaVersion(true))
     val module = depRes.moduleDescriptor(desc)
 
-    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
+    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match
       case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
@@ -95,7 +93,6 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
         } should (
           contain(scalaModuleInfo213.scalaFullVersion) and have length 1
         ) // from autoScalaLib
-    }
   }
 
   property("get scalalib at local version, scalaModuleInfo:!overrideScalaVersion") {
@@ -107,14 +104,13 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
       .withScalaModuleInfo(scalaModuleInfo213.withOverrideScalaVersion(false))
     val module = depRes.moduleDescriptor(desc)
 
-    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
+    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match
       case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
             m.revision
         } should (contain(scalaModule212.revision) and have length 1) // from dependency
-    }
   }
 
   property(
@@ -129,7 +125,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
       .withScalaModuleInfo(scalaModuleInfo213.withOverrideScalaVersion(true))
     val module = depRes.moduleDescriptor(desc)
 
-    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
+    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match
       case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
@@ -138,7 +134,6 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
         } should (
           contain(scalaModuleInfo213.scalaFullVersion) and have length 1
         ) // from autoScalaLib
-    }
   }
 
   property(
@@ -153,14 +148,12 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
       .withScalaModuleInfo(scalaModuleInfo213.withOverrideScalaVersion(false))
     val module = depRes.moduleDescriptor(desc)
 
-    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match {
+    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger) match
       case Left(x)  => throw x.resolveException
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
             CrossVersion.binaryScalaVersion(m.revision)
         } should (contain("2.12") and have length 1) // from transitive dependency
-    }
   }
-
-}
+end CoursierDependencyResolutionTests

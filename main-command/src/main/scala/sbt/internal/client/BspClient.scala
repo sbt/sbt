@@ -15,57 +15,49 @@ import java.util.concurrent.atomic.AtomicBoolean
 import sbt.Exit
 import scala.util.control.NonFatal
 
-object BspClient {
-  private[sbt] def bspRun(sbtServer: Socket): Int = {
+object BspClient:
+  private[sbt] def bspRun(sbtServer: Socket): Int =
     val lock = new AnyRef
     val terminated = new AtomicBoolean(false)
     transferTo(terminated, lock, sbtServer.getInputStream, System.out).start()
     transferTo(terminated, lock, System.in, sbtServer.getOutputStream).start()
-    try {
+    try
       lock.synchronized {
-        while (!terminated.get) lock.wait()
+        while !terminated.get do lock.wait()
       }
       0
-    } catch { case _: Throwable => 1 }
+    catch case _: Throwable => 1
     finally sbtServer.close()
-  }
 
   private[sbt] def transferTo(
       terminated: AtomicBoolean,
       lock: AnyRef,
       input: InputStream,
       output: OutputStream
-  ): Thread = {
-    val thread = new Thread {
-      override def run(): Unit = {
+  ): Thread =
+    val thread = new Thread:
+      override def run(): Unit =
         val buffer = Array.ofDim[Byte](1024)
-        try {
-          while (!terminated.get) {
+        try
+          while !terminated.get do
             val size = input.read(buffer)
-            if (size == -1) {
-              terminated.set(true)
-            } else {
+            if size == -1 then terminated.set(true)
+            else
               output.write(buffer, 0, size)
               output.flush()
-            }
-          }
           input.close()
           output.close()
-        } catch {
+        catch
           case _: InterruptedException => terminated.set(true)
           case NonFatal(_)             => ()
-        } finally {
+        finally
           lock.synchronized {
             terminated.set(true)
             lock.notify()
           }
-        }
-      }
-    }
     thread.setDaemon(true)
     thread
-  }
-  def run(configuration: xsbti.AppConfiguration): Exit = {
+  end transferTo
+  def run(configuration: xsbti.AppConfiguration): Exit =
     Exit(NetworkClient.run(configuration, configuration.arguments.toList, redirectOutput = true))
-  }
-}
+end BspClient

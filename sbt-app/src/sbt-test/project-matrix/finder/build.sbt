@@ -22,8 +22,8 @@ lazy val custom =
   )
 
 check := {
-  val coreResults: Map[Project, Set[VirtualAxis]] = core.allProjects().toMap.mapValues(_.toSet)
-  val customResults: Map[Project, Set[VirtualAxis]] = custom.allProjects().toMap.mapValues(_.toSet)
+  val coreResults: Map[Project, Set[VirtualAxis]] = core.allProjects().toMap.view.mapValues(_.toSet).toMap
+  val customResults: Map[Project, Set[VirtualAxis]] = custom.allProjects().toMap.view.mapValues(_.toSet).toMap
 
   val isJvm = VirtualAxis.jvm
   val isJs = VirtualAxis.js

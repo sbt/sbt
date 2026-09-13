@@ -76,6 +76,7 @@ object FullInstance:
 
     override def flatten[A1](in: Initialize[Task[Initialize[Task[A1]]]]): Initialize[Task[A1]] =
       FullInstance.flatten[A1](in)
+  end initializeTaskMonad
 
   def flatten[A1](in: Initialize[Task[Initialize[Task[A1]]]]): Initialize[Task[A1]] =
     type Tup = (Task[Initialize[Task[A1]]], Task[SS], [a] => Initialize[a] => Initialize[a])

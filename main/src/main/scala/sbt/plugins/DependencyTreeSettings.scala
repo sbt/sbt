@@ -138,7 +138,7 @@ OPTIONS
             SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
           )
           .getOrElse(ModuleGraph.empty)
-        if (dependencyTreeIncludeScalaLibrary.value) g
+        if dependencyTreeIncludeScalaLibrary.value then g
         else GraphTransformations.ignoreScalaLibrary(sv, g)
       },
       dependencyTreeModuleGraphStore := dependencyTreeModuleGraph0
@@ -221,16 +221,17 @@ OPTIONS
                   if isBrowse then openBrowser(outputFile.toURI, s.log)
                   outputFile.getAbsolutePath
               }
+          end match
+        end if
       }).evaluated,
       whatDependsOn := {
         val ArtifactPattern(org, name, versionFilter) = artifactPatternParser.parsed
         val graph = dependencyTreeModuleGraph0.value
         val modules =
-          versionFilter match {
+          versionFilter match
             case Some(version) => GraphModuleId(org, name, version) :: Nil
             case None          =>
               graph.nodes.withFilter(m => m.id.organization == org && m.id.name == name).map(_.id)
-          }
         val graphWidth = asciiGraphWidth.value
         val output =
           modules
@@ -271,6 +272,7 @@ OPTIONS
               case _        => rendering.LicenseInfo.render(graph)
             handleOutput(output, outFileOpt, isQuiet, appendToFile = false, s.log)
           }
+        end if
       }).evaluated,
     )
 
@@ -399,20 +401,17 @@ OPTIONS
     val module: ModuleID
   }
   def crossName(module: Any) =
-    module match {
+    module match
       case ic: ModuleDescriptorConfiguration => ic.module.name
       case _                                 =>
         throw new IllegalStateException(
           "sbt-dependency-graph plugin currently only supports ModuleDescriptorConfiguration of ivy settings (the default in sbt)"
         )
-    }
 
   val VersionPattern = """(\d+)\.(\d+)\.(\d+)(?:-(.*))?""".r
-  object Version {
-    def unapply(str: String): Option[(Int, Int, Int, Option[String])] = str match {
+  object Version:
+    def unapply(str: String): Option[(Int, Int, Int, Option[String])] = str match
       case VersionPattern(major, minor, fix, appendix) =>
         Some((major.toInt, minor.toInt, fix.toInt, Option(appendix)))
       case _ => None
-    }
-  }
 end DependencyTreeSettings

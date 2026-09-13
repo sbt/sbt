@@ -16,15 +16,16 @@ import coursier.core.{
 }
 import coursier.maven.MavenAttributes
 import coursier.util.Artifact
+import sbt.internal.librarymanagement.UpdateReportInterner
 import sbt.librarymanagement.{ Artifact as _, Configuration as _, * }
 import sbt.util.Logger
 import scala.annotation.nowarn
 
 import scala.annotation.tailrec
 
-private[internal] object SbtUpdateReport {
+private[internal] object SbtUpdateReport:
 
-  private def caching[K, V](f: K => V): K => V = {
+  private def caching[K, V](f: K => V): K => V =
 
     val cache = Collections.synchronizedMap(new WeakHashMap[K, V])
 
@@ -36,7 +37,6 @@ private[internal] object SbtUpdateReport {
         val concurrentValueOpt = Option(cache.putIfAbsent(key, value))
         concurrentValueOpt.getOrElse(value)
       }
-  }
 
   private def infoProperties(project: Project): Seq[(String, String)] =
     project.properties.filter(_._1.startsWith("info."))
@@ -147,23 +147,26 @@ private[internal] object SbtUpdateReport {
       sbtMissingArtifacts.toVector
     )
 
-    rep
-      // .withStatus(None)
-      .withPublicationDate(publicationDate)
-      // .withResolver(None)
-      // .withArtifactResolver(None)
-      // .withEvicted(false)
-      // .withEvictedData(None)
-      // .withEvictedReason(None)
-      // .withProblem(None)
-      .withHomepage(Some(project.info.homePage).filter(_.nonEmpty))
-      .withLicenses(project.info.licenses.toVector)
-      .withExtraAttributes(dependency.module.attributes ++ infoProperties(project))
-      // .withIsDefault(None)
-      // .withBranch(None)
-      .withConfigurations(project.configurations.keys.toVector.map(c => ConfigRef(c.value)))
-      .withLicenses(project.info.licenses.toVector)
-      .withCallers(callers.toVector)
+    // Intern as each report is built, so a coordinate is one instance across every project.
+    UpdateReportInterner.intern(
+      rep
+        // .withStatus(None)
+        .withPublicationDate(publicationDate)
+        // .withResolver(None)
+        // .withArtifactResolver(None)
+        // .withEvicted(false)
+        // .withEvictedData(None)
+        // .withEvictedReason(None)
+        // .withProblem(None)
+        .withHomepage(Some(project.info.homePage).filter(_.nonEmpty))
+        .withLicenses(project.info.licenses.toVector)
+        .withExtraAttributes(dependency.module.attributes ++ infoProperties(project))
+        // .withIsDefault(None)
+        // .withBranch(None)
+        .withConfigurations(project.configurations.keys.toVector.map(c => ConfigRef(c.value)))
+        .withLicenses(project.info.licenses.toVector)
+        .withCallers(callers.toVector)
+    )
   }
 
   @nowarn
@@ -181,20 +184,19 @@ private[internal] object SbtUpdateReport {
       classpathOrder: Boolean,
       missingOk: Boolean,
       classLoaders: Seq[ClassLoader]
-  ): Vector[ModuleReport] = {
+  ): Vector[ModuleReport] =
 
-    val deps = classifiersOpt match {
+    val deps = classifiersOpt match
       case Some(classifiers) =>
         res.dependencyArtifacts(Some(classifiers), classpathOrder)
       case None =>
         res.dependencyArtifacts(None, classpathOrder)
-    }
 
-    val depArtifacts1 = fullArtifactsOpt match {
+    val depArtifacts1 = fullArtifactsOpt match
       case Some(map) =>
         deps.map { (d, p, a) =>
           val d0 = d.withAttributes(d.attributes.withClassifier(p.classifier))
-          val a0 = if (missingOk) a.withOptional(true) else a
+          val a0 = if missingOk then a.withOptional(true) else a
           val f = map.get((d0, Right(p), a0)).flatten
           (d, p, a0, f) // not d0
         }
@@ -202,18 +204,17 @@ private[internal] object SbtUpdateReport {
         deps.map { (d, p, a) =>
           (d, p, a, None)
         }
-    }
 
     val depArtifacts0 = depArtifacts1.filter { case (_, pub, _, _) =>
       pub.attributes != Attributes(Type.pom, Classifier.empty)
     }
 
     val depArtifacts =
-      if (includeSignatures) {
+      if includeSignatures then
 
         val notFound = depArtifacts0.filter(!_._3.extra.contains("sig"))
 
-        if (notFound.isEmpty)
+        if notFound.isEmpty then
           depArtifacts0.flatMap { (dep, pub, a, f) =>
             val sigPub = pub
               // not too sure about those
@@ -222,15 +223,12 @@ private[internal] object SbtUpdateReport {
             Seq((dep, pub, a, f)) ++
               a.extra.get("sig").toSeq.map((dep, sigPub, _, None))
           }
-        else {
-          for ((_, _, a, _) <- notFound)
-            log.error(s"No signature found for ${a.url}")
+        else
+          for (_, _, a, _) <- notFound do log.error(s"No signature found for ${a.url}")
           sys.error(s"${notFound.length} signature(s) not found")
-        }
-      } else
-        depArtifacts0
+      else depArtifacts0
 
-    val groupedDepArtifacts = {
+    val groupedDepArtifacts =
       val m = depArtifacts.groupBy(_._1)
       val fromLib = depArtifacts.map(_._1).distinct.map { dep =>
         dep -> m.getOrElse(dep, Nil).map { case (_, pub, a, f) => (pub, a, f) }
@@ -239,7 +237,6 @@ private[internal] object SbtUpdateReport {
         .withFilter(p => p.module != thisModule._1)
         .map(p => Dependency(p.module, p.version) -> Nil)
       fromLib ++ fromInterProj
-    }
 
     val versions = (Vector(
       Dependency(thisModule._1, thisModule._2)
@@ -252,13 +249,20 @@ private[internal] object SbtUpdateReport {
         .withConfiguration(Configuration.empty)
         .withMinimizedExclusions(MinimizedExclusions.zero)
         .withOptional(false)
+        .clearOverrides
+
+    // `Resolution.projectCache` is not a field. It builds a version-string-keyed view of
+    // `projectCache0` from scratch on every call, so reading it per dependency -- as the lookups
+    // below do, once per module and again per parent while assembling inherited info -- rebuilds a
+    // map of every resolved project once per module. Read it once and the lookups become what they
+    // read like.
+    val projectCache = res.projectCache
 
     def lookupProject(mv: coursier.core.Resolution.ModuleVersion): Option[Project] =
-      res.projectCache.get(mv) match {
+      projectCache.get(mv) match
         case Some((_, p)) => Some(p)
         case _            =>
           interProjectDependencies.find(p => mv == (p.module, p.version))
-      }
 
     /**
      * Assemble the project info, resolving inherited fields. Only implements resolving
@@ -267,18 +271,14 @@ private[internal] object SbtUpdateReport {
      * @see https://maven.apache.org/pom.html#Inheritance
      * @see https://maven.apache.org/ref/3-LATEST/maven-model-builder/index.html#Inheritance_Assembly
      */
-    def assemble(project: Project): Project = {
+    def assemble(project: Project): Project =
       @tailrec
-      def licenseInfo(project: Project): Seq[Info.License] = {
-        if (project.info.licenseInfo.nonEmpty || project.parent.isEmpty)
-          project.info.licenseInfo
-        else
-          licenseInfo(lookupProject(project.parent.get).get)
-      }
+      def licenseInfo(project: Project): Seq[Info.License] =
+        if project.info.licenseInfo.nonEmpty || project.parent.isEmpty then project.info.licenseInfo
+        else licenseInfo(lookupProject(project.parent.get).get)
       project.withInfo(
         project.info.withLicenseInfo(licenseInfo(project))
       )
-    }
 
     val m = Dependency(thisModule._1, "")
     val directReverseDependencies = res.rootDependencies.toSet
@@ -287,14 +287,13 @@ private[internal] object SbtUpdateReport {
       .map(dep => dep -> Vector(m))
       .toMap
 
-    val reverseDependencies = {
+    val reverseDependencies =
       val transitiveReverseDependencies = res.reverseDependencies.toVector
         .map { (k, v) => clean(k) -> v.map(clean) }
         .groupMapReduce(_._1)((_, deps) => deps)(_ ++ _)
 
       (transitiveReverseDependencies.toVector ++ directReverseDependencies.toVector)
         .groupMapReduce(_._1)((_, deps) => deps)(_ ++ _)
-    }
 
     groupedDepArtifacts.toVector.map { (dep, artifacts) =>
       val proj = lookupProject(dep.moduleVersion).get
@@ -306,7 +305,7 @@ private[internal] object SbtUpdateReport {
         .flatMap { dependee0 =>
           val version = versions(dependee0.module)
           val dependee = dependee0.withVersion(version)
-          lookupProject(dependee.moduleVersion) match {
+          lookupProject(dependee.moduleVersion) match
             case Some(dependeeProj) =>
               Vector(
                 (
@@ -320,11 +319,10 @@ private[internal] object SbtUpdateReport {
               )
             case _ =>
               Vector.empty
-          }
         }
       val filesOpt = artifacts.map { (pub, a, fileOpt) =>
         val fileOpt0 = fileOpt.orElse {
-          if (fullArtifactsOpt.isEmpty)
+          if fullArtifactsOpt.isEmpty then
             artifactFileOpt(proj.module, proj.version, pub.attributes, a)
           else None
         }
@@ -340,7 +338,7 @@ private[internal] object SbtUpdateReport {
         )
       )
     }
-  }
+  end moduleReports
 
   @nowarn
   def apply(
@@ -359,7 +357,7 @@ private[internal] object SbtUpdateReport {
       missingOk: Boolean,
       forceVersions: Map[Module, String],
       classLoaders: Seq[ClassLoader],
-  ): UpdateReport = {
+  ): UpdateReport =
 
     val configReports = resolutions.map { (config, subRes) =>
       val reports = moduleReports(
@@ -376,11 +374,15 @@ private[internal] object SbtUpdateReport {
         classLoaders = classLoaders,
       )
 
-      val reports0 = subRes.rootDependencies match {
-        case Seq(dep) if subRes.projectCache.contains(dep.moduleVersion) =>
+      // Rebuilt on every read; see the note in `moduleReports`. The eviction loop below reads it
+      // three times per conflict.
+      val subProjectCache = subRes.projectCache
+
+      val reports0 = subRes.rootDependencies match
+        case Seq(dep) if subProjectCache.contains(dep.moduleVersion) =>
           // quick hack ensuring the module for the only root dependency
           // appears first in the update report, see https://github.com/coursier/coursier/issues/650
-          val (_, proj) = subRes.projectCache(dep.moduleVersion)
+          val (_, proj) = subProjectCache(dep.moduleVersion)
           val mod = moduleId((dep, proj.version, infoProperties(proj).toMap))
           val (main, other) = reports.partition { r =>
             r.module.organization == mod.organization &&
@@ -389,7 +391,6 @@ private[internal] object SbtUpdateReport {
           }
           main ++ other
         case _ => reports
-      }
 
       val mainReportDetails = reports0.map { rep =>
         OrganizationArtifactReport(rep.module.organization, rep.module.name, Vector(rep))
@@ -398,21 +399,21 @@ private[internal] object SbtUpdateReport {
       def conflicts: Seq[coursier.graph.Conflict] =
         try coursier.graph.Conflict(subRes)
         catch case e: Throwable if missingOk => Nil
-      val evicted = for {
+      val evicted = for
         c <- conflicts
         // ideally, forceVersions should be taken into account by coursier.core.Resolution itself, when
         // it computes transitive dependencies. It only handles forced versions at a global level for now,
         // rather than handing them for each dependency (where each dependency could have its own forced
         // versions, and apply and pass them to its transitive dependencies, just like for exclusions today).
         if !forceVersions.contains(c.module)
-        projOpt = subRes.projectCache
+        projOpt = subProjectCache
           .get((c.module, c.wantedVersion))
-          .orElse(subRes.projectCache.get((c.module, c.version)))
+          .orElse(subProjectCache.get((c.module, c.version)))
         (_, proj) <- projOpt.toSeq
-      } yield {
+      yield
         val dep = Dependency(c.module, c.wantedVersion)
         val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
-        val dependeeProj = subRes.projectCache.get((c.dependeeModule, c.dependeeVersion)) match {
+        val dependeeProj = subProjectCache.get((c.dependeeModule, c.dependeeVersion)) match
           case Some((_, p)) =>
             ProjectInfo(
               p.version,
@@ -422,14 +423,12 @@ private[internal] object SbtUpdateReport {
           case None =>
             // should not happen
             ProjectInfo(c.dependeeVersion, Vector.empty, Vector.empty)
-        }
         val rep = moduleReport(
           (dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil, classLoaders)
         )
           .withEvicted(true)
           .withEvictedData(Some("version selection")) // ??? put latest-revision like sbt/ivy here?
         OrganizationArtifactReport(c.module.organization.value, c.module.name.value, Vector(rep))
-      }
 
       val details = (mainReportDetails ++ evicted)
         .groupBy(r => (r.organization, r.name))
@@ -452,11 +451,11 @@ private[internal] object SbtUpdateReport {
       UpdateStats(-1L, -1L, -1L, cached = false, stamp = Some(System.currentTimeMillis().toString)),
       Map.empty
     )
-  }
+  end apply
 
   private case class ProjectInfo(
       version: String,
       configs: Vector[ConfigRef],
       properties: Seq[(String, String)]
   )
-}
+end SbtUpdateReport

@@ -8,7 +8,7 @@ import scala.annotation.nowarn
 
 // TODO Make private[lmcoursier]
 // private[coursier]
-object ToCoursier {
+object ToCoursier:
 
   def configuration(configuration: Configuration): coursier.core.Configuration =
     coursier.core.Configuration(configuration.value)
@@ -63,12 +63,11 @@ object ToCoursier {
 
   @nowarn
   def reconciliation(r: Reconciliation): coursier.core.Reconciliation =
-    r match {
+    r match
       case Reconciliation.Default => coursier.core.Reconciliation.Default
       case Reconciliation.Relaxed => coursier.core.Reconciliation.Relaxed
       case Reconciliation.Strict  => coursier.core.Reconciliation.Strict
       case Reconciliation.SemVer  => coursier.core.Reconciliation.SemVer
-    }
 
   @nowarn
   def reconciliation(
@@ -162,7 +161,7 @@ object ToCoursier {
     )
 
   def credentials(credentials: Credentials): coursier.credentials.Credentials =
-    credentials match {
+    credentials match
       case d: DirectCredentials =>
         coursier.credentials
           .DirectCredentials()
@@ -177,10 +176,9 @@ object ToCoursier {
         coursier.credentials
           .FileCredentials(f.path)
           .withOptional(f.optional)
-    }
 
   def cacheLogger(logger: CacheLogger): coursier.cache.CacheLogger =
-    new coursier.cache.CacheLogger {
+    new coursier.cache.CacheLogger:
       override def foundLocally(url: String): Unit =
         logger.foundLocally(url)
       override def downloadingArtifact(url: String): Unit =
@@ -214,7 +212,6 @@ object ToCoursier {
         logger.init(sizeHint)
       override def stop(): Unit =
         logger.stop()
-    }
 
   def strict(strict: Strict): coursier.params.rule.Strict =
     coursier.params.rule
@@ -234,7 +231,7 @@ object ToCoursier {
       .withSemVer(strict.semVer)
 
   def cachePolicy(r: CachePolicy): coursier.cache.CachePolicy =
-    r match {
+    r match
       case CachePolicy.LocalOnly           => coursier.cache.CachePolicy.LocalOnly
       case CachePolicy.LocalOnlyIfValid    => coursier.cache.CachePolicy.LocalOnlyIfValid
       case CachePolicy.LocalUpdateChanging => coursier.cache.CachePolicy.LocalUpdateChanging
@@ -243,5 +240,4 @@ object ToCoursier {
       case CachePolicy.Update              => coursier.cache.CachePolicy.Update
       case CachePolicy.FetchMissing        => coursier.cache.CachePolicy.FetchMissing
       case CachePolicy.ForceDownload       => coursier.cache.CachePolicy.ForceDownload
-    }
-}
+end ToCoursier

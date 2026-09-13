@@ -1,15 +1,16 @@
-import org.scalatest.FlatSpec
 import java.io.File
 
-trait Ensemble extends FlatSpec {
-	def i: Int
-	def prefix = System.getProperty("group.prefix")
+import munit.FunSuite
 
-	"an ensemble" should "create all files" in {
-		val f = new File(prefix + i)
-		f.createNewFile
-	}
-}
+trait Ensemble extends FunSuite:
+  def i: Int
+  def prefix = System.getProperty("group.prefix")
+
+  test("an ensemble should create all files") {
+    val f = new File(prefix + i)
+    f.createNewFile
+  }
+end Ensemble
 
 class Ensemble1 extends Ensemble { def i = 1 }
 class Ensemble2 extends Ensemble { def i = 2 }

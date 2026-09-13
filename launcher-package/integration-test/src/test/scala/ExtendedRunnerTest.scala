@@ -31,6 +31,14 @@ object ExtendedRunnerTest extends BasicTestSuite:
       "JAVA_OPTS" -> "",
       "SBT_OPTS" -> ""
     )
+  def sbtProcessLikeBsd(args: String*) =
+    Process(
+      launcherCmd ++ args,
+      IntegrationTestPaths.citestDir("citest"),
+      "JAVA_OPTS" -> "",
+      "SBT_OPTS" -> "",
+      "OSTYPE" -> "openbsd7.9"
+    )
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -39,13 +47,18 @@ object ExtendedRunnerTest extends BasicTestSuite:
     ()
   }
 
-  def testVersion(lines: List[String]): Unit = {
+  test("sbt tasks -V lists verbose tasks") {
+    val out = sbtProcessInDir(IntegrationTestPaths.citestDir("citest2"))("tasks", "-V").!!
+    assert(out.linesIterator.exists(_.contains("allCredentials")))
+    assert(!out.linesIterator.exists(_.startsWith("sbt runner version:")))
+  }
+
+  def testVersion(lines: List[String]): Unit =
     assert(lines.size >= 2)
     val expected0 = s"(?m)^sbt version in this project: $versionRegEx(\\r)?"
     assert(lines(0).matches(expected0))
     val expected1 = s"sbt runner version: $versionRegEx$$"
     assert(lines(1).matches(expected1))
-  }
 
   /* TODO: The lines seems to return List([0Jsbt runner version: 1.11.4) on CI
   test("sbt -V|-version|--version should print sbtVersion") {
@@ -84,22 +97,26 @@ object ExtendedRunnerTest extends BasicTestSuite:
       "compile",
       "-v",
       "--sbt-jar",
-      "../target/universal/stage/bin/sbt-launch.jar"
+      "../../target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt-launch.jar"
     ).!!.linesIterator.toList
     assert(
-      out.contains[String]("../target/universal/stage/bin/sbt-launch.jar") ||
-        out.contains[String]("\"../target/universal/stage/bin/sbt-launch.jar\"")
+      out.exists(line =>
+        line.endsWith(
+          "/target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt-launch.jar"
+        ) || line.endsWith(
+          "/target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt-launch.jar\""
+        )
+      )
     )
     ()
   }
 
   test("sbt \"testOnly *\"") {
-    if (isMac) ()
-    else {
+    if isMac then ()
+    else
       val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
       assert(out.contains[String]("[info] HelloTest"))
       ()
-    }
   }
 
   test("sbt in empty directory") {
@@ -124,34 +141,59 @@ object ExtendedRunnerTest extends BasicTestSuite:
   }
 
   test("sbt --jvm-client") {
-    if (isMac) {
+    if isMac then
       // `--jvm-client` is flaky in macOS CI due to intermittent startup/connection failures.
       // Keep coverage on Linux/Windows where the behavior is stable.
       ()
-    } else {
+    else
       val out = sbtProcess("--jvm-client", "--no-colors", "compile").!!.linesIterator.toList
-      if (isWindows) {
-        println(out)
-      } else {
-        assert(out.exists { _.contains("server was not detected") })
-      }
+      if isWindows then println(out)
+      else assert(out.exists { _.contains("server was not detected") })
       val out2 = sbtProcess("--jvm-client", "--no-colors", "shutdown").!!.linesIterator.toList
-      if (isWindows) {
-        println(out2)
-      } else {
-        assert(out2.exists { _.contains("disconnected") })
-      }
-    }
+      if isWindows then println(out2)
+      else assert(out2.exists { _.contains("disconnected") })
+    ()
+  }
+
+  test("sbt falls back to JVM client on unsupported platform") {
+    if isWindows || isMac then ()
+    else
+      val out = sbtProcessLikeBsd("--client", "--no-colors", "compile").!!.linesIterator.toList
+      assert(out.exists { _.contains("server was not detected") })
+      sbtProcessLikeBsd("--client", "--no-colors", "shutdown").!
+    ()
+  }
+
+  test("sbt --client reports server startup errors") {
+    if isWindows then ()
+    else
+      IO.withTemporaryDirectory: tmp =>
+        val projectDir = new File(tmp, "project")
+        IO.createDirectory(projectDir)
+        IO.write(new File(projectDir, "build.properties"), "sbt.version=2.0.0\n")
+        IO.write(new File(tmp, "build.sbt"), "name := \"startup-error\"\n")
+        IO.write(new File(tmp, "target"), "")
+
+        val output = new StringBuffer
+        def append(line: String): Unit =
+          output.append(line).append(System.lineSeparator())
+          ()
+        val exitCode = sbtProcessInDir(tmp)("--client", "--no-colors", "about")
+          .!(ProcessLogger(append, append))
+        val diagnostics = output.toString
+        assert(exitCode == 1, diagnostics)
+        assert(diagnostics.contains("Could not create directory"), diagnostics)
+        assert(diagnostics.contains("target/global-logging"), diagnostics)
     ()
   }
 
   // Test for issue #6485: Test `sbt --client` startup
   // https://github.com/sbt/sbt/issues/6485
   test("sbt --client startup time") {
-    if (isWindows || isMac) {
+    if isWindows || isMac then
       // Skip on Windows (sbtn behavior differs) and macOS CI (slow hostname resolution)
       ()
-    } else {
+    else
       // First call starts the server if not running (warmup)
       val warmup = sbtProcess("--client", "version").!
       assert(warmup == 0, "Warmup sbt --client version failed")
@@ -184,17 +226,17 @@ object ExtendedRunnerTest extends BasicTestSuite:
       // Cleanup: shutdown the server
       val shutdown = sbtProcess("--client", "shutdown").!
       assert(shutdown == 0, "Failed to shutdown sbt server")
-    }
+    end if
     ()
   }
 
   // Test for issue #8644: sbt.bat fails when project path contains parentheses
   // https://github.com/sbt/sbt/issues/8644
   test("sbt.bat handles paths with parentheses") {
-    if (!isWindows) {
+    if !isWindows then
       // This test is Windows-specific, skip on other platforms
       ()
-    } else {
+    else
       IO.withTemporaryDirectory { baseDir =>
         // Create a temporary directory with parentheses in the name
         val testDir = new File(baseDir, "test(parentheses)")
@@ -237,7 +279,7 @@ object ExtendedRunnerTest extends BasicTestSuite:
           s"Error message should not contain parsing error when path has parentheses. Error output: $errorOutput"
         )
       }
-    }
+    end if
     ()
   }
 end ExtendedRunnerTest

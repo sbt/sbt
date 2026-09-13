@@ -13,7 +13,7 @@ import scala.util.{ Failure, Success }
 import sjsonnew.support.scalajson.unsafe.CompactPrinter
 
 // starts svr using server-test/response and perform custom server tests
-class ResponseTest extends AbstractServerTest {
+class ResponseTest extends AbstractServerTest:
   override val testDirectory: String = "response"
 
   test("response from a command") {
@@ -92,18 +92,16 @@ class ResponseTest extends AbstractServerTest {
   private def neverReceiveResponse(
       duration: FiniteDuration
   )(predicate: sbt.internal.protocol.JsonRpcResponseMessage => Boolean): Unit =
-    svr.session.waitForResponseMsg(duration)(predicate) match {
+    svr.session.waitForResponseMsg(duration)(predicate) match
       case Success(matched) =>
         fail(s"Expected no matching response, but received: $matched")
       case Failure(_: TimeoutException) => ()
       case Failure(e)                   => throw e
-    }
 
   private def neverReceiveResponseWithId(duration: FiniteDuration, id: String): Unit =
-    svr.session.waitForResponseMsg(duration, id) match {
+    svr.session.waitForResponseMsg(duration, id) match
       case Success(matched) =>
         fail(s"Expected no response for request $id, but received: $matched")
       case Failure(_: TimeoutException) => ()
       case Failure(e)                   => throw e
-    }
-}
+end ResponseTest

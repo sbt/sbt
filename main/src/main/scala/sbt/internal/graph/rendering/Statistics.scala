@@ -11,8 +11,8 @@ package internal
 package graph
 package rendering
 
-object Statistics {
-  def renderModuleStatsList(graph: ModuleGraph): String = {
+object Statistics:
+  def renderModuleStatsList(graph: ModuleGraph): String =
     case class ModuleStats(
         id: GraphModuleId,
         numDirectDependencies: Int,
@@ -20,12 +20,11 @@ object Statistics {
         selfSize: Option[Long],
         transitiveSize: Long,
         transitiveDependencyStats: Map[GraphModuleId, ModuleStats]
-    ) {
+    ):
       def transitiveStatsWithSelf: Map[GraphModuleId, ModuleStats] =
         transitiveDependencyStats + (id -> this)
-    }
 
-    def statsFor(moduleId: GraphModuleId): ModuleStats = {
+    def statsFor(moduleId: GraphModuleId): ModuleStats =
       val directDependencies = graph.dependencyMap(moduleId).filterNot(_.isEvicted).map(_.id)
       val dependencyStats =
         directDependencies.map(statsFor).flatMap(_.transitiveStatsWithSelf).toMap
@@ -44,24 +43,21 @@ object Statistics {
         transitiveSize,
         dependencyStats
       )
-    }
 
-    def format(stats: ModuleStats): String = {
+    def format(stats: ModuleStats): String =
       import java.util.Locale
       val dl = Locale.getDefault
       Locale.setDefault(Locale.US)
       import stats.*
       def mb(bytes: Long): Double = bytes.toDouble / 1000000
       val selfSize =
-        stats.selfSize match {
+        stats.selfSize match
           case Some(size) => f"${mb(size)}%7.3f"
           case None       => "-------"
-        }
       val r =
         f"${mb(transitiveSize)}%7.3f MB $selfSize MB $numTransitiveDependencies%4d $numDirectDependencies%4d ${id.idString}%s"
       Locale.setDefault(dl)
       r
-    }
 
     val allStats =
       graph.roots
@@ -83,5 +79,5 @@ object Statistics {
         | - Number of transitive dependencies
         | - Number of direct dependencies
         | - ModuleID""".stripMargin
-  }
-}
+  end renderModuleStatsList
+end Statistics

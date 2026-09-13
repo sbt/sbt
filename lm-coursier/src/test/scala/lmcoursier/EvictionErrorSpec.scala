@@ -6,7 +6,7 @@ import sbt.librarymanagement.syntax.*
 import sbt.util.Level
 import TestKit.*
 
-object EvictionErrorSpec extends verify.BasicTestSuite {
+object EvictionErrorSpec extends verify.BasicTestSuite:
   // This is a specification to check the eviction errors
 
   import TestShowLines.*
@@ -134,12 +134,11 @@ object EvictionErrorSpec extends verify.BasicTestSuite {
     val userDefinedSchemes: Map[(String, String), String] = Map(schemes flatMap { s =>
       val organization = s.organization
       val versionScheme = s.revision
-      (s.crossVersion, sbvOpt) match {
+      (s.crossVersion, sbvOpt) match
         case (b: Binary, Some(sbv)) =>
           List((s.organization, s"${s.name}${b.suffix}_$sbv") -> versionScheme)
         case _ =>
           List((s.organization, s.name) -> versionScheme)
-      }
     }*)
 
     // The key should include the platform suffix "_sjs1" before the Scala version
@@ -230,4 +229,4 @@ object EvictionErrorSpec extends verify.BasicTestSuite {
       filterImplicit = false,
       overrideScalaVersion = true
     )
-}
+end EvictionErrorSpec

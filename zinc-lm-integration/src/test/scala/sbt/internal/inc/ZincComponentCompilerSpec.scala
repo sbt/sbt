@@ -11,7 +11,7 @@ package sbt.internal.inc
 import sbt.internal.util.ConsoleLogger
 import sbt.io.IO
 
-class ZincComponentCompilerSpec extends BridgeProviderSpecification {
+class ZincComponentCompilerSpec extends BridgeProviderSpecification:
   val scala2107 = "2.10.7"
   val scala21112 = "2.11.12"
   val scala21221 = "2.12.21"
@@ -34,4 +34,4 @@ class ZincComponentCompilerSpec extends BridgeProviderSpecification {
   it should "compile the bridge for Scala 2.13.11" in { case given FixtureParam =>
     IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala21311) should exist)
   }
-}
+end ZincComponentCompilerSpec

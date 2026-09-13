@@ -21,7 +21,7 @@ import hedgehog.runner.*
  * Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Def.show*Key.
  * This includes properly resolving omitted components.
  */
-object ParseKeySpec extends Properties {
+object ParseKeySpec extends Properties:
   val exampleCount = 1000
 
   override def tests: List[Test] = List(
@@ -51,7 +51,7 @@ object ParseKeySpec extends Properties {
     Test(name, result)
       .config(_.copy(testLimit = SuccessCount(n), shrinkLimit = ShrinkLimit(n * 10)))
 
-  def roundtrip(skm: StructureKeyMask) = {
+  def roundtrip(skm: StructureKeyMask) =
     import skm.{ structure, key }
 
     // if the configuration axis == Zero
@@ -61,7 +61,7 @@ object ParseKeySpec extends Properties {
     val hasZeroConfig = key.scope.config == Zero
 
     val showZeroConfig = hasZeroConfig || hasAmbiguousLowercaseAxes(key, structure)
-    val mask = if (showZeroConfig) skm.mask.copy(project = true) else skm.mask
+    val mask = if showZeroConfig then skm.mask.copy(project = true) else skm.mask
 
     val expected = resolve(structure, key, mask)
     parseCheck(structure, key, mask, showZeroConfig)(sk =>
@@ -70,9 +70,8 @@ object ParseKeySpec extends Properties {
         .log(s"$sk.key == $expected.key: ${sk.key == expected.key}")
         .log(s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}")
     ).log(s"Expected: ${displayFull(expected)}")
-  }
 
-  def noProject(skm: StructureKeyMask) = {
+  def noProject(skm: StructureKeyMask) =
     import skm.{ structure, key }
     // When task is shown and task name matches a project name, we need to show config
     // to disambiguate (otherwise 'taskName / keyName' could be parsed as 'projectName / keyName')
@@ -87,15 +86,13 @@ object ParseKeySpec extends Properties {
         .log(s"parsed subproject: ${sk.scope.project}")
         .log(s"current subproject: ${structure.current}")
     )
-  }
 
-  def noTask(skm: StructureKeyMask) = {
+  def noTask(skm: StructureKeyMask) =
     import skm.{ structure, key }
     val mask = skm.mask.copy(task = false)
     parseCheck(structure, key, mask)(_.scope.task ==== Zero)
-  }
 
-  def noConfig(skm: StructureKeyMask) = {
+  def noConfig(skm: StructureKeyMask) =
     import skm.{ structure, key }
     val mask = ScopeMask(config = false)
     val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
@@ -103,59 +100,54 @@ object ParseKeySpec extends Properties {
     parseCheck(structure, key, mask, showZeroConfig)(sk =>
       (sk.scope.config ==== resolvedConfig) or (sk.scope ==== Scope.GlobalScope)
     ).log(s"Expected configuration: ${resolvedConfig.map(_.name)}")
-  }
 
   val arbStructure: Gen[Structure] =
-    for {
+    for
       env <- mkEnv
       loadFactor <- Gen.double(Range.linearFrac(0.0, 1.0))
       scopes <- pickN(loadFactor, env.allFullScopes)
       current <- oneOf(env.allProjects.unzip._1)
-    } yield {
+    yield
       val settings = structureSettings(scopes, env)
       TestBuild.structure(env, settings, current)
-    }
 
-  def structureSettings(scopes: Seq[Scope], env: Env): Seq[Def.Setting[String]] = {
-    for {
+  def structureSettings(scopes: Seq[Scope], env: Env): Seq[Def.Setting[String]] =
+    for
       scope <- scopes
       t <- env.tasks
-    } yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
-  }
+    yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
 
   final case class StructureKeyMask(structure: Structure, key: ScopedKey[?], mask: ScopeMask)
 
   val arbStructureKeyMask: Gen[StructureKeyMask] =
-    (for {
+    (for
       structure <- arbStructure
       // NOTE: Generating this after the structure improves shrinking
       mask <- maskGen
       key <-
-        for {
+        for
           scope <- TestBuild.scope(structure.env)
           key <- oneOf(structure.allAttributeKeys.toSeq)
-        } yield ScopedKey(scope, key)
+        yield ScopedKey(scope, key)
       skm = StructureKeyMask(structure, key, mask)
-    } yield skm)
+    yield skm)
       .filter(configExistsInIndex)
 
-  private def configExistsInIndex(skm: StructureKeyMask): Boolean = {
+  private def configExistsInIndex(skm: StructureKeyMask): Boolean =
     import skm.*
     val resolvedKey = resolve(structure, key, mask)
     val proj = resolvedKey.scope.project.toOption
     val maybeResolvedProj = proj.collect { case ref: ResolvedReference =>
       ref
     }
-    val checkName = for {
-      configKey <- resolvedKey.scope.config.toOption
-    } yield {
-      val configID = Scope.display(configKey)
-      // This only works for known configurations or those that were guessed correctly.
-      val name = structure.keyIndex.fromConfigIdent(maybeResolvedProj)(configID)
-      name == configKey.name
-    }
+    val checkName =
+      for configKey <- resolvedKey.scope.config.toOption
+      yield
+        val configID = Scope.display(configKey)
+        // This only works for known configurations or those that were guessed correctly.
+        val name = structure.keyIndex.fromConfigIdent(maybeResolvedProj)(configID)
+        name == configKey.name
     checkName.getOrElse(true)
-  }
 
   def resolve(structure: Structure, key: ScopedKey[?], mask: ScopeMask): ScopedKey[?] =
     ScopedKey(
@@ -168,7 +160,7 @@ object ParseKeySpec extends Properties {
       key: ScopedKey[?],
       mask: ScopeMask,
       showZeroConfig: Boolean = false,
-  )(f: ScopedKey[?] => hedgehog.Result): hedgehog.Result = {
+  )(f: ScopedKey[?] => hedgehog.Result): hedgehog.Result =
     val s = displayMasked(key, mask, showZeroConfig)
     val parser = makeParser(structure)
     val parsed = Parser.result(parser, s).left.map(_().toString)
@@ -181,7 +173,6 @@ object ParseKeySpec extends Properties {
         .log(s"Parsed: ${parsed.map(displayFull)}")
         .log(s"Structure: $structure")
     )
-  }
 
   // pickN is a function that randomly picks load % items from the "from" sequence.
   // The rest of the tests expect at least one item, so I changed it to return 1 in case of 0.
@@ -197,22 +188,20 @@ object ParseKeySpec extends Properties {
   // then a scoped key like `<proj>/<conf>/zv/name` would render as `zv/name`
   // which would be interpreted as `zv/Zero/Zero/name` (project zv)
   // so we also check if the task label matches a project name
-  def hasAmbiguousLowercaseAxes(key: ScopedKey[?], structure: Structure): Boolean = {
+  def hasAmbiguousLowercaseAxes(key: ScopedKey[?], structure: Structure): Boolean =
     val label = key.key.label
     val allProjects = allProjectNames(structure)
     allProjects(label) || hasAmbiguousTaskLabel(key, structure)
-  }
 
   // checks if the task label matches a project name
-  def hasAmbiguousTaskLabel(key: ScopedKey[?], structure: Structure): Boolean = {
+  def hasAmbiguousTaskLabel(key: ScopedKey[?], structure: Structure): Boolean =
     val taskLabel = key.scope.task.toOption.map(_.label)
     val allProjects = allProjectNames(structure)
     taskLabel.exists(allProjects)
-  }
 
   private def allProjectNames(structure: Structure): Set[String] =
-    for {
+    for
       uri <- structure.keyIndex.buildURIs
       project <- structure.keyIndex.projects(uri)
-    } yield project
-}
+    yield project
+end ParseKeySpec

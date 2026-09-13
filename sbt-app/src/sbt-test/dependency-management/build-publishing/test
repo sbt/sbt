@@ -1,0 +1,34 @@
+> leaf/publishLocalBin
+> publishLocalBin
+> checkBinary
+> consumer/compile
+> prepare
+> set publish / skip := true
+> set publishLocal / skip := true
+> Universal/publishLocalSigned
+> Debian/publishLocalSigned
+> Rpm/publishLocalSigned
+> Universal/publishSigned
+> Debian/publishSigned
+> Rpm/publishSigned
+> checkSigned
+> overwriteFixtures
+> Universal/publishLocalSigned
+> Debian/publishLocalSigned
+> Rpm/publishLocalSigned
+> Universal/publishSigned
+> Debian/publishSigned
+> Rpm/publishSigned
+> checkSigned
+> set com.jsuereth.sbtpgp.PgpKeys.pgpSigner / skip := true
+> clearPackages
+> Universal/publishLocalSigned
+> Debian/publishLocalSigned
+> Rpm/publishLocalSigned
+> Universal/publishSigned
+> Debian/publishSigned
+> Rpm/publishSigned
+> checkUnsigned
+> set publishLocalBin / skip := true
+> set publishLocalBin / packagedArtifacts := Def.uncached(sys.error("skipped publication evaluated artifacts"))
+> publishLocalBin

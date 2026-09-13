@@ -17,14 +17,14 @@ import java.io.File
 import java.nio.file.{ Files, Paths }
 import scala.util.Properties
 
-object BuildServerConnection {
+object BuildServerConnection:
   final val name = "sbt"
   final val bspVersion = "2.1.0-M1"
   final val languages = Vector("scala")
 
   private final val SbtLaunchJar = "sbt-launch(-.*)?\\.jar".r
 
-  private[sbt] def writeConnectionFile(sbtVersion: String, baseDir: File): Unit = {
+  private[sbt] def writeConnectionFile(sbtVersion: String, baseDir: File): Unit =
     val bspConnectionFile = new File(baseDir, ".bsp/sbt.json")
 
     val sbtScript = Option(System.getProperty("sbt.script"))
@@ -41,9 +41,8 @@ object BuildServerConnection {
     val details = BspConnectionDetails(name, sbtVersion, bspVersion, languages, argv)
     val json = Converter.toJson(details).get
     IO.write(bspConnectionFile, CompactPrinter(json), append = false)
-  }
 
-  private[sbt] def buildFallbackArgv: Vector[String] = {
+  private[sbt] def buildFallbackArgv: Vector[String] =
     val javaHome = Util.javaHome
     val classPath = System.getProperty("java.class.path")
     val sbtOptsArgs = parseSbtOpts(sys.env.get("SBT_OPTS"))
@@ -65,10 +64,10 @@ object BuildServerConnection {
       ) ++
       Vector("xsbt.boot.Boot", "-bsp") ++
       sbtLaunchJar
-  }
+  end buildFallbackArgv
 
-  private[sbt] def sbtScriptInPath: Option[String] = {
-    val fileName = if (Properties.isWin) "sbt.bat" else "sbt"
+  private[sbt] def sbtScriptInPath: Option[String] =
+    val fileName = if Properties.isWin then "sbt.bat" else "sbt"
     val envPath = sys.env.collectFirst {
       case (k, v) if k.toUpperCase() == "PATH" => v
     }
@@ -79,7 +78,6 @@ object BuildServerConnection {
       .map(_.resolve(fileName))
       .find(file => Files.exists(file) && Files.isExecutable(file))
       .map(_.toString)
-  }
 
   private[sbt] def parseSbtOpts(sbtOpts: Option[String]): Vector[String] =
     sbtOpts match
@@ -87,7 +85,7 @@ object BuildServerConnection {
         opts
           .split("\\s+")
           .filter(arg => arg.startsWith("-D") || arg.startsWith("-X") || arg.startsWith("-J"))
-          .map(arg => if (arg.startsWith("-J")) arg.stripPrefix("-J") else arg)
+          .map(arg => if arg.startsWith("-J") then arg.stripPrefix("-J") else arg)
           .toVector
       case _ => Vector.empty
-}
+end BuildServerConnection

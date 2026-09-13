@@ -30,25 +30,22 @@ final case class Statement(
     arguments: List[String],
     successExpected: Boolean,
     line: Int
-) {
+):
   def linePrefix = "{line " + line + "} "
-}
 
-private object TestScriptParser {
+private object TestScriptParser:
   val SuccessLiteral = "success"
   val FailureLiteral = "failure"
   val WordRegex = """[^ \[\]\s'\"][^ \[\]\s]*""".r
-}
 
 import TestScriptParser.*
-class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParsers {
+class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParsers:
   require(handlers.nonEmpty)
   override def skipWhitespace = false
 
   import IO.read
-  if (handlers.keys.exists(isWhitespace))
-    sys.error("Start characters cannot be whitespace")
-  if (handlers.keys.exists(key => key == '+' || key == '-'))
+  if handlers.keys.exists(isWhitespace) then sys.error("Start characters cannot be whitespace")
+  if handlers.keys.exists(key => key == '+' || key == '-') then
     sys.error("Start characters cannot be '+' or '-'")
 
   @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
@@ -65,15 +62,12 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
       script: String,
       label: Option[String],
       stripQuotes: Boolean
-  ): List[(StatementHandler, Statement)] = {
-    parseAll(statements(stripQuotes), script) match {
+  ): List[(StatementHandler, Statement)] =
+    parseAll(statements(stripQuotes), script) match
       case Success(result, next) => result
-      case err: NoSuccess        => {
+      case err: NoSuccess        =>
         val labelString = label.map("'" + _ + "' ").getOrElse("")
         sys.error("Could not parse test script, " + labelString + err.toString)
-      }
-    }
-  }
 
   @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
   lazy val statements = rep1(space ~> statement <~ newline)
@@ -82,23 +76,20 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
 
   @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
   def statement: Parser[(StatementHandler, Statement)] = statement(stripQuotes = true)
-  def statement(stripQuotes: Boolean): Parser[(StatementHandler, Statement)] = {
-    trait PositionalStatement extends Positional {
+  def statement(stripQuotes: Boolean): Parser[(StatementHandler, Statement)] =
+    trait PositionalStatement extends Positional:
       def tuple: (StatementHandler, Statement)
-    }
     positioned {
-      val w = if (stripQuotes) word else rawWord
+      val w = if stripQuotes then word else rawWord
       val command = w | err("expected command")
       val arguments = rep(space ~> w | failure("expected argument"))
       (successParser ~ (space ~> startCharacterParser <~ space) ~! command ~! arguments) ^^ {
         case successExpected ~ start ~ command ~ arguments =>
-          new PositionalStatement {
+          new PositionalStatement:
             def tuple =
               (handlers(start), new Statement(command, arguments, successExpected, pos.line))
-          }
       }
     } ^^ (_.tuple)
-  }
 
   def successParser: Parser[Boolean] = ('+' ^^^ true) | ('-' ^^^ false) | success(true)
   def space: Parser[String] = """[ \t]*""".r
@@ -116,4 +107,4 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
       )
 
   def newline = """\s*([\n\r]|$)""".r
-}
+end TestScriptParser

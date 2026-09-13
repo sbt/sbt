@@ -1,7 +1,7 @@
 import sbt.*
 import sbt.Keys.*
 
-object Transform {
+object Transform:
 
   def configSettings = Seq(
     resourceGenerators += Def.task {
@@ -19,10 +19,9 @@ object Transform {
       val catcher = scala.util.control.Exception.catching(classOf[java.io.IOException])
       rs.map { case (in, out) =>
         val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
-        if (Some(newString) != catcher.opt(IO.read(out)))
-          IO.write(out, newString)
+        if Some(newString) != catcher.opt(IO.read(out)) then IO.write(out, newString)
         out
       }
     }.taskValue,
   )
-}
+end Transform

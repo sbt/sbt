@@ -61,7 +61,7 @@ object BspConfigTest extends BasicTestSuite:
       // Test execution of the generated argv
       // Run the BSP command with a very short timeout to verify it starts correctly
       // We just need to verify the command doesn't fail immediately on startup
-      if (!isWindows) {
+      if !isWindows then
         // On Unix, we can test the argv execution
         // Create a process and check if it starts (will timeout waiting for BSP input)
         val process = Process(argv.toSeq, tmp)
@@ -76,14 +76,13 @@ object BspConfigTest extends BasicTestSuite:
 
         // The process should either still be alive (waiting for BSP messages)
         // or have exited with code 0 (graceful)
-        if (!isAlive) {
+        if !isAlive then
           val exitCode = processBuilder.exitValue()
           assert(
             exitCode == 0 || exitCode == 143, // 143 = SIGTERM from destroy()
             s"BSP process failed with exit code $exitCode"
           )
-        }
-      }
+      end if
     }
     ()
   }

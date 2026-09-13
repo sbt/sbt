@@ -1,6 +1,6 @@
 package lmcoursier.definitions
 
-abstract class CacheLogger {
+abstract class CacheLogger:
   def foundLocally(url: String): Unit = {}
 
   def downloadingArtifact(url: String): Unit = {}
@@ -30,9 +30,8 @@ abstract class CacheLogger {
   // sizeHint: estimated # of artifacts to be downloaded (doesn't include side stuff like checksums)
   def init(sizeHint: Option[Int] = None): Unit = {}
   def stop(): Unit = {}
-}
+end CacheLogger
 
-object CacheLogger {
+object CacheLogger:
   def nop: CacheLogger =
     new CacheLogger {}
-}

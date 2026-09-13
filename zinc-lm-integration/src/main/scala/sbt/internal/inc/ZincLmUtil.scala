@@ -23,7 +23,7 @@ import xsbti.ArtifactInfo.SbtOrganization
 import xsbti.*
 import xsbti.compile.{ ClasspathOptions, ScalaInstance as XScalaInstance }
 
-object ZincLmUtil {
+object ZincLmUtil:
 
   final val scala2SbtBridgeStart = ScalaArtifacts.scala2SbtBridgeStart
   def hasScala2SbtBridge(sv: String): Boolean =
@@ -45,7 +45,7 @@ object ZincLmUtil {
       scalaJarsTarget: File,
       classLoaderCache: Option[ClassLoaderCache],
       log: Logger
-  ): AnalyzingCompiler = {
+  ): AnalyzingCompiler =
     val compilerBridgeProvider = ZincComponentCompiler.interfaceProvider(
       compilerBridgeSource,
       new ZincComponentManager(globalLock, componentProvider, secondaryCacheDir, log),
@@ -59,7 +59,7 @@ object ZincLmUtil {
       _ => (),
       classLoaderCache
     )
-  }
+  end scalaCompiler
 
   def scalaCompilerBridgeJars(
       scalaInstance: XScalaInstance,
@@ -86,7 +86,7 @@ object ZincLmUtil {
       updateConfiguration: UpdateConfiguration,
       warningConfig: UnresolvedWarningConfiguration,
       logger: Logger
-  ): File = {
+  ): File =
     val bridgeModule = getDefaultBridgeModule(scalaOrganization, scalaVersion)
     val descriptor = dependencyResolution.wrapDependencyInModule(bridgeModule)
     dependencyResolution
@@ -98,33 +98,30 @@ object ZincLmUtil {
           moduleFilter(bridgeModule.organization, bridgeModule.name, bridgeModule.revision),
           artifactFilter(`extension` = "jar", classifier = "")
         )
-        if (jars.size > 1)
+        if jars.size > 1 then
           sys.error(s"There should be only one jar for $bridgeModule but found $jars")
         else jars.headOption
       }
       .getOrElse(throw new MessageOnlyException(s"Missing $bridgeModule"))
-  }
+  end fetchDefaultBridgeModule
 
-  def getDefaultBridgeModule(scalaOrganization: String, scalaVersion: String): ModuleID = {
-    if (ScalaArtifacts.isScala3(scalaVersion)) {
+  def getDefaultBridgeModule(scalaOrganization: String, scalaVersion: String): ModuleID =
+    if ScalaArtifacts.isScala3(scalaVersion) then
       ModuleID(scalaOrganization, "scala3-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
-    } else if (hasScala2SbtBridge(scalaVersion)) {
+    else if hasScala2SbtBridge(scalaVersion) then
       ModuleID(scalaOrganization, "scala2-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
-    } else {
-      val compilerBridgeId = scalaVersion match {
+    else
+      val compilerBridgeId = scalaVersion match
         case sc if sc.startsWith("2.10.") => "compiler-bridge_2.10"
         case sc if sc.startsWith("2.11.") => "compiler-bridge_2.11"
         case sc if sc.startsWith("2.12.") => "compiler-bridge_2.12"
         case "2.13.0-M1"                  => "compiler-bridge_2.12"
         case _                            => "compiler-bridge_2.13"
-      }
       ModuleID(SbtOrganization, compilerBridgeId, ZincComponentManager.version)
         .withConfigurations(Some(Compile.name))
-    }
-  }
 
   def getDefaultBridgeSourceModule(scalaOrganization: String, scalaVersion: String): ModuleID =
     getDefaultBridgeModule(scalaOrganization, scalaVersion).sources()
-}
+end ZincLmUtil

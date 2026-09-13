@@ -3,7 +3,7 @@ package sbt.librarymanagement
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
-class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
+class SemanticSelectorSpec extends AnyFreeSpec with Matchers:
   semsel("<=1.2.3") { sel =>
     assertMatches(sel, "1.2.3")
     assertMatches(sel, "1.2-beta")
@@ -396,4 +396,4 @@ class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
     s"""should parse as an error""" in {
       an[IllegalArgumentException] should be thrownBy SemanticSelector(s.value)
     }
-}
+end SemanticSelectorSpec

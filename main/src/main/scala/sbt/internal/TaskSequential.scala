@@ -14,7 +14,7 @@ import Def.*
 /**
  * This trait injected to `Def` object to provide `sequential` functions for tasks.
  */
-trait TaskSequential {
+trait TaskSequential:
   def sequential[B](last: Initialize[Task[B]]): Initialize[Task[B]] =
     sequential(Nil, last)
   def sequential[A0, B](
@@ -758,26 +758,24 @@ trait TaskSequential {
       last
     )
 
-  def sequential[B](tasks: Seq[Initialize[Task[B]]]): Initialize[Task[B]] = {
+  def sequential[B](tasks: Seq[Initialize[Task[B]]]): Initialize[Task[B]] =
     val initTasks: Seq[Initialize[Task[B]]] = tasks.init
     val lastTask: Initialize[Task[B]] = tasks.last
     sequential(initTasks.map(unitTask), lastTask)
-  }
 
   def sequential[B](
       tasks: Seq[Initialize[Task[Unit]]],
       last: Initialize[Task[B]]
   ): Initialize[Task[B]] =
-    tasks.toList match {
+    tasks.toList match
       case Nil     => Def.task { last.value }
       case x :: xs =>
         Def.task { Def.unit(x.value) }.flatMapTask { case _ =>
           sequential(xs, last)
         }
-    }
   private def unitTask[A](task: Initialize[Task[A]]): Initialize[Task[Unit]] =
     Def.task {
       Def.unit(task.value)
       ()
     }
-}
+end TaskSequential

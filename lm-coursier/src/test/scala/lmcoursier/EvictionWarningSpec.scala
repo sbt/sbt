@@ -5,7 +5,7 @@ import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.librarymanagement.syntax.*
 import TestKit.*
 
-object EvictionWarningSpec extends verify.BasicTestSuite {
+object EvictionWarningSpec extends verify.BasicTestSuite:
   // This is a specification to check the eviction warnings
 
   import TestShowLines.*
@@ -392,4 +392,4 @@ object EvictionWarningSpec extends verify.BasicTestSuite {
       filterImplicit = false,
       overrideScalaVersion = true
     )
-}
+end EvictionWarningSpec

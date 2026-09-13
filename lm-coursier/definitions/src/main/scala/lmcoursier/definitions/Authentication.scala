@@ -13,7 +13,6 @@ import dataclass.*
     httpsOnly: Boolean = true,
     @since("1.2")
     passOnRedirect: Boolean = false
-) {
+):
   override def toString(): String =
     s"Authentication(user=$user)"
-}

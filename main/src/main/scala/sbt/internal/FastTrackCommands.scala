@@ -17,19 +17,18 @@ import ContinuousCommands.*
 import sbt.internal.util.complete.Parser
 
 /** This is used to speed up command parsing. */
-private[sbt] object FastTrackCommands {
+private[sbt] object FastTrackCommands:
   private def fromCommand(
       cmd: String,
       command: Command,
       arguments: Boolean = true,
   ): (State, String) => Option[State] =
     (s, c) =>
-      Parser.parse(if (arguments) c else "", command.parser(s)) match {
+      Parser.parse(if arguments then c else "", command.parser(s)) match
         case Right(newState) => Some(newState())
         case l               => None
-      }
   private val commands = Map[String, (State, String) => Option[State]](
-    FailureWall -> { (s, c) => if (c == FailureWall) Some(s) else None },
+    FailureWall -> { (s, c) => if c == FailureWall then Some(s) else None },
     StashOnFailure -> fromCommand(StashOnFailure, stashOnFailure, arguments = false),
     PopOnFailure -> fromCommand(PopOnFailure, popOnFailure, arguments = false),
     Shell -> fromCommand(Shell, shell),
@@ -40,14 +39,11 @@ private[sbt] object FastTrackCommands {
     stopWatch -> fromCommand(stopWatch, stopWatchCommand),
     waitWatch -> fromCommand(waitWatch, waitCmd),
   )
-  private[sbt] def evaluate(state: State, cmd: String): Option[State] = {
-    cmd.trim.split(" ") match {
+  private[sbt] def evaluate(state: State, cmd: String): Option[State] =
+    cmd.trim.split(" ") match
       case Array(h, _*) =>
-        commands.get(h) match {
+        commands.get(h) match
           case Some(command) => command(state, cmd)
           case _             => None
-        }
       case _ => None
-    }
-  }
-}
+end FastTrackCommands

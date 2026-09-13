@@ -61,9 +61,11 @@ object Keys {
   val extraAppenders = settingKey[AppenderSupplier]("A function that provides additional loggers for a given setting.").withRank(DSetting)
   @deprecated("will be removed", "2.0.0")
   val useLog4J = settingKey[Boolean]("Toggles whether or not to use log4j for sbt internal loggers.").withRank(Invisible)
+  @transient
   val logManager = settingKey[LogManager]("The log manager, which creates Loggers for different contexts.").withRank(DSetting)
   private[sbt] val loggerContext = AttributeKey[LoggerContext]("sbt-logger-context", "The logger config which creates Loggers for different contexts.", Int.MaxValue)
   val logBuffered = settingKey[Boolean]("True if logging should be buffered until work completes.").withRank(CSetting)
+  @transient
   val sLog = settingKey[Logger]("Logger usable by settings during project loading.").withRank(CSetting)
   val serverLog = taskKey[Unit]("A dummy task to set server log level using Global / serverLog / logLevel.").withRank(CTask)
   val canonicalInput = settingKey[Boolean]("Toggles whether a task should use canonical input (line buffered with echo) or raw input").withRank(DSetting)
@@ -215,6 +217,8 @@ object Keys {
   val autoCompilerPlugins = settingKey[Boolean]("If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.").withRank(AMinusSetting)
   val maxErrors = settingKey[Int]("The maximum number of errors, such as compile errors, to list.").withRank(ASetting)
   val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.").withRank(BPlusTask)
+  @transient
+  val resolvedScalacOptions = taskKey[Seq[String]]("scalacOptions with cache placeholders (e.g. ${CSR_CACHE}) resolved to absolute machine paths.").withRank(BPlusTask)
   val javacOptions = taskKey[Seq[String]]("Options for the Java compiler.").withRank(BPlusTask)
   val incOptions = taskKey[IncOptions]("Options for the incremental compiler.").withRank(BTask)
   val extraIncOptions = taskKey[Seq[(String, String)]]("Extra options for the incremental compiler").withRank(CTask)
@@ -261,6 +265,7 @@ object Keys {
   val semanticdbVersion = settingKey[String]("SemanticDB version").withRank(CSetting)
   val semanticdbIncludeInJar = settingKey[Boolean]("Include *.semanticdb files in published artifacts").withRank(CSetting)
   val semanticdbTargetRoot = settingKey[File]("The output directory to produce META-INF/semanticdb/**/*.semanticdb files").withRank(CSetting)
+  private[sbt] val semanticdbTargetRootVF = taskKey[VirtualFileRef]("The output directory to produce META-INF/semanticdb/**/*.semanticdb files").withRank(Invisible)
   val semanticdbOptions = settingKey[Seq[String]]("The Scalac options introduced for SemanticDB").withRank(CSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
@@ -322,6 +327,7 @@ object Keys {
 
   // package keys
   val packageBin = taskKey[HashedVirtualFileRef]("Produces a main artifact, such as a binary jar.").withRank(ATask)
+  val packageInternal = taskKey[HashedVirtualFileRef]("Produces a binary JAR for internal use (inter-project classpaths, BSP).").withRank(DTask)
   val `package` = taskKey[HashedVirtualFileRef]("Produces the main artifact, such as a binary jar.  This is typically an alias for the task that actually does the packaging.").withRank(APlusTask)
   val packageDoc = taskKey[HashedVirtualFileRef]("Produces a documentation artifact, such as a jar containing API documentation.").withRank(AMinusTask)
   val packageSrc = taskKey[HashedVirtualFileRef]("Produces a source artifact, such as a jar containing sources and resources.").withRank(AMinusTask)
@@ -398,10 +404,16 @@ object Keys {
   @transient
   val testListeners = taskKey[Seq[TestReportListener]]("Defines test listeners.").withRank(DTask)
   val testForkedParallel = settingKey[Boolean]("Whether forked tests should be executed in parallel").withRank(CTask)
-  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Defaults to the number of available processors.").withRank(CTask)
+  val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Default: 2.").withRank(CTask)
+  val workerMaxInstances = settingKey[Int]("Maximum number of test workers. Default: 2")
   val testExecution = taskKey[Tests.Execution]("Settings controlling test execution").withRank(DTask)
   val testFilter = taskKey[Seq[String] => Seq[String => Boolean]]("Filter controlling whether the test is executed").withRank(DTask)
+  @transient
   val testResultLogger = settingKey[TestResultLogger]("Logs results after a test task completes.").withRank(DTask)
+  val testSummary = settingKey[TestSummary]("The style of the test summary displayed after an aggregated test run.").withRank(CSetting)
+  @transient
+  val testSummaryLogger = settingKey[TestResultLogger]("Logs test summary after an aggregated test completes.").withRank(DTask)
+  val testTopology = settingKey[TestTopology]("The topology of how test classes are grouped.").withRank(CSetting)
   val testGrouping = taskKey[Seq[Tests.Group]]("Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.").withRank(BMinusTask)
   val isModule = AttributeKey[Boolean]("isModule", "True if the target is a module.", DSetting)
   val extraTestDigests = taskKey[Seq[Digest]]("Extra digests that would invalidate test caching").withRank(DTask)
@@ -436,6 +448,9 @@ object Keys {
   val exportedProducts = taskKey[Classpath]("Build products that go on the exported classpath.").withRank(CTask)
   val exportedProductsIfMissing = taskKey[Classpath]("Build products that go on the exported classpath if missing.").withRank(CTask)
   val exportedProductsNoTracking = taskKey[Classpath]("Just the exported classpath without triggering the compilation.").withRank(CTask)
+  val exportedProductsVersioned = taskKey[Classpath]("Build products that go on the exported classpath, packaged with the versioned artifact (used by the Runtime configuration).").withRank(CTask)
+  val exportedProductsVersionedIfMissing = taskKey[Classpath]("Build products that go on the exported classpath, packaged with the versioned artifact, if missing.").withRank(CTask)
+  val exportedProductsVersionedNoTracking = taskKey[Classpath]("Just the exported classpath, packaged with the versioned artifact, without triggering the compilation.").withRank(CTask)
   val unmanagedClasspath = taskKey[Classpath]("Classpath entries (deep) that are manually managed.").withRank(BPlusTask)
   val unmanagedJars = taskKey[Classpath]("Classpath entries for the current project (shallow) that are manually managed.").withRank(BPlusTask)
   val managedClasspath = taskKey[Classpath]("The classpath consisting of external, managed library dependencies.").withRank(BMinusTask)
@@ -452,6 +467,9 @@ object Keys {
   val exportedProductJars = taskKey[Classpath]("Build products that go on the exported classpath as JARs.")
   val exportedProductJarsIfMissing = taskKey[Classpath]("Build products that go on the exported classpath as JARs if missing.")
   val exportedProductJarsNoTracking = taskKey[Classpath]("Just the exported classpath as JARs without triggering the compilation.")
+  val exportedProductJarsVersioned = taskKey[Classpath]("Build products that go on the exported classpath as JARs, packaged with the versioned artifact (used by the Runtime configuration).")
+  val exportedProductJarsVersionedIfMissing = taskKey[Classpath]("Build products that go on the exported classpath as JARs, packaged with the versioned artifact, if missing.")
+  val exportedProductJarsVersionedNoTracking = taskKey[Classpath]("Just the exported classpath as JARs, packaged with the versioned artifact, without triggering the compilation.")
   val exportedPickles = taskKey[Classpath]("Build products that go on the exported compilation classpath as JARs. Note this is promise-blocked.").withRank(DTask)
   val pickleProducts = taskKey[Seq[VirtualFile]]("Pickle JARs").withRank(DTask)
   val internalDependencyAsJars = taskKey[Classpath]("The internal (inter-project) classpath as JARs.")
@@ -496,6 +514,7 @@ object Keys {
   val bspBuildTargetRun = inputKey[Unit]("Corresponds to buildTarget/run request").withRank(DTask)
   val bspBuildTargetCleanCache = inputKey[Unit]("Corresponds to buildTarget/cleanCache request").withRank(DTask)
   val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
+  @transient
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
   val bspBuildTargetJavacOptions = inputKey[Unit]("Implementation of buildTarget/javacOptions").withRank(DTask)
   val bspBuildTargetJavacOptionsItem = taskKey[JavacOptionsItem]("Item of buildTarget/javacOptions").withRank(DTask)
@@ -522,6 +541,7 @@ object Keys {
   val csrInterProjectDependencies = taskKey[Seq[lmcoursier.definitions.Project]]("Projects the current project depends on, possibly transitively")
   val csrExtraProjects = taskKey[Seq[lmcoursier.definitions.Project]]("").withRank(CTask)
   val csrFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
+  @transient
   val csrLogger = taskKey[Option[CacheLogger]]("")
 
   @transient
@@ -754,6 +774,7 @@ object Keys {
 
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped
+  private[sbt] val resolvedScopedStr = Def.resolvedScopedStr
   val pluginData = taskKey[PluginData]("Information from the plugin build needed in the main build definition.").withRank(DTask)
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
   private[sbt] val taskCancelStrategy = settingKey[State => TaskCancellationStrategy]("Experimental task cancellation handler.").withRank(DTask)

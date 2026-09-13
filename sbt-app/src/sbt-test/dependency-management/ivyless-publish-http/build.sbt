@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 name := "lib1"
 organization := "com.example"
 version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 val publishRepoBase = settingKey[File]("Base directory for publish repo (HTTP server writes here)")
 publishRepoBase := baseDirectory.value / "repo"
@@ -13,7 +13,7 @@ val publishPort = 3030
 // Publish to HTTP server (localhost) - ivyless publish uses PUT
 // Resolver.url expects java.net.URL; in build.sbt "url" is sbt.URI, so use java.net.URL explicitly
 publishTo := Some(
-  Resolver.url("test-repo", new java.net.URI(s"http://localhost:$publishPort/").toURL)(using Resolver.ivyStylePatterns)
+  Resolver.uri("test-repo", uri(s"http://localhost:$publishPort/"))(using Resolver.ivyStylePatterns)
     .withAllowInsecureProtocol(true)
 )
 
@@ -35,11 +35,7 @@ stopPublishServer := {
 }
 
 val publishToHttp = taskKey[Unit]("Publish to HTTP server (start server, publish, stop server)")
-publishToHttp := {
-  startPublishServer.value
-  try publish.value
-  finally stopPublishServer.value
-}
+publishToHttp := Def.sequential(startPublishServer, publish, stopPublishServer).value
 
 val checkIvylessPublish = taskKey[Unit]("Check that ivyless publish produced the expected files")
 checkIvylessPublish := {

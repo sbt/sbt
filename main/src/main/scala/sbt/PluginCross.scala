@@ -24,9 +24,9 @@ import ProjectExtra.{ extract, setProject }
 /**
  * Module responsible for plugin cross building.
  */
-private[sbt] object PluginCross extends PluginCrossExtra {
-  lazy val pluginSwitch: Command = {
-    def switchParser(state: State): Parser[(String, String)] = {
+private[sbt] object PluginCross extends PluginCrossExtra:
+  lazy val pluginSwitch: Command =
+    def switchParser(state: State): Parser[(String, String)] =
       lazy val switchArgs = token(NotSpace.examples()) ~ (token(
         Space ~> matched(state.combinedParser)
       ) ?? "")
@@ -34,13 +34,11 @@ private[sbt] object PluginCross extends PluginCrossExtra {
       token(PluginSwitchCommand ~ OptSpace) flatMap { _ =>
         switchArgs & nextSpaced
       }
-    }
 
     def crossExclude(s: Def.Setting[?]): Boolean =
-      s.key match {
+      s.key match
         case ScopedKey(Scope(_, _, pluginCrossBuild.key, _), sbtVersion.key) => true
         case _                                                               => false
-      }
 
     Command.arb(requireSession(switchParser), pluginSwitchHelp) {
       case (state, (version, command)) =>
@@ -56,9 +54,9 @@ private[sbt] object PluginCross extends PluginCrossExtra {
         val newStructure = Load.reapply(cleared ++ add, structure)
         Project.setProject(session, newStructure, command :: state)
     }
-  }
+  end pluginSwitch
 
-  lazy val pluginCross: Command = {
+  lazy val pluginCross: Command =
     def crossParser(state: State): Parser[String] =
       token(PluginCrossCommand <~ OptSpace) flatMap { _ =>
         token(
@@ -68,14 +66,13 @@ private[sbt] object PluginCross extends PluginCrossExtra {
           )
         )
       }
-    def crossVersions(state: State): List[String] = {
+    def crossVersions(state: State): List[String] =
       val x = Project.extract(state)
       import x.*
       (currentRef / crossSbtVersions)
         .get(structure.data)
         .getOrElse(Nil)
         .toList
-    }
     Command.arb(requireSession(crossParser), pluginCrossHelp) { (state, command) =>
       val x = Project.extract(state)
       import x.*
@@ -84,25 +81,24 @@ private[sbt] object PluginCross extends PluginCrossExtra {
         .get(structure.data)
         .map(PluginSwitchCommand + " " + _)
         .toList
-      if (versions.isEmpty) command :: state
+      if versions.isEmpty then command :: state
       else versions.map(PluginSwitchCommand + " " + _ + " " + command) ::: current ::: state
     }
-  }
+  end pluginCross
 
   def scalaVersionSetting: Def.Initialize[String] = Def.setting {
     val scalaV = scalaVersion.value
     val sv = (pluginCrossBuild / sbtBinaryVersion).value
     val isPlugin = sbtPlugin.value
-    if (isPlugin) scalaVersionFromSbtBinaryVersion(sv)
+    if isPlugin then scalaVersionFromSbtBinaryVersion(sv)
     else scalaV
   }
 
   def scalaVersionFromSbtBinaryVersion(sv: String): String =
-    VersionNumber(sv) match {
+    VersionNumber(sv) match
       case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
       case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.7"
       case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.21"
       case VersionNumber(Seq(2, _*), _, _)     => scala3
       case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
-    }
-}
+end PluginCross

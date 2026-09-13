@@ -1,0 +1,24 @@
+# The local analysis cache exists so that a compile does not deserialize an analysis it already
+# has in memory. Nothing a build can observe says whether it did, so this reads the cache's own
+# read counts.
+
+# An analysis served from the action cache was never written, so there would be nothing for the
+# local cache to have kept. Starting without a cache is what makes the compiles below real ones.
+$ delete target
+
+# First compile writes each module's analysis, which is what later reads must be served from.
+> app/compile
+
+# A compile with nothing to do must answer every analysis read from memory, without even
+# re-reading the file to hash it.
+> recordAnalysisReads
+> app/compile
+> checkAnalysisServedFromMemory
+
+# A compile that recompiles writes the analysis and then reads it back. The action cache
+# re-creates the file it wrote, under a new timestamp, so the read has to hash the file - but it
+# must still be served from memory rather than deserialized again.
+> recordAnalysisReads
+$ copy-file changes/A2.scala app/src/main/scala/A.scala
+> app/compile
+> checkAnalysisNotDeserialized

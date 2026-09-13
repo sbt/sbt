@@ -33,23 +33,20 @@ final case class ResolutionParams(
     missingOk: Boolean,
     retry: (FiniteDuration, Int),
     boms: Seq[BomDependency] = Nil
-) {
+):
 
-  lazy val allConfigExtends: Map[Configuration, Set[Configuration]] = {
+  lazy val allConfigExtends: Map[Configuration, Set[Configuration]] =
     val map = new mutable.HashMap[Configuration, Set[Configuration]]
-    for ((config, extends0) <- orderedConfigs) {
+    for (config, extends0) <- orderedConfigs do
       val allExtends = extends0.iterator
         // the else of the getOrElse shouldn't be hit (because of the ordering of the configurations)
         .foldLeft(Set(config))((acc, ext) => acc ++ map.getOrElse(ext, Set(ext)))
       map += config -> allExtends
-    }
     map.toMap
-  }
 
   val fallbackDependenciesRepositories =
-    if (fallbackDependencies.isEmpty)
-      Nil
-    else {
+    if fallbackDependencies.isEmpty then Nil
+    else
       val map = fallbackDependencies.map { dep =>
         (ToCoursier.module(dep.module), dep.version) -> ((dep.uri, dep.changing))
       }.toMap
@@ -57,9 +54,8 @@ final case class ResolutionParams(
       Seq(
         TemporaryInMemoryRepository(map, cache)
       )
-    }
 
-  lazy val resolutionKey = {
+  lazy val resolutionKey =
     val cleanCache = cache
       .withPool(null)
       .withLogger(null)
@@ -78,9 +74,8 @@ final case class ResolutionParams(
       cleanCache,
       missingOk
     )
-  }
 
-  override lazy val hashCode = this match {
+  override lazy val hashCode = this match
     case ResolutionParams(
           a1,
           a2,
@@ -102,16 +97,14 @@ final case class ResolutionParams(
           a18
         ) =>
       (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18).##
-  }
 
   // ResolutionParams.unapply(this).get.##
-
-}
+end ResolutionParams
 
 // private[coursier]
-object ResolutionParams {
+object ResolutionParams:
 
-  def defaultIvyProperties(ivyHomeOpt: Option[File]): Map[String, String] = {
+  def defaultIvyProperties(ivyHomeOpt: Option[File]): Map[String, String] =
 
     val ivyHome = sys.props
       .get("ivy.home")
@@ -127,7 +120,5 @@ object ResolutionParams {
       "ivy.home" -> ivyHome,
       "sbt.ivy.home" -> sbtIvyHome
     ) ++ sys.props
-  }
 
   val defaultRetry: (FiniteDuration, Int) = (1.seconds, 3)
-}

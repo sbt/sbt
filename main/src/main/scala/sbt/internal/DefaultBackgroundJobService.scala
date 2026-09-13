@@ -37,7 +37,7 @@ import xsbti.HashedVirtualFileRef
 /**
  * Interface between sbt and a thing running in the background.
  */
-private[sbt] abstract class BackgroundJob {
+private[sbt] abstract class BackgroundJob:
   def humanReadableName: String
   @deprecated("Use awaitTermination that takes a duration argument", "1.4.0")
   final def awaitTermination(): Unit = awaitTermination(Duration.Inf)
@@ -45,16 +45,14 @@ private[sbt] abstract class BackgroundJob {
 
   /** This waits till the job ends, and returns inner error via `Try`. */
   @deprecated("Use awaitTerminationTry that takes a duration argument", "1.4.0")
-  final def awaitTerminationTry(): Try[Unit] = {
+  final def awaitTerminationTry(): Try[Unit] =
     // This implementation is provided only for backward compatibility.
     Try(awaitTermination(Duration.Inf))
-  }
 
   /** This waits till the job ends, and returns inner error via `Try`. */
-  def awaitTerminationTry(duration: Duration): Try[Unit] = {
+  def awaitTerminationTry(duration: Duration): Try[Unit] =
     // This implementation is provided only for backward compatibility.
     Try(awaitTermination(duration))
-  }
 
   def shutdown(): Unit
 
@@ -68,14 +66,13 @@ private[sbt] abstract class BackgroundJob {
 
   // do we need this or is the spawning task good enough?
   // def tags: SomeType
-}
+end BackgroundJob
 
-private[sbt] abstract class AbstractJobHandle extends JobHandle {
+private[sbt] abstract class AbstractJobHandle extends JobHandle:
   override def toString =
     s"JobHandle(${id}, ${humanReadableName}, ${Def.showFullKey.show(spawningTask)})"
-}
 
-private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobService {
+private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobService:
   private val nextId = new AtomicLong(1)
   private val pool = new BackgroundThreadPool()
   private val context = LoggerContext()
@@ -88,13 +85,12 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private[sbt] def useLog4J: Boolean
   private val serviceTempDirRef = new AtomicReference[File]
   private def serviceTempDir: File = serviceTempDirRef.synchronized {
-    serviceTempDirRef.get match {
+    serviceTempDirRef.get match
       case null =>
         val dir = IO.createUniqueDirectory(serviceTempDirBase)
         serviceTempDirRef.set(dir)
         dir
       case s => s
-    }
   }
   // hooks for sending start/stop events
   protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
@@ -123,7 +119,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       val workingDirectory: File,
       val job: BackgroundJob,
       @volatile var isAutoCancel: Boolean = false,
-  ) extends AbstractJobHandle {
+  ) extends AbstractJobHandle:
     def humanReadableName: String = job.humanReadableName
 
     job.onStop { () =>
@@ -132,89 +128,75 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       context.clearAppenders(logger.name)
     }
     addJob(this)
-    override final def equals(other: Any): Boolean = other match {
+    override final def equals(other: Any): Boolean = other match
       case handle: JobHandle if handle.id == id => true
       case _                                    => false
-    }
     override final def hashCode(): Int = id.hashCode
-  }
 
   private val unknownTask = TaskKey[Unit]("unknownTask", "Dummy value")
   // we use this if we deserialize a handle for a job that no longer exists
   private final class DeadHandle(override val id: Long, override val humanReadableName: String)
-      extends AbstractJobHandle {
+      extends AbstractJobHandle:
     override val spawningTask: ScopedKey[?] = unknownTask
     override val isAutoCancel = false
-  }
 
-  private[sbt] def createWorkingDirectory: File = {
+  private[sbt] def createWorkingDirectory: File =
     val id = nextId.getAndIncrement()
     createWorkingDirectory(id)
-  }
-  private[sbt] def createWorkingDirectory(id: Long): File = {
+  private[sbt] def createWorkingDirectory(id: Long): File =
     val workingDir = serviceTempDir / s"job-$id"
     IO.createDirectory(workingDir)
     workingDir
-  }
 
   def doRunInBackground(
       spawningTask: ScopedKey[?],
       state: State,
       start: (Logger, File) => BackgroundJob
-  ): JobHandle = {
+  ): JobHandle =
     val id = nextId.getAndIncrement()
     val extracted = Project.extract(state)
     val logger =
       LogManager.constructBackgroundLog(extracted.structure.data, state, context)(spawningTask)
     val workingDir = createWorkingDirectory(id)
     val job =
-      try {
-        new ThreadJobHandle(id, spawningTask, logger, workingDir, start(logger, workingDir))
-      } catch {
+      try new ThreadJobHandle(id, spawningTask, logger, workingDir, start(logger, workingDir))
+      catch
         case e: Throwable =>
           // TODO: Fix this
           // logger.close()
           throw e
-      }
     job
-  }
 
   override def runInBackground(spawningTask: ScopedKey[?], state: State)(
       start: (Logger, File) => Unit
-  ): JobHandle = {
+  ): JobHandle =
     pool.run(this, spawningTask, state)(start)
-  }
 
   override private[sbt] def runInBackgroundWithLoader(spawningTask: ScopedKey[?], state: State)(
       start: (Logger, File) => (Option[ClassLoader], () => Unit)
-  ): JobHandle = {
+  ): JobHandle =
     pool.runWithLoader(this, spawningTask, state)(start)
-  }
 
   override final def close(): Unit = shutdown()
-  override def shutdown(): Unit = {
+  override def shutdown(): Unit =
     val deadline = 10.seconds.fromNow
-    while (jobSet.nonEmpty && !deadline.isOverdue()) {
+    while jobSet.nonEmpty && !deadline.isOverdue() do
       jobSet.headOption.foreach { handle =>
-        if (handle.job.isRunning()) {
+        if handle.job.isRunning() then
           handle.job.shutdown()
           handle.job.awaitTerminationTry(10.seconds)
-        }
         jobSet = jobSet - handle
       }
-    }
     pool.close()
     Option(serviceTempDirRef.get).foreach(IO.delete)
-  }
 
-  private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match {
+  private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match
     case handle: ThreadJobHandle @unchecked => f(handle)
     case _: DeadHandle @unchecked           => () // nothing to stop or wait for
     case other                              =>
       sys.error(
         s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"
       )
-  }
 
   override def stop(job: JobHandle): Unit =
     withHandle(job)(_.job.shutdown())
@@ -246,45 +228,40 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       workingDirectory: File,
       hashFileContents: Boolean,
       converter: FileConverter,
-  ): Classpath = {
+  ): Classpath =
     def syncTo(
         dir: File
-    )(source0: Attributed[HashedVirtualFileRef]): Attributed[HashedVirtualFileRef] = {
+    )(source0: Attributed[HashedVirtualFileRef]): Attributed[HashedVirtualFileRef] =
       val source1 = source0.data
       val source = converter.toPath(source1).toFile()
       val hash8 = Hash.toHex(Hash(source.toString)).take(8)
-      val id: File => String = if (hashFileContents) hash else lastModified
+      val id: File => String = if hashFileContents then hash else lastModified
       val dest = dir / hash8 / id(source) / source.getName
       if !dest.exists then
-        if (source.isDirectory) IO.copyDirectory(source, dest)
+        if source.isDirectory then IO.copyDirectory(source, dest)
         else IO.copyFile(source, dest)
       Attributed.blank(converter.toVirtualFile(dest.toPath))
-    }
     val xs = (products.toVector map { syncTo(workingDirectory / "target") }) ++
       ((full diff products) map { syncTo(serviceTempDir / "target") })
     xs
-  }
+  end copyClasspath
 
   /** An alternative to sbt.io.Hash that handles java.io.File being a directory. */
-  private def hash(f: File): String = {
+  private def hash(f: File): String =
     val digest = MessageDigest.getInstance("SHA")
     val buffer = new Array[Byte](8192)
     Files.walkFileTree(
       f.toPath,
-      new SimpleFileVisitor[Path]() {
-        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+      new SimpleFileVisitor[Path]():
+        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult =
           val dis = new DigestInputStream(new FileInputStream(file.toFile), digest)
-          try {
-            while (dis.read(buffer) >= 0) ()
+          try
+            while dis.read(buffer) >= 0 do ()
             FileVisitResult.CONTINUE
-          } catch {
-            case _: IOException => FileVisitResult.TERMINATE
-          } finally dis.close()
-        }
-      }
+          catch case _: IOException => FileVisitResult.TERMINATE
+          finally dis.close()
     )
     Hash.toHex(Hash(digest.digest)).take(8)
-  }
 
   /**
    * Computes the last modified time of a file or the maximum last file of the contents of a
@@ -294,20 +271,17 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
    * @return the last modified time of the file or the maximum last modified time of the contents
    *         of the directory.
    */
-  private def lastModified(f: File): String = {
+  private def lastModified(f: File): String =
     var lastModified = 0L
     Files.walkFileTree(
       f.toPath,
-      new SimpleFileVisitor[Path]() {
-        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+      new SimpleFileVisitor[Path]():
+        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult =
           val lm = attrs.lastModifiedTime.toMillis
-          if (lm > lastModified) lastModified = lm
+          if lm > lastModified then lastModified = lm
           FileVisitResult.CONTINUE
-        }
-      }
     )
     lastModified.toString
-  }
 
   /** Copies classpath to temporary directories. */
   override def copyClasspath(
@@ -341,30 +315,27 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
         val source = e.source.get
         StandardMain.exchange.channelForName(source.channelName)
       case _ => None
-}
+end AbstractBackgroundJobService
 
-private[sbt] object BackgroundThreadPool {
+private[sbt] object BackgroundThreadPool:
   sealed trait Status
   case object Waiting extends Status
   final case class Running(thread: Thread) extends Status
   // the oldThread is None if we never ran
   final case class Stopped(oldThread: Option[Thread]) extends Status
-}
 
-private[sbt] class BackgroundThreadPool extends java.io.Closeable {
+private[sbt] class BackgroundThreadPool extends java.io.Closeable:
 
   private val nextThreadId = new java.util.concurrent.atomic.AtomicInteger(1)
   private val threadGroup = Thread.currentThread.getThreadGroup()
 
-  private val threadFactory = new java.util.concurrent.ThreadFactory() {
-    override def newThread(runnable: Runnable): Thread = {
+  private val threadFactory = new java.util.concurrent.ThreadFactory():
+    override def newThread(runnable: Runnable): Thread =
       val thread =
         new Thread(threadGroup, runnable, s"sbt-bg-threads-${nextThreadId.getAndIncrement}")
       // Do NOT setDaemon because then the code in TaskExit.scala in sbt will insta-kill
       // the backgrounded process, at least for the case of the run task.
       thread
-    }
-  }
 
   private[internal] val executor = new java.util.concurrent.ThreadPoolExecutor(
     0, /* corePoolSize */
@@ -378,7 +349,7 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
 
   private class BackgroundRunnable(val taskName: String, body: () => Unit)
       extends BackgroundJob
-      with Runnable {
+      with Runnable:
     import BackgroundThreadPool.*
     private val finishedLatch = new java.util.concurrent.CountDownLatch(1)
     // synchronize to read/write this, no sync to just read
@@ -390,9 +361,9 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
 
     // double-finally for extra paranoia that we will finishedLatch.countDown
     override def run() =
-      try {
+      try
         val go = synchronized {
-          status match {
+          status match
             case Waiting =>
               status = Running(Thread.currentThread())
               true
@@ -400,24 +371,19 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
               false
             case Running(_) =>
               throw new RuntimeException("Impossible status of bg thread")
-          }
         }
-        try {
-          if (go) {
-            exitTry = Option(Try(body()))
-          }
-        } finally cleanup()
-      } finally finishedLatch.countDown()
+        try
+          if go then exitTry = Option(Try(body()))
+        finally cleanup()
+      finally finishedLatch.countDown()
 
     private class StopListener(val callback: () => Unit, val executionContext: ExecutionContext)
-        extends Closeable {
+        extends Closeable:
       override def close(): Unit = removeListener(this)
       override def hashCode: Int = System.identityHashCode(this)
-      override def equals(other: Any): Boolean = other match {
+      override def equals(other: Any): Boolean = other match
         case r: AnyRef => this eq r
         case _         => false
-      }
-    }
 
     // access is synchronized
     private var stopListeners = Set.empty[StopListener]
@@ -426,11 +392,11 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       stopListeners -= listener
     }
 
-    def cleanup(): Unit = {
+    def cleanup(): Unit =
       // avoid holding any lock while invoking callbacks, and
       // handle callbacks being added by other callbacks, just
       // to be all fancy.
-      while (synchronized { stopListeners.nonEmpty }) {
+      while synchronized { stopListeners.nonEmpty } do
         val listeners = synchronized {
           val list = stopListeners.toList
           stopListeners = Set.empty
@@ -440,8 +406,6 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
           try l.executionContext.execute(() => l.callback())
           catch case NonFatal(_) => ()
         }
-      }
-    }
 
     override def onStop(listener: () => Unit)(using ex: ExecutionContext): Closeable =
       synchronized {
@@ -449,25 +413,22 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
         stopListeners += result
         result
       }
-    override def awaitTermination(duration: Duration): Unit = {
-      val finished = duration match {
+    override def awaitTermination(duration: Duration): Unit =
+      val finished = duration match
         case fd: FiniteDuration => finishedLatch.await(fd.toMillis, TimeUnit.MILLISECONDS)
         case _                  => finishedLatch.await(); true
-      }
       exitTry.foreach(_.fold(e => throw e, identity))
-      if (!finished) throw new TimeoutException
-    }
+      if !finished then throw new TimeoutException
 
     override def humanReadableName: String = taskName
     override def isRunning(): Boolean =
-      status match {
+      status match
         case Waiting               => true // we start as running from BackgroundJob perspective
         case Running(thread)       => thread.isAlive()
         case Stopped(threadOption) => threadOption.map(_.isAlive()).getOrElse(false)
-      }
     override def shutdown(): Unit =
       synchronized {
-        status match {
+        status match
           case Waiting =>
             status = Stopped(None) // makes run() not run the body
           case Running(thread) =>
@@ -475,23 +436,20 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
             thread.interrupt()
           case Stopped(threadOption) =>
             // sleep to avoid consuming a lot of CPU
-            try {
-              Thread.sleep(10)
-            } catch {
+            try Thread.sleep(10)
+            catch
               case e: InterruptedException =>
                 Thread.currentThread().interrupt();
-            }
             // try to interrupt again! woot!
             threadOption.foreach(_.interrupt())
-        }
       }
-  }
+  end BackgroundRunnable
   private class BackgroundRunnableWithLoader(
       val loader: Option[ClassLoader],
       taskName: String,
       body: () => Unit
-  ) extends BackgroundRunnable(taskName, body) {
-    override def awaitTermination(duration: Duration): Unit = {
+  ) extends BackgroundRunnable(taskName, body):
+    override def awaitTermination(duration: Duration): Unit =
       try super.awaitTermination(duration)
       finally
         loader.foreach {
@@ -499,13 +457,11 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
           case cp: ClasspathFilter => cp.close()
           case _                   =>
         }
-    }
-  }
 
   def run(manager: AbstractBackgroundJobService, spawningTask: ScopedKey[?], state: State)(
       work: (Logger, File) => Unit
-  ): JobHandle = {
-    def start(logger: Logger, workingDir: File): BackgroundJob = {
+  ): JobHandle =
+    def start(logger: Logger, workingDir: File): BackgroundJob =
       val runnable = new BackgroundRunnable(
         spawningTask.key.label,
         { () =>
@@ -514,9 +470,7 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       )
       executor.execute(runnable)
       runnable
-    }
     manager.doRunInBackground(spawningTask, state, start)
-  }
 
   private[sbt] def runWithLoader(
       manager: AbstractBackgroundJobService,
@@ -524,56 +478,47 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       state: State
   )(
       getWork: (Logger, File) => (Option[ClassLoader], () => Unit)
-  ): JobHandle = {
-    def start(logger: Logger, workingDir: File): BackgroundJob = {
+  ): JobHandle =
+    def start(logger: Logger, workingDir: File): BackgroundJob =
       val (loader, work) = getWork(logger, workingDir)
       val runnable = new BackgroundRunnableWithLoader(loader, spawningTask.key.label, work)
       executor.execute(runnable)
       runnable
-    }
     manager.doRunInBackground(spawningTask, state, start)
-  }
 
-  override def close(): Unit = {
+  override def close(): Unit =
     executor.shutdown()
-  }
-}
+end BackgroundThreadPool
 
 private[sbt] class DefaultBackgroundJobService(
     private[sbt] val serviceTempDirBase: File,
     override private[sbt] val useLog4J: Boolean
-) extends AbstractBackgroundJobService {
+) extends AbstractBackgroundJobService:
   def this(serviceTempDirBase: File) = this(serviceTempDirBase, false)
 
   @deprecated("Use the constructor that specifies the background job temporary directory", "1.4.0")
   def this() = this(IO.createTemporaryDirectory, false)
-}
-private[sbt] object DefaultBackgroundJobService {
+private[sbt] object DefaultBackgroundJobService:
 
   private val backgroundJobServices = new ConcurrentHashMap[File, DefaultBackgroundJobService]
-  private[sbt] def shutdown(): Unit = {
+  private[sbt] def shutdown(): Unit =
     backgroundJobServices.values.forEach(_.shutdown())
     backgroundJobServices.clear()
-  }
 
-  private[sbt] def stop(): Unit = {
+  private[sbt] def stop(): Unit =
     backgroundJobServices
       .values()
-      .forEach(jobService => {
-        jobService.jobs.withFilter(_.isAutoCancel).foreach(jobService.stop)
-      })
-  }
+      .forEach(jobService => jobService.jobs.withFilter(_.isAutoCancel).foreach(jobService.stop))
 
   private[sbt] lazy val backgroundJobServiceSetting: Setting[?] =
     (GlobalScope / Keys.bgJobService) := {
       val path = (GlobalScope / sbt.Keys.bgJobServiceDirectory).value
       val newService = new DefaultBackgroundJobService(path)
-      backgroundJobServices.putIfAbsent(path, newService) match {
+      backgroundJobServices.putIfAbsent(path, newService) match
         case null => newService
         case s    =>
           newService.shutdown()
           s
-      }
     }
   private[sbt] lazy val backgroundJobServiceSettings: Seq[Def.Setting[?]] = Def.settings(
     (GlobalScope / Keys.bgJobServiceDirectory) := {
@@ -581,4 +526,4 @@ private[sbt] object DefaultBackgroundJobService {
     },
     backgroundJobServiceSetting
   )
-}
+end DefaultBackgroundJobService

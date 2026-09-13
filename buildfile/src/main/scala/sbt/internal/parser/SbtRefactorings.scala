@@ -34,7 +34,7 @@ private[sbt] object SbtRefactorings:
   def applySessionSettings(
       lines: Seq[String],
       commands: Seq[SessionSetting]
-  ): Seq[String] = {
+  ): Seq[String] =
     val split = SbtParser(FAKE_FILE, lines)
     given ctx: Context = SbtParser.defaultGlobalForParser.compileCtx
     val recordedCommands = recordCommands(commands, split)
@@ -42,24 +42,21 @@ private[sbt] object SbtRefactorings:
 
     val newContent = replaceFromBottomToTop(lines.mkString(END_OF_LINE), sortedRecordedCommands)
     newContent.linesIterator.toList
-  }
 
   private def replaceFromBottomToTop(
       modifiedContent: String,
       sortedRecordedCommands: Seq[(Int, String, String)]
-  ) = {
+  ) =
     sortedRecordedCommands.foldLeft(modifiedContent) { case (acc, (from, old, replacement)) =>
       val before = acc.substring(0, from)
       val after = acc.substring(from + old.length, acc.length)
       val afterLast = emptyStringForEmptyString(after)
       before + replacement + afterLast
     }
-  }
 
-  private def emptyStringForEmptyString(text: String) = {
+  private def emptyStringForEmptyString(text: String) =
     val trimmed = text.trim
-    if (trimmed.isEmpty) trimmed else text
-  }
+    if trimmed.isEmpty then trimmed else text
 
   private def recordCommands(commands: Seq[SessionSetting], split: SbtParser)(using Context) =
     commands.flatMap { case (_, command) =>
@@ -72,25 +69,22 @@ private[sbt] object SbtRefactorings:
   ) =
     split.settingsTrees.foldLeft(Seq.empty[(Int, String, String)]) { case (acc, (st, tree)) =>
       val treeName = extractSettingName(tree)
-      if (name == treeName) {
+      if name == treeName then
         val replacement =
-          if (acc.isEmpty) command.mkString(END_OF_LINE)
+          if acc.isEmpty then command.mkString(END_OF_LINE)
           else emptyString
         val pos = tree.sourcePos.start - SbtParser.WRAPPER_POSITION_OFFSET
         (pos, st, replacement) +: acc
-      } else {
-        acc
-      }
+      else acc
     }
 
-  private def toTreeStringMap(command: Seq[String]) = {
+  private def toTreeStringMap(command: Seq[String]) =
     val split = SbtParser(FAKE_FILE, command)
     val trees = split.settingsTrees
     val seq = trees.map { (statement, tree) =>
       (extractSettingName(tree), statement)
     }
     seq.toMap
-  }
 
   @tailrec
   private def extractSettingName(tree: untpd.Tree): String = tree match

@@ -8,8 +8,8 @@ import sbt.io.IO
  * Provides extra methods for filtering the contents of an `UpdateReport`
  * and for obtaining references to a selected subset of the underlying files.
  */
-final class RichUpdateReport(report: UpdateReport) {
-  private[sbt] def recomputeStamps(): UpdateReport = {
+final class RichUpdateReport(report: UpdateReport):
+  private[sbt] def recomputeStamps(): UpdateReport =
     val files = report.cachedDescriptor +: allFiles
     val stamps = files
       .map(f =>
@@ -24,7 +24,6 @@ final class RichUpdateReport(report: UpdateReport) {
       )
       .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
-  }
 
   import DependencyFilter.*
 
@@ -50,19 +49,17 @@ final class RichUpdateReport(report: UpdateReport) {
     select(configurationFilter(), moduleFilter(), artifact)
 
   private def select0(f: DependencyFilter): Vector[File] =
-    for {
+    for
       cReport <- report.configurations
       mReport <- cReport.modules
       (artifact, file) <- mReport.artifacts
       if f(cReport.configuration, mReport.module, artifact)
-    } yield {
-      if (file == null) {
+    yield
+      if file == null then
         sys.error(
           s"Null file: conf=${cReport.configuration}, module=${mReport.module}, art: $artifact"
         )
-      }
       file
-    }
 
   /** Constructs a new report that only contains files matching the specified filter. */
   def filter(f: DependencyFilter): UpdateReport =
@@ -92,18 +89,18 @@ final class RichUpdateReport(report: UpdateReport) {
 
   def toSeq: Seq[(ConfigRef, ModuleID, Artifact, File)] = toVector
   def toVector: Vector[(ConfigRef, ModuleID, Artifact, File)] =
-    for {
+    for
       confReport <- report.configurations
       modReport <- confReport.modules
       (artifact, file) <- modReport.artifacts
-    } yield (confReport.configuration, modReport.module, artifact, file)
+    yield (confReport.configuration, modReport.module, artifact, file)
 
   def allMissing: Vector[(ConfigRef, ModuleID, Artifact)] =
-    for {
+    for
       confReport <- report.configurations
       modReport <- confReport.modules
       artifact <- modReport.missingArtifacts
-    } yield (confReport.configuration, modReport.module, artifact)
+    yield (confReport.configuration, modReport.module, artifact)
 
   private[sbt] def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
@@ -111,7 +108,7 @@ final class RichUpdateReport(report: UpdateReport) {
         .withMissingArtifacts((modReport.missingArtifacts ++ f(modReport.module)).distinct)
     }
 
-  private[sbt] def moduleReportMap(f: (ConfigRef, ModuleReport) => ModuleReport): UpdateReport = {
+  private[sbt] def moduleReportMap(f: (ConfigRef, ModuleReport) => ModuleReport): UpdateReport =
     val newConfigurations = report.configurations.map { confReport =>
       import confReport.*
       val newModules = modules map { modReport =>
@@ -120,5 +117,4 @@ final class RichUpdateReport(report: UpdateReport) {
       ConfigurationReport(configuration, newModules, details)
     }
     UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
-  }
-}
+end RichUpdateReport

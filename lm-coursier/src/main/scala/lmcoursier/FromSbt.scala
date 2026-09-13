@@ -17,7 +17,7 @@ import lmcoursier.definitions.{
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.{ Configuration as _, * }
 
-object FromSbt {
+object FromSbt:
 
   private def sbtCrossName(
       name: String,
@@ -27,7 +27,7 @@ object FromSbt {
       scalaBinaryVersion: => String,
       optionalCrossVer: Boolean = false,
       projectPlatform: Option[String],
-  ): String = {
+  ): String =
     val name0 = name
     val name1 =
       crossVersion match
@@ -35,16 +35,12 @@ object FromSbt {
         case _           => addPlatformSuffix(name0, platformOpt, projectPlatform)
     val updatedName = CrossVersion(crossVersion, scalaVersion, scalaBinaryVersion)
       .fold(name1)(_(name1))
-    if (!optionalCrossVer || updatedName.length <= name0.length)
-      updatedName
-    else {
+    if !optionalCrossVer || updatedName.length <= name0.length then updatedName
+    else
       val suffix = updatedName.substring(name0.length)
-      if (name0.endsWith(suffix))
-        name0
-      else
-        updatedName
-    }
-  }
+      if name0.endsWith(suffix) then name0
+      else updatedName
+  end sbtCrossName
 
   // Duplicate of sbt.librarymanagement.CrossVersion.addPlatformSuffix. Keep the two in sync
   // until lm-coursier moves under sbt
@@ -52,20 +48,17 @@ object FromSbt {
       name: String,
       platformOpt: Option[String],
       projectPlatform: Option[String]
-  ): String = {
+  ): String =
     def addSuffix(platformName: String): String =
-      platformName match {
+      platformName match
         case "" | "jvm" => name
         case _          => s"${name}_$platformName"
-      }
-    (platformOpt, projectPlatform) match {
+    (platformOpt, projectPlatform) match
       case (Some(p), _) =>
         addSuffix(p) // Use explicit platform if set (don't override with project platform)
       case (None, Some(p)) =>
         addSuffix(p) // Only use project platform if dependency has no explicit platform
       case _ => name
-    }
-  }
 
   private def attributes(attr: Map[String, String]): Map[String, String] =
     attr
@@ -82,7 +75,7 @@ object FromSbt {
       scalaBinaryVersion: String,
       optionalCrossVer: Boolean,
       projectPlatform: Option[String],
-  ): (Module, String) = {
+  ): (Module, String) =
 
     val fullName =
       sbtCrossName(
@@ -103,7 +96,7 @@ object FromSbt {
     val version = module.revision
 
     (module0, version)
-  }
+  end moduleVersion
 
   def moduleVersion(
       module: ModuleID,
@@ -124,7 +117,7 @@ object FromSbt {
       scalaBinaryVersion: String,
       optionalCrossVer: Boolean = false,
       projectPlatform: Option[String] = None,
-  ): Seq[(Configuration, Dependency)] = {
+  ): Seq[(Configuration, Dependency)] =
 
     // TODO Warn about unsupported properties in `module`
 
@@ -159,7 +152,7 @@ object FromSbt {
     }
 
     val publications =
-      if (module.explicitArtifacts.isEmpty)
+      if module.explicitArtifacts.isEmpty then
         Seq(Publication("", Type(""), Extension(""), Classifier("")))
       else
         module.explicitArtifacts
@@ -172,30 +165,28 @@ object FromSbt {
             )
           }
 
-    for {
+    for
       (from, to) <- allMappings.distinct
       pub <- publications.distinct
-    } yield {
+    yield
       val dep0 = dep
         .withConfiguration(to)
         .withPublication(pub)
       from -> dep0
-    }
-  }
+  end dependencies
 
   def fallbackDependencies(
       allDependencies: Seq[ModuleID],
       scalaVersion: String,
       scalaBinaryVersion: String
   ): Seq[FallbackDependency] =
-    for {
+    for
       module <- allDependencies
       artifact <- module.explicitArtifacts
       uri <- artifact.url.toSeq
-    } yield {
+    yield
       val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion)
       FallbackDependency(module0, version, uri, module.isChanging)
-    }
 
   def project(
       projectID: ModuleID,
@@ -204,7 +195,7 @@ object FromSbt {
       scalaVersion: String,
       scalaBinaryVersion: String,
       projectPlatform: Option[String],
-  ): Project = {
+  ): Project =
 
     val deps = allDependencies.flatMap(
       dependencies(_, scalaVersion, scalaBinaryVersion, projectPlatform = projectPlatform)
@@ -240,5 +231,5 @@ object FromSbt {
       Nil,
       Info("", "", Nil, Nil, None)
     )
-  }
-}
+  end project
+end FromSbt

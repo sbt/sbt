@@ -23,10 +23,15 @@ import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
-import scala.collection.SortedSet
+import scala.util.DynamicVariable
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 
 object IncrementalTest:
+  private val cacheTestResultOverride = DynamicVariable[Option[Boolean]](None)
+
+  private[sbt] def withCacheTestResult[A](enabled: Boolean)(f: => A): A =
+    cacheTestResultOverride.withValue(Some(enabled))(f)
+
   def filterTask: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
     Def.task {
       val cp = (Keys.test / fullClasspath).value
@@ -35,11 +40,16 @@ object IncrementalTest:
       def hasCachedSuccess(ts: Digest, options: Seq[String]): Boolean =
         val input = cacheInput(ts, options)
         ActionCache.exists(input._1, input._2, input._3, config)
-      def hasSucceeded(className: String, options: Seq[String]): Boolean =
-        digests.get(className) match
+      def hasSucceeded(
+          className: String,
+          options: Seq[String],
+          cacheTestResult: Boolean
+      ): Boolean =
+        cacheTestResult && (digests.get(className) match
           case None     => false
-          case Some(ts) => hasCachedSuccess(ts, options)
+          case Some(ts) => hasCachedSuccess(ts, options))
       args =>
+        val cacheTestResult = cacheTestResultOverride.value.getOrElse(SysProp.cacheTestResult)
         val (pattern, options) =
           args.indexOf("--") match
             case idx if idx >= 0 =>
@@ -47,7 +57,7 @@ object IncrementalTest:
               (s1, s2.drop(1))
             case _ => (args, Nil)
         for filter <- selectedFilter(pattern)
-        yield (test: String) => filter(test) && !hasSucceeded(test, options)
+        yield (test: String) => filter(test) && !hasSucceeded(test, options, cacheTestResult)
     }
 
   // cache the test digests against the fullClasspath.
@@ -60,9 +70,10 @@ object IncrementalTest:
     val rds = Keys.resourceDigests.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
+    val testDigestExtra = extra ++ rds ++ opts
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
-      stamper.transitiveStamp(name, extra ++ rds ++ opts, s.log) match
+      stamper.transitiveStamp(name, testDigestExtra, s.log) match
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     )*)
@@ -96,6 +107,35 @@ object IncrementalTest:
       frameworkOptions: Seq[String]
   ): (Seq[String], Digest, Digest) = (frameworkOptions, value, Digest.zero)
 
+  /**
+   * Defined tests whose passing result was reused from the action cache in
+   * the current run: selected by `selected` (same glob semantics as
+   * `filterTask`), carrying a cached success for `frameworkOptions`, and not
+   * re-executed (`executed` is the suite-name set of the run's
+   * `Tests.Output.events`, which keeps this empty for `testOnly` /
+   * `testFull` variants that rerun cached tests).
+   */
+  private[sbt] def cachedTestNames(
+      digests: Map[String, Digest],
+      config: BuildWideCacheConfiguration,
+      executed: Set[String],
+      selected: Seq[String],
+      frameworkOptions: Seq[String],
+      cacheTestResult: Boolean,
+  ): Vector[String] =
+    val filters = selectedFilter(selected)
+    digests.iterator
+      .collect {
+        case (name, ts)
+            if cacheTestResult && !executed.contains(name) && filters.exists(_(name)) && {
+              val input = cacheInput(ts, frameworkOptions)
+              ActionCache.exists(input._1, input._2, input._3, config)
+            } =>
+          name
+      }
+      .toVector
+      .sorted
+
 end IncrementalTest
 
 private[sbt] case class TestStatusReporter(
@@ -105,9 +145,12 @@ private[sbt] case class TestStatusReporter(
   // int value to represent success
   private final val successfulTest = 0
   private var _args: Seq[String] = Nil
+  private var _cacheTestResult: Boolean = SysProp.cacheTestResult
   def getArgs: Seq[String] = _args
   def setArguments(args: Seq[String]): Unit =
     _args = args
+  def setCacheTestResult(enabled: Boolean): Unit =
+    _cacheTestResult = enabled
   def doInit(): Unit = ()
   def startGroup(name: String): Unit = ()
   def testEvent(event: TestEvent): Unit = ()
@@ -118,7 +161,7 @@ private[sbt] case class TestStatusReporter(
    * using its unique digest, so we can skip the test later.
    */
   def endGroup(name: String, result: TestResult): Unit =
-    if result == TestResult.Passed then
+    if result == TestResult.Passed && _cacheTestResult then
       digests.get(name) match
         case Some(ts) =>
           // treat each test suite as a successful action that returns 0
@@ -160,17 +203,50 @@ end TestStatus
  * ClassStamper provides `transitiveStamp` method to calculate a unique
  * fingerprint, which will be used for runtime invalidation.
  */
-class ClassStamper(
-    classpath: Seq[Attributed[HashedVirtualFileRef]],
+class ClassStamper private[sbt] (
+    analyses0: => Seq[Analysis],
     converter: FileConverter,
 ):
-  private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private val internalStamps = mutable.Map.empty[String, SortedSet[Digest]]
-  private lazy val analyses = classpath
-    .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
-    .collect { case analysis: Analysis => analysis }
-  private val stampVf: VirtualFileRef => Digest =
-    CacheImplicits.virtualFileRefToDigest(_)(converter)
+  def this(
+      classpath: Seq[Attributed[HashedVirtualFileRef]],
+      converter: FileConverter,
+  ) =
+    this(
+      classpath
+        .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
+        .collect { case analysis: Analysis => analysis },
+      converter,
+    )
+
+  // Leaf digests (class bytecode hashes + library file digests) are interned to dense
+  // ints so transitive digest sets can be held as bit sets: union is a word-parallel OR
+  // and each member costs one bit instead of a 32-byte Digest.
+  private val digestIds = mutable.HashMap.empty[Digest, Int]
+  private val digestList = mutable.ArrayBuffer.empty[Digest]
+  private def idOf(d: Digest): Int =
+    digestIds.getOrElseUpdate(d, { val i = digestList.size; digestList += d; i })
+
+  private val stamps = mutable.Map.empty[String, mutable.BitSet]
+  // Memoizes the full transitive digest set per class name (excluding extraHashes), so the
+  // re-entrant external-dep walk isn't recomputed for every reference. Mapping bits back to
+  // digests and sorting is deferred to the root (`transitiveStamp`); intermediate results
+  // are only ever OR-ed into another bit set, where order and identity are irrelevant.
+  private val transitiveCache = mutable.Map.empty[String, mutable.BitSet]
+  // Cached so by-name `analyses0` is only evaluated once
+  private lazy val analyses = analyses0
+  // Index of binary class name -> analyses that produce it, so a stamp can dispatch
+  // straight to its owning analyses instead of scanning every analysis on the classpath.
+  private lazy val analysesByProduct: Map[String, Seq[Analysis]] =
+    val acc = mutable.HashMap.empty[String, mutable.ListBuffer[Analysis]]
+    analyses.foreach: a =>
+      a.relations.productClassName._2s.foreach: bin =>
+        acc.getOrElseUpdate(bin, mutable.ListBuffer.empty) += a
+    acc.iterator.map((k, v) => k -> v.toSeq).toMap
+  // Memoized: virtualFileRefToDigest does a filesystem stat per call, and the same
+  // library ref is referenced by many classes.
+  private val vfDigests = mutable.Map.empty[VirtualFileRef, Digest]
+  private def stampVf(vf: VirtualFileRef): Digest =
+    vfDigests.getOrElseUpdate(vf, CacheImplicits.virtualFileRefToDigest(vf)(converter))
 
   /**
    * Given a classpath and a class name, this tries to create a SHA-256 digest.
@@ -182,60 +258,80 @@ class ClassStamper(
       extraHashes: Seq[Digest],
       log: Logger,
   ): Option[Digest] =
-    val digests = transitiveStamps(javaClassName, extraHashes, log)
+    val digests = sortedDigests(transitiveStamps(javaClassName, log)) ++ extraHashes
     if digests.nonEmpty then Some(Digest.sha256Hash(digests*))
     else None
 
+  // Map a bit set back to its digests
+  private def sortedDigests(bits: mutable.BitSet): Seq[Digest] =
+    val buf = mutable.ArrayBuffer.empty[Digest]
+    bits.foreach(i => buf += digestList(i))
+    buf.sortInPlace()
+    buf.toSeq
+
   private def transitiveStamps(
       javaClassName: String,
-      extraHashes: Seq[Digest],
       log: Logger,
-  ): Seq[Digest] =
-    val digests = SortedSet(analyses.flatMap(internalStamp(javaClassName, _, Set.empty, log))*)
-    digests.toSeq ++ extraHashes
+  ): mutable.BitSet =
+    transitiveCache.getOrElseUpdate(
+      javaClassName, {
+        val builder = mutable.BitSet.empty
+        analysesByProduct
+          .getOrElse(javaClassName, Nil)
+          .foreach(internalStamp(builder, javaClassName, _, mutable.Set.empty, log))
+        builder
+      }
+    )
 
   private def internalStamp(
+      builder: mutable.BitSet,
       javaClassName: String,
       analysis: Analysis,
-      alreadySeen: Set[String],
+      alreadySeen: mutable.Set[String],
       log: Logger,
-  ): SortedSet[Digest] =
+  ): Unit =
     import analysis.relations
+
     // log.debug(s"test: internalStamp($javaClassName)")
-    def internalStamp0(className: String): SortedSet[Digest] =
+    def internalStamp0(className: String): Unit =
+      // Use a new bit set so we can cache the result in `stamps`
+      val newBuilder = mutable.BitSet.empty
+
       // Zinc doesn't fully track the transitive dependencies
-      val internalDeps = relations
+      relations
         .internalClassDeps(className)
-        .flatMap: otherCN =>
-          internalStamp(otherCN, analysis, alreadySeen + javaClassName, log)
+        .foreach: otherCN =>
+          internalStamp(newBuilder, otherCN, analysis, alreadySeen, log)
       // log.debug(s"  internalStamp: internalDeps: $className = $internalDeps")
-      val internalJarDeps = relations
+      relations
         .externalDeps(className)
-        .flatMap: libClassName =>
-          transitiveStamps(libClassName, Nil, log)
-      val externalDeps = relations
-        .externalDeps(className)
-        .flatMap: libClassName =>
+        .foreach: libClassName =>
+          newBuilder |= transitiveStamps(libClassName, log)
           relations.libraryClassName
             .reverse(libClassName)
-            .map(stampVf)
-      val classDigests = analysis.apis.internal
+            .foreach: vf =>
+              newBuilder += idOf(stampVf(vf))
+      analysis.apis.internal
         .get(className)
-        .toSet
-        .map: analyzed =>
-          Digest.dummy(37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash)
-      val xs =
-        (internalDeps union internalJarDeps union externalDeps union classDigests)
-          .to(SortedSet)
-      if xs.nonEmpty then stamps(className) = xs
+        .foreach: analyzed =>
+          newBuilder += idOf(
+            Digest.dummy(37 * (17 + analyzed.transitiveBytecodeHash) + analyzed.bytecodeHash)
+          )
+
+      if newBuilder.nonEmpty then stamps(className) = newBuilder
       else ()
-      xs
-    if alreadySeen.contains(javaClassName) then SortedSet.empty
+
+      builder |= newBuilder
+    end internalStamp0
+
+    if alreadySeen.contains(javaClassName) then ()
     else
       stamps.get(javaClassName) match
-        case Some(xs) => xs
+        case Some(xs) => builder |= xs
         case _        =>
+          alreadySeen += javaClassName
           // Note: internalClassDeps uses Scala-encoded class name for companion objects
           val classNames = relations.productClassName.reverse(javaClassName)
-          SortedSet(classNames.toSeq*).flatMap(internalStamp0)
+          classNames.foreach(internalStamp0)
+  end internalStamp
 end ClassStamper

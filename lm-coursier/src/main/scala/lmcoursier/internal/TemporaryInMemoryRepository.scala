@@ -10,17 +10,15 @@ import coursier.util.{ Artifact, EitherT, Monad }
 import scala.annotation.nowarn
 import scala.util.Try
 
-object TemporaryInMemoryRepository {
+object TemporaryInMemoryRepository:
 
-  def closeConn(conn: URLConnection): Unit = {
+  def closeConn(conn: URLConnection): Unit =
     Try(conn.getInputStream).toOption.filter(_ != null).foreach(_.close())
-    conn match {
+    conn match
       case conn0: HttpURLConnection =>
         Try(conn0.getErrorStream).toOption.filter(_ != null).foreach(_.close())
         conn0.disconnect()
       case _ =>
-    }
-  }
 
   def exists(
       uri: URI,
@@ -32,29 +30,26 @@ object TemporaryInMemoryRepository {
       uri: URI,
       localArtifactsShouldBeCached: Boolean,
       cacheOpt: Option[FileCache[Nothing]]
-  ): Boolean = {
+  ): Boolean =
 
     // Sometimes HEAD attempts fail even though standard GETs are fine.
     // E.g. https://github.com/NetLogo/NetLogo/releases/download/5.3.1/NetLogo.jar
     // returning 403s. Hence the second attempt below.
 
-    val protocolSpecificAttemptOpt = {
+    val protocolSpecificAttemptOpt =
 
-      def ifFile: Option[Boolean] = {
-        if (localArtifactsShouldBeCached && !new File(uri).exists()) {
+      def ifFile: Option[Boolean] =
+        if localArtifactsShouldBeCached && !new File(uri).exists() then
           val cachePath = coursier.cache.CacheDefaults.location
           // 'file' here stands for the protocol (e.g. it's https instead for https:// URLs)
           Some(new File(cachePath, s"file/${uri.getPath}").exists())
-        } else {
-          Some(new File(uri).exists()) // FIXME Escaping / de-escaping needed here?
-        }
-      }
+        else Some(new File(uri).exists()) // FIXME Escaping / de-escaping needed here?
 
-      def ifHttp: Option[Boolean] = {
+      def ifHttp: Option[Boolean] =
         // HEAD request attempt, adapted from http://stackoverflow.com/questions/22541629/android-how-can-i-make-an-http-head-request/22545275#22545275
 
         var conn: URLConnection = null
-        try {
+        try
           conn = ConnectionBuilder(uri.toASCIIString)
             .withFollowHttpToHttpsRedirections(
               cacheOpt.fold(false)(_.followHttpToHttpsRedirections)
@@ -71,40 +66,32 @@ object TemporaryInMemoryRepository {
           // iff this doesn't throw.
           conn.getInputStream.close()
           Some(true)
-        } catch {
+        catch
           case _: FileNotFoundException => Some(false)
           case _: IOException           => None // error other than not found
-        } finally {
-          if (conn != null)
-            closeConn(conn)
-        }
-      }
+        finally if conn != null then closeConn(conn)
+        end try
+      end ifHttp
 
-      uri.getScheme match {
+      uri.getScheme match
         case "file"           => ifFile
         case "http" | "https" => ifHttp
         case _                => None
-      }
-    }
+    end protocolSpecificAttemptOpt
 
-    def genericAttempt: Boolean = {
+    def genericAttempt: Boolean =
       var conn: URLConnection = null
-      try {
+      try
         conn = uri.toURL.openConnection()
         // NOT setting request type to HEAD here.
         conn.getInputStream.close()
         true
-      } catch {
-        case _: IOException => false
-      } finally {
-        if (conn != null)
-          closeConn(conn)
-      }
-    }
+      catch case _: IOException => false
+      finally if conn != null then closeConn(conn)
 
     protocolSpecificAttemptOpt
       .getOrElse(genericAttempt)
-  }
+  end exists
 
   def apply(
       fallbacks: Map[(Module, String), (URI, Boolean)]
@@ -126,14 +113,13 @@ object TemporaryInMemoryRepository {
       localArtifactsShouldBeCached = cache.localArtifactsShouldBeCached,
       Some(cache.asInstanceOf[FileCache[Nothing]])
     )
-
-}
+end TemporaryInMemoryRepository
 
 final class TemporaryInMemoryRepository private (
     val fallbacks: Map[(Module, String), (URI, Boolean)],
     val localArtifactsShouldBeCached: Boolean,
     val cacheOpt: Option[FileCache[Nothing]]
-) extends Repository {
+) extends Repository:
 
   @nowarn
   def find[F[_]](
@@ -142,7 +128,7 @@ final class TemporaryInMemoryRepository private (
       fetch: Repository.Fetch[F]
   )(using
       F: Monad[F]
-  ): EitherT[F, String, (ArtifactSource, Project)] = {
+  ): EitherT[F, String, (ArtifactSource, Project)] =
 
     def res = fallbacks
       .get((module, version))
@@ -151,12 +137,11 @@ final class TemporaryInMemoryRepository private (
           val urlStr = uri.toURL.toExternalForm
           val idx = urlStr.lastIndexOf('/')
 
-          if (idx < 0 || urlStr.endsWith("/"))
-            Left(s"$uri doesn't point to a file")
-          else {
+          if idx < 0 || urlStr.endsWith("/") then Left(s"$uri doesn't point to a file")
+          else
             val (dirUrlStr, fileName) = urlStr.splitAt(idx + 1)
 
-            if (TemporaryInMemoryRepository.exists(uri, localArtifactsShouldBeCached, cacheOpt)) {
+            if TemporaryInMemoryRepository.exists(uri, localArtifactsShouldBeCached, cacheOpt) then
               val proj = Project(
                 module,
                 version,
@@ -176,21 +161,21 @@ final class TemporaryInMemoryRepository private (
               )
 
               Right((this, proj))
-            } else
-              Left(s"$fileName not found under $dirUrlStr")
-          }
+            else Left(s"$fileName not found under $dirUrlStr")
+            end if
+          end if
       }
 
     // EitherT(F.bind(F.point(()))(_ => F.point(res)))
     EitherT(F.map(F.point(()))(_ => res))
-  }
+  end find
 
   @nowarn
   def artifacts(
       dependency: Dependency,
       project: Project,
       overrideClassifiers: Option[Seq[Classifier]]
-  ): Seq[(Publication, Artifact)] = {
+  ): Seq[(Publication, Artifact)] =
     fallbacks
       .get(dependency.moduleVersion)
       .toSeq
@@ -205,6 +190,4 @@ final class TemporaryInMemoryRepository private (
         )
         (pub, Artifact(url0, Map.empty, Map.empty, changing, optional = false, None))
       }
-  }
-
-}
+end TemporaryInMemoryRepository

@@ -9,7 +9,7 @@ import sbt.util.Logger
 import scala.annotation.nowarn
 
 // private[coursier]
-object UpdateRun {
+object UpdateRun:
 
   // Move back to coursier.util (in core module) after 1.0?
   @nowarn
@@ -17,7 +17,7 @@ object UpdateRun {
       res: Map[Configuration, Resolution],
       depsByConfig: Map[Configuration, Seq[Dependency]],
       configs: Map[Configuration, Set[Configuration]]
-  ): Map[Configuration, Set[Dependency]] = {
+  ): Map[Configuration, Set[Dependency]] =
 
     val allDepsByConfig = depsByConfig.map { (config, deps) =>
       config -> res(config).subset(deps).minDependencies
@@ -32,7 +32,6 @@ object UpdateRun {
     }
 
     filteredAllDepsByConfig
-  }
 
   // Move back to coursier.util (in core module) after 1.0?
   @nowarn
@@ -59,7 +58,7 @@ object UpdateRun {
   ): UpdateReport = Lock.maybeSynchronized(needsLock = !RefreshLogger.defaultFallbackMode) {
     val depsByConfig = grouped(params.dependencies)
 
-    if (verbosityLevel >= 2) {
+    if verbosityLevel >= 2 then
       val finalDeps = dependenciesWithConfig(
         params.res,
         depsByConfig,
@@ -71,7 +70,6 @@ object UpdateRun {
       )
       val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
       log.info(repr.split('\n').map("  " + _).mkString("\n"))
-    }
 
     SbtUpdateReport(
       params.thisModule,
@@ -92,5 +90,4 @@ object UpdateRun {
 
   private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
     map.groupMap(_._1)((_, values) => values)
-
-}
+end UpdateRun

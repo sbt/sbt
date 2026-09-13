@@ -20,7 +20,7 @@ import sbt.util.{ Level, Logger, LoggerContext }
 
 import java.io.PrintWriter
 
-sealed abstract class LogManager {
+sealed abstract class LogManager:
   def apply(
       data: Def.Settings,
       state: State,
@@ -34,17 +34,15 @@ sealed abstract class LogManager {
       task: ScopedKey[?],
       context: LoggerContext
   ): ManagedLogger
-}
 
 /**
  * A functional interface that allows us to preserve binary compatibility
  * for LogManager.defaults with the old log4j variant.
  */
-trait AppenderSupplier {
+trait AppenderSupplier:
   def apply(s: ScopedKey[?]): Seq[Appender]
-}
 
-object LogManager {
+object LogManager:
   import java.util.concurrent.atomic.AtomicInteger
   private val generateId: AtomicInteger = new AtomicInteger
 
@@ -54,23 +52,21 @@ object LogManager {
       data: Def.Settings,
       state: State
   ): (ScopedKey[?], PrintWriter) => ManagedLogger =
-    (task: ScopedKey[?], to: PrintWriter) => {
+    (task: ScopedKey[?], to: PrintWriter) =>
       val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
       val manager: LogManager =
         (task.scope / logManager).get(data) getOrElse defaultManager(state.globalLogging.console)
       manager(data, state, task, to, context)
-    }
 
   def constructBackgroundLog(
       data: Def.Settings,
       state: State,
       context: LoggerContext
   ): (ScopedKey[?]) => ManagedLogger =
-    (task: ScopedKey[?]) => {
+    (task: ScopedKey[?]) =>
       val manager: LogManager =
         (task.scope / logManager).get(data) getOrElse defaultManager(state.globalLogging.console)
       manager.backgroundLog(data, state, task, context)
-    }
 
   def defaultManager(console: ConsoleOut): LogManager =
     withLoggers((_, _) => defaultScreen(console))
@@ -97,7 +93,7 @@ object LogManager {
       backed: PrintWriter => Appender,
       relay: Unit => Appender,
       extra: AppenderSupplier
-  ) extends LogManager {
+  ) extends LogManager:
     def apply(
         data: Def.Settings,
         state: State,
@@ -121,7 +117,7 @@ object LogManager {
         state: State,
         task: ScopedKey[?],
         context: LoggerContext
-    ): ManagedLogger = {
+    ): ManagedLogger =
       val console = ConsoleAppender.safe("bg-" + ConsoleAppender.generateName(), ITerminal.current)
       // Use a channel-aware relay appender so background job log output reaches
       // the originating client even after the spawning task completes and
@@ -131,8 +127,7 @@ object LogManager {
         case Some(_) => new RelayAppender("bg-Relay" + generateId.incrementAndGet, channelName)
         case None    => relay(())
       LogManager.backgroundLog(data, state, task, console, bgRelay, context)
-    }
-  }
+  end DefaultLogManager
 
   // to change from global being the default to overriding, switch the order of state.get and data.get
   def getOr[T](
@@ -154,7 +149,7 @@ object LogManager {
       relay: Appender,
       extra: List[Appender],
       context: LoggerContext,
-  ): ManagedLogger = {
+  ): ManagedLogger =
     val execOpt = state.currentCommand
     val loggerName: String = s"${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
@@ -177,32 +172,30 @@ object LogManager {
       backingTrace
     )
     multiLogger(log, config, context)
-  }
+  end defaultLogger
 
   // Return None if the exec is not from console origin.
   def consoleLocally(state: State, console: Appender): Option[Appender] =
-    state.currentCommand match {
+    state.currentCommand match
       case Some(x: Exec) =>
-        x.source match {
+        x.source match
           // TODO: Fix this stringliness
           case Some(x: CommandSource) if x.channelName == ConsoleChannel.defaultName =>
             Option(console)
           case _ => Option(console)
-        }
       case _ => Option(console)
-    }
 
   def defaultTraceLevel(state: State): Int =
-    if (state.interactive) -1 else Int.MaxValue
+    if state.interactive then -1 else Int.MaxValue
 
   def suppressedMessage(
       key: ScopedKey[?],
       state: State
-  ): SuppressedTraceContext => Option[String] = {
+  ): SuppressedTraceContext => Option[String] =
     val display = Project.showContextKey(state)
     def commandBase = "last " + display.show(unwrapStreamsKey(key))
     def command(useFormat: Boolean) =
-      if (useFormat) s"${scala.Console.MAGENTA}$commandBase${scala.Console.RESET}"
+      if useFormat then s"${scala.Console.MAGENTA}$commandBase${scala.Console.RESET}"
       else s"'$commandBase'"
 
     { context =>
@@ -210,12 +203,10 @@ object LogManager {
         s"stack trace is suppressed; run ${command(context.useFormat)} for the full output"
       )
     }
-  }
 
-  def unwrapStreamsKey(key: ScopedKey[?]): ScopedKey[?] = key.scope.task match {
+  def unwrapStreamsKey(key: ScopedKey[?]): ScopedKey[?] = key.scope.task match
     case Select(task) => ScopedKey(key.scope.copy(task = Zero), task)
     case _            => key // should never get here
-  }
 
   def backgroundLog(
       data: Def.Settings,
@@ -225,7 +216,7 @@ object LogManager {
       /* TODO: backed: Appender,*/
       relay: Appender,
       context: LoggerContext,
-  ): ManagedLogger = {
+  ): ManagedLogger =
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
     val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
@@ -243,7 +234,7 @@ object LogManager {
     consoleOpt.foreach(a => context.addAppender(loggerName, a -> screenLevel))
     context.addAppender(loggerName, relay -> backingLevel)
     log
-  }
+  end backgroundLog
 
   // TODO: Fix this
   // if global logging levels are not explicitly set, set them from project settings
@@ -265,7 +256,7 @@ object LogManager {
   //     s
   //   }
 
-  def setGlobalLogLevel(s: State, level: Level.Value): State = {
+  def setGlobalLogLevel(s: State, level: Level.Value): State =
     val s1 = s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
     val gl = s1.globalLogging
     LoggerContext.globalContext.clearAppenders(gl.full.name)
@@ -273,7 +264,6 @@ object LogManager {
     LoggerContext.globalContext.addAppender(gl.full.name, consoleAppender -> level)
     LoggerContext.globalContext.addAppender(gl.full.name, gl.backed -> level)
     s1
-  }
 
   // This is the default implementation for the relay appender
   val defaultRelay: Unit => ConsoleAppender = _ => defaultRelayImpl
@@ -287,7 +277,7 @@ object LogManager {
   // construct a Logger that delegates to the global logger, but only holds a weak reference
   //  this is an approximation to the ideal that would invalidate the delegate after loading completes
   private def globalWrapper(s: State): Logger =
-    new Logger {
+    new Logger:
       private val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
       private def slog: Logger =
         Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
@@ -296,5 +286,4 @@ object LogManager {
       override def trace(t: => Throwable) = slog.trace(t)
       override def success(message: => String) = slog.success(message)
       override def log(level: Level.Value, message: => String) = slog.log(level, message)
-    }
-}
+end LogManager

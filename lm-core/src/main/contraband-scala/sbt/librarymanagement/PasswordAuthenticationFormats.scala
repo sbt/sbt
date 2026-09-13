@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait PasswordAuthenticationFormats { self: sjsonnew.BasicJsonProtocol =>
+trait PasswordAuthenticationFormats { self: sjsonnew.BasicJsonProtocol & sbt.librarymanagement.MemoizedFileFormats =>
 given PasswordAuthenticationFormat: JsonFormat[sbt.librarymanagement.PasswordAuthentication] = new JsonFormat[sbt.librarymanagement.PasswordAuthentication] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.PasswordAuthentication = {
     __jsOpt match {

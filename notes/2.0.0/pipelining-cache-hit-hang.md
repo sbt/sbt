@@ -1,0 +1,3 @@
+### Fixes
+
+- Don't hang on `earlyOutputPing` when pipelining is enabled and a compile resolves from the action cache or fails. The ping was completed only as a side effect of zinc running, so a cache-hit or failed compile left downstream pipelined compiles waiting on it forever (`compile;compile` on a warm build hung indefinitely). The compile task now completes the ping on every resolution path: zinc's own completion still wins when zinc runs, a cache hit completes it from the pickle jar's presence, and a failure completes it false so waiters fall back to a full compile. Fixes [#9486](https://github.com/sbt/sbt/issues/9486).

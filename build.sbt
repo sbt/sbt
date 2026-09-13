@@ -7,15 +7,16 @@ import java.util.Locale
 import sbt.internal.inc.Analysis
 import sbt.Tags
 import com.eed3si9n.jarjarabrams.ModuleCoordinate
+import Utils.JDK17
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-RC15-bin-SNAPSHOT"
+  val v = "2.1.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.0.0-f0d2fae4"
+ThisBuild / Utils.sbtnVersion := "2.1.0-M1"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -24,26 +25,26 @@ ThisBuild / javafmtFormatterCompatibleJavaVersion := 17
 ThisBuild / usePipelining := false // !(Global / insideCI).value
 ThisBuild / organization := "org.scala-sbt"
 ThisBuild / description := "sbt is an interactive build tool"
-ThisBuild / licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE"))
+ThisBuild / licenses := List("Apache-2.0" -> uri("https://github.com/sbt/sbt/blob/develop/LICENSE"))
 ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 ThisBuild / Compile / doc / javacOptions := Nil
 ThisBuild / developers := List(
-  Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-  Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-  Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-  Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
-  Developer("eatkins", "Ethan Atkins", "@eatkins", url("https://github.com/eatkins")),
+  Developer("harrah", "Mark Harrah", "@harrah", uri("https://github.com/harrah")),
+  Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", uri("https://github.com/eed3si9n")),
+  Developer("jsuereth", "Josh Suereth", "@jsuereth", uri("https://github.com/jsuereth")),
+  Developer("dwijnand", "Dale Wijnand", "@dwijnand", uri("https://github.com/dwijnand")),
+  Developer("eatkins", "Ethan Atkins", "@eatkins", uri("https://github.com/eatkins")),
   Developer(
     "gkossakowski",
     "Grzegorz Kossakowski",
     "@gkossakowski",
-    url("https://github.com/gkossakowski")
+    uri("https://github.com/gkossakowski")
   ),
-  Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
+  Developer("Duhemm", "Martin Duhem", "@Duhemm", uri("https://github.com/Duhemm"))
 )
-ThisBuild / homepage := Some(url("https://github.com/sbt/sbt"))
+ThisBuild / homepage := Some(uri("https://github.com/sbt/sbt"))
 ThisBuild / scmInfo := Some(
-  ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")
+  ScmInfo(uri("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")
 )
 ThisBuild / resolvers += Resolver.mavenLocal
 ThisBuild / mimaFailOnNoPrevious := false
@@ -81,25 +82,23 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
   Global / concurrentRestrictions += Utils.testExclusiveRestriction,
   // On Windows, limit to one task at a time to avoid OverlappingFileLockException when
   // multiple tasks (e.g. scalafix plugin and sbt Coursier) write to the same cache.
-  Global / concurrentRestrictions ++= (if (scala.util.Properties.isWin) Seq(Tags.limitAll(1))
+  Global / concurrentRestrictions ++= (if scala.util.Properties.isWin then Seq(Tags.limitAll(1))
                                        else Nil),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
   Compile / doc / scalacOptions ++= {
-    if (Dependencies.sbtIoPath.isEmpty && Dependencies.sbtZincPath.isEmpty) {
+    if Dependencies.sbtIoPath.isEmpty && Dependencies.sbtZincPath.isEmpty then
       import scala.sys.process.*
       val devnull = ProcessLogger(_ => ())
       val tagOrSha =
-        ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
+        ("git describe --exact-match" #|| "git rev-parse HEAD").lazyLines(devnull).head
       Seq(
         "-source-links:github://sbt/sbt",
         "-revision",
         tagOrSha
       )
-    } else {
-      Nil
-    }
+    else Nil
   },
   Compile / javafmtOnCompile := scalafmtOnCompile.value,
   Test / javafmtOnCompile := (Test / scalafmtOnCompile).value,
@@ -126,13 +125,13 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC15",
+    "2.0.4",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
   mimaPreviousArtifacts := {
-    val crossVersion = if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled
-    if (sbtPlugin.value) {
+    val crossVersion = if crossPaths.value then CrossVersion.binary else CrossVersion.disabled
+    if sbtPlugin.value then
       versions
         .map(v =>
           Defaults.sbtPluginExtra(
@@ -142,11 +141,11 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings
           )
         )
         .toSet
-    } else {
-      versions.map(v => (organization.value % moduleName.value % v).cross(crossVersion)).toSet
-    }
+    else versions.map(v => (organization.value % moduleName.value % v).cross(crossVersion)).toSet
   },
   mimaBinaryIssueFilters ++= Seq(
+    // sbt.internal is not API
+    (x: Problem) => !x.matchName.exists(_.startsWith("sbt.internal.")),
   ),
 )
 
@@ -182,8 +181,7 @@ lazy val sbtRoot: Project = (project in file("."))
         |  /____/_.___/\__/
         |Welcome to the build for sbt.
         |""".stripMargin +
-        (if (version != "17")
-           s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        (if version != "17" then s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                |  Java version is $version. We recommend java 17.
                |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
          else "")
@@ -199,22 +197,20 @@ lazy val sbtRoot: Project = (project in file("."))
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
     buildThinClient := (sbtClientProj / buildThinClient).evaluated,
-    nativeImage := (sbtClientProj / nativeImage).value,
+    nativeImage := Def.uncached((sbtClientProj / nativeImage).value),
     installNativeThinClient := {
       // nativeInstallDirectory can be set globally or in a gitignored local file
       val dir = nativeInstallDirectory.?.value
-      val target = Def.spaceDelimited("").parsed.headOption match {
+      val target = Def.spaceDelimited("").parsed.headOption match
         case Some(p) => file(p).toPath
         case _       =>
-          dir match {
+          dir match
             case Some(d) => d / "sbtn"
             case _       =>
               val msg = "Expected input parameter <path>: installNativeExecutable /usr/local/bin"
               throw new IllegalStateException(msg)
-          }
-      }
       val base = baseDirectory.value.toPath
-      val exec = (sbtClientProj / nativeImage).value.toPath
+      val exec = fileConverter.value.toPath((sbtClientProj / nativeImage).value)
       streams.value.log.info(s"installing thin client ${base.relativize(exec)} to ${target}")
       Files.copy(exec, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
@@ -350,13 +346,15 @@ lazy val utilLogging = project
     Compile / generateContrabands / contrabandFormatsForType := { tpe =>
       val old = (Compile / generateContrabands / contrabandFormatsForType).value
       val name = tpe.removeTypeParameters.name
-      if (name == "Throwable") Nil
+      if name == "Throwable" then Nil
       else old(tpe)
     },
     Test / fork := true,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("com.github.ghik.silencer.silent")
+      ProblemFilters.exclude[MissingClassProblem]("com.github.ghik.silencer.silent"),
+      // LoggerContext is sealed, so it has no implementations outside of sbt
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.util.LoggerContext.removeAppender"),
     ),
   )
   .configure(addSbtIO)
@@ -384,6 +382,7 @@ lazy val utilCache = project
     libraryDependencies ++=
       Seq(
         caffeine,
+        scalaPar,
         sjsonNewCore.value,
         sjsonNewScalaJson.value,
         sjsonNewMurmurhash.value
@@ -408,7 +407,7 @@ lazy val hashBenchmark = (project in file("internal") / "hash-benchmark")
     Jmh / run / javaOptions ++= Seq("-Xmx1G", "-Dfile.encoding=UTF8"),
     libraryDependencies ++= Seq(blake3, zeroAllocationHashing),
     mimaSettings,
-    publish / skip := true,
+    Utils.noPublish,
   )
 
 // Builds on cache to provide caching for filesystem-related operations
@@ -435,6 +434,8 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
     name := "Util Scripted",
     libraryDependencies += scalaParsers,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+    ),
   )
   .configure(addSbtIO)
 /* **** Intermediate-level Modules **** */
@@ -465,16 +466,34 @@ lazy val testingProj = (project in file("testing"))
 
 lazy val workerProj = (project in file("worker"))
   .dependsOn(exampleWorkProj % Test)
+  .configs(JDK17)
   .settings(
     name := "worker",
+    inConfig(JDK17)(Defaults.compileSettings),
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
     testedBaseSettings,
     Compile / doc / javacOptions := Nil,
     crossPaths := false,
     autoScalaLibrary := false,
     libraryDependencies ++= Seq(gson, testInterface),
     libraryDependencies += "org.scala-lang" %% "scala3-library" % scalaVersion.value % Test,
-    // run / fork := false,
     Test / fork := true,
+    Compile / javacOptions := Seq("--release", "8"),
+    JDK17 / javacOptions := Seq("--release", "17"),
+    Compile / packageBin / packageOptions += Pkg.ManifestAttributes("Multi-Release" -> "true"),
+    Compile / packageBin / mappings ++= {
+      val _ = (JDK17 / compile).value
+      val conv = fileConverter.value
+      val dir = (Utils.JDK17 / classDirectory).value
+      fileTreeView.value
+        .list(Glob(dir) / **)
+        .map(_._1)
+        .map(_.toFile())
+        .pair(Path.rebase(dir, "META-INF/versions/17"))
+        .map: (file, rel) =>
+          val vf: xsbti.HashedVirtualFileRef = conv.toVirtualFile(file.toPath())
+          vf -> rel
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
@@ -488,7 +507,7 @@ lazy val exampleWorkProj = (project in file("internal") / "example-work")
   .settings(
     minimalSettings,
     name := "example work",
-    publish / skip := true,
+    Utils.noPublish,
   )
 
 // Basic task engine
@@ -557,8 +576,10 @@ lazy val remoteCacheProj = (project in file("sbt-remote-cache"))
     name := "sbt-remote-cache",
     pluginCrossBuild / sbtVersion := version.value,
     publishMavenStyle := true,
-    mimaSettings,
     libraryDependencies ++= Seq(remoteapis, scalaVerify % Test),
+    mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+    ),
   )
 
 // Implementation and support code for defining actions.
@@ -627,21 +648,17 @@ lazy val commandProj = (project in file("main-command"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[MissingClassProblem]("sbt.internal.util.JoinThread"),
-      exclude[MissingClassProblem]("sbt.internal.util.JoinThread$"),
-      exclude[MissingClassProblem]("sbt.internal.util.ReadJsonFromInputStream"),
-      exclude[MissingClassProblem]("sbt.internal.util.ReadJsonFromInputStream$"),
-      exclude[MissingClassProblem]("sbt.internal.client.ServerConnection"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.connection"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.client.NetworkClient.init"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.this"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.BootServerSocket.socketLocation"),
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
       old filterNot { x =>
         x.getName.startsWith("NG") || (x.getName == "ReferenceCountedFileDescriptor.java")
       }
+    },
+    // BootServerSocket.java uses JDK 16+ Unix domain socket APIs (StandardProtocolFamily.UNIX,
+    // UnixDomainSocketAddress, ServerSocketChannel); override the build-wide -source/-target 1.8.
+    compile / javacOptions ~= { opts =>
+      opts.filterNot(v => v == "-source" || v == "-target" || v == "1.8") ++ Seq("--release", "17")
     },
   )
   .dependsOn(lmCore)
@@ -664,6 +681,8 @@ lazy val coreMacrosProj = (project in file("core-macros"))
     name := "Core Macros",
     SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+    ),
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -690,6 +709,12 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      // contImpl is an internal macro-implementation detail (see Cont.scala); it grew a new
+      // keyScopeExprOpt parameter so `clean` can invalidate a subproject's disk-cache entries.
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "sbt.std.SettingMacro#ContSyntax.contImpl"
+      ),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.std.TaskMacro#ContSyntax.contImpl"),
     ),
   )
   .dependsOn(lmCore)
@@ -715,6 +740,7 @@ lazy val buildFileProj = (project in file("buildfile"))
     mainSettingsProj,
   )
   .settings(
+    exportJars := false,
     testedBaseSettings,
     name := "build file",
     libraryDependencies ++= Seq(scalaCompiler),
@@ -733,7 +759,6 @@ lazy val mainProj = (project in file("main"))
     runProj,
     commandProj,
     collectionProj,
-    lmIvy,
     zincLmIntegrationProj,
     utilLogging,
   )
@@ -778,48 +803,17 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.depMap"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.ivySbt0"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.mkIvyConfiguration"),
-      exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml"),
-      exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml$"),
       // Removed projectDescriptors key (sbt#8865)
       exclude[DirectMissingMethodProblem]("sbt.Keys.projectDescriptors"),
-      // Removed descriptors field from GlobalPluginData (sbt#8865)
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.apply"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.this"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.descriptors"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.copy$default$3"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.copy$default$4"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy$default$6"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData._3"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData._4"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData._6"),
       // Updating remote vcs projects (sbt#1284)
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.creates"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.uniqueSubdirectoryFor"),
       exclude[DirectMissingMethodProblem]("sbt.Resolvers.run"),
       exclude[MissingClassProblem]("sbt.Resolvers$DistributedVCS"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.ClassStamper.stampVf"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.CompileInputs2.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.IncrementalTest.cacheInput"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
-
-lazy val sbtIvyProj = (project in file("sbt-ivy"))
-  .dependsOn(sbtProj, lmIvy)
-  .settings(
-    testedBaseSettings,
-    name := "sbt-ivy",
-    sbtPlugin := true,
-    pluginCrossBuild / sbtVersion := version.value,
-    libraryDependencies += {
-      // https://github.com/scala/scala3/issues/18487
-      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
-    },
-    mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
-  )
-  .configure(addSbtIO)
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
@@ -834,12 +828,25 @@ lazy val sbtProj = (project in file("sbt-app"))
     crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
-    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    mimaBinaryIssueFilters ++= Vector(
+      // Dropped the top-level Ivy-specific UpdateOptions alias; use
+      // sbt.internal.librarymanagement.ivy.UpdateOptions directly if needed.
+      exclude[DirectMissingMethodProblem]("sbt.Import.UpdateOptions"),
+      exclude[DirectMissingMethodProblem]("sbt.package.UpdateOptions"),
+    ),
   )
   .settings(
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
+    Test / resourceGenerators += Def.task {
+      val converter = fileConverter.value
+      val classpath = (Compile / fullClasspathAsJars).value
+        .map(entry => converter.toPath(entry.data).toAbsolutePath.toString)
+      val resource = (Test / resourceManaged).value / "sbt-eval-classpath.txt"
+      IO.writeLines(resource, classpath)
+      Seq(resource)
+    }.taskValue,
     Test / testOptions ++= {
       val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val framework = TestFrameworks.ScalaTest
@@ -865,11 +872,15 @@ lazy val serverTestProj = (project in file("server-test"))
     Test / run / fork := true,
     Test / sourceGenerators += Def.task {
       val rawClasspath =
-        (Compile / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
+        (Compile / fullClasspathAsJars).value
+          .map(_.data)
+          .map(fileConverter.value.toPath)
+          .map(_.toFile.getAbsolutePath)
+          .mkString(java.io.File.pathSeparator)
       val cp =
-        if (scala.util.Properties.isWin) rawClasspath.replace("\\", "\\\\")
+        if scala.util.Properties.isWin then rawClasspath.replace("\\", "\\\\")
         else rawClasspath
-      val content = {
+      val content =
         s"""|
             |package testpkg
             |
@@ -879,12 +890,12 @@ lazy val serverTestProj = (project in file("server-test"))
             |  val scalaVersion = "${scalaVersion.value}"
             |}
           """.stripMargin
-      }
       val file =
         (Test / target).value / "generated" / "src" / "test" / "scala" / "testpkg" / "TestProperties.scala"
       IO.write(file, content)
-      file :: Nil
+      Seq(file)
     },
+    Utils.noPublish,
   )
 
 val isWin = scala.util.Properties.isWin
@@ -895,6 +906,7 @@ val isArmArchitecture: Boolean = sys.props
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
+@transient
 val nativeInstallDirectory = taskKey[JPath]("The install directory for the native executable")
 val installNativeThinClient = inputKey[JPath]("Install the native executable")
 lazy val sbtClientProj = (project in file("client"))
@@ -916,17 +928,14 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageJvm := "graalvm-java23",
     nativeImageOutput := {
       val outputDir = (target.value / "bin").toPath
-      if (!Files.exists(outputDir)) {
-        Files.createDirectories(outputDir)
-      }
-      outputDir.resolve("sbtn").toFile
+      if !Files.exists(outputDir) then Files.createDirectories(outputDir)
+      fileConverter.value.toVirtualFile(outputDir.resolve("sbtn"))
     },
     nativeImageCommand := {
       val orig = nativeImageCommand.value
-      sys.env.get("ARCHS") match {
+      sys.env.get("ARCHS") match
         case Some(a) => Seq("arch", s"-$a") ++ orig
         case None    => orig
-      }
     },
     nativeImageOptions ++= Seq(
       "--no-fallback",
@@ -943,16 +952,16 @@ lazy val sbtClientProj = (project in file("client"))
     ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
-      val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"
-      val output = target.value.toPath / "bin" / s"${if (isFish) "fish-" else ""}client$ext"
+      val ext = if isWin then ".bat" else if isFish then ".fish" else ".sh"
+      val output = target.value.toPath / "bin" / s"${if isFish then "fish-" else ""}client$ext"
       java.nio.file.Files.createDirectories(output.getParent)
       val cp = (Compile / fullClasspathAsJars).value.map(_.data)
       val args =
-        if (isWin) "%*" else if (isFish) s"$$argv" else s"$$*"
+        if isWin then "%*" else if isFish then s"$$argv" else s"$$*"
       java.nio.file.Files.write(
         output,
         s"""
-        |${if (isWin) "@echo off" else s"#!/usr/bin/env ${if (isFish) "fish" else "sh"}"}
+        |${if isWin then "@echo off" else s"#!/usr/bin/env ${if isFish then "fish" else "sh"}"}
         |
         |java -cp ${cp.mkString(java.io.File.pathSeparator)} sbt.client.Client --jna $args
         """.stripMargin.linesIterator.toSeq.tail.mkString("\n").getBytes
@@ -1004,6 +1013,7 @@ lazy val sbtBig = (project in file(".big"))
 lazy val lowerUtils = (project in (file("internal") / "lower"))
   .aggregate(lowerUtilProjects.map(p => LocalProject(p.id))*)
   .settings(
+    scalaVersion := scala3,
     Utils.noPublish
   )
 
@@ -1013,33 +1023,32 @@ lazy val upperModules = (project in (file("internal") / "upper"))
       diff Seq(bundledLauncherProj, lmCoursierShaded)).map(p => LocalProject(p.id))*
   )
   .settings(
+    scalaVersion := scala3,
     Utils.noPublish
   )
 
-lazy val sbtIgnoredProblems = {
-  import com.typesafe.tools.mima.core.*
-  Vector(
-  )
-}
-
 def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val _ = publishLocalBinAll.value
-  val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
+  val launchJar =
+    s"-Dsbt.launch.jar=${fileConverter.value.toPath((bundledLauncherProj / Compile / packageBin).value).toFile.getAbsolutePath}"
+  val converter = fileConverter.value
   Scripted.doScripted(
     (scriptedSbtProj / scalaInstance).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
-    scriptedLaunchOpts.value ++ (if (launch) Some(launchJar) else None),
+    scriptedLaunchOpts.value ++ (if launch then Some(launchJar) else None),
     scalaVersion.value,
     version.value,
     (scriptedSbtProj / Test / fullClasspathAsJars).value
       .map(_.data)
+      .map(converter.toPath)
+      .map(_.toFile)
       .filterNot(_.getName.contains("scala-compiler")),
-    (bundledLauncherProj / Compile / packageBin).value,
+    converter.toPath((bundledLauncherProj / Compile / packageBin).value).toFile,
     streams.value.log,
-    scriptedKeepTempDirectory.value,
+    local.LocalScriptedPlugin.autoImport.scriptedKeepTempDirectory.value,
     (scripted / includeFilter).value,
     (scripted / excludeFilter).value,
   )
@@ -1074,7 +1083,6 @@ def allProjects =
     mainSettingsProj,
     zincLmIntegrationProj,
     mainProj,
-    sbtIvyProj,
     sbtProj,
     bundledLauncherProj,
     sbtClientProj,
@@ -1086,7 +1094,6 @@ def allProjects =
     coreMacrosProj,
     remoteCacheProj,
     lmCore,
-    lmIvy,
     lmCoursierDefinitions,
     lmCoursier,
     lmCoursierShaded,
@@ -1110,7 +1117,7 @@ lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
 ThisBuild / scriptedBufferLog := true
 ThisBuild / scriptedPrescripted := { _ => }
-ThisBuild / scriptedKeepTempDirectory := false
+ThisBuild / local.LocalScriptedPlugin.autoImport.scriptedKeepTempDirectory := false
 
 def otherRootSettings =
   Seq(
@@ -1121,11 +1128,15 @@ def otherRootSettings =
     scriptedUnpublished / watchTriggers := (scripted / watchTriggers).value,
     scripted / includeFilter := AllPassFilter,
     scripted / excludeFilter := Scripted.sbtWindowsExcludeFilter,
-    scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
-      (sys.props.get("sbt.ivy.home") match {
+    scriptedLaunchOpts := List(
+      "-Xmx1500M",
+      "-Xms512M",
+      "-server",
+      s"-Dsbt.build.root=${(ThisBuild / baseDirectory).value.getAbsolutePath}"
+    ) :::
+      (sys.props.get("sbt.ivy.home") match
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
-        case _          => Nil
-      }),
+        case _          => Nil),
     publishLocalBinAll := {
       val _ = (Compile / publishLocalBin).all(scriptedProjects).value
     },
@@ -1136,10 +1147,9 @@ def otherRootSettings =
         "-Xms512M",
         "-server"
       ) :::
-        (sys.props.get("sbt.ivy.home") match {
+        (sys.props.get("sbt.ivy.home") match
           case Some(home) => List(s"-Dsbt.ivy.home=$home")
-          case _          => Nil
-        }),
+          case _          => Nil),
       scripted := scriptedTask(true).evaluated,
       scriptedUnpublished := scriptedTask(true).evaluated,
       scriptedSource := (sbtProj / sourceDirectory).value / "repo-override-test"
@@ -1164,8 +1174,8 @@ def customCommands: Seq[Setting[?]] = Seq(
     import extracted.*
     val sv = get(scalaVersion)
     val projs = structure.allProjectRefs
-    val ioOpt = projs find { case ProjectRef(_, id) => id == "ioRoot"; case _ => false }
-    val zincOpt = projs find { case ProjectRef(_, id) => id == "zincRoot"; case _ => false }
+    val ioOpt = projs find { case ProjectRef(_, id) => id == "ioRoot" }
+    val zincOpt = projs find { case ProjectRef(_, id) => id == "zincRoot" }
     (ioOpt map { case ProjectRef(build, _) => "{" + build.toString + "}/publishLocal" }).toList :::
       (zincOpt map { case ProjectRef(build, _) =>
         val zincSv = get((ProjectRef(build, "zinc") / scalaVersion))
@@ -1199,7 +1209,7 @@ ThisBuild / pomIncludeRepository := (_ => false) // drop repos other than Maven 
 ThisBuild / publishTo := {
   val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
   val v = (ThisBuild / version).value
-  if (v.endsWith("SNAPSHOT")) Some("central-snapshots" at centralSnapshots)
+  if v.endsWith("SNAPSHOT") then Some("central-snapshots" at centralSnapshots)
   else localStaging.value
 }
 ThisBuild / publishMavenStyle := true
@@ -1216,6 +1226,7 @@ lazy val lmCore = (project in file("lm-core"))
     lmTestSettings,
     name := "librarymanagement-core",
     contrabandSjsonNewVersion := sjsonNewVersion,
+    Compile / generateContrabands / contrabandCodecParents += "sbt.librarymanagement.MemoizedFileFormats",
     libraryDependencies ++= Seq(
       jsch,
       // scalaReflect,
@@ -1234,7 +1245,7 @@ lazy val lmCore = (project in file("lm-core"))
       .task(
         Utils.generateVersionFile(
           version.value,
-          resourceManaged.value,
+          (Compile / resourceManaged).value,
           streams.value,
           (Compile / compile).value.asInstanceOf[Analysis]
         )
@@ -1247,28 +1258,6 @@ lazy val lmCore = (project in file("lm-core"))
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
   .configure(addSbtIO, addSbtCompilerInterface)
-
-lazy val lmIvy = (project in file("lm-ivy"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(lmCore)
-  .settings(
-    commonSettings,
-    lmTestSettings,
-    name := "librarymanagement-ivy",
-    contrabandSjsonNewVersion := sjsonNewVersion,
-    libraryDependencies ++= Seq(
-      ivy,
-      sjsonNewScalaJson.value,
-      sjsonNewCore.value,
-      scalacheck % Test,
-      scalaVerify % Test,
-      hedgehog % Test,
-    ),
-    libraryDependencies ++= scalatest,
-    contrabandSettings,
-    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
-    mimaSettings,
-  )
 
 lazy val lmCoursierSettings: Seq[Setting[?]] = Def.settings(
   baseSettings,
@@ -1286,7 +1275,7 @@ lazy val lmCoursierSettings: Seq[Setting[?]] = Def.settings(
       "alexarchambault",
       "Alexandre Archambault",
       "",
-      url("https://github.com/alexarchambault")
+      uri("https://github.com/alexarchambault")
     ),
 )
 
@@ -1335,6 +1324,7 @@ lazy val lmCoursier = project
 lazy val lmCoursierShaded = project
   .in(file("lm-coursier/target/shaded-module"))
   .settings(
+    exportJars := false,
     lmCoursierSettings,
     Mima.settings,
     Mima.lmCoursierFilters,
@@ -1409,7 +1399,7 @@ lazy val lmCoursierShadedPublishing = project
   .settings(
     scalaVersion := scala3,
     name := "librarymanagement-coursier",
-    Compile / packageBin := (lmCoursierShaded / assembly).value,
+    Compile / packageBin := Def.uncached((lmCoursierShaded / assembly).value),
     Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
   )
 
@@ -1431,16 +1421,24 @@ lazy val launcherPackageIntegrationTest =
       Test / fork := true,
       Test / javaOptions += {
         val cp = (Test / fullClasspath).value
-          .map(_.data.getAbsolutePath)
+          .map(_.data)
+          .map(fileConverter.value.toPath)
+          .map(_.toFile.getAbsolutePath)
           .mkString(java.io.File.pathSeparator)
         s"-Dsbt.test.classpath=$cp"
       },
       Test / javaOptions += s"-Dsbt.test.integrationtest.basedir=${(baseDirectory).value.getAbsolutePath}",
-      Test / test := {
-        (Test / test)
+      Test / testFull := Def.uncached {
+        (Test / testFull)
           .dependsOn(launcherPackage / Universal / packageBin)
           .dependsOn(launcherPackage / Universal / stage)
           .value
+      },
+      Test / test := Def.uncached {
+        (Test / test)
+          .dependsOn(launcherPackage / Universal / packageBin)
+          .dependsOn(launcherPackage / Universal / stage)
+          .evaluated
       },
       Test / testOnly := {
         (Test / testOnly)
@@ -1450,3 +1448,24 @@ lazy val launcherPackageIntegrationTest =
       },
       Test / parallelExecution := false
     )
+
+val prepareCommunityBuild = taskKey[Unit]("Publish local etc")
+lazy val `community-build` = (project in file("community-build"))
+  .settings(
+    scalaVersion := scala3,
+    libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
+    prepareCommunityBuild := {
+      val _ = (sbtRoot / publishLocalBinAll).value
+      IO.write(baseDirectory.value / "target" / "sbt.version", version.value)
+    },
+    (Test / testOptions) += Tests.Argument(
+      TestFrameworks.JUnit,
+      "--include-categories=sbt.internal.communitybuild.TestCategory",
+      "--run-listener=sbt.internal.communitybuild.FailureSummarizer",
+    ),
+    Compile / run := (Compile / run).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testOnly := (Test / testOnly).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testQuick := (Test / testQuick).dependsOn(prepareCommunityBuild).evaluated,
+    publish / skip := true,
+    publishLocalBin / skip := true,
+  )

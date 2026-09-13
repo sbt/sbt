@@ -12,7 +12,7 @@ package complete
 import java.lang.Character.toLowerCase as lower
 
 /** @author Paul Phillips */
-object EditDistance {
+object EditDistance:
 
   /**
    * Translated from the java version at
@@ -29,23 +29,21 @@ object EditDistance {
       matchCost: Int = 0,
       caseCost: Int = 1,
       transpositions: Boolean = false
-  ): Int = {
+  ): Int =
     val _ = transposeCost
     val n = s.length
     val m = t.length
-    if (n == 0) {
-      m
-    } else if (m == 0) {
-      n
-    } else {
+    if n == 0 then m
+    else if m == 0 then n
+    else
       val d = Array.ofDim[Int](n + 1, m + 1)
       0 to n foreach (x => d(x)(0) = x)
       0 to m foreach (x => d(0)(x) = x)
 
-      for (i <- 1 to n; s_i = s(i - 1); j <- 1 to m) {
+      for i <- 1 to n; s_i = s(i - 1); j <- 1 to m do
         val t_j = t(j - 1)
         val cost =
-          if (s_i == t_j) matchCost else if (lower(s_i) == lower(t_j)) caseCost else subCost
+          if s_i == t_j then matchCost else if lower(s_i) == lower(t_j) then caseCost else subCost
 
         val c1 = d(i - 1)(j) + deleteCost
         val c2 = d(i)(j - 1) + insertCost
@@ -53,13 +51,11 @@ object EditDistance {
 
         d(i)(j) = c1 min c2 min c3
 
-        if (transpositions) {
-          if (i > 1 && j > 1 && s(i - 1) == t(j - 2) && s(i - 2) == t(j - 1))
+        if transpositions then
+          if i > 1 && j > 1 && s(i - 1) == t(j - 2) && s(i - 2) == t(j - 1) then
             d(i)(j) = d(i)(j) min (d(i - 2)(j - 2) + cost)
-        }
-      }
 
       d(n)(m)
-    }
-  }
-}
+    end if
+  end levenshtein
+end EditDistance

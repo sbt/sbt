@@ -6,7 +6,7 @@ import sbt.librarymanagement.*
 private[lmcoursier] final case class CoursierModuleDescriptor(
     descriptor: ModuleDescriptorConfiguration,
     conf: CoursierConfiguration
-) extends ModuleDescriptor {
+) extends ModuleDescriptor:
 
   def directDependencies: Vector[ModuleID] =
     descriptor.dependencies
@@ -21,4 +21,3 @@ private[lmcoursier] final case class CoursierModuleDescriptor(
     // Exclude log/logger fields — they contain Logger instances with
     // non-deterministic hashCodes that would break update caching.
     conf.withLog(None).withLogger(None).##
-}

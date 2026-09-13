@@ -12,7 +12,7 @@ package sbt.util
  * An enumeration defining the levels available for logging. A level includes all of the levels with
  * id larger than its own id. For example, Warn (id=3) includes Error (id=4).
  */
-object Level extends Enumeration {
+object Level extends Enumeration:
   val Debug = Value(1, "debug")
   val Info = Value(2, "info")
   val Warn = Value(3, "warn")
@@ -24,7 +24,7 @@ object Level extends Enumeration {
    */
   val SuccessLabel = "success"
 
-  def union(a: Value, b: Value) = if (a.id < b.id) a else b
+  def union(a: Value, b: Value) = if a.id < b.id then a else b
   def unionAll(vs: Seq[Value]) = vs reduceLeft union
 
   /**
@@ -35,4 +35,4 @@ object Level extends Enumeration {
 
   /** Same as apply, defined for use in pattern matching. */
   private[sbt] def unapply(s: String) = apply(s)
-}
+end Level

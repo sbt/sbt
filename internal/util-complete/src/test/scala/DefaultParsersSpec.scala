@@ -11,7 +11,7 @@ package complete
 
 import org.scalacheck.*, Gen.*, Prop.*
 
-object DefaultParsersSpec extends Properties("DefaultParsers") {
+object DefaultParsersSpec extends Properties("DefaultParsers"):
   import DefaultParsers.{ ID, isIDChar, matches, validID }
 
   property("∀ s ∈ String: validID(s) == matches(ID, s)") =
@@ -22,8 +22,7 @@ object DefaultParsersSpec extends Properties("DefaultParsers") {
 
   private val chars: Seq[Char] = Char.MinValue to Char.MaxValue
   private val genID: Gen[String] =
-    for {
+    for
       c <- oneOf(chars filter (_.isLetter))
       cs <- listOf(oneOf(chars filter isIDChar))
-    } yield (c :: cs).mkString
-}
+    yield (c :: cs).mkString

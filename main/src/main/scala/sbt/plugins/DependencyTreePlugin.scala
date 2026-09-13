@@ -13,7 +13,7 @@ import sbt.PluginTrigger.AllRequirements
 import sbt.ProjectExtra.*
 import sbt.librarymanagement.Configurations.{ Compile, Test }
 
-object DependencyTreePlugin extends AutoPlugin {
+object DependencyTreePlugin extends AutoPlugin:
   object autoImport extends DependencyTreeKeys
 
   private val defaultDependencyDotHeader =
@@ -39,4 +39,4 @@ object DependencyTreePlugin extends AutoPlugin {
     DependencyTreeSettings.coreSettings ++
       inConfig(Compile)(DependencyTreeSettings.baseSettings) ++
       inConfig(Test)(DependencyTreeSettings.baseSettings)
-}
+end DependencyTreePlugin

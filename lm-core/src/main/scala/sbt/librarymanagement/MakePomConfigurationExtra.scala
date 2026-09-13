@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-private[librarymanagement] abstract class MakePomConfigurationFunctions {
+private[librarymanagement] abstract class MakePomConfigurationFunctions:
   private[sbt] lazy val constTrue: MavenRepository => Boolean = _ => true
 
   def apply(): MakePomConfiguration =
@@ -14,4 +14,3 @@ private[librarymanagement] abstract class MakePomConfigurationFunctions {
       true,
       Set(Artifact.DefaultType, Artifact.PomType)
     )
-}

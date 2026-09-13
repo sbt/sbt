@@ -12,7 +12,7 @@ java -version
 
 rm -rf freshly-baked
 mkdir -p freshly-baked
-unzip ../target/universal/sbt.zip -d ./freshly-baked
+unzip ../../target/out/jvm/u/sbt-launcher-packaging/universal/sbt.zip -d ./freshly-baked
 
 ./freshly-baked/sbt/bin/sbt -Dsbt.no.format=true about
 ./freshly-baked/sbt/bin/sbt -Dsbt.no.format=true about 1> output.txt 2> err.txt

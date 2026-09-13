@@ -1,5 +1,4 @@
 package lmcoursier.internal
 
-object LockFileConstants {
+object LockFileConstants:
   val currentVersion = "1.0"
-}

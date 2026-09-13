@@ -9,7 +9,6 @@
 package sbt
 package internal
 
-package object graph {
+package object graph:
   type Edge = (GraphModuleId, GraphModuleId)
   def Edge(from: GraphModuleId, to: GraphModuleId): Edge = from -> to
-}

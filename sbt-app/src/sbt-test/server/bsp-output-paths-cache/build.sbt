@@ -1,6 +1,6 @@
 import sbt.internal.bsp.OutputPathsItem
 
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.9.0"
 
 name := "bsp-output-paths-cache"
 

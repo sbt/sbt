@@ -8,9 +8,7 @@
 
 package sbt
 
-private[sbt] trait IOSyntax0 extends IOSyntax1 {
-  extension [A, B](f: A => Option[B]) {
+private[sbt] trait IOSyntax0 extends IOSyntax1:
+  extension [A, B](f: A => Option[B])
     def |(g: A => Option[B]): A => Option[B] = (a: A) => f(a) orElse g(a)
-  }
-}
 private[sbt] sealed trait IOSyntax1 extends sbt.io.IOSyntax with sbt.nio.file.syntax0

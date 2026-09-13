@@ -18,7 +18,8 @@ enum CacheEventSummary:
       missCount: Long,
       hitRate: Double,
       onsiteCount: Option[Long],
-      errorCount: Option[Long]
+      errorCount: Option[Long],
+      remoteHitCount: Long
   )
   override def toString(): String = this match
     case Empty => ""
@@ -28,7 +29,8 @@ enum CacheEventSummary:
           missCount,
           hitRate,
           onsiteCount,
-          errorCount
+          errorCount,
+          remoteHitCount
         ) =>
       val hitDescs = hits.map {
         case (id, 1) => s"1 $id cache hit"
@@ -74,12 +76,14 @@ class CacheEventLog:
       val hitRate = if total > 0 then (hitCount.toDouble / total.toDouble) else 0.0
       val onsiteCount = events.get(ActionCacheEvent.OnsiteTask)
       val errorCount = events.get(ActionCacheEvent.Error)
+      val remoteHitCount = hits.view.collect { case (id, v) if id.startsWith("remote") => v }.sum
       CacheEventSummary.Data(
         hits.toSeq,
         hitCount,
         missCount,
         hitRate,
         onsiteCount,
-        errorCount
+        errorCount,
+        remoteHitCount
       )
 end CacheEventLog

@@ -10,7 +10,7 @@ package sbt
 
 import sbt.internal.IncrementalTest
 
-object DefaultsTest extends verify.BasicTestSuite {
+object DefaultsTest extends verify.BasicTestSuite:
 
   test("`selectedFilter` should return all tests for an empty list") {
     val expected = Map("Test1" -> true, "Test2" -> true)
@@ -129,4 +129,4 @@ object DefaultsTest extends verify.BasicTestSuite {
       ) == expected
     )
   }
-}
+end DefaultsTest

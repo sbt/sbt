@@ -18,10 +18,9 @@ import xsbti.VirtualFile
  */
 sealed abstract class AddSettings
 
-object AddSettings {
-  private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings {
+object AddSettings:
+  private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings:
     override def toString: String = s"Sequence($sequence)"
-  }
   private[sbt] object User extends AddSettings
   private[sbt] final class AutoPlugins(val include: AutoPlugin => Boolean) extends AddSettings
   private[sbt] final class DefaultSbtFiles(val include: VirtualFile => Boolean) extends AddSettings
@@ -61,12 +60,11 @@ object AddSettings {
   val allDefaults: AddSettings = seq(autoPlugins, buildScalaFiles, userSettings, defaultSbtFiles)
 
   /** Combines two automatic setting configurations. */
-  def append(a: AddSettings, b: AddSettings): AddSettings = (a, b) match {
+  def append(a: AddSettings, b: AddSettings): AddSettings = (a, b) match
     case (sa: Sequence, sb: Sequence) => seq(sa.sequence ++ sb.sequence*)
     case (sa: Sequence, _)            => seq(sa.sequence :+ b*)
     case (_, sb: Sequence)            => seq(a +: sb.sequence*)
     case _                            => seq(a, b)
-  }
 
   def clearSbtFiles(a: AddSettings): AddSettings =
     tx(a) {
@@ -76,15 +74,13 @@ object AddSettings {
     } getOrElse seq()
 
   private[sbt] def tx(a: AddSettings)(f: AddSettings => Option[AddSettings]): Option[AddSettings] =
-    a match {
+    a match
       case s: Sequence =>
         s.sequence.flatMap { b =>
           tx(b)(f)
-        } match {
+        } match
           case Seq()  => None
           case Seq(x) => Some(x)
           case ss     => Some(new Sequence(ss))
-        }
       case x => f(x)
-    }
-}
+end AddSettings

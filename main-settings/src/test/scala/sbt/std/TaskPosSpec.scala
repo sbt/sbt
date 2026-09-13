@@ -8,7 +8,7 @@
 
 package sbt.std
 
-class TaskPosSpec {
+class TaskPosSpec:
   // Starting sbt 1.4.0, Def.task can have task value lookups inside
   // if branches since tasks with single if-expressions are automatically
   // converted into a conditional task.
@@ -18,7 +18,7 @@ class TaskPosSpec {
     val bar = taskKey[String]("")
     val condition = true
     Def.task[String] {
-      if (condition) foo.value
+      if condition then foo.value
       else bar.value
     }
   }
@@ -30,7 +30,7 @@ class TaskPosSpec {
     val bar = taskKey[String]("")
     val condition = true
     Def.taskDyn[String] {
-      if (condition) foo
+      if condition then foo
       else bar
     }
   }
@@ -42,7 +42,7 @@ class TaskPosSpec {
     val bar = settingKey[String]("")
     val condition = true
     Def.settingDyn[String] {
-      if (condition) foo
+      if condition then foo
       else bar
     }
   }
@@ -53,7 +53,7 @@ class TaskPosSpec {
     val condition = true
     Def.task[String] {
       val fooAnon = () => foo.value: @sbtUnchecked
-      if (condition) fooAnon()
+      if condition then fooAnon()
       else fooAnon()
     }
   }
@@ -64,7 +64,7 @@ class TaskPosSpec {
     val condition = true
     Def.task[String] {
       val fooAnon = () => (foo.value: @sbtUnchecked) + ""
-      if (condition) fooAnon()
+      if condition then fooAnon()
       else fooAnon()
     }
   }
@@ -75,7 +75,7 @@ class TaskPosSpec {
     val bar = taskKey[String]("")
     val condition = true
     Def.task[String] {
-      if (condition) foo.value: @sbtUnchecked
+      if condition then foo.value: @sbtUnchecked
       else bar.value: @sbtUnchecked
     }
   }
@@ -88,7 +88,7 @@ class TaskPosSpec {
     Def.task[String] {
       val fooResult = foo.value
       val anon = () => fooResult + " "
-      if (condition) anon()
+      if condition then anon()
       else ""
     }
   }
@@ -100,9 +100,8 @@ class TaskPosSpec {
     val condition = true
     Def.taskDyn[String] {
       val anon1 = (value: String) => value + " "
-      if (condition) {
-        Def.task(anon1(foo.value))
-      } else Def.task("")
+      if condition then Def.task(anon1(foo.value))
+      else Def.task("")
     }
   }
 
@@ -156,11 +155,11 @@ class TaskPosSpec {
     // In theory, this should be reported, but missing .value analysis is dumb at the cost of speed
     import sbt.*, Def.*
     val foo = taskKey[String]("")
-    def avoidDCE = { println(""); "" }
+    def avoidDCE =
+      println(""); ""
     Def.task[String] {
-      val (_, _) = "" match {
+      val (_, _) = "" match
         case _ => (foo, 1 + 2)
-      }
       avoidDCE
     }
   }
@@ -179,13 +178,11 @@ class TaskPosSpec {
 
   locally {
     import sbt.*, Def.*
-    def withKey(foo: => SettingKey[String]): Def.Initialize[Task[Unit]] = {
+    def withKey(foo: => SettingKey[String]): Def.Initialize[Task[Unit]] =
       Def.task {
-        if (true) {
+        if true then
           Def.unit(foo.value); ()
-        }
       }
-    }
     val foo = settingKey[String]("")
     withKey(foo)
   }
@@ -196,7 +193,7 @@ class TaskPosSpec {
     val condition = true
     Def.task[String] {
       // settings can be evaluated in a condition
-      if (condition) foo.value
+      if condition then foo.value
       else "..."
     }
   }
@@ -211,14 +208,13 @@ class TaskPosSpec {
 
   locally {
     import sbt.*, Def.*
-    def withKey(bar: => SettingKey[Int]) = {
+    def withKey(bar: => SettingKey[Int]) =
       Def.task {
         List(42).map { _ =>
-          if (true) bar.value
+          if true then bar.value
         }
       }
-    }
     val bar = settingKey[Int]("bar")
     withKey(bar)
   }
-}
+end TaskPosSpec

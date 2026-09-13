@@ -10,10 +10,9 @@ package sbt
 
 import java.io.File
 
-object ProjectSpec extends verify.BasicTestSuite {
-  object TestPlugin extends AutoPlugin {
+object ProjectSpec extends verify.BasicTestSuite:
+  object TestPlugin extends AutoPlugin:
     override def requires: Plugins = empty
-  }
 
   private val base = new File(".")
 
@@ -34,4 +33,4 @@ object ProjectSpec extends verify.BasicTestSuite {
   }
 
   def emptyFilename = ""
-}
+end ProjectSpec

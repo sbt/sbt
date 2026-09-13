@@ -8,7 +8,7 @@ import com.typesafe.sbt.SbtGit, SbtGit.{ git, GitKeys }
 import Sxr.{ sxr, SxrConf }
  */
 
-object Docs {
+object Docs:
   def settings: Seq[Setting[?]] = Nil
 
   /*
@@ -53,4 +53,3 @@ object Docs {
     repo
   }
    */
-}

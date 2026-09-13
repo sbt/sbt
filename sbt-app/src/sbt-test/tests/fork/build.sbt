@@ -4,18 +4,19 @@ import Defaults._
 val groupSize = 3
 val groups = 3
 
+@transient
 val check = TaskKey[Unit]("check", "Check all files were created and remove them.")
-val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
-val scalaxml = "org.scala-lang.modules" %% "scala-xml" % "1.1.1"
+val munit = "org.scalameta" %% "munit" % "1.0.4"
 
 def groupId(idx: Int) = "group_" + (idx + 1)
 def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
-ThisBuild / scalaVersion := "2.12.21"
-ThisBuild / organization := "org.example"
+scalaVersion := "3.9.0"
+organization := "com.example"
+Global / workerMaxInstances := 2
 
-lazy val root = (project in file("."))
+lazy val root = rootProject
   .settings(
     Test / testGrouping := Def.uncached {
       val tests = (Test / definedTests).value
@@ -36,9 +37,16 @@ lazy val root = (project in file("."))
       if absent.nonEmpty then
         sys.error("Files were not created:\n\t" + absent.mkString("\n\t"))
     },
-    concurrentRestrictions := Tags.limit(Tags.ForkedTestGroup, 2) :: Nil,
     libraryDependencies ++= List(
-      scalaxml,
-      scalatest % Test
+      munit % Test
     )
+  )
+
+lazy val core = project
+  .settings(
+    Test / fork := true,
+    libraryDependencies ++= List(
+      munit % Test
+    ),
+    Test / baseDirectory := (LocalRootProject / baseDirectory).value,
   )

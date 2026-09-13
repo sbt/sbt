@@ -11,30 +11,25 @@ package sbt.internal.util
 import java.util.concurrent.LinkedBlockingQueue
 import scala.jdk.CollectionConverters.*
 
-private[sbt] sealed trait Prompt {
+private[sbt] sealed trait Prompt:
   def mkPrompt: () => String
   def render(): String
   def reset(): Unit
-}
 
-private[sbt] object Prompt {
-  private[sbt] case class AskUser(override val mkPrompt: () => String) extends Prompt {
+private[sbt] object Prompt:
+  private[sbt] case class AskUser(override val mkPrompt: () => String) extends Prompt:
     private val bytes = new LinkedBlockingQueue[Byte]
     def write(b: Array[Byte]): Unit = b.foreach(bytes.put)
-    override def render(): String = {
+    override def render(): String =
       val res = new String(bytes.asScala.toArray, "UTF-8")
-      if (res.endsWith(System.lineSeparator)) "" else res
-    }
+      if res.endsWith(System.lineSeparator) then "" else res
     override def reset(): Unit = bytes.clear()
-  }
-  private[sbt] trait NoPrompt extends Prompt {
+  private[sbt] trait NoPrompt extends Prompt:
     override val mkPrompt: () => String = () => ""
     override def render(): String = ""
     override def reset(): Unit = {}
-  }
   private[sbt] case object Running extends NoPrompt
   private[sbt] case object Batch extends NoPrompt
   private[sbt] case object Watch extends NoPrompt
   private[sbt] case object Pending extends NoPrompt
   private[sbt] case object NoPrompt extends NoPrompt
-}

@@ -6,6 +6,7 @@
 package sbt.librarymanagement
 trait LibraryManagementCodec extends sbt.librarymanagement.ConfigRefFormats
   with sjsonnew.BasicJsonProtocol
+  with sbt.librarymanagement.MemoizedFileFormats
   with sbt.librarymanagement.RetrieveConfigurationFormats
   with sbt.librarymanagement.UpdateLoggingFormats
   with sbt.internal.librarymanagement.formats.LogicalClockFormats
