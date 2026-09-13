@@ -912,7 +912,9 @@ object BuiltinCommands:
         case '\n' | '\r' => retry
         case 'r' | 'R'   => retry
         case 'q' | 'Q'   => s.exit(ok = false)
-        case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+        case 'i' | 'I'   =>
+          s.log.warn(s"Ignoring load failure: $ignoreMsg.")
+          s.remove(Keys.forceGlobalPluginUpdate)
         case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
         case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
 
