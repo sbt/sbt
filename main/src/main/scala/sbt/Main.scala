@@ -915,8 +915,8 @@ object BuiltinCommands:
         case 'i' | 'I'   =>
           s.log.warn(s"Ignoring load failure: $ignoreMsg.")
           s.remove(Keys.forceGlobalPluginUpdate)
-        case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-        case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
+        case 'l' | 'L' => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+        case c         => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
 
   def loadProjectCommands(arg: String): List[String] =
     StashOnFailure ::
