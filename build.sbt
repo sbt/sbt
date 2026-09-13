@@ -709,6 +709,12 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      // contImpl is an internal macro-implementation detail (see Cont.scala); it grew a new
+      // keyScopeExprOpt parameter so `clean` can invalidate a subproject's disk-cache entries.
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "sbt.std.SettingMacro#ContSyntax.contImpl"
+      ),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.std.TaskMacro#ContSyntax.contImpl"),
     ),
   )
   .dependsOn(lmCore)

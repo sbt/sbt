@@ -11,6 +11,7 @@ package sbt.util
 import java.io.{ File, PrintWriter }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ NoSuchFileException, Path, Paths }
+import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.util.{
   ActionCacheEvent,
   CacheEventLog,
@@ -27,6 +28,7 @@ import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, tailrec, StaticAnnotation }
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import sjsonnew.{ HashWriter, JsonFormat }
@@ -45,6 +47,18 @@ object ActionCache:
     execLog = Option(writer)
     writer
 
+  /** Internal state used for clean support. */
+  private[sbt] enum ScopeInvalidation:
+    /** Set by clean. */
+    case Invalidated(cycle: Int)
+
+    /** Set by running a cached task. */
+    case Pending
+
+  private[sbt] val commandCycle = new AtomicInteger(0)
+  private[sbt] val invalidatedScopes: TrieMap[String, ScopeInvalidation] =
+    TrieMap.empty
+
   /**
    * This is a key function that drives remote caching.
    * This is intended to be called from the cached task macro for the most part.
@@ -61,6 +75,33 @@ object ActionCache:
    * - action: The actual action to be cached.
    */
   def cache[I: HashWriter, O: JsonFormat](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
+  )(
+      action: I => InternalActionResult[O],
+  ): O = cache(taskName = "", key, codeContentHash, extraHash, tags, config)(action)
+
+  /**
+   * This is a key function that drives remote caching.
+   * This is intended to be called from the cached task macro for the most part.
+   *
+   * - taskName: Slash representation of the current task.
+   * - key: This represents the input key for this action, typically consists
+   *   of all the input into the action. For the purpose of caching,
+   *   all we need from the input is to generate some hash value.
+   * - codeContentHash: This hash represents the Scala code of the task.
+   *   Even if the input tasks are the same, the code part needs to be tracked.
+   * - extraHash: Extra hash for cache invalidation (combined with config.cacheVersion).
+   * - tags: Tags to track cache level.
+   * - config: The configuration that's used to store where the cache backends are.
+   *   config.cacheVersion is incorporated into the cache key to allow global invalidation.
+   * - action: The actual action to be cached.
+   */
+  def cache[I: HashWriter, O: JsonFormat](
+      taskName: String,
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
@@ -160,7 +201,7 @@ object ActionCache:
       execLog.foreach: log =>
         logEvent(event, log)
     // Single cache lookup - use exitCode to distinguish success from failure
-    getWithFailure(inputDigest, tags, config) match
+    getWithFailure(taskName, inputDigest, tags, config) match
       case Right((value, result)) =>
         logExec(
           SpawnExec(
@@ -188,6 +229,15 @@ object ActionCache:
    * or Left(None) for cache miss.
    */
   private def getWithFailure[O: JsonFormat](
+      taskName: String,
+      inputDigest: Digest,
+      tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
+  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
+    if markScopePending(taskName) then Left(None)
+    else getWithFailure0(inputDigest, tags, config)
+
+  private def getWithFailure0[O: JsonFormat](
       inputDigest: Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
@@ -235,7 +285,7 @@ object ActionCache:
             Left(None)
       case Left(_) => Left(None)
     end match
-  end getWithFailure
+  end getWithFailure0
 
   /**
    * Retrieves the cached value.
@@ -248,7 +298,7 @@ object ActionCache:
       config: BuildWideCacheConfiguration,
   ): Option[O] =
     val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
-    getWithFailure(inputDigest, tags, config) match
+    getWithFailure(taskName = "", inputDigest, tags, config) match
       case Right(value) => Some(value._1)
       case Left(_)      => None
 
@@ -428,6 +478,28 @@ object ActionCache:
     val s = PrettyPrinter(json)
     log.println(s)
     log.flush()
+
+  /** Marks prefix so that subsequent cache lookups for a `taskName` starting with it are skipped. */
+  private[sbt] def invalidateScope(prefix: String): Unit =
+    if prefix.nonEmpty then
+      invalidatedScopes.update(prefix, ScopeInvalidation.Invalidated(commandCycle.get))
+
+  /** Checks whether `taskName` falls under a scope invalidated by `clean`. */
+  private[sbt] def markScopePending(taskName: String): Boolean =
+    taskName.nonEmpty && (invalidatedScopes.keys.exists: prefix =>
+      taskName.startsWith(prefix) && {
+        invalidatedScopes(prefix) match
+          case ScopeInvalidation.Invalidated(n) if n < commandCycle.get =>
+            invalidatedScopes.update(prefix, ScopeInvalidation.Pending)
+          case _ => ()
+        true
+      })
+
+  /** Removes every `Pending` scope prefix; called after each command finishes running. */
+  private[sbt] def agePendingScopes(): Unit =
+    commandCycle.incrementAndGet()
+    invalidatedScopes.foreach: (prefix, state) =>
+      if state == ScopeInvalidation.Pending then invalidatedScopes.remove(prefix)
 
 end ActionCache
 

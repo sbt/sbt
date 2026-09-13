@@ -36,7 +36,19 @@ trait Cont:
         applicativeExpr: Expr[Applicative[F]],
         cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]]
     )(using iftpe: Type[F], eatpe: Type[Effect[A]]): Expr[F[Effect[A]]] =
-      contMapN[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, conv.idTransform)
+      contMapN[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, None, conv.idTransform)
+
+    /**
+     * Implementation of a macro that provides a direct syntax for applicative functors. It is
+     * intended to be used in conjunction with another macro that conditions the inputs.
+     */
+    def contMapN[A: Type, F[_], Effect[_]: Type](
+        tree: Expr[A],
+        applicativeExpr: Expr[Applicative[F]],
+        taskNameExpr: Option[Expr[String]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
+    )(using iftpe: Type[F], eatpe: Type[Effect[A]]): Expr[F[Effect[A]]] =
+      contMapN[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, taskNameExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -51,7 +63,20 @@ trait Cont:
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Left(tree), applicativeExpr, cacheConfigExpr, inner)
+      contImpl[A, F, Effect](Left(tree), applicativeExpr, None, cacheConfigExpr, inner)
+
+    /** Same as the other `contMapN` with `inner`, but also takes `taskNameExpr`. */
+    def contMapN[A: Type, F[_], Effect[_]: Type](
+        tree: Expr[A],
+        applicativeExpr: Expr[Applicative[F]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
+        taskNameExpr: Option[Expr[String]],
+        inner: conv.TermTransform[Effect]
+    )(using
+        iftpe: Type[F],
+        eatpe: Type[Effect[A]],
+    ): Expr[F[Effect[A]]] =
+      contImpl[A, F, Effect](Left(tree), applicativeExpr, taskNameExpr, cacheConfigExpr, inner)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -80,7 +105,7 @@ trait Cont:
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Right(tree), applicativeExpr, cacheConfigExpr, inner)
+      contImpl[A, F, Effect](Right(tree), applicativeExpr, None, cacheConfigExpr, inner)
 
     def summonAppExpr[F[_]: Type]: Expr[Applicative[F]] =
       import conv.qctx
@@ -164,6 +189,7 @@ trait Cont:
     def contImpl[A: Type, F[_], Effect[_]: Type](
         eitherTree: Either[Expr[A], Expr[F[A]]],
         applicativeExpr: Expr[Applicative[F]],
+        taskNameExprOpt: Option[Expr[String]],
         cacheConfigExprOpt: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
@@ -254,13 +280,25 @@ trait Cont:
                       val modifiedCacheConfigExpr =
                         transformWrappers(cacheConfigExpr.asTerm.changeOwner(sym), substitute, sym)
                           .asExprOf[BuildWideCacheConfiguration]
+                      val modifiedTaskNameExpr = taskNameExprOpt
+                        .map(taskNameExpr =>
+                          transformWrappers(taskNameExpr.asTerm.changeOwner(sym), substitute, sym)
+                            .asExprOf[String]
+                        )
+                        .getOrElse('{ "" })
                       val tags = CacheLevelTag.all.toList
-                      callActionCache(outputBuf.toList, modifiedCacheConfigExpr, tags)(
+                      callActionCache(
+                        outputBuf.toList,
+                        modifiedCacheConfigExpr,
+                        modifiedTaskNameExpr,
+                        tags
+                      )(
                         body = modifiedBody,
                         input = unitExpr,
                       ).asTerm
                         .changeOwner(sym)
                     case None => modifiedBody.asTerm
+                  end match
               ).asExprOf[a => A1]
               val expr = input.term.asExprOf[F[a]]
               typed[F[A1]](
@@ -314,6 +352,12 @@ trait Cont:
                       val modifiedCacheConfigExpr =
                         transformWrappers(cacheConfigExpr.asTerm.changeOwner(sym), substitute, sym)
                           .asExprOf[BuildWideCacheConfiguration]
+                      val modifiedTaskNameExpr = taskNameExprOpt
+                        .map(taskNameExpr =>
+                          transformWrappers(taskNameExpr.asTerm.changeOwner(sym), substitute, sym)
+                            .asExprOf[String]
+                        )
+                        .getOrElse('{ "" })
                       inputs.foreach: input =>
                         if !input.isCacheInput then
                           if !Cont.transientAllowSet(input.sym.name) && !input.isWarnSuppressed then
@@ -332,13 +376,23 @@ trait Cont:
                         )
                         br.cacheInputTupleTypeRepr.asType match
                           case '[cacheInputTpe] =>
-                            callActionCache(outputBuf.toList, modifiedCacheConfigExpr, tags)(
+                            callActionCache(
+                              outputBuf.toList,
+                              modifiedCacheConfigExpr,
+                              modifiedTaskNameExpr,
+                              tags
+                            )(
                               body = modifiedBody,
                               input = br.cacheInputExpr(p0).asExprOf[cacheInputTpe],
                             ).asTerm.changeOwner(sym)
                       else
                         val tags = CacheLevelTag.all.toList
-                        callActionCache(outputBuf.toList, modifiedCacheConfigExpr, tags)(
+                        callActionCache(
+                          outputBuf.toList,
+                          modifiedCacheConfigExpr,
+                          modifiedTaskNameExpr,
+                          tags
+                        )(
                           body = modifiedBody,
                           input = unitExpr,
                         ).asTerm.changeOwner(sym)
@@ -372,6 +426,7 @@ trait Cont:
       def callActionCache[A1: Type, A2: Type](
           outputs: List[Output],
           cacheConfigExpr: Expr[BuildWideCacheConfiguration],
+          taskNameExpr: Expr[String],
           tags: List[CacheLevelTag],
       )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
         if containsFileType[A1] then
@@ -408,6 +463,7 @@ trait Cont:
             given ClassTag[A1] = $aClassTag
             ActionCache
               .cache(
+                taskName = $taskNameExpr,
                 $input,
                 codeContentHash = Digest.dummy($codeContentHash),
                 extraHash = Digest.dummy($extraHash),
@@ -504,8 +560,10 @@ trait Cont:
                 )
                 oldTree
           }
-      val exprWithConfig =
+      val exprWithConfig0 =
         cacheConfigExprOpt.map(config => '{ $config; $expr }).getOrElse(expr)
+      val exprWithConfig =
+        taskNameExprOpt.map(taskName => '{ $taskName; $exprWithConfig0 }).getOrElse(exprWithConfig0)
       nowarnQuals = collectNowarnQuals(exprWithConfig.asTerm)
       val body = transformWrappers(exprWithConfig.asTerm, record, Symbol.spliceOwner)
       val r = inputBuf.toList match
@@ -525,6 +583,7 @@ private[sbt] object Cont:
     "bspTargetIdentifier",
     "bspCompileTask",
     "cacheConfiguration",
+    "resolvedScopedStr",
     "csrLogger",
     "compileAnalysisFile",
     "compileIncSetup",

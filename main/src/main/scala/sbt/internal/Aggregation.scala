@@ -19,7 +19,7 @@ import sbt.internal.util.*
 import sbt.internal.client.NetworkClient
 import sbt.internal.worker.ClientJobParams
 import sbt.std.Transform.DummyTaskMap
-import sbt.util.{ Logger, Show }
+import sbt.util.{ ActionCache, Logger, Show }
 import scala.annotation.tailrec
 
 sealed trait Aggregation
@@ -128,6 +128,7 @@ object Aggregation:
     val (newS, result) = withStreams(structure, s): str =>
       val transform = nodeView(s, str, roots, extra)
       runTask(toRun, s, str, structure.index.triggers, config)(using transform)
+    ActionCache.agePendingScopes()
     val stop = System.currentTimeMillis
     val cacheSummary = Def.cacheEventLog.summary.toString()
     Complete(start, stop, result, cacheSummary, newS)

@@ -136,12 +136,18 @@ object TaskMacro:
             t,
             convert1.appExpr,
             Some('{
+              InputWrapper.`wrapInit_\u2603\u2603`[String](
+                Def.resolvedScopedStr
+              )
+            }),
+            Some('{
               InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](
                 Def.cacheConfiguration
               )
-            })
+            }),
           )
         else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
+    end match
   end taskMacroImpl
 
   def taskMacroImpl[A1: Type](t: Expr[A1], cached: Boolean)(using
@@ -157,10 +163,15 @@ object TaskMacro:
             t,
             convert1.appExpr,
             Some('{
+              InputWrapper.`wrapInit_\u2603\u2603`[String](
+                Def.resolvedScopedStr
+              )
+            }),
+            Some('{
               InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](
                 Def.cacheConfiguration
               )
-            })
+            }),
           )
         else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
 

@@ -68,6 +68,13 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
     "The ScopedKey for the referencing setting or task.",
     KeyRanks.DSetting
   )
+
+  @transient
+  val resolvedScopedStr = SettingKey[String](
+    "resolvedScopedStr",
+    "The subproject id of the ScopedKey for the referencing setting or task.",
+    KeyRanks.Invisible
+  )
   private[sbt] val taskDefinitionKey = AttributeKey[ScopedKey[?]](
     "task-definition-key",
     "Internal: used to map a task back to its ScopedKey.",

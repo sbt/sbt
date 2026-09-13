@@ -24,7 +24,7 @@ import sbt.nio.Keys.*
 import sbt.nio.file.*
 import sbt.nio.file.syntax.pathToPathOps
 import sbt.nio.file.Glob.GlobOps
-import sbt.util.{ DiskActionCacheStore, Level }
+import sbt.util.{ ActionCache, DiskActionCacheStore, Level }
 import sbt.internal.util.complete.SizeParser
 import sjsonnew.JsonFormat
 import xsbti.{ PathBasedFile, VirtualFileRef }
@@ -128,6 +128,10 @@ private[sbt] object Clean:
               deleteContents(g.base, filter, FileTreeView.default, delete)
               delete(g.base)
             }
+
+          // Prevent subsequent cached tasks in this subproject from resurrecting the
+          // just-deleted outputs from the disk cache.
+          ActionCache.invalidateScope(Scope.projectScopePrefix(scope))
         }
       }
       .tag(Tags.Clean)
