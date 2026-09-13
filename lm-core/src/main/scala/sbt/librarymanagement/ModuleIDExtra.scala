@@ -147,7 +147,7 @@ private[librarymanagement] abstract class ModuleIDExtra:
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
   @deprecated(
     "`name` parameter must contain scala version if artifact is cross-versioned. Use `exclude(\"org\" %% \"name\")`.",
-    since = "2.0.0"
+    since = "2.1.0"
   )
   def exclude(org: String, name: String): ModuleID =
     excludeAll(ExclusionRule().withOrganization(org).withName(name))
