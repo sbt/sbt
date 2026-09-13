@@ -40,6 +40,8 @@ $ exists global/repo/com.example/marker_3/0.3.0/jars/marker_3.jar
 > reload
 > eval assert(Marker.version == "0.2.0")
 
-# the batch runner preserves global/ between tests, so drop the definition again
-$ delete global/plugins/plugins.sbt
+# The tests of one scripted run share a directory, and `global` is the part of it that is kept between
+# them, so delete what this test installed there.
+$ delete global/plugins global/repo
+$ absent global/plugins global/repo
 > reload
