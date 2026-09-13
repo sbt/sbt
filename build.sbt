@@ -790,6 +790,8 @@ lazy val mainProj = (project in file("main"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // mima mistakenly checks inside private ProjectMatrixDef
+      exclude[Problem]("sbt.ProjectMatrix*ProjectMatrixDef*"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)

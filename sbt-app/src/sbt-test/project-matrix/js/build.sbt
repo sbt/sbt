@@ -19,5 +19,5 @@ lazy val bare = (projectMatrix in file("bare"))
     true,
     Seq("2.13.18"),
     Seq(VirtualAxis.js),
-    _.settings(check := assert(platform.value == "jvm", platform.value)),
+    _.settings(check := assert(platform.value == "sjs1", platform.value)),
   )

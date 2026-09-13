@@ -207,7 +207,7 @@ sealed trait ProjectMatrix extends CompositeProject:
   def filterProjects(axisValues: Seq[VirtualAxis]): Seq[Project]
   def filterProjects(autoScalaLibrary: Boolean, axisValues: Seq[VirtualAxis]): Seq[Project]
   def finder(axisValues: VirtualAxis*): ProjectFinder
-  def allProjects(): Seq[(Project, Seq[VirtualAxis])]
+  def allProjects(): Seq[(Project, VirtualAxis.ProjectRowKey)]
 
   // resolve to the closest match for the given row
   private[sbt] def resolveMatch(thatRow: ProjectMatrix.ProjectRow): ProjectReference
@@ -241,7 +241,7 @@ object ProjectMatrix:
    */
   final class ProjectRow(
       val autoScalaLibrary: Boolean,
-      val axisValues: Seq[VirtualAxis],
+      val axisValues: VirtualAxis.ProjectRowKey,
       val process: Project => Project
   ):
     def scalaVersionOpt: Option[String] =
@@ -319,12 +319,17 @@ object ProjectMatrix:
           } ++ nonMatrixAggregate
           val dotSbtMatrix = new java.io.File(".sbt") / "matrix"
           IO.createDirectory(dotSbtMatrix)
+          val axisPlugins = r.axisValues.collect {
+            case VirtualAxis.js     => enableScalaJSPlugin
+            case VirtualAxis.native => enableScalaNativePlugin
+          }
           val p = Project(childId, dotSbtMatrix / childId)
             .dependsOn(deps*)
             .aggregate(aggs*)
             .setPlugins(plugins)
             .configs(configurations*)
             .settings(baseSettings ++ rowSettings(r) ++ self.settings)
+            .configure(axisPlugins*)
             .configure(transforms*)
 
           r -> r.process(p)
@@ -552,14 +557,14 @@ object ProjectMatrix:
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.js +: axisValues):
-        p => enableScalaJSPlugin(p).settings(settings)
+        p => p.settings(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, Seq(VirtualAxis.js)):
-        p => enableScalaJSPlugin(p).settings(settings)
+        p => p.settings(settings)
 
     override def jsPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
@@ -575,7 +580,7 @@ object ProjectMatrix:
         scalaVersions,
         VirtualAxis.js +: axisValues
       ): p =>
-        enableScalaJSPlugin(p).settings(settings)
+        p.settings(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
@@ -588,7 +593,7 @@ object ProjectMatrix:
         scalaVersions,
         VirtualAxis.js +: axisValues
       ): p =>
-        configure(enableScalaJSPlugin(p))
+        configure(p)
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
@@ -630,7 +635,7 @@ object ProjectMatrix:
         scalaVersions,
         VirtualAxis.native +: axisValues
       ): p =>
-        enableScalaNativePlugin(p).settings(settings)
+        p.settings(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
@@ -642,7 +647,7 @@ object ProjectMatrix:
         scalaVersions,
         Seq(VirtualAxis.native)
       ): p =>
-        enableScalaNativePlugin(p).settings(settings)
+        p.settings(settings)
 
     override def nativePlatform(
         crossVersion: CrossVersion,
@@ -661,7 +666,7 @@ object ProjectMatrix:
         scalaVersions,
         VirtualAxis.native +: axisValues
       ): p =>
-        enableScalaNativePlugin(p).settings(settings)
+        p.settings(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
@@ -674,7 +679,7 @@ object ProjectMatrix:
         scalaVersions,
         VirtualAxis.native +: axisValues
       ): p =>
-        configure(enableScalaNativePlugin(p))
+        configure(p)
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
@@ -785,7 +790,7 @@ object ProjectMatrix:
     override def finder(axisValues: VirtualAxis*): ProjectFinder =
       new AxisBaseProjectFinder(axisValues)
 
-    override def allProjects(): Seq[(Project, Seq[VirtualAxis])] =
+    override def allProjects(): Seq[(Project, VirtualAxis.ProjectRowKey)] =
       resolvedMappings.map { (row, project) =>
         project -> row.axisValues
       }.toSeq
