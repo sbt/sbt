@@ -1,0 +1,10 @@
+# https://github.com/sbt/sbt/issues/9729
+# Each artifact is PUT under its plain -SNAPSHOT name, so a repository with unique
+# snapshot naming stamps every upload separately and maven-metadata.xml ends up
+# pointing at a jar that was never published.
+> cleanPublishRepo
+> startPublishServer
+> a/publish
+# flip to `>` once the publication uses a single qualifier
+-> checkSnapshotConsistency
+> stopPublishServer
