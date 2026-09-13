@@ -79,7 +79,6 @@ Global / checkSnapshotConsistency := {
     s"maven-metadata.xml summary is $summary but the artifacts are $qualifier"
   )
 
-  // the file name Gradle builds from the summary block
   val mainJar = versionDir / s"$artifactId-$baseVersion-$summary.jar"
   assert(mainJar.isFile, s"${mainJar.getName} referenced by maven-metadata.xml does not exist")
 

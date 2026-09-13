@@ -94,6 +94,19 @@ class GenericPublisher private[sbt] (
         )
     val artifacts = configuration.artifacts
     target match
+      case urlRepo: URLRepository if urlRepo.patterns.isMavenCompatible =>
+        val pat = urlRepo.patterns.artifactPatterns.headOption.getOrElse(
+          sys.error("URLRepository has no artifact pattern")
+        )
+        val idx = pat.indexOf("[organisation]")
+        if idx < 0 then sys.error(s"Maven-compatible pattern '$pat' has no [organisation] token")
+        ivylessPublishMavenToUrl(
+          artifacts,
+          configuration.checksums,
+          pat.substring(0, idx),
+          configuration.overwrite,
+          log
+        )
       case urlRepo: URLRepository =>
         ivylessPublish(artifacts, configuration.checksums, urlRepo, configuration.overwrite, log)
       case fileRepo: FileRepository =>
@@ -577,10 +590,15 @@ class GenericPublisher private[sbt] (
 
     val base = baseUrl.stripSuffix("/") + "/"
     val versionPath = s"${groupId.replace('.', '/')}/$artifactId/$version"
+    val remoteMetadata =
+      if version.endsWith("-SNAPSHOT") then
+        fetchMetadata(base + versionPath + "/maven-metadata.xml", directCreds, log)
+      else None
     val snapshot =
       if version.endsWith("-SNAPSHOT") then
-        val previous =
-          latestBuildNumber(base + versionPath + "/maven-metadata.xml", directCreds, log)
+        val previous = remoteMetadata
+          .flatMap(m => (m \\ "versioning" \\ "snapshot" \\ "buildNumber").text.trim.toIntOption)
+          .getOrElse(0)
         Some(SnapshotVersion(snapshotTimestamp(), previous + 1, version.stripSuffix("-SNAPSHOT")))
       else None
     val fileVersion = snapshot.map(_.qualifier).getOrElse(version)
@@ -612,7 +630,7 @@ class GenericPublisher private[sbt] (
       try
         IO.write(
           metadata,
-          mavenMetadataXml(groupId, artifactId, version, snap, artifacts.map(_._1))
+          mavenMetadataXml(groupId, artifactId, version, snap, artifacts.map(_._1), remoteMetadata)
         )
         putWithChecksums(versionPath + "/maven-metadata.xml", metadata)
       finally metadata.delete()
@@ -629,14 +647,14 @@ class GenericPublisher private[sbt] (
       .format(java.time.Instant.now())
 
   /**
-   * Reads the build number of the snapshot deployed last, or 0 when the repository
-   * has no metadata for this version yet.
+   * Fetches the remote maven-metadata.xml for a snapshot version, or None when the
+   * repository has no metadata for this version yet.
    */
-  private def latestBuildNumber(
+  private def fetchMetadata(
       metadataUrl: String,
       credentials: Seq[Credentials.DirectCredentials],
       log: Logger
-  ): Int =
+  ): Option[scala.xml.Elem] =
     try
       val url = URI.create(metadataUrl).toURL()
       val baseReq = Gigahorse.url(metadataUrl).get
@@ -644,31 +662,45 @@ class GenericPublisher private[sbt] (
         case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
         case None     => baseReq
       val response = Await.result(sbt.librarymanagement.Http.http.processFull(req), 1.minute)
-      if response.status < 200 || response.status >= 300 then 0
-      else
-        val xml = scala.xml.XML.loadString(response.bodyAsString)
-        (xml \\ "versioning" \\ "snapshot" \\ "buildNumber").text.trim.toIntOption.getOrElse(0)
+      if response.status == 404 then None
+      else if response.status < 200 || response.status >= 300 then
+        log.warn(
+          s"GET $metadataUrl failed: ${response.status} ${response.statusText}; snapshot numbering restarts at 1"
+        )
+        None
+      else Some(scala.xml.XML.loadString(response.bodyAsString))
     catch
       case scala.util.control.NonFatal(e) =>
-        log.debug(s"could not read $metadataUrl: ${e.getMessage}")
-        0
+        log.warn(s"could not read $metadataUrl: ${e.getMessage}; snapshot numbering restarts at 1")
+        None
 
   private def mavenMetadataXml(
       groupId: String,
       artifactId: String,
       version: String,
       snapshot: SnapshotVersion,
-      artifacts: Vector[Artifact]
+      artifacts: Vector[Artifact],
+      remote: Option[scala.xml.Elem]
   ): String =
-    val snapshotVersions = artifacts
-      .map: artifact =>
-        val classifier = artifact.classifier.fold("")(c => s"<classifier>$c</classifier>")
-        s"""|      <snapshotVersion>
-            |        $classifier<extension>${artifact.extension}</extension>
-            |        <value>${snapshot.qualifier}</value>
-            |        <updated>${snapshot.lastUpdated}</updated>
-            |      </snapshotVersion>""".stripMargin
-      .mkString("\n")
+    def entry(classifier: Option[String], extension: String, value: String, updated: String) =
+      val cls = classifier.fold("")(c => s"<classifier>$c</classifier>")
+      s"""|      <snapshotVersion>
+          |        $cls<extension>$extension</extension>
+          |        <value>$value</value>
+          |        <updated>$updated</updated>
+          |      </snapshotVersion>""".stripMargin
+    val published = artifacts.map(a => (a.classifier, a.extension)).toSet
+    val retained = remote.toSeq
+      .flatMap(m => m \ "versioning" \ "snapshotVersions" \ "snapshotVersion")
+      .flatMap: sv =>
+        val classifier = Option((sv \ "classifier").text.trim).filter(_.nonEmpty)
+        val extension = (sv \ "extension").text.trim
+        if extension.isEmpty || published.contains((classifier, extension)) then None
+        else
+          Some(entry(classifier, extension, (sv \ "value").text.trim, (sv \ "updated").text.trim))
+    val current = artifacts.map: artifact =>
+      entry(artifact.classifier, artifact.extension, snapshot.qualifier, snapshot.lastUpdated)
+    val snapshotVersions = (current ++ retained).mkString("\n")
     s"""|<?xml version="1.0" encoding="UTF-8"?>
         |<metadata modelVersion="1.1.0">
         |  <groupId>$groupId</groupId>
