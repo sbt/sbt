@@ -6,6 +6,10 @@ lazy val wasm = VirtualAxis.PlatformAxis("wasm", "Wasm", "wasm")
 
 lazy val core = (projectMatrix in file("core"))
   .settings(marks := Nil)
+  // this call comes before the row it configures
+  .configureRows(axes => Option.when(axes.contains(wasm))(_.settings(marks += "configured")))
+  .configurePlatforms(_.settings(marks += "transform"))(wasm)
+  .configurePlatforms(marks += "settings")(wasm)
   .jvmPlatform(Seq("2.13.18"), Seq(check := assert(marks.value == Nil, marks.value.toString)))
   .customRow(
     true,
@@ -15,7 +19,8 @@ lazy val core = (projectMatrix in file("core"))
       platform := "wasm",
       marks += "wasm",
       check := {
-        assert(marks.value == Seq("wasm"), marks.value.toString)
+        val marked = Seq("configured", "transform", "settings", "wasm")
+        assert(marks.value == marked, marks.value.toString)
         assert(platform.value == "wasm", platform.value)
       },
     ),

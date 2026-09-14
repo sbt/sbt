@@ -81,6 +81,11 @@ sealed trait ProjectMatrix extends CompositeProject:
    */
   def configure(transforms: (Project => Project)*): ProjectMatrix
 
+  /** Applies to each row the transform a function returns for the row's axes. */
+  def configureRows(
+      transforms: (VirtualAxis.ProjectRowKey => Option[Project => Project])*
+  ): ProjectMatrix
+
   /**
    * If autoScalaLibrary is false, add non-Scala row.
    * Otherwise, add custom rows for each scalaVersions.
@@ -296,6 +301,7 @@ object ProjectMatrix:
       val configurations: Seq[Configuration],
       val plugins: Plugins,
       val transforms: Seq[Project => Project],
+      val rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]],
       val defAxes: Seq[VirtualAxis],
       val pluginClassLoader: ClassLoader
   ) extends ProjectMatrix:
@@ -331,6 +337,7 @@ object ProjectMatrix:
             .settings(baseSettings ++ rowSettings(r) ++ self.settings)
             .configure(axisPlugins*)
             .configure(transforms*)
+            .configure(rowTransforms.flatMap(_(r.axisValues))*)
 
           r -> r.process(p)
         }
@@ -469,6 +476,10 @@ object ProjectMatrix:
 
     override def configure(ts: (Project => Project)*): ProjectMatrix =
       copy(transforms = transforms ++ ts)
+
+    override def configureRows(
+        transforms: (VirtualAxis.ProjectRowKey => Option[Project => Project])*
+    ): ProjectMatrix = copy(rowTransforms = rowTransforms ++ transforms)
 
     def setPlugins(ns: Plugins): ProjectMatrix = copy(plugins = ns)
 
@@ -808,6 +819,7 @@ object ProjectMatrix:
         configurations: Seq[Configuration] = configurations,
         plugins: Plugins = plugins,
         transforms: Seq[Project => Project] = transforms,
+        rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]] = rowTransforms,
         defAxes: Seq[VirtualAxis] = defAxes,
         pluginClassLoader: ClassLoader = pluginClassLoader,
     ): ProjectMatrix =
@@ -824,6 +836,7 @@ object ProjectMatrix:
         configurations,
         plugins,
         transforms,
+        rowTransforms,
         defAxes,
         pluginClassLoader
       )
@@ -848,11 +861,13 @@ object ProjectMatrix:
       Nil,
       Plugins.Empty,
       Nil,
+      Nil,
       defaultDefAxes,
       pluginClassLoader
     )
     allMatrices(id) = matrix
     matrix
+  end apply
 
   private[sbt] def unresolved(
       id: String,
@@ -867,6 +882,7 @@ object ProjectMatrix:
       configurations: Seq[Configuration],
       plugins: Plugins,
       transforms: Seq[Project => Project],
+      rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]],
       defAxes: Seq[VirtualAxis],
       pluginClassLoader: ClassLoader
   ): ProjectMatrix =
@@ -883,6 +899,7 @@ object ProjectMatrix:
       configurations,
       plugins,
       transforms,
+      rowTransforms,
       defAxes,
       pluginClassLoader
     )
@@ -933,6 +950,23 @@ object ProjectMatrix:
 end ProjectMatrix
 
 trait ProjectMatrixExtra:
+
+  extension (self: ProjectMatrix)
+
+    /** Applies `transform` to every row built for one of `platforms`. */
+    def configurePlatforms(
+        transform: Project => Project
+    )(platforms: VirtualAxis.PlatformAxis*): ProjectMatrix =
+      self.configureRows(axes => Option.when(platforms.exists(axes.contains))(transform))
+
+    /** Appends `settings` to every row built for one of `platforms`. */
+    def configurePlatforms(
+        settings: Def.SettingsDefinition*
+    )(platforms: VirtualAxis.PlatformAxis*): ProjectMatrix =
+      configurePlatforms(_.settings(settings*))(platforms*)
+
+  end extension
+
   given Conversion[ProjectMatrix, LocalProjectMatrix] =
     m => LocalProjectMatrix(m.id)
 
@@ -945,3 +979,7 @@ trait ProjectMatrixExtra:
       Conversion[A, ProjectMatrixReference]
   ): Conversion[A, ProjectMatrix.ProjectMatrixReferenceSyntax] =
     ref => ProjectMatrix.ProjectMatrixReferenceSyntax(ref)
+
+end ProjectMatrixExtra
+
+object ProjectMatrixExtra extends ProjectMatrixExtra
