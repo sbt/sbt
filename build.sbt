@@ -913,18 +913,20 @@ lazy val sbtClientProj = (project in file("client"))
         case Some(a) => Seq("arch", s"-$a") ++ orig
         case None    => orig
     },
-    nativeImageOptions ++= Seq(
-      "--no-fallback",
-      s"--initialize-at-run-time=sbt.client",
-      // "The current machine does not support all of the following CPU features that are required by
-      // the image: [CX8, CMOV, FXSR, MMX, SSE, SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, LZCNT, AVX,
-      // AVX2, BMI1, BMI2, FMA, F16C]."
-      "-march=compatibility",
-      // "--verbose",
-      "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
-      "-H:+ReportExceptionStackTraces",
-      "-H:-ParseRuntimeOptions",
-      s"-H:Name=${target.value / "bin" / "sbtn"}",
+    nativeImageOptions ++= Def.uncached(
+      Seq(
+        "--no-fallback",
+        s"--initialize-at-run-time=sbt.client",
+        // "The current machine does not support all of the following CPU features that are required by
+        // the image: [CX8, CMOV, FXSR, MMX, SSE, SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, LZCNT, AVX,
+        // AVX2, BMI1, BMI2, FMA, F16C]."
+        "-march=compatibility",
+        // "--verbose",
+        "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
+        "-H:+ReportExceptionStackTraces",
+        "-H:-ParseRuntimeOptions",
+        s"-H:Name=${target.value / "bin" / "sbtn"}",
+      )
     ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")

@@ -122,8 +122,8 @@ object Dependencies:
 
   val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
     .cross(CrossVersion.for3Use2_13)
-    .exclude("org.codehaus.plexus", "plexus-archiver")
-    .exclude("org.codehaus.plexus", "plexus-container-default")
+    .exclude("org.codehaus.plexus" % "plexus-archiver")
+    .exclude("org.codehaus.plexus" % "plexus-container-default")
 
   val coursierSbtMavenRepo =
     ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
