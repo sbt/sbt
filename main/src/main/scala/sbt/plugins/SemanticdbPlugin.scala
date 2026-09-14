@@ -20,6 +20,7 @@ import ProjectExtra.inConfig
 import sbt.internal.inc.ScalaInstance
 import sbt.ScopeFilter.Make.*
 import sbt.util.CacheImplicits.given
+import xsbti.VirtualFileRef
 
 object SemanticdbPlugin extends AutoPlugin {
   override def requires = JvmPlugin
@@ -56,6 +57,9 @@ object SemanticdbPlugin extends AutoPlugin {
     inConfig(Test)(configurationSettings)
 
   lazy val configurationSettings: Seq[Def.Setting[?]] = List(
+    semanticdbTargetRootVF := Def.uncached(
+      fileConverter.value.toVirtualFile(semanticdbTargetRoot.value.toPath)
+    ),
     compileIncremental := Def.taskIf {
       if (semanticdbIncludeInJar.value || !semanticdbEnabled.value) compileIncremental.value
       else compileIncAndCacheSemanticdbTargetRootTask.value
@@ -101,10 +105,7 @@ object SemanticdbPlugin extends AutoPlugin {
 
   private val compileIncAndCacheSemanticdbTargetRootTask = Def.cachedTask {
     val prev = compileIncremental.value
-    val converter = fileConverter.value
-    val targetRoot = semanticdbTargetRoot.value
-
-    val vfTargetRoot = converter.toVirtualFile(targetRoot.toPath)
+    val vfTargetRoot = semanticdbTargetRootVF.value
     Def.declareOutputDirectory(vfTargetRoot)
     prev
   }

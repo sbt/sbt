@@ -25,7 +25,7 @@ declare use_sbtn=
 declare use_jvm_client=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="2.0.0-8753a981"
+declare sbtn_version="2.1.0-M1"
 declare use_colors=1
 declare is_this_dir_sbt=""
 declare hide_jdk_warnings=1
@@ -221,7 +221,7 @@ acquire_sbtn () {
   else
     dlog "downloading sbtn ${sbtn_v} for ${arch}"
     download_url "$url" "$archive_target"
-    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "$OSTYPE" == "linux"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
       tar zxf "$archive_target" --directory "$p"
     else
       unzip "$archive_target" -d "$p"
@@ -839,7 +839,7 @@ projectSbtVersion() {
 detectNativeClient() {
   if [[ "$sbtn_command" != "" ]]; then
     :
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  elif [[ "$OSTYPE" == "linux"* ]]; then
     arch=$(uname -m)
     [[ -f "${sbt_bin_dir}/sbtn-${arch}-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-pc-linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then

@@ -971,6 +971,22 @@ object Defaults extends BuildCommon {
           val cp = converter.toVirtualFile(converter.toPath(backendOutput.value)) +:
             data(cp0).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
+        },
+        compileInputs2 := Def.uncached {
+          compileScalaBackend.value
+          val (_, _, packedBackendOutput) = compileIncremental.value
+          val inputs = compileInputs.value
+          val c = fileConverter.value
+          CompileInputs2(
+            packedBackendOutput +: data(dependencyClasspath.value).toVector,
+            sourcesVF.value,
+            scalacOptions.value.toVector,
+            javacOptions.value.toVector,
+            c.toVirtualFile(inputs.options.classesDirectory),
+            c.toVirtualFile(inputs.setup.cacheFile.toPath),
+            extraIncOptions.value.toVector,
+            scalaVersion.value,
+          )
         }
       )
     ) ++
@@ -2279,14 +2295,19 @@ object Defaults extends BuildCommon {
         val ping = (TaskZero / earlyOutputPing).value
         result match
           case Result.Value(res) =>
-            // Zinc completes the ping during a real compile; on an action-cache hit
-            // zinc never runs, so complete it from the pickle jar. tryComplete is
-            // atomic: zinc's own completion always wins when it ran.
-            ping.tryComplete(Result.Value(c.toPath(earlyOutput.value).toFile.exists))
             val af = compileAnalysisFile.value
             val store = analysisStore(af.toPath(), c)
             if !af.exists then sys.error(s"${af} is missing")
             val analysis = store.unsafeGet().getAnalysis()
+            // Zinc completes the ping during a real compile; on an action-cache hit zinc
+            // never runs, so re-derive its decision. The early jar is written even for
+            // subprojects that define macros, so its presence alone is not enough.
+            // tryComplete is atomic: zinc's own completion always wins when it ran.
+            ping.tryComplete(
+              Result.Value(
+                c.toPath(earlyOutput.value).toFile.exists && !definesMacro(analysis)
+              )
+            )
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
             res
@@ -2299,6 +2320,11 @@ object Defaults extends BuildCommon {
       },
     )
   )
+
+  private def definesMacro(analysis: CompileAnalysis): Boolean =
+    analysis match
+      case a: Analysis => a.apis.internal.values.exists(_.hasMacro)
+      case _           => false
 
   private val cachedCompileIncrementalTask = Def
     .cachedTask {
@@ -2327,25 +2353,47 @@ object Defaults extends BuildCommon {
 
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
-    val s = streams.value
-    val r = compileScalaBackend.value
-    val in0 = (compileJava / compileInputs).value
-    val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
+    val backendResult = compileScalaBackend.value
+    val result = cachedCompileJavaTask.result.value
     val reporter = (compile / bspReporter).value
-    try {
-      if (r.hasModified) {
-        val result0 = incCompiler
-          .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
-          .compileAllJava(in, s.log)
-        reporter.sendSuccessReport(result0.analysis())
-        result0.withHasModified(result0.hasModified || r.hasModified)
-      } else r
-    } catch {
-      case NonFatal(e) =>
-        reporter.sendFailureReport(in.options.sources)
-        throw e
+    val inputs = (compileJava / compileInputs).value
+    val c = fileConverter.value
+    result match {
+      case Result.Value(hasModified) =>
+        val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+        val contents = store.unsafeGet()
+        reporter.sendSuccessReport(contents.getAnalysis())
+        CompileResult.of(
+          contents.getAnalysis(),
+          contents.getMiniSetup(),
+          hasModified || backendResult.hasModified
+        )
+      case Result.Inc(cause) =>
+        reporter.sendFailureReport(inputs.options.sources)
+        throw cause
     }
   }
+
+  private val cachedCompileJavaTask = Def
+    .cachedTask {
+      val s = streams.value
+      val in0 = (compileJava / compileInputs).value
+      val ci2 = (compileJava / compileInputs2).value
+      val c = fileConverter.value
+      val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val previous = store.unsafeGet()
+      val in = in0.withPreviousResult(
+        PreviousResult.of(previous.getAnalysis(), previous.getMiniSetup())
+      )
+      val result = incCompiler
+        .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
+        .compileAllJava(in, s.log)
+      store.set(AnalysisContents.create(result.analysis(), result.setup()))
+      Def.declareOutput(c.toVirtualFile(in.setup.cacheFile.toPath))
+      Def.declareOutputDirectory(c.toVirtualFile(in.options.classesDirectory))
+      result.hasModified
+    }
+    .tag(Tags.Compile, Tags.CPU)
 
   private def compileIncrementalTaskImpl(
       task: BspCompileTask,
@@ -4423,9 +4471,9 @@ object Classpaths {
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
     val resourceDirs = resourceDirectories.value
-    val vfBackendDir = compileIncremental.value._2
-    val backendDir = c.toPath(vfBackendDir)
-    val _ = resources.value
+    compile.value
+    val backendDir = c.toPath(backendOutput.value)
+    resources.value
     backendDir.toFile() :: resourceDirs.toList.filter(_.exists())
   }
 
