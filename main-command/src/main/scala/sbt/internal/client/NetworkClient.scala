@@ -152,7 +152,6 @@ class NetworkClient(
   private val running = new AtomicBoolean(true)
   private val pendingResults =
     new ConcurrentHashMap[String, (LinkedBlockingQueue[Integer], Long, String)]
-  private val pendingCancellations = new ConcurrentHashMap[String, LinkedBlockingQueue[Boolean]]
   private val pendingCompletions = new ConcurrentHashMap[String, CompletionResponse => Unit]
   private val pendingResponseHandlers =
     new ConcurrentHashMap[String, JsonRpcResponseMessage => Unit]
@@ -855,12 +854,6 @@ class NetworkClient(
     case msg if pendingResults.containsKey(msg.id) =>
       completeExec(msg.id, getExitCode(msg.result))
   }
-  private val onCancellationResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
-    case msg if pendingCancellations.containsKey(msg.id) =>
-      pendingCancellations.remove(msg.id) match
-        case null => ()
-        case q    => Util.ignoreResult(q.offer(msg.toString.contains("Task cancelled")))
-  }
   private val onCompletionResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
     case msg if pendingCompletions.containsKey(msg.id) =>
       pendingCompletions.remove(msg.id) match
@@ -891,7 +884,6 @@ class NetworkClient(
   // cache the composed plan
   private val responsePlan = Util.reduceIntents[JsonRpcResponseMessage, Unit](
     onExecResponse,
-    onCancellationResponse,
     onAttachResponse,
     onCompletionResponse,
     { case _ => () },
@@ -1261,7 +1253,7 @@ class NetworkClient(
   def sendCancelAllCommand(): LinkedBlockingQueue[Boolean] =
     val queue = new LinkedBlockingQueue[Boolean]
     val execId = sendJson(cancelRequest, s"""{"id":"$CancelAll"}""")
-    pendingCancellations.put(execId, queue)
+    pendingResponseHandlers.put(execId, msg => queue.offer(msg.toString.contains("Task cancelled")))
     queue
 
   def sendCommand(command: CommandMessage): Unit =
