@@ -474,6 +474,7 @@ if "%~0" == "shutdownall" (
 
 if "%~0" == "bsp" (
   set sbt_args_client=0
+  set SBT_ARGS=!SBT_ARGS! -bsp
   goto args_loop
 )
 
