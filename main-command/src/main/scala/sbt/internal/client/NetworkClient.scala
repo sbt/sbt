@@ -839,19 +839,21 @@ class NetworkClient(
       inputThread.drain()
       ()
   }
-  def completeExec(execId: String, exitCode: Int) =
+
+  private def completeExec(execId: String, fExitCode: => Integer): Boolean =
     pendingResults.remove(execId) match
-      case null                 => ()
+      case null                 => false
       case (q, startTime, name) =>
-        val now = System.currentTimeMillis
-        val message = NetworkClient.elapsedString(startTime, now)
+        val message = NetworkClient.elapsedString(startTime, System.currentTimeMillis)
+        val exitCode = fExitCode
         if batchMode.get || !attached.get then
           if exitCode == 0 then console.success(message)
           else console.appendLog(Level.Error, message)
-        Util.ignoreResult(q.offer(exitCode))
+        q.offer(exitCode)
+        true
+
   private val onExecResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
-    case msg if pendingResults.containsKey(msg.id) =>
-      completeExec(msg.id, getExitCode(msg.result))
+    case msg if completeExec(msg.id, getExitCode(msg.result)) =>
   }
 
   private def handleCompletion(handler: CompletionResponse => Unit)(
