@@ -1,7 +1,9 @@
 package example.test
 
+import scala.concurrent.duration.*
 import scala.sys.process.*
 import java.io.File
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Locale
 import sbt.io.IO
 import verify.BasicTestSuite
@@ -13,6 +15,9 @@ object BspConfigTest extends BasicTestSuite:
   lazy val sbtScript = IntegrationTestPaths.sbtScript(isWindows)
 
   private def launcherCmd = LauncherTestHelper.launcherCommand(sbtScript.getAbsolutePath)
+
+  private val BspTimeout = 3.minutes
+  private val ResultMarker = "\"result\""
 
   def sbtProcessInDir(dir: File)(args: String*) =
     Process(
@@ -58,32 +63,57 @@ object BspConfigTest extends BasicTestSuite:
         s"argv should either use sbt script with 'bsp' command or java with '-bsp' flag, got: $argv"
       )
 
-      // Test execution of the generated argv
-      // Run the BSP command with a very short timeout to verify it starts correctly
-      // We just need to verify the command doesn't fail immediately on startup
-      if !isWindows then
-        // On Unix, we can test the argv execution
-        // Create a process and check if it starts (will timeout waiting for BSP input)
-        val process = Process(argv.toSeq, tmp)
-        val processBuilder = process.run(ProcessLogger(_ => (), _ => ()))
-
-        // Give it a moment to fail if it's going to fail immediately
-        Thread.sleep(500)
-
-        // If still running, it means the BSP server started successfully
-        val isAlive = processBuilder.isAlive()
-        processBuilder.destroy()
-
-        // The process should either still be alive (waiting for BSP messages)
-        // or have exited with code 0 (graceful)
-        if !isAlive then
-          val exitCode = processBuilder.exitValue()
-          assert(
-            exitCode == 0 || exitCode == 143, // 143 = SIGTERM from destroy()
-            s"BSP process failed with exit code $exitCode"
-          )
-      end if
+      val response = bspInitialize(argv, tmp)
+      assert(
+        response.contains(ResultMarker) && response.contains("bspVersion"),
+        s"${argv.mkString(" ")} did not answer build/initialize, read: $response"
+      )
     }
     ()
   }
+
+  private def bspInitialize(argv: Vector[String], dir: File): String =
+    val body = ujson
+      .write(
+        ujson.Obj(
+          "jsonrpc" -> "2.0",
+          "id" -> 1,
+          "method" -> "build/initialize",
+          "params" -> ujson.Obj(
+            "displayName" -> "sbt-launcher-integration-test",
+            "version" -> "1.0.0",
+            "bspVersion" -> "2.1.0-M1",
+            "rootUri" -> dir.toURI.toString,
+            "capabilities" -> ujson.Obj("languageIds" -> ujson.Arr("scala")),
+          )
+        )
+      )
+      .getBytes(UTF_8)
+    val process = new java.lang.ProcessBuilder(argv*).directory(dir).start()
+    try
+      val stdin = process.getOutputStream
+      stdin.write(s"Content-Length: ${body.length}\r\n\r\n".getBytes(UTF_8))
+      stdin.write(body)
+      stdin.flush()
+      val stdout = process.getInputStream
+      val buffer = new Array[Byte](4096)
+      val out = new StringBuilder
+      val deadline = System.currentTimeMillis + BspTimeout.toMillis
+      var done = false
+      while !done && System.currentTimeMillis < deadline do
+        if stdout.available > 0 then
+          val n = stdout.read(buffer)
+          if n > 0 then out ++= new String(buffer, 0, n, UTF_8) else done = true
+        else if !process.isAlive then done = true
+        else Thread.sleep(50)
+        done = done || out.indexOf(ResultMarker) >= 0
+      out.toString
+    finally
+      process.descendants.forEach: handle =>
+        handle.destroy()
+        ()
+      process.destroy()
+    end try
+  end bspInitialize
+
 end BspConfigTest
