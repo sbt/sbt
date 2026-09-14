@@ -1400,6 +1400,7 @@ lazy val lmCoursierShadedPublishing = project
     scalaVersion := scala3,
     name := "librarymanagement-coursier",
     Compile / packageBin := Def.uncached((lmCoursierShaded / assembly).value),
+    Compile / packageInternal := Def.uncached((lmCoursierShaded / assembly).value),
     Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
   )
 
