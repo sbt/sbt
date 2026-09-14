@@ -63,14 +63,27 @@ object BspConfigTest extends BasicTestSuite:
         s"argv should either use sbt script with 'bsp' command or java with '-bsp' flag, got: $argv"
       )
 
-      val response = bspInitialize(argv, tmp)
-      assert(
-        response.contains(ResultMarker) && response.contains("bspVersion"),
-        s"${argv.mkString(" ")} did not answer build/initialize, read: $response"
-      )
+      assertBspInitialize(argv, tmp)
     }
     ()
   }
+
+  // The argv above only goes through the sbt script when the build runs sbt 2.x,
+  // so drive the script with the `bsp` command directly to cover older versions too.
+  test("sbt bsp") {
+    IO.withTemporaryDirectory { tmp =>
+      IO.write(new File(tmp, "build.sbt"), """name := "test-bsp"""")
+      assertBspInitialize((launcherCmd ++ Seq("bsp")).toVector, tmp)
+    }
+    ()
+  }
+
+  private def assertBspInitialize(argv: Vector[String], dir: File): Unit =
+    val response = bspInitialize(argv, dir)
+    assert(
+      response.contains(ResultMarker) && response.contains("bspVersion"),
+      s"${argv.mkString(" ")} did not answer build/initialize, read: $response"
+    )
 
   private def bspInitialize(argv: Vector[String], dir: File): String =
     val body = ujson
