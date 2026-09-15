@@ -94,6 +94,19 @@ class GenericPublisher private[sbt] (
         )
     val artifacts = configuration.artifacts
     target match
+      case urlRepo: URLRepository if urlRepo.patterns.isMavenCompatible =>
+        val pat = urlRepo.patterns.artifactPatterns.headOption.getOrElse(
+          sys.error("URLRepository has no artifact pattern")
+        )
+        val idx = pat.indexOf("[organisation]")
+        if idx < 0 then sys.error(s"Maven-compatible pattern '$pat' has no [organisation] token")
+        ivylessPublishMavenToUrl(
+          artifacts,
+          configuration.checksums,
+          pat.substring(0, idx),
+          configuration.overwrite,
+          log
+        )
       case urlRepo: URLRepository =>
         ivylessPublish(artifacts, configuration.checksums, urlRepo, configuration.overwrite, log)
       case fileRepo: FileRepository =>
@@ -431,10 +444,18 @@ class GenericPublisher private[sbt] (
       artifactId: String,
       version: String,
       artifact: Artifact
+  ): String = mavenLayoutPath(groupId, artifactId, version, version, artifact)
+
+  private def mavenLayoutPath(
+      groupId: String,
+      artifactId: String,
+      version: String,
+      fileVersion: String,
+      artifact: Artifact
   ): String =
     val groupPath = groupId.replace('.', '/')
     val classifierPart = artifact.classifier.map("-" + _).getOrElse("")
-    val fileName = s"$artifactId-$version$classifierPart.${artifact.extension}"
+    val fileName = s"$artifactId-$fileVersion$classifierPart.${artifact.extension}"
     s"$groupPath/$artifactId/$version/$fileName"
 
   private def normalizedChecksumAlgorithm(algo: String): String =
@@ -568,23 +589,136 @@ class GenericPublisher private[sbt] (
       case d: Credentials.DirectCredentials => d
 
     val base = baseUrl.stripSuffix("/") + "/"
+    val versionPath = s"${groupId.replace('.', '/')}/$artifactId/$version"
+    val remoteMetadata =
+      if version.endsWith("-SNAPSHOT") then
+        fetchMetadata(base + versionPath + "/maven-metadata.xml", directCreds, log)
+      else None
+    val snapshot =
+      if version.endsWith("-SNAPSHOT") then
+        val previous = remoteMetadata
+          .flatMap(m => (m \\ "versioning" \\ "snapshot" \\ "buildNumber").text.trim.toIntOption)
+          .getOrElse(0)
+        Some(SnapshotVersion(snapshotTimestamp(), previous + 1, version.stripSuffix("-SNAPSHOT")))
+      else None
+    val fileVersion = snapshot.map(_.qualifier).getOrElse(version)
+
+    def putWithChecksums(path: String, sourceFile: File): Unit =
+      val url = URI.create(base + path).toURL()
+      try
+        httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
+        if !sourceFile.toString.endsWith(signatureExt) then
+          val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
+          checksums.foreach:
+            case (cf, suffix) =>
+              val checksumUrl = URI.create(base + path + suffix).toURL()
+              try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
+              finally cf.delete()
+      catch
+        case e: IOException =>
+          throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
+
     artifacts.foreach:
       case (artifact, sourceFile) =>
-        val path = mavenLayoutPath(groupId, artifactId, version, artifact)
-        val url = URI.create(base + path).toURL()
-        try
-          httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
-          if !sourceFile.toString.endsWith(signatureExt) then
-            val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
-            checksums.foreach:
-              case (cf, suffix) =>
-                val checksumUrl = URI.create(base + path + suffix).toURL()
-                try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
-                finally cf.delete()
-        catch
-          case e: IOException =>
-            throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
+        putWithChecksums(
+          mavenLayoutPath(groupId, artifactId, version, fileVersion, artifact),
+          sourceFile
+        )
+
+    snapshot.foreach: snap =>
+      val metadata = File.createTempFile("maven-metadata", ".xml")
+      try
+        IO.write(
+          metadata,
+          mavenMetadataXml(groupId, artifactId, version, snap, artifacts.map(_._1), remoteMetadata)
+        )
+        putWithChecksums(versionPath + "/maven-metadata.xml", metadata)
+      finally metadata.delete()
   end ivylessPublishMavenToUrl
+
+  private case class SnapshotVersion(timestamp: String, buildNumber: Int, baseVersion: String):
+    def qualifier: String = s"$baseVersion-$timestamp-$buildNumber"
+    def lastUpdated: String = timestamp.replace(".", "")
+
+  private def snapshotTimestamp(): String =
+    java.time.format.DateTimeFormatter
+      .ofPattern("yyyyMMdd.HHmmss")
+      .withZone(java.time.ZoneOffset.UTC)
+      .format(java.time.Instant.now())
+
+  /**
+   * Fetches the remote maven-metadata.xml for a snapshot version, or None when the
+   * repository has no metadata for this version yet.
+   */
+  private def fetchMetadata(
+      metadataUrl: String,
+      credentials: Seq[Credentials.DirectCredentials],
+      log: Logger
+  ): Option[scala.xml.Elem] =
+    try
+      val url = URI.create(metadataUrl).toURL()
+      val baseReq = Gigahorse.url(metadataUrl).get
+      val req = credentialFor(url, credentials, None) match
+        case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
+        case None     => baseReq
+      val response = Await.result(sbt.librarymanagement.Http.http.processFull(req), 1.minute)
+      if response.status == 404 then None
+      else if response.status < 200 || response.status >= 300 then
+        log.warn(
+          s"GET $metadataUrl failed: ${response.status} ${response.statusText}; snapshot numbering restarts at 1"
+        )
+        None
+      else Some(scala.xml.XML.loadString(response.bodyAsString))
+    catch
+      case scala.util.control.NonFatal(e) =>
+        log.warn(s"could not read $metadataUrl: ${e.getMessage}; snapshot numbering restarts at 1")
+        None
+
+  private def mavenMetadataXml(
+      groupId: String,
+      artifactId: String,
+      version: String,
+      snapshot: SnapshotVersion,
+      artifacts: Vector[Artifact],
+      remote: Option[scala.xml.Elem]
+  ): String =
+    def entry(classifier: Option[String], extension: String, value: String, updated: String) =
+      val cls = classifier.fold("")(c => s"<classifier>$c</classifier>")
+      s"""|      <snapshotVersion>
+          |        $cls<extension>$extension</extension>
+          |        <value>$value</value>
+          |        <updated>$updated</updated>
+          |      </snapshotVersion>""".stripMargin
+    val published = artifacts.map(a => (a.classifier, a.extension)).toSet
+    val retained = remote.toSeq
+      .flatMap(m => m \ "versioning" \ "snapshotVersions" \ "snapshotVersion")
+      .flatMap: sv =>
+        val classifier = Option((sv \ "classifier").text.trim).filter(_.nonEmpty)
+        val extension = (sv \ "extension").text.trim
+        if extension.isEmpty || published.contains((classifier, extension)) then None
+        else
+          Some(entry(classifier, extension, (sv \ "value").text.trim, (sv \ "updated").text.trim))
+    val current = artifacts.map: artifact =>
+      entry(artifact.classifier, artifact.extension, snapshot.qualifier, snapshot.lastUpdated)
+    val snapshotVersions = (current ++ retained).mkString("\n")
+    s"""|<?xml version="1.0" encoding="UTF-8"?>
+        |<metadata modelVersion="1.1.0">
+        |  <groupId>$groupId</groupId>
+        |  <artifactId>$artifactId</artifactId>
+        |  <version>$version</version>
+        |  <versioning>
+        |    <snapshot>
+        |      <timestamp>${snapshot.timestamp}</timestamp>
+        |      <buildNumber>${snapshot.buildNumber}</buildNumber>
+        |    </snapshot>
+        |    <lastUpdated>${snapshot.lastUpdated}</lastUpdated>
+        |    <snapshotVersions>
+        |$snapshotVersions
+        |    </snapshotVersions>
+        |  </versioning>
+        |</metadata>
+        |""".stripMargin
+  end mavenMetadataXml
 end GenericPublisher
 
 object GenericPublisher:
