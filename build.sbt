@@ -125,7 +125,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.4",
+    "2.1.0-M1",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
@@ -352,9 +352,6 @@ lazy val utilLogging = project
     Test / fork := true,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("com.github.ghik.silencer.silent"),
-      // LoggerContext is sealed, so it has no implementations outside of sbt
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.util.LoggerContext.removeAppender"),
     ),
   )
   .configure(addSbtIO)
@@ -709,12 +706,6 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      // contImpl is an internal macro-implementation detail (see Cont.scala); it grew a new
-      // keyScopeExprOpt parameter so `clean` can invalidate a subproject's disk-cache entries.
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "sbt.std.SettingMacro#ContSyntax.contImpl"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.std.TaskMacro#ContSyntax.contImpl"),
     ),
   )
   .dependsOn(lmCore)
@@ -799,17 +790,6 @@ lazy val mainProj = (project in file("main"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // Moved to sbt-ivy module (Step 5 of sbt#7640)
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.depMap"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.ivySbt0"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.mkIvyConfiguration"),
-      // Removed projectDescriptors key (sbt#8865)
-      exclude[DirectMissingMethodProblem]("sbt.Keys.projectDescriptors"),
-      // Updating remote vcs projects (sbt#1284)
-      exclude[DirectMissingMethodProblem]("sbt.Resolvers.creates"),
-      exclude[DirectMissingMethodProblem]("sbt.Resolvers.uniqueSubdirectoryFor"),
-      exclude[DirectMissingMethodProblem]("sbt.Resolvers.run"),
-      exclude[MissingClassProblem]("sbt.Resolvers$DistributedVCS"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
@@ -829,10 +809,6 @@ lazy val sbtProj = (project in file("sbt-app"))
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // Dropped the top-level Ivy-specific UpdateOptions alias; use
-      // sbt.internal.librarymanagement.ivy.UpdateOptions directly if needed.
-      exclude[DirectMissingMethodProblem]("sbt.Import.UpdateOptions"),
-      exclude[DirectMissingMethodProblem]("sbt.package.UpdateOptions"),
     ),
   )
   .settings(
@@ -937,18 +913,20 @@ lazy val sbtClientProj = (project in file("client"))
         case Some(a) => Seq("arch", s"-$a") ++ orig
         case None    => orig
     },
-    nativeImageOptions ++= Seq(
-      "--no-fallback",
-      s"--initialize-at-run-time=sbt.client",
-      // "The current machine does not support all of the following CPU features that are required by
-      // the image: [CX8, CMOV, FXSR, MMX, SSE, SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, LZCNT, AVX,
-      // AVX2, BMI1, BMI2, FMA, F16C]."
-      "-march=compatibility",
-      // "--verbose",
-      "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
-      "-H:+ReportExceptionStackTraces",
-      "-H:-ParseRuntimeOptions",
-      s"-H:Name=${target.value / "bin" / "sbtn"}",
+    nativeImageOptions ++= Def.uncached(
+      Seq(
+        "--no-fallback",
+        s"--initialize-at-run-time=sbt.client",
+        // "The current machine does not support all of the following CPU features that are required by
+        // the image: [CX8, CMOV, FXSR, MMX, SSE, SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, LZCNT, AVX,
+        // AVX2, BMI1, BMI2, FMA, F16C]."
+        "-march=compatibility",
+        // "--verbose",
+        "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
+        "-H:+ReportExceptionStackTraces",
+        "-H:-ParseRuntimeOptions",
+        s"-H:Name=${target.value / "bin" / "sbtn"}",
+      )
     ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
@@ -1400,6 +1378,7 @@ lazy val lmCoursierShadedPublishing = project
     scalaVersion := scala3,
     name := "librarymanagement-coursier",
     Compile / packageBin := Def.uncached((lmCoursierShaded / assembly).value),
+    Compile / packageInternal := Def.uncached((lmCoursierShaded / assembly).value),
     Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
   )
 
