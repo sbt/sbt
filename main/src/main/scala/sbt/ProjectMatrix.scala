@@ -81,27 +81,29 @@ sealed trait ProjectMatrix extends CompositeProject:
    */
   def configure(transforms: (Project => Project)*): ProjectMatrix
 
-  /**
-   * If autoScalaLibrary is false, add non-Scala row.
-   * Otherwise, add custom rows for each scalaVersions.
-   */
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def customRow(
       autoScalaLibrary: Boolean,
       crossVersion: Option[CrossVersion],
       scalaVersions: Seq[String],
       axisValues: Seq[VirtualAxis]
+  )(process: Project => Project): ProjectMatrix =
+    customRow(crossVersion, scalaVersions, axisValues)(process)
+
+  /** Adds a row per version, or one row from the axes when no version is named. */
+  def customRow(
+      crossVersion: Option[CrossVersion],
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis]
   )(process: Project => Project): ProjectMatrix
 
-  /**
-   * If autoScalaLibrary is false, add non-Scala row.
-   * Otherwise, add custom rows for each scalaVersions.
-   */
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def customRow(
       autoScalaLibrary: Boolean,
       scalaVersions: Seq[String],
       axisValues: Seq[VirtualAxis],
       process: Project => Project
-  ): ProjectMatrix
+  ): ProjectMatrix = customRow(scalaVersions, axisValues, process)
 
   def customRow(
       scalaVersions: Seq[String],
@@ -109,11 +111,14 @@ sealed trait ProjectMatrix extends CompositeProject:
       process: Project => Project
   ): ProjectMatrix
 
+  def customRow(axisValues: Seq[VirtualAxis], process: Project => Project): ProjectMatrix
+
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def customRow(
       autoScalaLibrary: Boolean,
       axisValues: Seq[VirtualAxis],
       process: Project => Project
-  ): ProjectMatrix
+  ): ProjectMatrix = customRow(axisValues, process)
 
   def customRow(
       scalaVersions: Seq[String],
@@ -121,14 +126,22 @@ sealed trait ProjectMatrix extends CompositeProject:
       settings: Seq[Def.Setting[?]]
   ): ProjectMatrix
 
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def customRow(
       autoScalaLibrary: Boolean,
       axisValues: Seq[VirtualAxis],
       settings: Seq[Def.Setting[?]]
-  ): ProjectMatrix
+  ): ProjectMatrix = customRow(axisValues, settings)
 
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def jvmPlatform(
       autoScalaLibrary: Boolean,
+      crossVersion: CrossVersion,
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis],
+      settings: Seq[Def.Setting[?]]
+  ): ProjectMatrix = jvmPlatform(crossVersion, scalaVersions, axisValues, settings)
+  def jvmPlatform(
       crossVersion: CrossVersion,
       scalaVersions: Seq[String],
       axisValues: Seq[VirtualAxis],
@@ -136,8 +149,11 @@ sealed trait ProjectMatrix extends CompositeProject:
   ): ProjectMatrix
   def jvmPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix
   def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix
-  def jvmPlatform(autoScalaLibrary: Boolean): ProjectMatrix
-  def jvmPlatform(autoScalaLibrary: Boolean, crossVersion: CrossVersion): ProjectMatrix
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
+  def jvmPlatform(autoScalaLibrary: Boolean): ProjectMatrix = jvmPlatform(scalaVersions = Nil)
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
+  def jvmPlatform(autoScalaLibrary: Boolean, crossVersion: CrossVersion): ProjectMatrix =
+    jvmPlatform(crossVersion, scalaVersions = Nil)
   def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Def.Setting[?]]): ProjectMatrix
   def jvmPlatform(
       scalaVersions: Seq[String],
@@ -149,15 +165,23 @@ sealed trait ProjectMatrix extends CompositeProject:
       axisValues: Seq[VirtualAxis],
       configure: Project => Project
   ): ProjectMatrix
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def jvmPlatform(
       autoScalaLibrary: Boolean,
       scalaVersions: Seq[String],
       settings: Seq[Def.Setting[?]]
-  ): ProjectMatrix
+  ): ProjectMatrix = jvmPlatform(scalaVersions, settings)
   def jvm: ProjectFinder
 
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def jsPlatform(
       autoScalaLibrary: Boolean,
+      crossVersion: CrossVersion,
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis],
+      settings: Seq[Def.Setting[?]]
+  ): ProjectMatrix = jsPlatform(crossVersion, scalaVersions, axisValues, settings)
+  def jsPlatform(
       crossVersion: CrossVersion,
       scalaVersions: Seq[String],
       axisValues: Seq[VirtualAxis],
@@ -178,8 +202,15 @@ sealed trait ProjectMatrix extends CompositeProject:
   ): ProjectMatrix
   def js: ProjectFinder
 
+  @deprecated("Use overload without `autoScalaLibrary`", "2.1.0")
   def nativePlatform(
       autoScalaLibrary: Boolean,
+      crossVersion: CrossVersion,
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis],
+      settings: Seq[Def.Setting[?]]
+  ): ProjectMatrix = nativePlatform(crossVersion, scalaVersions, axisValues, settings)
+  def nativePlatform(
       crossVersion: CrossVersion,
       scalaVersions: Seq[String],
       axisValues: Seq[VirtualAxis],
@@ -239,17 +270,15 @@ object ProjectMatrix:
   /**
    * A row in the project matrix, typically representing a platform + Scala version.
    */
-  final class ProjectRow(
-      val autoScalaLibrary: Boolean,
+  private[sbt] final class ProjectRow(
       val axisValues: Seq[VirtualAxis],
       val process: Project => Project
   ):
-    def scalaVersionOpt: Option[String] =
-      if autoScalaLibrary then
-        axisValues collectFirst { case sv: VirtualAxis.ScalaVersionAxis =>
-          sv.scalaVersion
-        }
-      else None
+    def scalaVersionOpt: Option[String] = axisValues.collectFirst {
+      case sv: VirtualAxis.ScalaVersionAxis => sv.scalaVersion
+    }
+
+    def autoScalaLibrary: Boolean = scalaVersionOpt.isDefined
 
     def isMatch(that: ProjectRow): Boolean =
       VirtualAxis.isMatch(this.axisValues, that.axisValues)
@@ -268,7 +297,7 @@ object ProjectMatrix:
       defAxes.exists: da =>
         VirtualAxis.isPartialVersionEquals(da, a)
 
-    override def toString: String = s"ProjectRow($autoScalaLibrary, $axisValues)"
+    override def toString: String = s"ProjectRow($axisValues)"
   end ProjectRow
 
   final class ProjectMatrixReferenceSyntax(m: ProjectMatrixReference):
@@ -468,28 +497,24 @@ object ProjectMatrix:
     def setPlugins(ns: Plugins): ProjectMatrix = copy(plugins = ns)
 
     override def jvmPlatform(
-        autoScalaLibrary: Boolean,
         crossVersion: CrossVersion,
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.jvm +: axisValues):
-        p => p.settings(settings)
+      customRow(Some(crossVersion), scalaVersions, VirtualAxis.jvm +: axisValues)(settings)
 
     override def jvmPlatform(
-        autoScalaLibrary: Boolean,
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, scalaVersions, Seq(VirtualAxis.jvm)): p =>
-        p.settings(settings)
+      customRow(crossVersion = None, scalaVersions, Seq(VirtualAxis.jvm))(settings)
 
     override def jvmPlatform(
         crossVersion: CrossVersion,
         scalaVersions: Seq[String]
     ): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
+      jvmPlatform(crossVersion, scalaVersions, Nil, Nil)
 
     override def jvmPlatform(
         scalaVersions: Seq[String],
@@ -497,12 +522,10 @@ object ProjectMatrix:
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         VirtualAxis.jvm +: axisValues
-      ): p =>
-        p.settings(settings)
+      )(settings)
 
     override def jvmPlatform(
         scalaVersions: Seq[String],
@@ -510,26 +533,13 @@ object ProjectMatrix:
         configure: Project => Project
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         VirtualAxis.jvm +: axisValues
       )(configure)
 
     override def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary = true, scalaVersions, Nil)
-
-    override def jvmPlatform(autoScalaLibrary: Boolean): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary, Nil, Nil)
-
-    override def jvmPlatform(autoScalaLibrary: Boolean, crossVersion: CrossVersion): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary, crossVersion, Nil, Nil, Nil)
-
-    override def jvmPlatform(
-        scalaVersions: Seq[String],
-        settings: Seq[Def.Setting[?]]
-    ): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary = true, scalaVersions, settings)
+      jvmPlatform(scalaVersions, Nil)
 
     override def jvm: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.jvm))
 
@@ -545,24 +555,23 @@ object ProjectMatrix:
       )
 
     override def jsPlatform(
-        autoScalaLibrary: Boolean,
         crossVersion: CrossVersion,
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.js +: axisValues):
-        p => enableScalaJSPlugin(p).settings(settings)
+      customRow(Some(crossVersion), scalaVersions, VirtualAxis.js +: axisValues): p =>
+        enableScalaJSPlugin(p).settings(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, Seq(VirtualAxis.js)):
-        p => enableScalaJSPlugin(p).settings(settings)
+      customRow(crossVersion = None, scalaVersions, Seq(VirtualAxis.js)): p =>
+        enableScalaJSPlugin(p).settings(settings)
 
     override def jsPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix =
-      jsPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
+      jsPlatform(crossVersion, scalaVersions, Nil, Nil)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
@@ -570,7 +579,6 @@ object ProjectMatrix:
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         VirtualAxis.js +: axisValues
@@ -583,7 +591,6 @@ object ProjectMatrix:
         configure: Project => Project
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         VirtualAxis.js +: axisValues
@@ -618,14 +625,12 @@ object ProjectMatrix:
       )
 
     override def nativePlatform(
-        autoScalaLibrary: Boolean,
         crossVersion: CrossVersion,
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary,
         Some(crossVersion),
         scalaVersions,
         VirtualAxis.native +: axisValues
@@ -637,7 +642,6 @@ object ProjectMatrix:
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         Seq(VirtualAxis.native)
@@ -648,7 +652,7 @@ object ProjectMatrix:
         crossVersion: CrossVersion,
         scalaVersions: Seq[String]
     ): ProjectMatrix =
-      nativePlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
+      nativePlatform(crossVersion, scalaVersions, Nil, Nil)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
@@ -656,7 +660,6 @@ object ProjectMatrix:
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         VirtualAxis.native +: axisValues
@@ -669,7 +672,6 @@ object ProjectMatrix:
         configure: Project => Project
     ): ProjectMatrix =
       customRow(
-        autoScalaLibrary = true,
         crossVersion = None,
         scalaVersions,
         VirtualAxis.native +: axisValues
@@ -697,8 +699,8 @@ object ProjectMatrix:
     ): Seq[Project] =
       resolvedMappings.toSeq collect {
         case (r, p)
-            if r.autoScalaLibrary == autoScalaLibrary && axisValues
-              .forall(v => r.axisValues.contains(v)) =>
+            if r.autoScalaLibrary == autoScalaLibrary &&
+              axisValues.forall(r.axisValues.contains) =>
           p
       }
 
@@ -711,12 +713,7 @@ object ProjectMatrix:
         filterProjects(autoScalaLibrary, axisValues).headOption
           .getOrElse(sys.error(s"project matching $axisValues and $autoScalaLibrary was not found"))
 
-    /**
-     * If autoScalaLibrary is false, add non-Scala row.
-     * Otherwise, add custom rows for each scalaVersions.
-     */
     override def customRow(
-        autoScalaLibrary: Boolean,
         crossVersion: Option[CrossVersion],
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis]
@@ -726,61 +723,39 @@ object ProjectMatrix:
       val process1 = crossVersion match
         case Some(cv) => (p: Project) => process(p.settings(Keys.crossVersion := cv))
         case None     => process
-      if scalaVersions.isEmpty && autoScalaLibrary then
-        // there is no version to add, so the axes must already carry one
-        customRow(autoScalaLibrary, axisValues, process1)
-      else if autoScalaLibrary then
-        scalaVersions.foldLeft(this: ProjectMatrix): (acc, sv) =>
-          val scalaAxis =
-            if crossVersion == Some(CrossVersion.full) then VirtualAxis.scalaVersionAxis(sv, sv)
-            else VirtualAxis.scalaABIVersion(sv)
-          acc.customRow(autoScalaLibrary, axisValues ++ Seq(scalaAxis), process1)
+      if scalaVersions.isEmpty then
+        val needJvm = !axisValues
+          .exists(_.isInstanceOf[VirtualAxis.ScalaVersionAxis | VirtualAxis.PlatformAxis])
+        val axes = if needJvm then axisValues :+ VirtualAxis.jvm else axisValues
+        addRow(axes, process1)
       else
-        // the caller may have named the platform already, and a second one renames the
-        // generated directories to `scalajvm-jvm`, which no source tree is called
-        val hasPlatform = axisValues.exists(_.isInstanceOf[VirtualAxis.PlatformAxis])
-        val axes = if hasPlatform then axisValues else axisValues :+ VirtualAxis.jvm
-        customRow(autoScalaLibrary, axes, process1)
+        val scalaAxis = (sv: String) =>
+          if crossVersion.contains(CrossVersion.full) then VirtualAxis.scalaVersionAxis(sv, sv)
+          else VirtualAxis.scalaABIVersion(sv)
+        scalaVersions.foldLeft(this: ProjectMatrix): (acc, sv) =>
+          acc.customRow(crossVersion = None, Nil, axisValues :+ scalaAxis(sv))(process1)
     end customRow
 
     override def customRow(
-        autoScalaLibrary: Boolean,
         axisValues: Seq[VirtualAxis],
         process: Project => Project
-    ): ProjectMatrix =
-      val newRow: ProjectRow = ProjectRow(autoScalaLibrary, axisValues, process)
-      copy(rows = this.rows :+ newRow)
+    ): ProjectMatrix = addRow(axisValues, process)
+
+    private def addRow(axisValues: Seq[VirtualAxis], process: Project => Project): ProjectMatrix =
+      copy(rows = this.rows :+ ProjectRow(axisValues, process))
 
     override def customRow(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axisValues): p =>
-        p.settings(settings)
-
-    override def customRow(
-        autoScalaLibrary: Boolean,
-        axisValues: Seq[VirtualAxis],
-        settings: Seq[Def.Setting[?]]
-    ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, Nil, axisValues): (p) =>
-        p.settings(settings)
+      customRow(crossVersion = None, scalaVersions, axisValues)(settings)
 
     override def customRow(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         process: Project => Project
-    ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axisValues)(process)
-
-    override def customRow(
-        autoScalaLibrary: Boolean,
-        scalaVersions: Seq[String],
-        axisValues: Seq[VirtualAxis],
-        process: Project => Project
-    ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, scalaVersions, axisValues)(process)
+    ): ProjectMatrix = customRow(crossVersion = None, scalaVersions, axisValues)(process)
 
     override def finder(axisValues: VirtualAxis*): ProjectFinder =
       new AxisBaseProjectFinder(axisValues)
