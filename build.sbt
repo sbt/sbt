@@ -790,6 +790,8 @@ lazy val mainProj = (project in file("main"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // ProjectRow is private[sbt]; 2.1.0-M1 briefly published its constructor
+      exclude[DirectMissingMethodProblem]("sbt.ProjectMatrix#ProjectRow.this"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)

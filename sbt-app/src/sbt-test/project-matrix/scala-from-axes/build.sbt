@@ -13,23 +13,22 @@ lazy val java = (projectMatrix in file("java")).jvmPlatform(
   settings = Seq(check := assert(show.value == "JVM|false|false|false", show.value)),
 )
 
-// no versions: the axes carry the Scala one
+// no versions: the axes carry the Scala one, and the settings stand in for the row function
 lazy val fromAxes = (projectMatrix in file("fromAxes")).customRow(
-  autoScalaLibrary = true,
   axisValues = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("2.13.18")),
-  settings = Seq(check := assert(show.value == "JVM,2_13|true|true|true", show.value)),
+  process = Seq(check := assert(show.value == "JVM,2_13|true|true|true", show.value)),
 )
 
-// versions given, and the flag says the row takes no Scala library: the versions are dropped
+// versions given: they are the rows, whatever the flag says
 lazy val both = (projectMatrix in file("both")).customRow(
   autoScalaLibrary = false,
   scalaVersions = Seq("2.13.18"),
   axisValues = Seq(VirtualAxis.jvm),
-  process = _.settings(check := assert(show.value == "JVM|false|false|false", show.value)),
+  process = _.settings(check := assert(show.value == "JVM,2_13|true|true|true", show.value)),
 )
 
 lazy val root = (project in file("."))
   .settings(check := {
     val ids = Seq(java, fromAxes, both).map(_.allProjects().map(_._1.id).mkString(","))
-    assert(ids == Seq("java", "fromAxes2_13", "both"), ids.toString)
+    assert(ids == Seq("java", "fromAxes2_13", "both2_13"), ids.toString)
   })
