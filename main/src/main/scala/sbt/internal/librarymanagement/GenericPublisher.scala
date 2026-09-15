@@ -12,9 +12,11 @@ package librarymanagement
 
 import java.io.{ File, IOException }
 import java.net.{ URI, URL }
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.regex.Matcher
 
-import gigahorse.AuthScheme
+import gigahorse.{ HeaderNames, Request }
 import gigahorse.support.apachehttp.Gigahorse
 import sbt.internal.librarymanagement.mavenint.PomExtraAttributeKeys
 import sbt.librarymanagement.*
@@ -291,13 +293,13 @@ class GenericPublisher private[sbt] (
       credentials: Seq[Credentials.DirectCredentials],
       realm: Option[String]
   ): Option[Credentials.DirectCredentials] =
-    val byHost = credentials.filter(_.host == url.getHost)
+    val byHost = credentials.filter(dc => url.getHost.equalsIgnoreCase(dc.host))
     realm match
       case Some(r) => byHost.find(_.realm == r).orElse(byHost.headOption)
       case None    => byHost.headOption
 
   /**
-   * HTTP PUT a file to a URL with optional Basic auth.
+   * HTTP PUT a file to a URL with optional preemptive Basic auth.
    * Uses Gigahorse (Apache HttpClient) per sbt tech stack.
    */
   private def httpPut(
@@ -306,10 +308,7 @@ class GenericPublisher private[sbt] (
       credentials: Option[Credentials.DirectCredentials],
       log: Logger
   ): Unit =
-    val baseReq = Gigahorse.url(url.toString).put(sourceFile)
-    val req = credentials match
-      case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
-      case None     => baseReq
+    val req = GenericPublisher.httpPutRequest(url, sourceFile, credentials)
     val f = sbt.librarymanagement.Http.http.processFull(req)
     val response = Await.result(f, 5.minutes)
     val body = response.bodyAsString
@@ -588,6 +587,27 @@ class GenericPublisher private[sbt] (
 end GenericPublisher
 
 object GenericPublisher:
+  private[sbt] def httpPutRequest(
+      url: URL,
+      sourceFile: File,
+      credentials: Option[Credentials.DirectCredentials]
+  ): Request =
+    val request = Gigahorse.url(url.toString).put(sourceFile)
+    credentials match
+      case Some(dc) =>
+        if !url.getHost.equalsIgnoreCase(dc.host) then
+          throw new IOException(
+            s"Refusing to send credentials for ${dc.host} to ${url.getHost}"
+          )
+        if !url.getProtocol.equalsIgnoreCase("https") then
+          throw new IOException(s"Refusing to send credentials over a non-HTTPS URL: $url")
+        val userInfo = s"${dc.userName}:${dc.passwd}".getBytes(StandardCharsets.UTF_8)
+        val authorization = s"Basic ${Base64.getEncoder.encodeToString(userInfo)}"
+        request
+          .addHeader(HeaderNames.AUTHORIZATION -> authorization)
+          .withFollowRedirects(false)
+      case None => request
+
   def apply(
       dependencyResolution: DependencyResolution,
       pomRepositories: Vector[Resolver],
