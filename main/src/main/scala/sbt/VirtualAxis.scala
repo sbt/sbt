@@ -13,6 +13,9 @@ sealed abstract class VirtualAxis:
 
 object VirtualAxis:
 
+  /** The axes that identify a row of a matrix. */
+  type ProjectRowKey = Seq[VirtualAxis]
+
   /**
    * WeakAxis allows a row to depend on another row with Zero value.
    * For example, Scala version can be Zero for Java project, and it's ok.
