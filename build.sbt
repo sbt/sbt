@@ -790,6 +790,10 @@ lazy val mainProj = (project in file("main"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // mima mistakenly checks inside private ProjectMatrixDef
+      exclude[Problem]("sbt.ProjectMatrix*ProjectMatrixDef*"),
+      // unresolved is private[sbt], and mima sees only the trait's static forwarder
+      exclude[DirectMissingMethodProblem]("sbt.ProjectMatrix.unresolved"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
