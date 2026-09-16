@@ -57,9 +57,7 @@ final case class ResolutionParams(
 
   lazy val resolutionKey =
     val cleanCache = cache
-      .withPool(null)
-      .withLogger(null)
-      .withSync(null)
+      .copy(pool = null, logger = null)(using null)
     SbtCoursierCache.ResolutionKey(
       dependencies,
       internalRepositories,

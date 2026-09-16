@@ -51,16 +51,14 @@ object TemporaryInMemoryRepository:
         var conn: URLConnection = null
         try
           conn = ConnectionBuilder(uri.toASCIIString)
-            .withFollowHttpToHttpsRedirections(
-              cacheOpt.fold(false)(_.followHttpToHttpsRedirections)
+            .copy(
+              followHttpToHttpsRedirections = cacheOpt.fold(false)(_.followHttpToHttpsRedirections),
+              followHttpsToHttpRedirections = cacheOpt.fold(false)(_.followHttpsToHttpRedirections),
+              sslSocketFactoryOpt = cacheOpt.flatMap(_.sslSocketFactoryOpt),
+              hostnameVerifierOpt = cacheOpt.flatMap(_.hostnameVerifierOpt),
+              method = "HEAD",
+              maxRedirectionsOpt = cacheOpt.flatMap(_.maxRedirections)
             )
-            .withFollowHttpsToHttpRedirections(
-              cacheOpt.fold(false)(_.followHttpsToHttpRedirections)
-            )
-            .withSslSocketFactoryOpt(cacheOpt.flatMap(_.sslSocketFactoryOpt))
-            .withHostnameVerifierOpt(cacheOpt.flatMap(_.hostnameVerifierOpt))
-            .withMethod("HEAD")
-            .withMaxRedirectionsOpt(cacheOpt.flatMap(_.maxRedirections))
             .connection()
           // Even though the finally clause handles this too, this has to be run here, so that we return Some(true)
           // iff this doesn't throw.
