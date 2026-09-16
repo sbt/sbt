@@ -1,0 +1,12 @@
+> check
+> coreConfig2_13/check
+> pair2_13/check
+> pairWasm2_13/check
+
+# the call adds the platform, so the axes must not hold one
+$ copy-file changes/platform-in-axes.sbt build.sbt
+-> reload
+
+# the versions add the scala axis, so the axes must not hold one either
+$ copy-file changes/version-in-axes.sbt build.sbt
+-> reload
