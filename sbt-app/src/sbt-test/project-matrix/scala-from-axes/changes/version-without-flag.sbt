@@ -20,8 +20,16 @@ lazy val fromAxes = (projectMatrix in file("fromAxes")).customRow(
   settings = Seq(check := assert(show.value == "JVM,2_13|true|true|true", show.value)),
 )
 
+// versions given, and the flag says the row takes no Scala library: the versions are dropped
+lazy val both = (projectMatrix in file("both")).customRow(
+  autoScalaLibrary = false,
+  scalaVersions = Seq("2.13.18"),
+  axisValues = Seq(VirtualAxis.jvm),
+  process = _.settings(check := assert(show.value == "JVM|false|false|false", show.value)),
+)
+
 lazy val root = (project in file("."))
   .settings(check := {
-    val ids = Seq(java, fromAxes).map(_.allProjects().map(_._1.id).mkString(","))
-    assert(ids == Seq("java", "fromAxes2_13"), ids.toString)
+    val ids = Seq(java, fromAxes, both).map(_.allProjects().map(_._1.id).mkString(","))
+    assert(ids == Seq("java", "fromAxes2_13", "both"), ids.toString)
   })

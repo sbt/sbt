@@ -244,12 +244,15 @@ object ProjectMatrix:
       val axisValues: Seq[VirtualAxis],
       val process: Project => Project
   ):
-    def scalaVersionOpt: Option[String] =
-      if autoScalaLibrary then
-        axisValues collectFirst { case sv: VirtualAxis.ScalaVersionAxis =>
-          sv.scalaVersion
-        }
-      else None
+    val scalaVersionAxisOpt: Option[VirtualAxis.ScalaVersionAxis] =
+      axisValues.collectFirst { case sv: VirtualAxis.ScalaVersionAxis => sv } match
+        case Some(sv) if !autoScalaLibrary =>
+          sys.error(s"autoScalaLibrary is false yet row has a scala version: $sv")
+        case None if autoScalaLibrary =>
+          sys.error(s"autoScalaLibrary is true yet row has no scala version: $axisValues")
+        case svOpt => svOpt
+
+    def scalaVersionOpt: Option[String] = scalaVersionAxisOpt.map(_.scalaVersion)
 
     def isMatch(that: ProjectRow): Boolean =
       VirtualAxis.isMatch(this.axisValues, that.axisValues)
@@ -726,21 +729,18 @@ object ProjectMatrix:
       val process1 = crossVersion match
         case Some(cv) => (p: Project) => process(p.settings(Keys.crossVersion := cv))
         case None     => process
-      if scalaVersions.isEmpty && autoScalaLibrary then
-        // there is no version to add, so the axes must already carry one
-        customRow(autoScalaLibrary, axisValues, process1)
-      else if autoScalaLibrary then
-        scalaVersions.foldLeft(this: ProjectMatrix): (acc, sv) =>
-          val scalaAxis =
-            if crossVersion == Some(CrossVersion.full) then VirtualAxis.scalaVersionAxis(sv, sv)
-            else VirtualAxis.scalaABIVersion(sv)
-          acc.customRow(autoScalaLibrary, axisValues ++ Seq(scalaAxis), process1)
-      else
-        // the caller may have named the platform already, and a second one renames the
-        // generated directories to `scalajvm-jvm`, which no source tree is called
-        val hasPlatform = axisValues.exists(_.isInstanceOf[VirtualAxis.PlatformAxis])
-        val axes = if hasPlatform then axisValues else axisValues :+ VirtualAxis.jvm
+      if scalaVersions.isEmpty then
+        val needJvm = !axisValues
+          .exists(_.isInstanceOf[VirtualAxis.ScalaVersionAxis | VirtualAxis.PlatformAxis])
+        val axes = if needJvm then axisValues :+ VirtualAxis.jvm else axisValues
         customRow(autoScalaLibrary, axes, process1)
+      else
+        val scalaAxis =
+          if crossVersion.contains(CrossVersion.full) then
+            (sv: String) => VirtualAxis.scalaVersionAxis(sv, sv)
+          else VirtualAxis.scalaABIVersion
+        scalaVersions.foldLeft(this: ProjectMatrix): (acc, sv) =>
+          acc.customRow(autoScalaLibrary, axisValues :+ scalaAxis(sv), process1)
     end customRow
 
     override def customRow(

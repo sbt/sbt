@@ -16,7 +16,7 @@ lazy val java = (projectMatrix in file("java")).jvmPlatform(
 // no versions: the axes carry the Scala one
 lazy val fromAxes = (projectMatrix in file("fromAxes")).customRow(
   autoScalaLibrary = true,
-  axisValues = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("2.13.18")),
+  axisValues = Seq(VirtualAxis.jvm),
   settings = Seq(check := assert(show.value == "JVM,2_13|true|true|true", show.value)),
 )
 

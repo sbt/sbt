@@ -1,4 +1,11 @@
 > check
 > java/check
 > fromAxes2_13/check
-> both/check
+
+# a row may not name a version while the flag says it takes no Scala library
+$ copy-file changes/version-without-flag.sbt build.sbt
+-> reload
+
+# nor say it takes one while no axis names a version
+$ copy-file changes/flag-without-version.sbt build.sbt
+-> reload
