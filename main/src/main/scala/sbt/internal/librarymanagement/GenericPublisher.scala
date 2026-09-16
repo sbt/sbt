@@ -14,7 +14,7 @@ import java.io.{ File, IOException }
 import java.net.{ URI, URL }
 import java.util.regex.Matcher
 
-import gigahorse.AuthScheme
+import gigahorse.{ AuthScheme, Realm }
 import gigahorse.support.apachehttp.Gigahorse
 import sbt.internal.librarymanagement.mavenint.PomExtraAttributeKeys
 import sbt.librarymanagement.*
@@ -303,11 +303,17 @@ class GenericPublisher private[sbt] (
       url: URL,
       credentials: Seq[Credentials.DirectCredentials],
       realm: Option[String]
-  ): Option[Credentials.DirectCredentials] =
+  ): Option[Realm] =
     val byHost = credentials.filter(_.host == url.getHost)
-    realm match
+    val credsOpt = realm match
       case Some(r) => byHost.find(_.realm == r).orElse(byHost.headOption)
       case None    => byHost.headOption
+    credsOpt.map: creds =>
+      Realm(
+        username = creds.userName,
+        password = creds.passwd,
+        scheme = AuthScheme.Basic,
+      ).withRealmNameOpt(realm)
 
   /**
    * HTTP PUT a file to a URL with optional Basic auth.
@@ -316,13 +322,13 @@ class GenericPublisher private[sbt] (
   private def httpPut(
       url: URL,
       sourceFile: File,
-      credentials: Option[Credentials.DirectCredentials],
+      authentication: Option[Realm],
       log: Logger
   ): Unit =
     val baseReq = Gigahorse.url(url.toString).put(sourceFile)
-    val req = credentials match
-      case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
-      case None     => baseReq
+    val req = authentication match
+      case Some(a) => baseReq.withAuth(a)
+      case None    => baseReq
     val f = sbt.librarymanagement.Http.http.processFull(req)
     val response = Await.result(f, 5.minutes)
     val body = response.bodyAsString

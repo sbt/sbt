@@ -784,12 +784,12 @@ lazy val mainProj = (project in file("main"))
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
-    libraryDependencies += {
-      // https://github.com/scala/scala3/issues/18487
-      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided
-    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // mima mistakenly checks inside private ProjectMatrixDef
+      exclude[Problem]("sbt.ProjectMatrix*ProjectMatrixDef*"),
+      // unresolved is private[sbt], and mima sees only the trait's static forwarder
+      exclude[DirectMissingMethodProblem]("sbt.ProjectMatrix.unresolved"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
