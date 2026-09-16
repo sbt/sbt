@@ -508,7 +508,7 @@ trait Cont:
       var nowarnQuals: Set[Term] = Set.empty
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
-      val record = [a] =>
+      lazy val record: [a] => (String, Type[a], Term, Term) => Converted = [a] =>
         (name: String, tpe: Type[a], qual: Term, oldTree: Term) =>
           given t: Type[a] = tpe
           convert[a](name, qual) transform { (replacement: Term) =>
@@ -527,7 +527,13 @@ trait Cont:
                       $outputAccRef,
                     )
                   }.asTerm
-                else oldTree
+                else
+                  report.warning(
+                    "Def.declareOutput has no caching effect in an uncached task.",
+                    qual.underlyingArgument.pos,
+                  )
+                  transformWrappers(qual, record, Symbol.spliceOwner)
+                end if
               case WrapOutputDirectoryName =>
                 val output = Output(
                   // even though the term is VirtualFileRef, we want the output to make VirtualFile,
