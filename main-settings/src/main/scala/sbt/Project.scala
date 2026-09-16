@@ -247,6 +247,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
 end Project
 
 object Project:
+  /** So a call that asks for a function of the project can be given settings for it instead. */
+  given Conversion[Seq[Setting[?]], Project => Project] = ss => _.settings(ss)
+
   def apply(id: String, base: File): Project =
     unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
 

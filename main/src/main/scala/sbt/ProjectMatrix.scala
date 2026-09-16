@@ -493,16 +493,15 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.jvm +: axisValues):
-        p => p.settings(settings)
+      val axes = VirtualAxis.jvm +: axisValues
+      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, axes)(settings)
 
     override def jvmPlatform(
         autoScalaLibrary: Boolean,
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, scalaVersions, Seq(VirtualAxis.jvm)): p =>
-        p.settings(settings)
+      customRow(autoScalaLibrary, None, scalaVersions, Seq(VirtualAxis.jvm))(settings)
 
     override def jvmPlatform(
         crossVersion: CrossVersion,
@@ -515,25 +514,16 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.jvm +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.jvm +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(settings)
 
     override def jvmPlatform(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         configure: Project => Project
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.jvm +: axisValues
-      )(configure)
+      val axes = VirtualAxis.jvm +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(configure)
 
     override def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jvmPlatform(autoScalaLibrary = true, scalaVersions, Nil)
@@ -570,15 +560,14 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.js +: axisValues):
-        p => p.settings(settings)
+      val axes = VirtualAxis.js +: axisValues
+      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, axes)(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, Seq(VirtualAxis.js)):
-        p => p.settings(settings)
+      customRow(autoScalaLibrary = true, None, scalaVersions, Seq(VirtualAxis.js))(settings)
 
     override def jsPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
@@ -588,26 +577,16 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.js +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.js +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         configure: Project => Project
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.js +: axisValues
-      ): p =>
-        configure(p)
+      val axes = VirtualAxis.js +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(configure)
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
@@ -643,25 +622,14 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary,
-        Some(crossVersion),
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.native +: axisValues
+      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, axes)(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        Seq(VirtualAxis.native)
-      ): p =>
-        p.settings(settings)
+      customRow(autoScalaLibrary = true, None, scalaVersions, Seq(VirtualAxis.native))(settings)
 
     override def nativePlatform(
         crossVersion: CrossVersion,
@@ -674,26 +642,16 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.native +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         configure: Project => Project
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        configure(p)
+      val axes = VirtualAxis.native +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(configure)
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
@@ -772,16 +730,14 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axisValues): p =>
-        p.settings(settings)
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axisValues)(settings)
 
     override def customRow(
         autoScalaLibrary: Boolean,
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, Nil, axisValues): (p) =>
-        p.settings(settings)
+      customRow(autoScalaLibrary, crossVersion = None, Nil, axisValues)(settings)
 
     override def customRow(
         scalaVersions: Seq[String],
