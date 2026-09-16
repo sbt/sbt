@@ -105,8 +105,6 @@ private[librarymanagement] abstract class CrossVersionFunctions:
       case BinCompatV(x, y, z, w, _) => s"""$x.$y.$z${if w == null then "" else w}"""
       case other                     => other
 
-  private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
-
   /**
    * Construct a cross-versioning function given cross-versioning configuration `cross`,
    * full version `fullVersion` and binary version `binaryVersion`.  The behavior of the
@@ -117,22 +115,26 @@ private[librarymanagement] abstract class CrossVersionFunctions:
       fullVersion: String,
       binaryVersion: String
   ): Option[String => String] =
+    parser(cross)(fullVersion, binaryVersion).map: (prefix, version, suffix) =>
+      crossName(_, prefix + version + suffix)
+
+  private[sbt] def parser(
+      cross: CrossVersion,
+  ): (String, String) => Option[(String, String, String)] =
     cross match
-      case _: Disabled    => None
-      case b: Binary      => append(b.prefix + binaryVersion + b.suffix)
-      case c: Constant    => append(c.value)
-      case _: Patch       => append(patchFun(fullVersion))
-      case f: Full        => append(f.prefix + fullVersion + f.suffix)
+      case _: Disabled    => (_, _) => None
+      case b: Binary      => (_, binary) => Some((b.prefix, binary, b.suffix))
+      case c: Constant    => (_, _) => Some(("", c.value, ""))
+      case _: Patch       => (full, _) => Some(("", patchFun(full), ""))
+      case f: Full        => (full, _) => Some((f.prefix, full, f.suffix))
       case c: For3Use2_13 =>
-        val compat =
-          if binaryVersion == "3" || binaryVersion.startsWith("3.0.0") then "2.13"
-          else binaryVersion
-        append(c.prefix + compat + c.suffix)
+        (_, binary) =>
+          val compat = if binary == "3" || binary.startsWith("3.0.0") then "2.13" else binary
+          Some((c.prefix, compat, c.suffix))
       case c: For2_13Use3 =>
-        val compat =
-          if binaryVersion == "2.13" then "3"
-          else binaryVersion
-        append(c.prefix + compat + c.suffix)
+        (_, binary) =>
+          val compat = if binary == "2.13" then "3" else binary
+          Some((c.prefix, compat, c.suffix))
 
   /**
    * Constructs the cross-version function defined by `module` and `is`, if one is configured.
