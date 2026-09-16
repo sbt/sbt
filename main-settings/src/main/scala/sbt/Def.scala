@@ -401,7 +401,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
      * This treats the `Initialize[Task[A]]` as a setting that returns the Task value,
      * instead of evaluating the task.
      */
-    inline def taskValue: Task[A1] = InputWrapper.`wrapInit_\u2603\u2603`[Task[A1]](in)
+    inline def taskValue: Task[A1] = InputWrapper.`wrapTaskValue_\u2603\u2603`[Task[A1]](in)
 
     inline def flatMapTask[A2](f: A1 => Initialize[Task[A2]]): Initialize[Task[A2]] =
       std.FullInstance.initializeTaskMonad.flatMap(in)(f)

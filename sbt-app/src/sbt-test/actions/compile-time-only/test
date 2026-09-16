@@ -6,3 +6,20 @@ $ copy-file changes/A2.scala A.scala
 
 $ copy-file changes/A3.scala A.scala
 > expectErrorNotCrash
+
+> checkTaskValues
+> checkInputTaskValue
+
+$ copy-file changes/TaskValue.scala A.scala
+> checkDiagnostic
+
+$ copy-file changes/InitTaskValue.scala A.scala
+> checkDiagnostic
+
+$ copy-file changes/InitValue.scala A.scala
+> set expectedDiagnostic := "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
+> checkDiagnostic
+
+$ copy-file changes/LocalTaskValue.scala A.scala
+> set expectedDiagnostic := "Illegal dynamic reference: local\nTask dependency expressions cannot reference values defined inside this task.\nMove 'local' outside the task definition, or use Def.taskDyn to construct the dependent task."
+> checkDiagnostic

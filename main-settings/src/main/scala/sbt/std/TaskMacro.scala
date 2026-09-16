@@ -65,7 +65,7 @@ object TaskMacro:
 
     def input(name: String, tpe: TypeRepr, argument: Term): Option[Term] = name match
       case InputWrapper.WrapInitTaskName | InputWrapper.WrapPreviousName |
-          InputWrapper.WrapInitName | InputWrapper.WrapTaskName =>
+          InputWrapper.WrapInitName | InputWrapper.WrapTaskValueName | InputWrapper.WrapTaskName =>
         Option.when(convert.asPredicate(name, tpe, argument))(argument)
       case _ => None
 

@@ -18,6 +18,7 @@ object InputWrapper:
    * The user should never see this method because it is compile-time only and only used internally by the task macro system.*/
 
   private[std] final val WrapTaskName = "wrapTask_\u2603\u2603"
+  private[std] final val WrapTaskValueName = "wrapTaskValue_\u2603\u2603"
   private[std] final val WrapInitName = "wrapInit_\u2603\u2603"
   private[std] final val WrapOutputName = "wrapOutput_\u2603\u2603"
   private[std] final val WrapOutputDirectoryName = "wrapOutputDirectory_\u2603\u2603"
@@ -35,6 +36,11 @@ object InputWrapper:
     "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
   )
   def `wrapInit_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
+
+  @compileTimeOnly(
+    "`taskValue` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
+  )
+  def `wrapTaskValue_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
     "`declareOutput` can only be used within a task macro, such as Def.cachedTask."

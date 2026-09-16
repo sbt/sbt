@@ -28,8 +28,8 @@ class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C, val
 
   override def convert[A: Type](nme: String, in: Term): Converted =
     nme match
-      case InputWrapper.WrapInitName                                 => Converted.success(in)
-      case InputWrapper.WrapTaskName | InputWrapper.WrapInitTaskName =>
+      case InputWrapper.WrapInitName | InputWrapper.WrapTaskValueName => Converted.success(in)
+      case InputWrapper.WrapTaskName | InputWrapper.WrapInitTaskName  =>
         Converted.Failure(in.pos, "A setting cannot depend on a task")
       case InputWrapper.WrapPreviousName =>
         Converted.Failure(in.pos, "A setting cannot depend on a task's previous value.")
