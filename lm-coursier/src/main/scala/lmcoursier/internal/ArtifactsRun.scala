@@ -54,10 +54,7 @@ object ArtifactsRun:
   ): Either[coursier.error.FetchError, Artifacts.Result] =
     coursier
       .Artifacts()
-      .withResolutions(params.resolutions)
       .withArtifactTypes(Set(Type.all))
-      .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
-      .withClasspathOrder(params.classpathOrder)
       .addExtraArtifacts { l =>
         if params.includeSignatures then l.flatMap(_._3.extra.get("sig").toSeq)
         else Nil
@@ -65,10 +62,15 @@ object ArtifactsRun:
       .addTransformArtifacts { artifacts =>
         if params.missingOk then
           artifacts.map { (dependency, publication, artifact) =>
-            (dependency, publication, artifact.withOptional(true))
+            (dependency, publication, artifact.copy(optional = true))
           }
         else artifacts
       }
-      .withCache(params.cache.withLogger(coursierLogger))
+      .copy(
+        resolutions = params.resolutions,
+        classifiers = params.classifiers.getOrElse(Nil).toSet,
+        classpathOrder = params.classpathOrder,
+        cache = params.cache.copy(logger = coursierLogger)
+      )
       .eitherResult()
 end ArtifactsRun

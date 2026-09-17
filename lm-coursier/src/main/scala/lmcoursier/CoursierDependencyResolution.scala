@@ -249,13 +249,15 @@ class CoursierDependencyResolution(
 
     val cache0 = coursier.cache
       .FileCache()
-      .withLocation(cache)
-      .withCachePolicies(cachePolicies)
-      .withTtl(ttl)
-      .withChecksums(checksums)
-      .withCredentials(conf.credentials.map(ToCoursier.credentials))
-      .withFollowHttpToHttpsRedirections(conf.followHttpToHttpsRedirections.getOrElse(true))
-      .withLocalArtifactsShouldBeCached(conf.localArtifactsShouldBeCached)
+      .copy(
+        location = cache,
+        cachePolicies = cachePolicies,
+        ttl = ttl,
+        checksums = checksums,
+        credentials = conf.credentials.map(ToCoursier.credentials),
+        followHttpToHttpsRedirections = conf.followHttpToHttpsRedirections.getOrElse(true),
+        localArtifactsShouldBeCached = conf.localArtifactsShouldBeCached
+      )
 
     val excludeDependencies = conf.excludeDependencies.map { (strOrg, strName) =>
       (coursier.Organization(strOrg), coursier.ModuleName(strName))
@@ -279,19 +281,19 @@ class CoursierDependencyResolution(
       parallel = conf.parallelDownloads,
       params = coursier.params
         .ResolutionParams()
-        .withMaxIterations(conf.maxIterations)
-        .withProfiles(conf.mavenProfiles.toSet)
-        .withForceVersion0(
-          conf.forceVersions
+        .copy(
+          maxIterations = conf.maxIterations,
+          profiles = conf.mavenProfiles.toSet,
+          forceVersion0 = conf.forceVersions
             .map: (k, v) =>
               (ToCoursier.module(k), ToCoursier.versionConstraint(v))
-            .toMap
-        )
-        .withScalaOrganizationOverride(soOpt)
-        .withReconciliation0(conf.reconciliation.map: (k, v) =>
-          ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v))
-        .withExclusions(excludeDependencies)
-        .withRules(ToCoursier.sameVersions(conf.sameVersions)),
+            .toMap,
+          scalaOrganizationOverride = soOpt,
+          reconciliation0 = conf.reconciliation.map: (k, v) =>
+            ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v),
+          exclusions = excludeDependencies,
+          rules = ToCoursier.sameVersions(conf.sameVersions)
+        ),
       strictOpt = conf.strict.map(ToCoursier.strict),
       missingOk = conf.missingOk,
       retry = conf.retry.getOrElse(ResolutionParams.defaultRetry),

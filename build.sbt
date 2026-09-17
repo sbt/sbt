@@ -1275,9 +1275,9 @@ lazy val lmCoursierDefinitions = project
 lazy val lmCoursierDependencies = Def.settings(
   libraryDependencies ++= Seq(
     coursier,
-    coursierSbtMavenRepo,
     "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+    graalNativeImage % Provided,
   ),
   libraryDependencies ++= Dependencies.scalatest,
   libraryDependencies += scalaVerify % Test,
@@ -1296,6 +1296,9 @@ lazy val lmCoursier = project
     lmCoursierDependencies,
     contrabandSettings,
     Compile / sourceGenerators += Utils.dataclassGen(lmCoursierDefinitions).taskValue,
+    // Coursier's own sources use a "dataclass" macro annotation that isn't published anywhere
+    // downstream can resolve, which makes dottydoc fail while trying to re-elaborate them.
+    Compile / doc / sources := Nil,
   )
   .dependsOn(lmCore)
 
@@ -1308,6 +1311,7 @@ lazy val lmCoursierShaded = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (lmCoursier / Compile / sources).value,
+    Compile / doc / sources := Nil,
     lmCoursierDependencies,
     autoScalaLibrary := false,
     bspEnabled := false,

@@ -30,11 +30,13 @@ object ToCoursier:
   def authentication(authentication: Authentication): coursier.core.Authentication =
     coursier.core
       .Authentication(authentication.user, authentication.password)
-      .withOptional(authentication.optional)
-      .withRealmOpt(authentication.realmOpt)
-      .withHttpHeaders(authentication.headers)
-      .withHttpsOnly(authentication.httpsOnly)
-      .withPassOnRedirect(authentication.passOnRedirect)
+      .copy(
+        optional = authentication.optional,
+        realmOpt = authentication.realmOpt,
+        httpHeaders = authentication.headers,
+        httpsOnly = authentication.httpsOnly,
+        passOnRedirect = authentication.passOnRedirect
+      )
 
   def module(mod: Module): coursier.core.Module =
     module(mod.organization.value, mod.name.value, mod.attributes)
@@ -165,17 +167,19 @@ object ToCoursier:
       case d: DirectCredentials =>
         coursier.credentials
           .DirectCredentials()
-          .withHost(d.host)
           .withUsername(d.username)
           .withPassword(d.password)
-          .withRealm(d.realm)
-          .withOptional(d.optional)
-          .withMatchHost(d.matchHost)
-          .withHttpsOnly(d.httpsOnly)
+          .copy(
+            host = d.host,
+            realm = d.realm,
+            optional = d.optional,
+            matchHost = d.matchHost,
+            httpsOnly = d.httpsOnly
+          )
       case f: FileCredentials =>
         coursier.credentials
           .FileCredentials(f.path)
-          .withOptional(f.optional)
+          .copy(optional = f.optional)
 
   def cacheLogger(logger: CacheLogger): coursier.cache.CacheLogger =
     new coursier.cache.CacheLogger:
@@ -216,19 +220,21 @@ object ToCoursier:
   def strict(strict: Strict): coursier.params.rule.Strict =
     coursier.params.rule
       .Strict()
-      .withInclude(strict.include.map { (o, n) =>
-        coursier.util.ModuleMatcher(
-          coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
-        )
-      })
-      .withExclude(strict.exclude.map { (o, n) =>
-        coursier.util.ModuleMatcher(
-          coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
-        )
-      })
-      .withIncludeByDefault(strict.includeByDefault)
-      .withIgnoreIfForcedVersion(strict.ignoreIfForcedVersion)
-      .withSemVer(strict.semVer)
+      .copy(
+        include = strict.include.map { (o, n) =>
+          coursier.util.ModuleMatcher(
+            coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
+          )
+        },
+        exclude = strict.exclude.map { (o, n) =>
+          coursier.util.ModuleMatcher(
+            coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
+          )
+        },
+        includeByDefault = strict.includeByDefault,
+        ignoreIfForcedVersion = strict.ignoreIfForcedVersion,
+        semVer = strict.semVer
+      )
 
   def cachePolicy(r: CachePolicy): coursier.cache.CachePolicy =
     r match

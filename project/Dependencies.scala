@@ -118,16 +118,16 @@ object Dependencies:
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.25-M26"
+  val coursierVersion = "2.1.25"
 
   val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
-    .cross(CrossVersion.for3Use2_13)
     .exclude("org.codehaus.plexus" % "plexus-archiver")
     .exclude("org.codehaus.plexus" % "plexus-container-default")
 
-  val coursierSbtMavenRepo =
-    ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
-      .cross(CrossVersion.for3Use2_13)
+  // coursier-cache references org.graalvm.nativeimage.Platform (a "provided"-scope dependency
+  // of coursier-cache, so not resolved transitively) in annotations on some of its classes.
+  // Scala 3's classfile parser fails to parse those classes unless the class is on the classpath.
+  val graalNativeImage = "org.graalvm.sdk" % "nativeimage" % "25.0.4.1"
 
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.
