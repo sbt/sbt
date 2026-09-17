@@ -94,43 +94,35 @@ object ResolutionRun {
     @nowarn
     val resolveTask: Resolve[Task] = {
       Resolve()
-        // re-using various caches from a resolution of a configuration we extend
-        .withInitialResolution(startingResolutionOpt)
-        .withDependencies(
-          params.dependencies.collect {
+        .copy(
+          // re-using various caches from a resolution of a configuration we extend
+          initialResolution = startingResolutionOpt,
+          dependencies = params.dependencies.collect {
             case (config, dep) if configs(config) =>
               dep
-          }
-        )
-        .withBoms(params.boms)
-        .withRepositories(repositories)
-        .withResolutionParams(
-          params.params
+          },
+          boms = params.boms,
+          repositories = repositories,
+          resolutionParams = params.params
             .addForceVersion(
               (if (isSandboxConfig) Nil
                else params.interProjectDependencies.map(_.moduleVersion))*
             )
             .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
             .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
-            .withTypelevel(params.params.typelevel)
-            .withRules(rules)
-        )
-        .withCache(
-          params.cache
-            .withLogger(
-              params.loggerOpt.getOrElse {
-                RefreshLogger.create(
-                  if (RefreshLogger.defaultFallbackMode)
-                    new FallbackRefreshDisplay()
-                  else
-                    ProgressBarRefreshDisplay.create(
-                      if (printOptionalMessage) log.info(initialMessage),
-                      if (printOptionalMessage || verbosityLevel >= 2)
-                        log.info(s"Resolved ${params.projectName} dependencies")
-                    )
-                )
-              }
-            )
+            .copy(typelevel = params.params.typelevel, rules = rules),
+          cache = params.cache
+            .copy(logger = params.loggerOpt.getOrElse {
+              RefreshLogger.create(
+                if RefreshLogger.defaultFallbackMode then new FallbackRefreshDisplay()
+                else
+                  ProgressBarRefreshDisplay.create(
+                    if printOptionalMessage then log.info(initialMessage),
+                    if printOptionalMessage || verbosityLevel >= 2 then
+                      log.info(s"Resolved ${params.projectName} dependencies")
+                  )
+              )
+            })
         )
     }
 
