@@ -2,7 +2,7 @@ package sbt
 package internal
 package communitybuild
 
-import java.nio.file._
+import java.nio.file.*
 import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -26,8 +26,13 @@ lazy val sbtPluginFilePath: String =
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
-def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: Map[String, String]): Int =
-  import scala.jdk.CollectionConverters._
+def exec(
+    projectDir: Path,
+    binary: String,
+    arguments: Seq[String],
+    environment: Map[String, String]
+): Int =
+  import scala.jdk.CollectionConverters.*
   val command = binary +: arguments
   log(command.mkString(" "))
   val builder = new ProcessBuilder(command*).directory(projectDir.toFile).inheritIO()
@@ -35,7 +40,6 @@ def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: 
   val process = builder.start()
   val exitCode = process.waitFor()
   exitCode
-
 
 sealed trait CommunityProject:
   def project: String
@@ -53,10 +57,14 @@ sealed trait CommunityProject:
   final def publish(): Unit =
     log(s"Publishing $project")
     if publishCommand eq null then
-      throw RuntimeException(s"Publish command is not specified for $project. Project details:\n$this")
+      throw RuntimeException(
+        s"Publish command is not specified for $project. Project details:\n$this"
+      )
     val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ publishCommand), environment)
     if exitCode != 0 then
-      throw RuntimeException(s"Publish command exited with code $exitCode for project $project. Project details:\n$this")
+      throw RuntimeException(
+        s"Publish command exited with code $exitCode for project $project. Project details:\n$this"
+      )
 
   final def doc(): Unit =
     log(s"Documenting $project")
@@ -64,7 +72,9 @@ sealed trait CommunityProject:
       throw RuntimeException(s"Doc command is not specified for $project. Project details:\n$this")
     val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ docCommand), environment)
     if exitCode != 0 then
-      throw RuntimeException(s"Doc command exited with code $exitCode for project $project. Project details:\n$this")
+      throw RuntimeException(
+        s"Doc command exited with code $exitCode for project $project. Project details:\n$this"
+      )
 
   final def build(): Int = exec(projectDir, binaryName, buildCommands, environment)
 
@@ -84,7 +94,7 @@ final case class SbtCommunityProject(
     docCmd: String = "doc",
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     override val environment: Map[String, String] = Map.empty,
-  ) extends CommunityProject:
+) extends CommunityProject:
   override val binaryName: String = "sbt"
 
   private def scalacOptionsString: String =
@@ -92,11 +102,12 @@ final case class SbtCommunityProject(
 
   private val baseCommand =
     "set Global/logLevel := Level.Error; "
-    ++ (if scalacOptions.isEmpty then "" else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
+      ++ (if scalacOptions.isEmpty then ""
+          else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
 
   override val testCommand =
     """set Global/testOptions += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
-    ++ s"$baseCommand$testCmd"
+      ++ s"$baseCommand$testCmd"
 
   override val testCompileCommand =
     s"$baseCommand$testCompileCmd"
@@ -105,7 +116,8 @@ final case class SbtCommunityProject(
     if publishCmd eq null then null else s"$baseCommand$publishCmd"
 
   override val docCommand =
-    if docCmd eq null then null else
+    if docCmd eq null then null
+    else
       val cmd = if docCmd.startsWith(";") then docCmd else s";$docCmd"
       s"$baseCommand set every useScaladoc := true; set every doc/logLevel := Level.Warn $cmd "
 
@@ -113,12 +125,13 @@ final case class SbtCommunityProject(
     // Run the sbt command with the compiler version and sbt plugin set in the build
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
-      case _ => Nil
+      case _             => Nil
     extraSbtArgs ++ sbtProps ++ List(
       s"-Dsbt.version=$sbtVersion",
       s"-Dsbt.boot=$bootDir",
       "-Dsbt.supershell=false",
     )
+end SbtCommunityProject
 
 object SbtCommunityProject:
   def scalacOptions = Nil
@@ -126,18 +139,24 @@ object SbtCommunityProject:
 object projects:
 
   private def forceDoc(projects: String*) =
-    projects.map(project =>
-      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
-    ).mkString(" ")
+    projects
+      .map(project =>
+        s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
+      )
+      .mkString(" ")
 
   private def removeRelease8(projects: String*): String =
-    projects.map(project =>
-      s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "-java-output-version" || opt == "8")"""
-    ).mkString("; ")
+    projects
+      .map(project =>
+        s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "-java-output-version" || opt == "8")"""
+      )
+      .mkString("; ")
 
   private def aggregateDoc(in: String)(projects: String*) =
     val tastyFiles =
-      (in +: projects).map(p => s"($p/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value").mkString(" ++ ")
+      (in +: projects)
+        .map(p => s"($p/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value")
+        .mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
 
   lazy val `sbt-compile-benchmark` = SbtCommunityProject(

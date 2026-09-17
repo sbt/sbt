@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           rm -rf "$HOME/.sbt/boot/" || true
-          ./sbt -v --server "mimaReportBinaryIssues;javafmtCheck;Test/javafmtCheck;scalafmtCheckAll;scalafmtSbtCheck;serverTestProj/scalafmtCheckAll;launcherPackageIntegrationTest/scalafmtCheckAll"
+          ./sbt -v --server "mimaReportBinaryIssues;javafmtCheck;Test/javafmtCheck;scalafmtCheckRepo"
           # ./sbt -v --client headerCheck
           # ./sbt -v --client "Test/headerCheck"
           ./sbt -v --server "Test/compile;doc;publishLocal;test;serverTestProj/test;all $UTIL_TESTS"

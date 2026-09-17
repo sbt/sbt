@@ -5,7 +5,7 @@ package communitybuild
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
-import scala.sys.process._
+import scala.sys.process.*
 
 import CommunityBuildRunner.run
 
@@ -29,19 +29,22 @@ object Main:
       println(s"Missing projects: ${missing.mkString(", ")}. All projects: $allNames")
       sys.exit(1)
 
-    val (failed, completed) = names.flatMap(projectMap.apply).partitionMap( o =>
-      try
-        Right(op(o))
-      catch case e: Throwable =>
-        e.printStackTrace()
-        Left(o)
-    )
+    val (failed, completed) = names
+      .flatMap(projectMap.apply)
+      .partitionMap(o =>
+        try Right(op(o))
+        catch
+          case e: Throwable =>
+            e.printStackTrace()
+            Left(o)
+      )
 
     if failed.nonEmpty then
       println(s"$opName failed for ${failed.mkString(", ")}")
       sys.exit(1)
 
     completed
+  end withProjects
 
   /** Allows running various commands on community build projects. */
   def main(args: Array[String]): Unit =
@@ -78,12 +81,15 @@ object Main:
           name -> docsFiles
         }
 
-        val (failed, withDocs) = paths.partition{ case (_, paths) => paths.isEmpty }
+        val (failed, withDocs) = paths.partition { case (_, paths) => paths.isEmpty }
 
-        val indexFile = withDocs.map { case (name, paths) =>
-          paths.map(p => s"""<a href="$name/$p/index.html">$p</a></br>\n""")
-            .mkString(s"<h1>$name</h1>","\n", "\n")
-        }.mkString("<html><body>\n", "\n", "\n</html></body>")
+        val indexFile = withDocs
+          .map { case (name, paths) =>
+            paths
+              .map(p => s"""<a href="$name/$p/index.html">$p</a></br>\n""")
+              .mkString(s"<h1>$name</h1>", "\n", "\n")
+          }
+          .mkString("<html><body>\n", "\n", "\n</html></body>")
 
         Files.write(dest.resolve("index.html"), indexFile.getBytes)
 
@@ -95,7 +101,7 @@ object Main:
           sys.exit(1)
 
       case "doc" :: names if names.nonEmpty =>
-        val failed = withProjects(names, "Documenting"){ p =>
+        val failed = withProjects(names, "Documenting") { p =>
           val docsRoots = generateDocs(p)
           println(docsRoots)
           if docsRoots.nonEmpty then println(s"Docs for $p generated in $docsRoots")
@@ -118,3 +124,4 @@ object Main:
           println(s"\t${k.project}")
         }
         sys.exit(1)
+end Main

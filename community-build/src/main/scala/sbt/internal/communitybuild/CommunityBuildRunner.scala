@@ -6,7 +6,8 @@ import java.nio.file.*
 
 object CommunityBuildRunner:
 
-  /** Depending on the mode of operation, either
+  /**
+   * Depending on the mode of operation, either
    *  runs the test or updates the project. Updating
    *  means that all the dependencies are fetched but
    *  minimal other extra other work is done. Updating
@@ -22,12 +23,14 @@ object CommunityBuildRunner:
 
 trait CommunityBuildRunner:
 
-  /** fails the current operation, can be specialised in a concrete Runner
+  /**
+   * fails the current operation, can be specialised in a concrete Runner
    *  - overridden in `CommunityBuildTest`
    */
   def failWith(msg: String): Nothing = throw IllegalStateException(msg)
 
-  /** Build the given project with the published local compiler and sbt plugin.
+  /**
+   * Build the given project with the published local compiler and sbt plugin.
    *
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
    *  and expects community-build/sbt-injected-plugins to set any necessary plugins.
@@ -48,17 +51,16 @@ trait CommunityBuildRunner:
       if exitCode == 0
       then true
       else if timesToRerun == 0
-        then false
-        else
-          log(s"Rerunning tests in $project because of a previous run failure.")
-          execTimes(task, timesToRerun - 1)
+      then false
+      else
+        log(s"Rerunning tests in $project because of a previous run failure.")
+        execTimes(task, timesToRerun - 1)
 
     log(s"Building $project ...")
 
     val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
-    if !Files.exists(projectDir.resolve(".git")) then
-      failWith(s"""
+    if !Files.exists(projectDir.resolve(".git")) then failWith(s"""
         |
         |Missing $project submodule at $projectDir. You can initialize this module using
         |
@@ -68,8 +70,7 @@ trait CommunityBuildRunner:
 
     val testsCompletedSuccessfully = execTimes(projectDef.build, 3)
 
-    if !testsCompletedSuccessfully then
-      failWith(s"""
+    if !testsCompletedSuccessfully then failWith(s"""
           |
           |$command exited with an error code. To reproduce without JUnit, use:
           |
