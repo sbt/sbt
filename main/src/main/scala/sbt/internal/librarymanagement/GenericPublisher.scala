@@ -665,8 +665,8 @@ class GenericPublisher private[sbt] (
       val url = URI.create(metadataUrl).toURL()
       val baseReq = Gigahorse.url(metadataUrl).get
       val req = credentialFor(url, credentials, None) match
-        case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
-        case None     => baseReq
+        case Some(a) => baseReq.withAuth(a)
+        case None    => baseReq
       val response = Await.result(sbt.librarymanagement.Http.http.processFull(req), 1.minute)
       if response.status == 404 then None
       else if response.status < 200 || response.status >= 300 then
