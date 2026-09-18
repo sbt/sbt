@@ -128,6 +128,19 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach:
   test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)
   }
+  test("batch client reports the action cache summary") {
+    val (exitCode, lines) = clientWithStdoutLines("compile")
+    assert(exitCode == 0)
+    assert(
+      lines.exists(l => l.contains("elapsed time") && l.contains("cache ")),
+      lines.mkString("\n")
+    )
+  }
+  test("batch client reports the timing line when a task fails") {
+    val (exitCode, lines) = clientWithStdoutLines("willFail")
+    assert(exitCode == 1)
+    assert(lines.exists(_.contains("elapsed time")), lines.mkString("\n"))
+  }
   test("run") {
     val (exitCode, lines) = clientWithStdoutLines("run")
     assert(exitCode == 0)

@@ -17,9 +17,9 @@ import sbt.BuildExtra.*
 import sbt.ProjectExtra.*
 import sbt.Scope.Global
 import sbt.internal.Aggregation.KeyValue
+import sbt.internal.langserver.ErrorCodes
 import sbt.internal.TaskName.*
 import sbt.internal.*
-import sbt.internal.langserver.ErrorCodes
 import sbt.internal.util.{ Terminal as ITerminal, * }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
@@ -406,7 +406,12 @@ object EvaluateTask:
       val log = getStreams(key, streams).log
       val display = contextDisplay(state, ITerminal.isColorEnabled)
       val errorMessage = "(" + display.show(key) + ") " + msgString
-      state.respondError(ErrorCodes.InternalError, errorMessage)
+      StandardMain.exchange.respondTaskError(
+        ErrorCodes.InternalError,
+        errorMessage,
+        state.currentCommand.flatMap(_.execId),
+        state.source
+      )
       log.error(errorMessage)
   end logIncomplete
 

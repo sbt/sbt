@@ -374,6 +374,22 @@ private[sbt] final class CommandExchange:
       }
     do tryTo(_.respondError(err, execId))(channel)
 
+  /**
+   * Reports a task failure to a request-driven client such as BSP. A plain `sbt/exec` is answered
+   * when the command finishes, and answering it here would cut the client off mid-command.
+   */
+  private[sbt] def respondTaskError(
+      code: Long,
+      message: String,
+      execId: Option[String],
+      source: Option[CommandSource]
+  ): Unit =
+    for
+      name <- source.map(_.channelName)
+      channel <- channels.collectFirst { case c: NetworkChannel if c.name == name => c }
+      if !channel.isExecRequest(execId)
+    do tryTo(_.respondError(JsonRpcResponseError(code, message), execId))(channel)
+
   // This is an interface to directly respond events.
   private[sbt] def respondEvent[A: JsonFormat](
       event: A,
