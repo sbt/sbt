@@ -1284,6 +1284,15 @@ lazy val lmCoursierDependencies = Def.settings(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
   ),
+  // lmCoursierShaded merges every dependency into one assembly with a single surviving
+  // MANIFEST.MF, so coursier's own Implementation-Version doesn't survive there to be read back
+  // at runtime. Stash coursierVersion in a resource under our own package instead, which assembly
+  // merges in unchanged.
+  Compile / resourceGenerators += Def.task {
+    val file = (Compile / resourceManaged).value / "lmcoursier" / "coursier.properties"
+    IO.write(file, s"version=$coursierVersion\n")
+    Seq(file)
+  }.taskValue,
 )
 
 lazy val lmCoursier = project
