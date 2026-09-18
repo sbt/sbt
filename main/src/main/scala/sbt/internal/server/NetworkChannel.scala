@@ -304,6 +304,9 @@ final class NetworkChannel(
         log.debug(msg)
   }
 
+  private[sbt] def isExecRequest(execId: Option[String]): Boolean =
+    getPendingRequest(execId).exists(_.method == "sbt/exec")
+
   private[sbt] def getPendingRequest(execId: Option[String]): Option[JsonRpcRequestMessage] =
     execId.flatMap {
       // This handles multi commands from the network that were remapped to a different
@@ -755,9 +758,7 @@ final class NetworkChannel(
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
     override def isEchoEnabled: Boolean = sbt.internal.util.JLine3.isEchoEnabled(getAttributes)
-    override def isSuccessEnabled: Boolean =
-      interactive.get ||
-        StandardMain.exchange.withState(ContinuousCommands.isInWatch(_, NetworkChannel.this))
+    override def isSuccessEnabled: Boolean = true
     override lazy val isColorEnabled: Boolean = waitForPending(_.isColorEnabled)
     override lazy val isSupershellEnabled: Boolean = waitForPending(_.isSupershellEnabled)
     getProperties(false)

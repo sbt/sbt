@@ -845,11 +845,7 @@ class NetworkClient(
     pendingResults.remove(execId) match
       case null                 => ()
       case (q, startTime, name) =>
-        val now = System.currentTimeMillis
-        val message = NetworkClient.elapsedString(startTime, now)
-        if batchMode.get || !attached.get then
-          if exitCode == 0 then console.success(message)
-          else console.appendLog(Level.Error, message)
+        // The server prints the success line on every channel now, including this one.
         Util.ignoreResult(q.offer(exitCode))
   private val onExecResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
     case msg if pendingResults.containsKey(msg.id) =>
