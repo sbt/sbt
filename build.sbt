@@ -1232,6 +1232,8 @@ lazy val lmCore = (project in file("lm-core"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      // append is private[sbt], and mima sees only the static forwarder on the class
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.CrossVersion.append"),
     ),
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
