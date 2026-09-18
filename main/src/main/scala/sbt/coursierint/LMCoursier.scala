@@ -35,7 +35,13 @@ object LMCoursier {
   private val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
-  def defaultCacheLocation: File = {
+  def defaultUserAgent(sbtVer: String): String =
+    sys.props.get("sbt.http.agent").getOrElse {
+      val cs = CoursierDependencyResolution.coursierUserAgent
+      s"$cs sbt/$sbtVer (+https://www.scala-sbt.org/)".trim
+    }
+
+  def defaultCacheLocation: File =
     def absoluteFile(path: String): File = new File(path).getAbsoluteFile()
     def windowsCacheDirectory: File = {
       // Per discussion in https://github.com/dirs-dev/directories-jvm/issues/43,
@@ -64,7 +70,7 @@ object LMCoursier {
         if Util.isWindows then windowsCacheDirectory
         else CoursierDependencyResolution.defaultCacheLocation
     }
-  }
+  end defaultCacheLocation
 
   def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
     Vector((ModuleMatchers.all, Reconciliation.Relaxed))
@@ -95,7 +101,7 @@ object LMCoursier {
       localArtifactsShouldBeCached: Boolean,
       lockFile: Option[File],
       log: Logger
-  ): CoursierConfiguration = {
+  ): CoursierConfiguration =
     val coursierExcludeDeps = Inputs
       .exclusions(
         excludeDeps,
@@ -118,10 +124,10 @@ object LMCoursier {
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
     Classpaths.errorInsecureProtocol(rs, log)
-    val missingOk = updateConfig match {
+    val missingOk = updateConfig match
       case Some(uc) => uc.missingOk
       case _        => false
-    }
+    val sbtVer = appConfig.provider.id.version
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
@@ -147,7 +153,8 @@ object LMCoursier {
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
       .withLockFile(lockFile)
-  }
+      .withUserAgent(defaultUserAgent(sbtVer))
+  end coursierConfiguration
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
     val sv = scalaVersion.value

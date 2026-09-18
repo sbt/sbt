@@ -79,10 +79,11 @@ package object syntax {
         sameVersions = Nil,
         localArtifactsShouldBeCached = false,
         lockFile = None,
+        userAgent = None,
       )
   }
 
-  extension (value: CoursierConfiguration) {
+  extension (value: CoursierConfiguration)
     def withLog(log: Logger): CoursierConfiguration =
       value.withLog(Option(log))
     def withSbtScalaOrganization(sbtScalaOrganization: String): CoursierConfiguration =
@@ -120,7 +121,9 @@ package object syntax {
 
     def withRetry(retry: (FiniteDuration, Int)): CoursierConfiguration =
       value.withRetry(Some((retry._1, retry._2)))
-  }
+    def withUserAgent(userAgent: String): CoursierConfiguration =
+      value.withUserAgent(Option(userAgent))
+  end extension
 
   extension (value: Publication) {
     def attributes: Attributes =
