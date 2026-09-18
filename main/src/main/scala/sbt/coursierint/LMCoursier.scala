@@ -35,6 +35,12 @@ object LMCoursier:
   private val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
+  def defaultUserAgent(sbtVer: String): String =
+    sys.props.get("sbt.http.agent").getOrElse {
+      val cs = CoursierDependencyResolution.coursierUserAgent
+      s"$cs sbt/$sbtVer (+https://www.scala-sbt.org/)".trim
+    }
+
   def defaultCacheLocation: File =
     def absoluteFile(path: String): File = new File(path).getAbsoluteFile()
     def windowsCacheDirectory: File =
@@ -119,6 +125,7 @@ object LMCoursier:
     val missingOk = updateConfig match
       case Some(uc) => uc.missingOk
       case _        => false
+    val sbtVer = appConfig.provider.id.version
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
@@ -144,6 +151,7 @@ object LMCoursier:
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
       .withLockFile(lockFile)
+      .withUserAgent(defaultUserAgent(sbtVer))
   end coursierConfiguration
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {

@@ -256,7 +256,8 @@ class CoursierDependencyResolution(
         checksums = checksums,
         credentials = conf.credentials.map(ToCoursier.credentials),
         followHttpToHttpsRedirections = conf.followHttpToHttpsRedirections.getOrElse(true),
-        localArtifactsShouldBeCached = conf.localArtifactsShouldBeCached
+        localArtifactsShouldBeCached = conf.localArtifactsShouldBeCached,
+        userAgent = conf.userAgent
       )
 
     val excludeDependencies = conf.excludeDependencies.map { (strOrg, strName) =>
@@ -547,6 +548,30 @@ class CoursierDependencyResolution(
 end CoursierDependencyResolution
 
 object CoursierDependencyResolution:
+  // Built at runtime, not as a single literal: lmCoursierShaded's relocation rewrites any string
+  // constant shaped like a "coursier."-prefixed path, which would otherwise silently turn this
+  // into "lmcoursier.internal.shaded.coursier.http.agent" and break the override.
+  private val userAgentPropertyKey: String = Seq("coursier", "http", "agent").mkString(".")
+
+  lazy val coursierUserAgent: String =
+    sys.props.get(userAgentPropertyKey).getOrElse(coursierUserAgent0)
+  // Reads the version from a resource rather than the jar manifest, which lmCoursierShaded's assembly merge clobbers.
+  private def coursierUserAgent0: String =
+    val version =
+      Option(getClass.getResourceAsStream("/lmcoursier/coursier.properties"))
+        .flatMap { in =>
+          scala.util
+            .Using(in) { in0 =>
+              val props = new java.util.Properties
+              props.load(in0)
+              Option(props.getProperty("version"))
+            }
+            .toOption
+            .flatten
+        }
+        .getOrElse("2.1")
+    s"Coursier/$version (+https://github.com/coursier)"
+
   def apply(configuration: CoursierConfiguration): DependencyResolution =
     DependencyResolution(new CoursierDependencyResolution(configuration))
 
