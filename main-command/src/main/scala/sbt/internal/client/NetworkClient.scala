@@ -152,8 +152,6 @@ class NetworkClient(
   private val running = new AtomicBoolean(true)
   private val pendingResults =
     new ConcurrentHashMap[String, (LinkedBlockingQueue[Integer], Long, String)]
-  private val pendingCancellations = new ConcurrentHashMap[String, LinkedBlockingQueue[Boolean]]
-  private val pendingCompletions = new ConcurrentHashMap[String, CompletionResponse => Unit]
   private val pendingResponseHandlers =
     new ConcurrentHashMap[String, JsonRpcResponseMessage => Unit]
   private val attached = new AtomicBoolean(false)
@@ -841,59 +839,54 @@ class NetworkClient(
       inputThread.drain()
       ()
   }
-  def completeExec(execId: String, exitCode: Int) =
+
+  private def completeExec(execId: String, fExitCode: => Integer): Boolean =
     pendingResults.remove(execId) match
-      case null                 => ()
+      case null                 => false
       case (q, startTime, name) =>
-        val now = System.currentTimeMillis
-        val message = NetworkClient.elapsedString(startTime, now)
+        val message = NetworkClient.elapsedString(startTime, System.currentTimeMillis)
+        val exitCode = fExitCode
         if batchMode.get || !attached.get then
           if exitCode == 0 then console.success(message)
           else console.appendLog(Level.Error, message)
-        Util.ignoreResult(q.offer(exitCode))
+        q.offer(exitCode)
+        true
+
   private val onExecResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
-    case msg if pendingResults.containsKey(msg.id) =>
-      completeExec(msg.id, getExitCode(msg.result))
+    case msg if completeExec(msg.id, getExitCode(msg.result)) =>
   }
-  private val onCancellationResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
-    case msg if pendingCancellations.containsKey(msg.id) =>
-      pendingCancellations.remove(msg.id) match
-        case null => ()
-        case q    => Util.ignoreResult(q.offer(msg.toString.contains("Task cancelled")))
-  }
-  private val onCompletionResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
-    case msg if pendingCompletions.containsKey(msg.id) =>
-      pendingCompletions.remove(msg.id) match
-        case null        => ()
-        case completions =>
-          completions(msg.result match
-            case Some(o: JObject) =>
-              o.value
-                .foldLeft(CompletionResponse(Vector.empty[String])) { (resp, i) =>
-                  if i.field == "items" then
-                    resp.withItems(
-                      Converter
-                        .fromJson[Vector[String]](i.value)
-                        .getOrElse(Vector.empty[String])
-                    )
-                  else if i.field == "cachedTestNames" then
-                    resp.withCachedTestNames(
-                      Converter.fromJson[Boolean](i.value).getOrElse(true)
-                    )
-                  else if i.field == "cachedMainClassNames" then
-                    resp.withCachedMainClassNames(
-                      Converter.fromJson[Boolean](i.value).getOrElse(true)
-                    )
-                  else resp
-                }
-            case _ => CompletionResponse(Vector.empty[String]))
-  }
+
+  private def handleCompletion(handler: CompletionResponse => Unit)(
+      msg: JsonRpcResponseMessage
+  ): Unit =
+    val emptyResponse = CompletionResponse(Vector.empty[String])
+    val response = msg.result match
+      case Some(o: JObject) =>
+        o.value.foldLeft(emptyResponse) { (resp, i) =>
+          if i.field == "items" then
+            resp.withItems(
+              Converter
+                .fromJson[Vector[String]](i.value)
+                .getOrElse(Vector.empty[String])
+            )
+          else if i.field == "cachedTestNames" then
+            resp.withCachedTestNames(
+              Converter.fromJson[Boolean](i.value).getOrElse(true)
+            )
+          else if i.field == "cachedMainClassNames" then
+            resp.withCachedMainClassNames(
+              Converter.fromJson[Boolean](i.value).getOrElse(true)
+            )
+          else resp
+        }
+      case _ => emptyResponse
+    handler(response)
+  end handleCompletion
+
   // cache the composed plan
   private val responsePlan = Util.reduceIntents[JsonRpcResponseMessage, Unit](
     onExecResponse,
-    onCancellationResponse,
     onAttachResponse,
-    onCompletionResponse,
     { case _ => () },
   )
 
@@ -1201,7 +1194,7 @@ class NetworkClient(
       val result = new LinkedBlockingQueue[CompletionResponse]()
       val json = s"""{"query":"$query","level":1}"""
       val execId = sendJson("sbt/completion", json)
-      pendingCompletions.put(execId, result.put)
+      pendingResponseHandlers.put(execId, handleCompletion(result.put))
       val response = result.poll(30, TimeUnit.SECONDS) match
         case null => throw new TimeoutException("no response from server within 30 seconds")
         case r    => r
@@ -1261,7 +1254,7 @@ class NetworkClient(
   def sendCancelAllCommand(): LinkedBlockingQueue[Boolean] =
     val queue = new LinkedBlockingQueue[Boolean]
     val execId = sendJson(cancelRequest, s"""{"id":"$CancelAll"}""")
-    pendingCancellations.put(execId, queue)
+    pendingResponseHandlers.put(execId, msg => queue.offer(msg.toString.contains("Task cancelled")))
     queue
 
   def sendCommand(command: CommandMessage): Unit =
