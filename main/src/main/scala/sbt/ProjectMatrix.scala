@@ -493,16 +493,15 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.jvm +: axisValues):
-        p => p.settings(settings)
+      val axes = VirtualAxis.jvm +: axisValues
+      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, axes)(settings)
 
     override def jvmPlatform(
         autoScalaLibrary: Boolean,
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, scalaVersions, Seq(VirtualAxis.jvm)): p =>
-        p.settings(settings)
+      customRow(autoScalaLibrary, None, scalaVersions, Seq(VirtualAxis.jvm))(settings)
 
     override def jvmPlatform(
         crossVersion: CrossVersion,
@@ -515,25 +514,16 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.jvm +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.jvm +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(settings)
 
     override def jvmPlatform(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         configure: Project => Project
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.jvm +: axisValues
-      )(configure)
+      val axes = VirtualAxis.jvm +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(configure)
 
     override def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jvmPlatform(autoScalaLibrary = true, scalaVersions, Nil)
@@ -570,15 +560,14 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.js +: axisValues):
-        p => p.settings(settings)
+      val axes = VirtualAxis.js +: axisValues
+      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, axes)(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, Seq(VirtualAxis.js)):
-        p => p.settings(settings)
+      customRow(autoScalaLibrary = true, None, scalaVersions, Seq(VirtualAxis.js))(settings)
 
     override def jsPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
@@ -588,26 +577,16 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.js +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.js +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         configure: Project => Project
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.js +: axisValues
-      ): p =>
-        configure(p)
+      val axes = VirtualAxis.js +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(configure)
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
@@ -643,25 +622,14 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary,
-        Some(crossVersion),
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.native +: axisValues
+      customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, axes)(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        Seq(VirtualAxis.native)
-      ): p =>
-        p.settings(settings)
+      customRow(autoScalaLibrary = true, None, scalaVersions, Seq(VirtualAxis.native))(settings)
 
     override def nativePlatform(
         crossVersion: CrossVersion,
@@ -674,26 +642,16 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        p.settings(settings)
+      val axes = VirtualAxis.native +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
         axisValues: Seq[VirtualAxis],
         configure: Project => Project
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        configure(p)
+      val axes = VirtualAxis.native +: axisValues
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axes)(configure)
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
@@ -772,16 +730,14 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axisValues): p =>
-        p.settings(settings)
+      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, axisValues)(settings)
 
     override def customRow(
         autoScalaLibrary: Boolean,
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary, crossVersion = None, Nil, axisValues): (p) =>
-        p.settings(settings)
+      customRow(autoScalaLibrary, crossVersion = None, Nil, axisValues)(settings)
 
     override def customRow(
         scalaVersions: Seq[String],
@@ -951,21 +907,233 @@ end ProjectMatrix
 
 trait ProjectMatrixExtra:
 
+  import VirtualAxis.*
+
   extension (self: ProjectMatrix)
+
+    /** Applies `f` to this matrix once for each item in `seq`. */
+    def foldOver[A](seq: Iterable[A])(f: (ProjectMatrix, A) => ProjectMatrix): ProjectMatrix =
+      seq.foldLeft(self)(f)
+
+    /**
+     * Add rows to the matrix:
+     *  - if `crossAxes` contains scala versions, adds a row for each platform and for
+     *    each Scala version, setting [[Keys.scalaVersion]]
+     *  - otherwise, adds a row for each platform, disabling both
+     *    [[Keys.autoScalaLibrary]] and [[Keys.crossPaths]].
+     *
+     * @param crossAxes
+     *        contains zero or more scala versions; if it also contains a cross
+     *        version, sets [[Keys.crossVersion]] on each row.
+     *
+     * @param platforms
+     *        contains one or more platforms to emit rows for; if no platforms are specified,
+     *        no additional rows will be created.
+     *
+     * @param extraAxes
+     *        contains additional axes; may not contain any
+     *        [[VirtualAxis.PlatformAxis]] or [[VirtualAxis.ScalaVersionAxis]].
+     *
+     * @param transform
+     *        applies a transformation to the Project when it's emitted.
+     */
+    def addCrossVersionPlatforms(
+        crossAxes: CrossVersionAxes,
+        platforms: Seq[PlatformAxis],
+        extraAxes: Seq[VirtualAxis]
+    )(transform: Project => Project): ProjectMatrix =
+      if extraAxes.exists(_.isInstanceOf[PlatformAxis | ScalaVersionAxis]) then
+        sys.error("extraAxes must not contain a PlatformAxis or ScalaVersionAxis")
+      foldOver(platforms): (acc, platform) =>
+        val axesWithPlatform = platform +: extraAxes
+        if crossAxes.axes.isEmpty then
+          acc.customRow(autoScalaLibrary = false, crossAxes.cvOpt, Nil, axesWithPlatform)(transform)
+        else
+          acc.foldOver(crossAxes.axes): (acc, sv) =>
+            val axes = sv +: axesWithPlatform
+            acc.customRow(autoScalaLibrary = true, crossAxes.cvOpt, Nil, axes)(transform)
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(crossAxes: CrossVersionAxes, extraAxes: VirtualAxis*)(
+        transform: Project => Project
+    ): ProjectMatrix =
+      addCrossVersionPlatforms(crossAxes, platforms, extraAxes)(transform)
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(scalaVersions: ScalaVersionAxis*)(extraAxes: VirtualAxis*)(
+        transform: Project => Project
+    ): ProjectMatrix =
+      addCrossVersionPlatforms(CrossVersionAxes(scalaVersions*), platforms, extraAxes)(transform)
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(scalaVersions: ScalaVersionAxis*)(
+        transform: Project => Project
+    ): ProjectMatrix =
+      addCrossVersionPlatforms(CrossVersionAxes(scalaVersions*), platforms, Nil)(transform)
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(scalaVersions: ScalaVersionAxis*): ProjectMatrix =
+      addPlatforms(platforms*)(scalaVersions*)(identity[Project])
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(crossAxes: CrossVersionAxes, extraAxes: VirtualAxis*): ProjectMatrix =
+      addPlatforms(platforms*)(crossAxes, extraAxes*)(identity[Project])
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(cv: CrossVersion, scalaVersions: String*): ProjectMatrix =
+      addPlatforms(platforms*)(cv.axes(scalaVersions*))
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(cv: CrossVersion, scalaVersions: String*)(extraAxes: VirtualAxis*)(
+        transform: Project => Project
+    ): ProjectMatrix =
+      addPlatforms(platforms*)(cv.axes(scalaVersions*), extraAxes*)(transform)
+
+    /**
+     * Adds a row for each platform, and each version if any are specified.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]].
+     */
+    def addPlatforms(
+        platforms: PlatformAxis*
+    )(cv: CrossVersion, scalaVersions: String*)(
+        transform: Project => Project
+    ): ProjectMatrix =
+      addPlatforms(platforms*)(cv, scalaVersions*)()(transform)
+
+    /**
+     * Adds a row for each platform, and each version.
+     * If no scala versions are specified, no rows will be created.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]]
+     */
+    def addPlatformsBy(
+        platforms: PlatformAxis*
+    )(crossAxes: CrossVersionAxes, extraAxes: VirtualAxis*)(
+        transform: (PlatformAxis, ScalaVersionAxis) => Project => Project
+    ): ProjectMatrix =
+      foldOver(platforms): (acc, platform) =>
+        acc.foldOver(crossAxes.axes): (acc, sv) =>
+          val axes = new CrossVersionAxes(crossAxes.cvOpt, Seq(sv))
+          acc.addCrossVersionPlatforms(axes, Seq(platform), extraAxes)(transform(platform, sv))
+
+    /**
+     * Adds a row for each platform, and each version.
+     * If no scala versions are specified, no rows will be created.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]]
+     */
+    def addPlatformsBy(
+        platforms: PlatformAxis*
+    )(scalaVersions: ScalaVersionAxis*)(extraAxes: VirtualAxis*)(
+        transform: (PlatformAxis, ScalaVersionAxis) => Project => Project
+    ): ProjectMatrix =
+      addPlatformsBy(platforms*)(CrossVersionAxes(scalaVersions*), extraAxes*)(transform)
+
+    /**
+     * Adds a row for each platform, and each version.
+     * If no scala versions are specified, no rows will be created.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]]
+     */
+    def addPlatformsBy(platforms: PlatformAxis*)(scalaVersions: ScalaVersionAxis*)(
+        transform: (PlatformAxis, ScalaVersionAxis) => Project => Project
+    ): ProjectMatrix =
+      addPlatformsBy(platforms*)(scalaVersions*)()(transform)
+
+    /**
+     * Adds a row for each platform, and each version.
+     * If no scala versions are specified, no rows will be created.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]]
+     */
+    def addPlatformsBy(
+        platforms: PlatformAxis*
+    )(cv: CrossVersion, scalaVersions: String*)(
+        transform: (PlatformAxis, ScalaVersionAxis) => Project => Project
+    ): ProjectMatrix =
+      addPlatformsBy(platforms*)(CrossVersionAxes(cv, scalaVersions*))(transform)
+
+    /**
+     * Adds a row for each platform, and each version.
+     * If no scala versions are specified, no rows will be created.
+     * @param cv CrossVersion to use with scala versions.
+     * @see [[addCrossVersionPlatforms]]
+     */
+    def addPlatformsBy(
+        platforms: PlatformAxis*
+    )(scalaVersionsByPlatform: PlatformAxis => CrossVersionAxes)(
+        transform: (PlatformAxis, ScalaVersionAxis) => Project => Project
+    ): ProjectMatrix =
+      foldOver(platforms): (acc, platform) =>
+        acc.addPlatformsBy(platform)(scalaVersionsByPlatform(platform))(transform)
 
     /** Applies `transform` to every row built for one of `platforms`. */
     def configurePlatforms(
         transform: Project => Project
-    )(platforms: VirtualAxis.PlatformAxis*): ProjectMatrix =
+    )(platforms: PlatformAxis*): ProjectMatrix =
       self.configureRows(axes => Option.when(platforms.exists(axes.contains))(transform))
 
     /** Appends `settings` to every row built for one of `platforms`. */
     def configurePlatforms(
         settings: Def.SettingsDefinition*
-    )(platforms: VirtualAxis.PlatformAxis*): ProjectMatrix =
+    )(platforms: PlatformAxis*): ProjectMatrix =
       configurePlatforms(_.settings(settings*))(platforms*)
 
   end extension
+
+  /** Turns versions into ABI axes. Rows built from them don't set `crossVersion`. */
+  given versionToAxis: Conversion[String, ScalaVersionAxis] = scalaABIVersion(_)
+  given versionsToCrossAxes: Conversion[Seq[String], CrossVersionAxes] = CrossVersionAxes.abi(_*)
+  given axesToCrossAxes: Conversion[Seq[ScalaVersionAxis], CrossVersionAxes] = CrossVersionAxes(_*)
+
+  extension (cv: CrossVersion)
+    /** The axis of a row that builds `scalaVersion` under this cross version. */
+    def axes(scalaVersions: String*): CrossVersionAxes =
+      CrossVersionAxes(cv, scalaVersions*)
+
+    def axesBy(f: String => String)(scalaVersions: String*): CrossVersionAxes =
+      CrossVersionAxes.by(cv)(f)(scalaVersions*)
+
+    def axesPartial(scalaVersions: String*): CrossVersionAxes =
+      CrossVersionAxes.partial(cv, scalaVersions*)
 
   given Conversion[ProjectMatrix, LocalProjectMatrix] =
     m => LocalProjectMatrix(m.id)
@@ -983,3 +1151,58 @@ trait ProjectMatrixExtra:
 end ProjectMatrixExtra
 
 object ProjectMatrixExtra extends ProjectMatrixExtra
+
+/**
+ * - If `axes` are specified, will add a row for each scala version
+ * - Otherwise, will add a single row with no scala version
+ */
+class CrossVersionAxes private[sbt] (
+    private[sbt] val cvOpt: Option[CrossVersion],
+    private[sbt] val axes: Seq[VirtualAxis.ScalaVersionAxis]
+)
+
+object CrossVersionAxes:
+
+  /** Takes axes a build built itself. Rows built from them don't set `crossVersion`. */
+  def apply(scalaVersions: VirtualAxis.ScalaVersionAxis*): CrossVersionAxes =
+    new CrossVersionAxes(None, scalaVersions)
+
+  private def getAxesBy(f: String => String)(
+      scalaVersions: Seq[String]
+  ): Seq[VirtualAxis.ScalaVersionAxis] =
+    scalaVersions.map(VirtualAxis.scalaVersionAxisBy(f))
+
+  /** Builds an axis for each version. Each axis takes the value that `f` returns. */
+  def by(f: String => String)(scalaVersions: String*): CrossVersionAxes =
+    new CrossVersionAxes(None, getAxesBy(f)(scalaVersions))
+
+  /** As `by` above. Rows built from these axes set `crossVersion` to `cv`. */
+  def by(cv: CrossVersion)(f: String => String)(scalaVersions: String*): CrossVersionAxes =
+    new CrossVersionAxes(Some(cv), getAxesBy(f)(scalaVersions))
+
+  /** Builds an axis with the partial version, such as `3.3` for `3.3.6`. */
+  def partial(scalaVersions: String*): CrossVersionAxes =
+    by(VirtualAxis.scalaPartialVersionValue)(scalaVersions*)
+
+  /** As `partial` above. Rows built from these axes set `crossVersion` to `cv`. */
+  def partial(cv: CrossVersion, scalaVersions: String*): CrossVersionAxes =
+    by(cv)(VirtualAxis.scalaPartialVersionValue)(scalaVersions*)
+
+  /** Builds an axis with the ABI version, such as `2.13` for `2.13.18`. */
+  def abi(scalaVersions: String*): CrossVersionAxes =
+    by(CrossVersion.binaryScalaVersion)(scalaVersions*)
+
+  /** Builds an axis with the whole version. */
+  def full(scalaVersions: String*): CrossVersionAxes =
+    by(identity[String])(scalaVersions*)
+
+  /** Builds an axis with the version that sbt puts in the artifact name under `cv`. */
+  def apply(cv: CrossVersion, scalaVersions: String*): CrossVersionAxes =
+    val parser = CrossVersion.parser(cv)
+    val axis = (scalaVersion: String) =>
+      val binaryVersion = CrossVersion.binaryScalaVersion(scalaVersion)
+      val value = parser(scalaVersion, binaryVersion).fold(binaryVersion)(_._2)
+      VirtualAxis.scalaVersionAxis(scalaVersion, value)
+    new CrossVersionAxes(Some(cv), scalaVersions.map(axis))
+
+end CrossVersionAxes
