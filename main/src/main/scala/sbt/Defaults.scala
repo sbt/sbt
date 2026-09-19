@@ -9,7 +9,7 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ Files, Path as NioPath }
+import java.nio.file.{ Files, Path as NioPath, StandardCopyOption }
 import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
 import lmcoursier.CoursierDependencyResolution
@@ -2386,8 +2386,12 @@ object Defaults extends BuildCommon with DefExtra:
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val earlyAnalysisFile = (earlyCompileAnalysisFile.value: @nowarn("msg=transient")).toPath()
+      // Present iff exportPipelining: the jar scalac's -Ypickle-write pickles end up in.
+      val earlyJar = ci.options.earlyOutput.toScala.flatMap(_.getSingleOutputAsPath.toScala)
+      val ci1 = earlyJar.fold(ci)(prepareEarlyOutput(ci, _, s.log))
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
       val dirZip = ActionCache.dirZipPath(dir)
@@ -2403,10 +2407,43 @@ object Defaults extends BuildCommon with DefExtra:
       // which forces a recompile, rather than a current analysis paired with an outdated zip.
       store.set(contents)
       Def.declareOutput(analysisOut)
+      // Downstream pipelined compiles read the early jar and the early analysis, so a cache hit
+      // has to bring them back too. Otherwise the hit leaves no early jar and the next incremental
+      // round builds one from its own pickles alone, and downstream then fails to resolve every
+      // type this subproject did not just recompile.
+      earlyJar.filter(Files.exists(_)).foreach(jar => Def.declareOutput(c.toVirtualFile(jar)))
+      if earlyJar.isDefined && Files.exists(earlyAnalysisFile) then
+        Def.declareOutput(c.toVirtualFile(earlyAnalysisFile))
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
     .tag(Tags.Compile, Tags.CPU)
+
+  /**
+   * Gets the early output into a state Zinc can update incrementally.
+   *
+   * An action-cache hit restores the early jar as a symlink into the CAS. Zinc rewrites the jar in
+   * place when it merges a round's pickles, which would corrupt the cached blob, so Zinc gets a
+   * real copy. When there is a previous analysis but no early jar (a cache populated before the
+   * jar was an output, `exportPipelining` switched on for an existing build, a deleted `early`
+   * directory), an incremental round would create the jar from its own pickles alone, so the
+   * subproject is recompiled from scratch instead.
+   */
+  private def prepareEarlyOutput(ci: Inputs, earlyJar: NioPath, log: Logger): Inputs =
+    if Files.isSymbolicLink(earlyJar) then
+      val tmp = earlyJar.resolveSibling(earlyJar.getFileName.toString + ".tmp")
+      Files.copy(earlyJar.toRealPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+      Files.move(tmp, earlyJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      ci
+    else if !Files.exists(earlyJar) && hasCompilations(ci.previousResult.analysis.toScala) then
+      log.debug(s"early output $earlyJar is missing, recompiling from scratch")
+      ci.withPreviousResult(PreviousResult.of(jnone[CompileAnalysis], jnone[MiniSetup]))
+    else ci
+
+  private def hasCompilations(analysis: Option[CompileAnalysis]): Boolean =
+    analysis match
+      case Some(a: Analysis) => a.compilations.allCompilations.nonEmpty
+      case _                 => false
 
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
