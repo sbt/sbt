@@ -1,0 +1,39 @@
+# sbt/sbt#1084: the global plugin's dependencies are resolved once and then served from
+# the update cache. The marker library comes from an ivy-style repository under global/repo,
+# so a newer release lives at a new path while the cached report still points at the old one.
+
+> marker/publish
+$ exists global/repo/com.example/marker_3/0.1.0/jars/marker_3.jar
+
+# depend on latest.integration from the global plugin and load it
+$ copy-file changes/plugins.sbt global/plugins/plugins.sbt
+> reload
+> eval assert(Marker.version == "0.1.0")
+# in 2.x the global plugin's update cache lives under the current build's output directory
+$ exists target/out/jvm/*/global-plugins/update/*/output
+
+# publish a newer release; a plain reload keeps serving the cached 0.1.0
+$ copy-file changes/Marker-0.2.0.scala marker/src/main/scala/Marker.scala
+> set marker / version := "0.2.0"
+> marker/publish
+$ exists global/repo/com.example/marker_3/0.2.0/jars/marker_3.jar
+> reload
+> eval assert(Marker.version == "0.1.0")
+
+# updateGlobalPlugins forces one resolution of the global plugin project and reloads
+> updateGlobalPlugins
+> eval assert(Marker.version == "0.2.0")
+
+# the refreshed report is cached in turn: a plain reload does not resolve again
+$ copy-file changes/Marker-0.3.0.scala marker/src/main/scala/Marker.scala
+> set marker / version := "0.3.0"
+> marker/publish
+$ exists global/repo/com.example/marker_3/0.3.0/jars/marker_3.jar
+> reload
+> eval assert(Marker.version == "0.2.0")
+
+# The tests of one scripted run share a directory, and `global` is the part of it that is kept between
+# them, so delete what this test installed there.
+$ delete global/plugins global/repo
+$ absent global/plugins global/repo
+> reload
