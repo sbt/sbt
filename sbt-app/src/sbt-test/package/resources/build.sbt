@@ -5,7 +5,7 @@ version := "0.1"
 crossPaths := false
 scalaVersion := "3.3.1"
 
-packageOptions := {
+packageOptions := Def.uncached {
   def manifestExtra = {
     import java.util.jar._
     val mf = new Manifest

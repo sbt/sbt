@@ -3,6 +3,7 @@ semanticdbEnabled := true
 semanticdbIncludeInJar := true
 
 // see https://github.com/sbt/sbt/issues/5886
+@transient
 lazy val check = taskKey[Unit]("Checks that scalacOptions have the same number of parameters across configurations")
 lazy val anyConfigInThisProject = ScopeFilter(configurations = inAnyConfiguration)
 

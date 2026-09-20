@@ -1,5 +1,6 @@
 sbtPlugin := true
 
+@transient
 val copyOutputDir = taskKey[Unit]("Copies the compiled classes to a root-level directory")
 
 copyOutputDir := {

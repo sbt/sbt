@@ -4,6 +4,7 @@ import xsbti.compile.CompileOptions
 
 lazy val assertEmptySourcePositionMappers = taskKey[Unit]("checks that sourcePositionMappers is empty")
 lazy val assertAbsolutePathConversion = taskKey[Unit]("checks source mappers convert to absolute path")
+@transient
 lazy val assertVirtualFile = taskKey[Unit]("checks source mappers handle virtual files")
 lazy val resetMessages = taskKey[Unit]("empties the messages list")
 
@@ -20,7 +21,7 @@ lazy val root = (project in file("."))
         sourcePositionMappers.value.isEmpty
       }
     },
-    assertAbsolutePathConversion := {
+    assertAbsolutePathConversion := Def.uncached {
       val source = (Compile/sources).value.head
       assert {
         FakePrintWriter.messages.exists(_.contains(s"${source.getAbsolutePath}:3:15: comparing values of types Int and String using `==` will always yield false"))

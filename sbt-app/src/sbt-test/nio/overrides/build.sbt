@@ -19,7 +19,7 @@ bar := baseDirectory.value.toPath / "bar.txt"
 val baz = taskKey[Path]("baz")
 baz := baseDirectory.value.toPath / "baz.txt"
 
-TaskKey[Unit]("checkBar") := {
+TaskKey[Unit]("checkBar") := Def.uncached {
   val stamps = (bar / outputFileStamps).value
   assert(stamps.length == 3)
   val fileNames = stamps.map(_._1.getFileName.toString).toSet

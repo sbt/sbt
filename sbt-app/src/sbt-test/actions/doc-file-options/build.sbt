@@ -10,7 +10,7 @@ lazy val root = (project in file("."))
     TaskKey[Unit]("changeRootContent") := {
       IO.write(file(rootContentFile), newContents)
     },
-    TaskKey[Unit]("check") := {
+    TaskKey[Unit]("check") := Def.uncached {
       val packageHtml = (Compile / doc / target).value / "index.html"
       assert(
         IO.read(packageHtml).contains(newContents),

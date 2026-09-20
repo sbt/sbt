@@ -1,6 +1,7 @@
 scalaVersion := "2.12.21"
 crossScalaVersions := List("2.12.21", "2.13.12")
 
+@transient
 val setLastModified = taskKey[Unit]("Sets the last modified time for classfiles")
 setLastModified := {
   val versions = crossScalaVersions.value
@@ -10,6 +11,7 @@ setLastModified := {
   }
 }
 
+@transient
 val checkLastModified = taskKey[Unit]("Checks the last modified time for classfiles")
 checkLastModified := {
   val versions = crossScalaVersions.value
