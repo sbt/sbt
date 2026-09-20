@@ -35,7 +35,6 @@ lazy val root = (project in file("."))
         "com.github.ben-manes.caffeine:caffeine",
         "com.github.mwiede:jsch",
         "com.google.errorprone:error_prone_annotations",
-        "com.lmax:disruptor",
         "com.swoval:file-tree-views",
         "com.typesafe:config",
         "com.typesafe:ssl-config-core_3",
