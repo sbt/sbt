@@ -105,7 +105,7 @@ object Dependencies:
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
   val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.14.0"
 
-  val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
+  val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "3.2.4"
   val blake3 = "pt.kcry" %% "blake3" % "3.1.2"
   val zeroAllocationHashing = "net.openhft" % "zero-allocation-hashing" % "0.16"
 
