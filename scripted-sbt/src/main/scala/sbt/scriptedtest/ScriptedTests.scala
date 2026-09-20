@@ -251,10 +251,11 @@ final class ScriptedTests(
         val repos = new File(targetGlobal, "repositories")
         if repos.exists() then IO.delete(repos)
         // global/ survives between the tests of a batch, so the publishing targets that live
-        // there (see RemoteSbtCreator.isolationProps) have to be emptied per test.
-        Seq("local-repo", "m2-repo").foreach: name =>
-          val repo = new File(targetGlobal, name)
-          if repo.exists() then IO.delete(repo)
+        // there have to be emptied per test.
+        RemoteSbtCreator
+          .isolatedRepos(tempTestDir)
+          .foreach: repo =>
+            if repo.exists() then IO.delete(repo)
         // Copy test's contents and reload the sbt instance to pick them up
         IO.copyDirectory(originalDir, tempTestDir)
 

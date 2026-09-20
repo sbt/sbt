@@ -25,6 +25,20 @@ abstract class RemoteSbtCreator private[sbt]:
 private[sbt] object RemoteSbtCreator:
 
   /**
+   * The publishing targets scripted gives the forked sbt, as the system property that points at
+   * each one and its directory name. They sit under `global/`, which survives the wipe between
+   * the tests of a batch, so `ScriptedTests` empties them itself via `isolatedRepos`.
+   */
+  private val isolatedRepoProps =
+    List("-Dsbt.local.repository=" -> "local-repo", "-Dmaven.repo.local=" -> "m2-repo")
+
+  private def globalDir(testDirectory: File): File = new File(testDirectory, "global")
+
+  /** The directories `isolationProps` points the forked sbt at, for the caller to empty. */
+  def isolatedRepos(testDirectory: File): List[File] =
+    isolatedRepoProps.map((_, name) => new File(globalDir(testDirectory), name))
+
+  /**
    * Gives the forked sbt a publishing target of its own, under the directory scripted already
    * throws away, so a test cannot write into the developer's `~/.ivy2/local` or `~/.m2`.
    *
@@ -32,13 +46,11 @@ private[sbt] object RemoteSbtCreator:
    * re-resolve everything from the network, and the real local repositories stay readable. A
    * build that wants the old behavior back sets the property itself in `scriptedLaunchOpts`.
    */
-  def isolationProps(directory: File, launchOpts: Seq[String]): List[String] =
-    def unlessGiven(prefix: String, value: File): List[String] =
+  def isolationProps(testDirectory: File, launchOpts: Seq[String]): List[String] =
+    isolatedRepoProps.flatMap: (prefix, name) =>
       if launchOpts.exists(_.startsWith(prefix)) then Nil
-      else List(prefix + value.getAbsolutePath)
-    val global = new File(directory, "global")
-    unlessGiven("-Dsbt.local.repository=", new File(global, "local-repo")) :::
-      unlessGiven("-Dmaven.repo.local=", new File(global, "m2-repo"))
+      else List(prefix + new File(globalDir(testDirectory), name).getAbsolutePath)
+end RemoteSbtCreator
 
 final class LauncherBasedRemoteSbtCreator(
     directory: File,
