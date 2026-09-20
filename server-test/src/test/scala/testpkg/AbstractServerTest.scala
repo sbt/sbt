@@ -59,6 +59,9 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll:
     if p0.exists then p0
     else p1
 
+  protected def serverJvmOptions: Vector[String] =
+    Vector("-Djline.terminal=none", "-Dsbt.io.virtual=false", "-Dsbt.banner=false")
+
   override def beforeAll(): Unit =
     val base = Files.createTempDirectory(
       Files.createDirectories(targetDir.toPath.resolve("test-server")),
@@ -72,13 +75,7 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll:
     val process = RunFromSourceMain.fork(
       ForkOptions()
         .withOutputStrategy(OutputStrategy.StdoutOutput)
-        .withRunJVMOptions(
-          Vector(
-            "-Djline.terminal=none",
-            "-Dsbt.io.virtual=false",
-            "-Dsbt.banner=false",
-          )
-        ),
+        .withRunJVMOptions(serverJvmOptions),
       buildDir,
       TestProperties.scalaVersion,
       TestProperties.version,

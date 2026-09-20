@@ -14,8 +14,15 @@ import sbt.internal.util.Util
 import scala.collection.mutable
 
 import org.scalatest.BeforeAndAfterEach
+import scala.concurrent.duration.*
+import sbt.internal.langserver.ErrorCodes
+import sbt.internal.langserver.SbtExecParams
+import sbt.internal.langserver.codec.JsonProtocol.given
 
 class ClientTest extends AbstractServerTest with BeforeAndAfterEach:
+  // without virtual IO the server writes the line to its own stdout, not to the channel
+  override protected def serverJvmOptions: Vector[String] =
+    Vector("-Djline.terminal=none", "-Dsbt.io.virtual=true", "-Dsbt.banner=false")
   override val testDirectory: String = "client"
   object NullInputStream extends InputStream:
     override def read(): Int =
@@ -128,6 +135,25 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach:
   test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)
   }
+  test("batch client reports the action cache summary exactly once") {
+    val (exitCode, lines) = clientWithStdoutLines("compile")
+    assert(exitCode == 0)
+    assert(lines.count(_.contains("elapsed time")) == 1, lines.mkString("\n"))
+    assert(
+      lines.exists(l => l.contains("elapsed time") && l.contains(", cache ")),
+      lines.mkString("\n")
+    )
+  }
+  test("batch client reports the result line exactly once when a task fails") {
+    val (exitCode, lines) = clientWithStdoutLines("willFail")
+    assert(exitCode == 1)
+    assert(lines.count(_.contains("elapsed time")) == 1, lines.mkString("\n"))
+    // the cache summary is what tells a server-written line from the client's own
+    assert(
+      lines.exists(l => l.contains("elapsed time") && l.contains(", cache ")),
+      lines.mkString("\n")
+    )
+  }
   test("run") {
     val (exitCode, lines) = clientWithStdoutLines("run")
     assert(exitCode == 0)
@@ -135,6 +161,24 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach:
       lines.toList.exists(_.contains("running (fork) hello")),
       lines.toList.mkString(",")
     )
+    assert(lines.count(_.contains("elapsed time")) == 1, lines.mkString("\n"))
+  }
+  test("a client-side job that returns Unit is still reported once") {
+    val (exitCode, lines) = clientWithStdoutLines("runAsUnit")
+    assert(exitCode == 0)
+    assert(lines.count(_.contains("elapsed time")) == 1, lines.mkString("\n"))
+  }
+  test("a client-side job that then fails is still reported once") {
+    val (exitCode, lines) = clientWithStdoutLines("runThenFail")
+    assert(exitCode == 1)
+    assert(lines.count(_.contains("elapsed time")) == 1, lines.mkString("\n"))
+  }
+  test("a failing sbt/exec is answered with the task's own error") {
+    val id = svr.session.nextId()
+    svr.session.sendJsonRpc(id, "sbt/exec", SbtExecParams("willFail")).get
+    val error = svr.session.waitForResponseMsg(60.seconds, id).get.error
+    assert(error.exists(_.code == ErrorCodes.InternalError), error.toString)
+    assert(error.exists(_.message.contains("willFail")), error.toString)
   }
   test("compi completions") {
     val expected = Vector(

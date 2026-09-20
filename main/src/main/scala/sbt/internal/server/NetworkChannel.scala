@@ -291,10 +291,13 @@ final class NetworkChannel(
 
   private[sbt] def respondError(
       err: JsonRpcResponseError,
-      execId: Option[String]
+      execId: Option[String],
+      skipExecRequests: Boolean = false
   ): Unit = this.synchronized {
     getPendingRequest(execId) match
-      case Some(request) =>
+      // a plain sbt/exec is answered when the command finishes, not from a task failure
+      case Some(request) if skipExecRequests && request.method == "sbt/exec" => ()
+      case Some(request)                                                     =>
         pendingRequests -= request.id
         jsonRpcRespondError(request.id, err)
       case _ =>
@@ -755,9 +758,7 @@ final class NetworkChannel(
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
     override def isEchoEnabled: Boolean = sbt.internal.util.JLine3.isEchoEnabled(getAttributes)
-    override def isSuccessEnabled: Boolean =
-      interactive.get ||
-        StandardMain.exchange.withState(ContinuousCommands.isInWatch(_, NetworkChannel.this))
+    override def isSuccessEnabled: Boolean = true
     override lazy val isColorEnabled: Boolean = waitForPending(_.isColorEnabled)
     override lazy val isSupershellEnabled: Boolean = waitForPending(_.isSupershellEnabled)
     getProperties(false)
