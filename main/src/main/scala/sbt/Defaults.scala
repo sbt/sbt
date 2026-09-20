@@ -3376,13 +3376,14 @@ object Classpaths:
           if includePluginResolvers.value then pluginResolvers
           else Vector.empty
         // Resolve from the publishLocal target as well, so that relocating it (as scripted does)
-        // still lets a build see what it just published.
+        // still lets a build see what it just published. Not added when the build's resolvers are
+        // overridden, since the point of that mode is that only the forced repositories are used.
         val localRepo = localIvyRepository.value
         val localPublish =
           if localRepo == defaultIvyHome(ivyPaths.value) / "local" then Vector.empty
           else Vector(Resolver.file("local-publish", localRepo)(using Resolver.ivyStylePatterns))
         bootResolvers.value match
-          case Some(repos) if overrideBuildResolvers.value => proj +: (localPublish ++ repos)
+          case Some(repos) if overrideBuildResolvers.value => proj +: repos
           case _                                           =>
             val base = if sbtPlugin.value then sbtResolvers.value ++ rs ++ pr else rs ++ pr
             (proj +: (localPublish ++ base)).distinct
