@@ -1,4 +1,5 @@
 // Scripted test for #3681: default global base (XDG / sbt.global.base) is used correctly.
+@transient
 lazy val checkGlobalBase = taskKey[Unit]("Verifies global base is absolute and non-empty")
 
 lazy val root = (project in file(".")).settings(

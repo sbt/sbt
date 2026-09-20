@@ -1,4 +1,4 @@
-TaskKey[Unit]("checkSbtVersionWarning") := {
+TaskKey[Unit]("checkSbtVersionWarning") := Def.uncached {
 	val state = Keys.state.value
 	val logging = state.globalLogging
 	val currVersion = state.configuration.provider.id.version()

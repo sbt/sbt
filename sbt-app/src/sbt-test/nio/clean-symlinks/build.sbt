@@ -4,7 +4,7 @@ name := "clean-symlinks-test"
 
 scalaVersion := "3.9.0"
 
-TaskKey[Unit]("createSymlinkedDirectory") := {
+TaskKey[Unit]("createSymlinkedDirectory") := Def.uncached {
   IO.createDirectory(target.value)
   Files.createSymbolicLink(target.value.toPath / "foo", baseDirectory.value.toPath / "foo")
 }

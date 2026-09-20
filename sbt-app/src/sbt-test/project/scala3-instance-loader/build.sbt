@@ -4,7 +4,7 @@ lazy val check = taskKey[Unit]("check the Scala 3 instance class loader")
 
 lazy val xsbtiClass = classOf[xsbti.compile.Compilers]
 
-check := {
+check := Def.uncached {
   val scala3Loader = scalaInstance.value.loader
   assert(
     scala3Loader.loadClass(xsbtiClass.getCanonicalName) == xsbtiClass,

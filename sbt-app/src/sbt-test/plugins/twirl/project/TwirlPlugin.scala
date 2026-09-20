@@ -6,6 +6,7 @@ object TwirlPlugin extends AutoPlugin {
   override def trigger = noTrigger
 
   object autoImport {
+    @transient
     val twirlCompileTemplates = taskKey[Seq[File]]("Compile twirl templates into scala source files")
   }
 

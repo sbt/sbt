@@ -16,7 +16,7 @@ libraryDependencies += "org.scala-lang" % "scala-actors" % "2.11.12"
 
 lazy val check = taskKey[Unit]("Runs the check")
 
-check := {
+check := Def.uncached {
   val lastLog = BuiltinCommands.lastLogFile(state.value)
   val last = IO read lastLog.get
   def containsWarn1 = last.contains("Binary version (1.1.0) for dependency org.scala-lang#scala-actors-migration_2.11;1.1.0")
