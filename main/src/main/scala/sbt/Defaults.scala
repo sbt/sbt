@@ -3423,9 +3423,14 @@ object Classpaths:
       baseDirectory.value.toString,
       bootIvyHome(appConfiguration.value).map(_.toString)
     ),
-    localIvyRepository := SysProp.localIvyRepository.getOrElse(
-      defaultIvyHome(ivyPaths.value) / "local"
-    ),
+    localIvyRepository := {
+      val ip = ivyPaths.value
+      val fallback = defaultIvyHome(ip) / "local"
+      // A build that points ivyPaths somewhere of its own has already chosen where to publish,
+      // so it wins over the ambient property.
+      if ip.ivyHome != bootIvyHome(appConfiguration.value).map(_.toString) then fallback
+      else SysProp.localIvyRepository.getOrElse(fallback)
+    },
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
       val ac = appConfiguration.value

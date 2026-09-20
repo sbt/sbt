@@ -22,6 +22,24 @@ private[sbt] object RemoteSbtCreatorProp:
 abstract class RemoteSbtCreator private[sbt]:
   def newRemote(server: IPC.Server): Process
 
+private[sbt] object RemoteSbtCreator:
+
+  /**
+   * Gives the forked sbt a publishing target of its own, under the directory scripted already
+   * throws away, so a test cannot write into the developer's `~/.ivy2/local` or `~/.m2`.
+   *
+   * Only the publish targets move. The shared download caches are left alone, so tests do not
+   * re-resolve everything from the network, and the real local repositories stay readable. A
+   * build that wants the old behavior back sets the property itself in `scriptedLaunchOpts`.
+   */
+  def isolationProps(directory: File, launchOpts: Seq[String]): List[String] =
+    def unlessGiven(prefix: String, value: File): List[String] =
+      if launchOpts.exists(_.startsWith(prefix)) then Nil
+      else List(prefix + value.getAbsolutePath)
+    val global = new File(directory, "global")
+    unlessGiven("-Dsbt.local.repository=", new File(global, "local-repo")) :::
+      unlessGiven("-Dmaven.repo.local=", new File(global, "m2-repo"))
+
 final class LauncherBasedRemoteSbtCreator(
     directory: File,
     launcher: File,
@@ -41,8 +59,9 @@ final class LauncherBasedRemoteSbtCreator(
     val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
     val scripted = "-Dsbt.scripted=true"
     val args = List("<" + server.port)
+    val isolation = RemoteSbtCreator.isolationProps(directory, launchOpts)
     val cmd =
-      javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-jar" :: launcherJar :: args ::: Nil
+      javaCommand :: launchOpts.toList ::: isolation ::: globalBase :: scripted :: "-jar" :: launcherJar :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory).run(io)
     val thread = new Thread():
@@ -77,8 +96,9 @@ final class RunFromSourceBasedRemoteSbtCreator(
     val cpString = classpath.mkString(java.io.File.pathSeparator)
     val args =
       List(mainClassName, directory.toString, scalaVersion, sbtVersion, cpString, "<" + server.port)
+    val isolation = RemoteSbtCreator.isolationProps(directory, launchOpts)
     val cmd =
-      javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-cp" :: cpString :: args ::: Nil
+      javaCommand :: launchOpts.toList ::: isolation ::: globalBase :: scripted :: "-cp" :: cpString :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory) run (io)
     val thread = new Thread():

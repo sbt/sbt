@@ -10,7 +10,8 @@ scalaVersion := "3.9.0"
 val publishRepoBase = settingKey[File]("Base directory the HTTP server writes to")
 publishRepoBase := baseDirectory.value / "repo"
 
-val publishPort = 3031
+// 3030-3032 are taken by the other ivyless-publish-http fixtures, which share this JVM in batch mode
+val publishPort = 3033
 
 publishTo := Some(
   Resolver.uri("test-repo", uri(s"http://localhost:$publishPort/"))(using Resolver.ivyStylePatterns)
