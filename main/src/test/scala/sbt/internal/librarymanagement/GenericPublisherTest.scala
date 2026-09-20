@@ -233,7 +233,7 @@ object GenericPublisherTest extends Properties:
             None
           catch case e: java.io.IOException => Some(e.getMessage)
         thrown match
-          case None => Result.failure.log("republishing to a remote repo should have failed")
+          case None      => Result.failure.log("republishing to a remote repo should have failed")
           case Some(msg) =>
             Result
               .assert(msg.contains("already exists") && msg.contains(moduleName))
