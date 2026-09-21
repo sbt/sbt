@@ -41,7 +41,8 @@ private[sbt] object LanguageServerProtocol:
     ServerCapabilities(
       textDocumentSync = TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
       hoverProvider = false,
-      definitionProvider = false
+      definitionProvider = false,
+      successLog = true
     )
 
   def handler(converter: FileConverter): ServerHandler = ServerHandler { callback =>

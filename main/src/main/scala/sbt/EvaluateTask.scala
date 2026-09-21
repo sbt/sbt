@@ -406,7 +406,12 @@ object EvaluateTask:
       val log = getStreams(key, streams).log
       val display = contextDisplay(state, ITerminal.isColorEnabled)
       val errorMessage = "(" + display.show(key) + ") " + msgString
-      state.respondError(ErrorCodes.InternalError, errorMessage)
+      StandardMain.exchange.respondTaskError(
+        ErrorCodes.InternalError,
+        errorMessage,
+        state.currentCommand.flatMap(_.execId),
+        state.source
+      )
       log.error(errorMessage)
   end logIncomplete
 

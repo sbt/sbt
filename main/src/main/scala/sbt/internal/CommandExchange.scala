@@ -32,7 +32,7 @@ import sbt.io.{ Hash, IO }
 import sbt.nio.Watch.NullLogger
 import sbt.internal.nio.FileTreeRepository
 import sbt.nio.file.FileAttributes
-import sbt.protocol.Serialization.attach
+import sbt.protocol.Serialization.{ attach, clientJob }
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
 import sbt.util.Logger
 import sjsonnew.JsonFormat
@@ -66,6 +66,8 @@ private[sbt] final class CommandExchange:
   private val currentExecRef = new AtomicReference[Exec]
   private val lastActivityTime = new AtomicLong(System.currentTimeMillis)
   private val shuttingDown = new AtomicBoolean(false)
+  private val clientJobHandoff = new AtomicBoolean(false)
+  private val taskError = new AtomicReference[JsonRpcResponseError]
   @volatile private var procFile: Option[File] = None
   private[sbt] def hasServer = server.isDefined
   addConsoleChannel()
@@ -364,7 +366,8 @@ private[sbt] final class CommandExchange:
   private[sbt] def respondError(
       err: JsonRpcResponseError,
       execId: Option[String],
-      source: Option[CommandSource]
+      source: Option[CommandSource],
+      skipExecRequests: Boolean = false
   ): Unit =
     for
       source <- source.map(_.channelName)
@@ -372,7 +375,22 @@ private[sbt] final class CommandExchange:
         // broadcast to the source channel only
         case c: NetworkChannel if c.name == source => c
       }
-    do tryTo(_.respondError(err, execId))(channel)
+    do tryTo(_.respondError(err, execId, skipExecRequests))(channel)
+
+  /**
+   * Reports a task failure to a request-driven client such as BSP. A plain `sbt/exec` is answered
+   * when the command finishes, and answering it here would cut the client off mid-command.
+   */
+  private[sbt] def respondTaskError(
+      code: Long,
+      message: String,
+      execId: Option[String],
+      source: Option[CommandSource]
+  ): Unit =
+    val err = JsonRpcResponseError(code, message)
+    // only a network exec has a deferred `sbt/exec` for respondStatus to answer; first one wins
+    if source.exists(_.channelName.startsWith("network")) then taskError.compareAndSet(null, err)
+    respondError(err, execId, source, skipExecRequests = true)
 
   // This is an interface to directly respond events.
   private[sbt] def respondEvent[A: JsonFormat](
@@ -388,8 +406,17 @@ private[sbt] final class CommandExchange:
       }
     do tryTo(_.respondResult(event, execId))(channel)
 
+  /** Cleared per run; one of each is enough because the command loop runs one exec at a time. */
+  private[sbt] def clearRunReporting(): Unit =
+    clientJobHandoff.set(false)
+    taskError.set(null)
+
+  private[sbt] def handedOffToClient: Boolean = clientJobHandoff.get
+
   // This is an interface to directly notify events.
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit =
+    // set here, not at the call sites, so it cannot drift from the notification the client reads
+    if method == clientJob then clientJobHandoff.set(true)
     channels.foreach:
       case c: NetworkChannel if c.subscribeToAll || isChannelOwner(c) =>
         tryTo(_.notifyEvent(method, params))(c)
@@ -403,6 +430,10 @@ private[sbt] final class CommandExchange:
 
   def respondStatus(event: ExecStatusEvent): Unit =
     import sbt.protocol.codec.JsonProtocol.given
+    // consumed for every failing exec, not just the one answered below, or it outlives its command
+    val failure = event.exitCode match
+      case None | Some(0) => None
+      case Some(_)        => Option(taskError.getAndSet(null))
     for
       source <- event.channelName
       channel <- channels.collectFirst {
@@ -415,7 +446,12 @@ private[sbt] final class CommandExchange:
           case None | Some(0) =>
             tryTo(_.respondResult(event, event.execId))(channel)
           case Some(code) =>
-            tryTo(_.respondError(code, event.message.getOrElse(""), event.execId))(channel)
+            val err = event.message
+              .map(JsonRpcResponseError(code, _))
+              .orElse(failure)
+              .getOrElse(JsonRpcResponseError(code, ""))
+            tryTo(_.respondError(err.code, err.message, event.execId))(channel)
+  end respondStatus
 
   private[sbt] def setExec(exec: Option[Exec]): Unit =
     currentExecRef.set(exec.orNull)
