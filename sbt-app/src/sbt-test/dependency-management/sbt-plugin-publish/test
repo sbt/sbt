@@ -1,7 +1,10 @@
+> positiveControl / checkUpdate
+
 > sbtPlugin1 / checkPackagedArtifacts
 
 > sbtPlugin1 / checkPublish
 > testMaven1 / checkUpdate
+> testMavenConflict / checkUpdate
 
 > sbtPlugin1 / publishLocal
 > testLocal1 / checkUpdate
