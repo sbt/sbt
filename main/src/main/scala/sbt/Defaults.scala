@@ -3190,10 +3190,30 @@ object Classpaths:
     val version = Keys.version.value
     val pomFile = config.file.get.getParentFile / s"$nameWithCross-$version.pom"
     val pub = Keys.publisher.value
-    val module =
-      pub.moduleDescriptor(moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration])
+    val settings = appendSbtCrossVersion(
+      moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration]
+    )
+    val module = pub.moduleDescriptor(settings)
     pub.makePomFile(module, config.withFile(pomFile), streams.value.log)
     converter.toVirtualFile(pomFile.toPath)
+
+  private def appendSbtCrossVersion(
+      settings: ModuleDescriptorConfiguration
+  ): ModuleDescriptorConfiguration =
+    settings
+      .withModule(appendSbtCrossVersion(settings.module))
+      .withDependencies(settings.dependencies.map(appendSbtCrossVersion))
+
+  private def appendSbtCrossVersion(module: ModuleID): ModuleID =
+    val attributes = module.extraAttributes
+    val suffix = for
+      scalaVersion <- attributes.get(s"e:${PomExtraAttributeKeys.ScalaVersionKey}")
+      sbtVersion <- attributes.get(s"e:${PomExtraAttributeKeys.SbtVersionKey}")
+    yield s"_${scalaVersion}_$sbtVersion"
+    suffix
+      .filterNot(module.name.endsWith)
+      .map(value => module.withName(module.name + value))
+      .getOrElse(module)
 
   def ivyPublishSettings: Seq[Setting[?]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,

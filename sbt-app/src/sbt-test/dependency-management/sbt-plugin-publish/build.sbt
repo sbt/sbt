@@ -1,4 +1,9 @@
+import java.nio.charset.StandardCharsets
+
 import scala.util.matching.Regex
+
+ThisBuild / scalaVersion := "2.12.21"
+ThisBuild / pluginCrossBuild / sbtVersion := "1.5.8"
 
 lazy val repo = file("test-repo")
 lazy val resolver = Resolver.file("test-repo", repo)
@@ -85,19 +90,25 @@ lazy val testLocal2 = project.in(file("test-local-2"))
     ).value
   )
 
+@transient
 lazy val checkPackagedArtifacts = taskKey[Unit]("check the packaged artifacts")
+@transient
 lazy val checkPublish = taskKey[Unit]("check publish")
+@transient
 lazy val checkUpdate = taskKey[Unit]("check update")
 
 def checkPackagedArtifactsDef(artifactName: String, withLegacy: Boolean): Def.Initialize[Task[Unit]] = Def.task {
   val packagedArtifacts = Keys.packagedArtifacts.value
+  val converter = fileConverter.value
+  def readPom(artifact: Artifact): String =
+    IO.read(converter.toPath(packagedArtifacts(artifact)).toFile, StandardCharsets.UTF_8)
 
   val legacyArtifacts = packagedArtifacts.keys.filter(a => a.name == artifactName)
   if (withLegacy) {
     assert(legacyArtifacts.size == 4)
     val legacyPom = legacyArtifacts.find(_.`type` == "pom")
     assert(legacyPom.isDefined)
-    val legacyPomContent = IO.read(packagedArtifacts(legacyPom.get))
+    val legacyPomContent = readPom(legacyPom.get)
     assert(legacyPomContent.contains(s"<artifactId>$artifactName</artifactId>"))
     assert(legacyPomContent.contains(s"<artifactId>sbt-plugin-example-diamond</artifactId>"))
   } else {
@@ -109,7 +120,7 @@ def checkPackagedArtifactsDef(artifactName: String, withLegacy: Boolean): Def.In
   assert(artifactsWithCrossVersion.size == 4)
   val pomWithCrossVersion = artifactsWithCrossVersion.find(_.`type` == "pom")
   assert(pomWithCrossVersion.isDefined)
-  val pomContent = IO.read(packagedArtifacts(pomWithCrossVersion.get))
+  val pomContent = readPom(pomWithCrossVersion.get)
   assert(pomContent.contains(s"<artifactId>${artifactName}_2.12_1.0</artifactId>"))
   assert(pomContent.contains(s"<artifactId>sbt-plugin-example-diamond_2.12_1.0</artifactId>"))
 }
@@ -158,6 +169,6 @@ def checkUpdateDef(expected: String*): Def.Initialize[Task[Unit]] = Def.task {
     .flatMap(_.artifacts)
     .map(_._2)
   val obtainedSet = obtainedFiles.map(_.getName).toSet
-  val expectedSet = expected.toSet + "scala-library.jar"
+  val expectedSet = expected.toSet + s"scala-library-${scalaVersion.value}.jar"
   assert(obtainedSet == expectedSet, obtainedSet)
 }
