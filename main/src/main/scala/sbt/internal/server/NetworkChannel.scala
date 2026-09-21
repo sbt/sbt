@@ -292,7 +292,7 @@ final class NetworkChannel(
   private[sbt] def respondError(
       err: JsonRpcResponseError,
       execId: Option[String],
-      skipExecRequests: Boolean = false
+      skipExecRequests: Boolean,
   ): Unit = this.synchronized {
     getPendingRequest(execId) match
       // a plain sbt/exec is answered when the command finishes, not from a task failure
@@ -307,6 +307,13 @@ final class NetworkChannel(
         log.debug(msg)
   }
 
+  private[sbt] def respondError(
+      code: Long,
+      message: String,
+      execId: Option[String]
+  ): Unit =
+    respondError(JsonRpcResponseError(code, message), execId, skipExecRequests = false)
+
   private[sbt] def getPendingRequest(execId: Option[String]): Option[JsonRpcRequestMessage] =
     execId.flatMap {
       // This handles multi commands from the network that were remapped to a different
@@ -319,13 +326,6 @@ final class NetworkChannel(
         }
       case id => pendingRequests.get(id)
     }
-
-  private[sbt] def respondError(
-      code: Long,
-      message: String,
-      execId: Option[String]
-  ): Unit =
-    respondError(JsonRpcResponseError(code, message), execId)
 
   private[sbt] def respondResult[A: JsonFormat](
       event: A,
