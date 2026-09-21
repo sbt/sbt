@@ -10,8 +10,8 @@ object Dependencies:
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  val ioVersion = nightlyVersion.getOrElse("1.13.2")
-  val zincVersion = nightlyVersion.getOrElse("2.1.0-M2")
+  val ioVersion = nightlyVersion.getOrElse("1.13.3")
+  val zincVersion = nightlyVersion.getOrElse("2.1.0-M3")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -113,7 +113,7 @@ object Dependencies:
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
-  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.6"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.7"
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
