@@ -19,10 +19,76 @@ There are lots of ways to contribute to sbt ecosystem depending on your interest
 
 For the issue reporting guidelines, jump to [issues](#issues).
 
-Ideas and proposals
--------------------
+Start with an issue (ideas, proposals, etc)
+-------------------------------------------
 
-If you have an enhancement idea, or a general discussion, please follow the [sbt 2.0 RFC process](https://eed3si9n.com/sbt-2.0-rfc-process) or start a [Discussion][Discussions].
+Before creating a pull request to sbt, start a conversation. This can be in a new [Issue](#issues), continuing the conversation in an existing issue, [Discussion][Discussions], or any other communication channel being used by the project. This gives maintainers and other contributors a chance to work with you on your idea at an earlier stage to make sure it is an acceptable contribution.
+
+For an enhancement idea, or a general discussion, we suggest following the [sbt 2.0 RFC process](https://eed3si9n.com/sbt-2.0-rfc-process) or start a [Discussion][Discussions].
+
+<a id="issues"></a>
+Reporting Issues
+----------------
+
+When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable and usable.
+
+Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
+
+### Preliminaries
+
+- Make sure your sbt version is up to date.
+- Search [StackOverflow] and [Issues] to see whether your bug has already been reported.
+- Open one case for each problem.
+- Proceed to the next steps for details.
+
+### What to report
+
+The developers need three things from you: **steps**, **problems**, and **expectations**.
+
+The most important thing to remember about bug reporting is to clearly distinguish facts and opinions.
+
+#### Steps
+
+What we need first is **the exact steps to reproduce your problems on our computers**. This is called *reproduction steps*, which is often shortened to "repro steps" or "steps." Describe your method of running sbt. Provide `build.sbt` that caused the problem and the version of sbt or Scala that was used. Provide sample Scala code if it's to do with incremental compilation. If possible, minimize the problem to reduce non-essential factors.
+
+Repro steps are the most important part of a bug report. If we cannot reproduce the problem in one way or the other, the problem can't be fixed. Telling us the error messages is not enough.
+
+#### Problems
+
+Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For compilation errors, include the stack trace. The more raw info the better.
+
+#### Expectations
+
+Same as the problems. Describe what *you think* should've happened.
+
+#### Notes
+
+Add any optional notes section to describe your analysis.
+
+### Subject
+
+The subject of the bug report doesn't matter. A more descriptive subject is certainly better, but a good subject really depends on the analysis of the problem, so don't worry too much about it. "StackOverflowError while name hashing is enabled" is good enough.
+
+### Formatting
+
+If possible, please format code or console outputs.
+
+On GitHub it's:
+
+    ```scala
+    name := "foo"
+    ```
+
+On StackOverflow, it's:
+
+```
+<!-- language: lang-scala -->
+
+    name := "foo"
+```
+
+Here's a simple sample case: [#327][327].
+Finally, thank you for taking the time to report a problem.
 
 Patching the core (send pull requests)
 --------------------------------------
@@ -38,27 +104,14 @@ Given the wide user base and the long history, not all issues are valid or relev
 - [ ] Before working on a pull request, please confirm that **you can reproduce the reported problem** using GitHub Actions or your computer.
 - [ ] After making the code change, please confirm that **your change compiles, and has fixed the problem**.
 
-Due to Gittensor bounties, sbt project is getting a high volume of pull request attempts, from
-programmers with seemingly varying skill levels with regards to Scala or sbt.
-In practice, this means that we do not have the bandwidth to play the QA role,
-must minimize the review burden. Maintainers might close a PR if it fails to pass the CI in a few rounds.
+We often do not have the bandwidth to play the QA role if the PR is too long, doesn't compile, or doesn't fix the issue. To minimize the review burden,  Maintainers might close the PRs.
 
 If you can express the reproduction as a test that would be great, but often the problems require locally building sbt and running test builds yourself. For local testing, post screenshots or screencast to demonstrate that the fix works at least on your machine.
 
 <a id="genai"></a>
 ### AI assisted contributions
 
-Generally, it's fine to use AI tools to help you create Pull Requests for sbt as long as you adhere to the following guidelines:
-
-- Pull requests created by AI must have been fully verified with **human-in-the-loop**. Actually run sbt to test your changes.
-- **All AI usage in any form must be disclosed**. State in your PR description that you have used AI tools to assist in creating the PR.
-- No third party materials are included in the output; or materials that are included in the output are in compliance with an open source license compatible with Apache License.
-- Ensure that you review and understand all code generated by AI tools before including it in your PR - do not blindly trust the generated code. The final responsibility for the code in your PR lies with you.
-- Blindly copy-pasting code from AI tools is detrimental as it might introduce security and stability risks to the project.
-
-⚠️ Maintainers that spot untested, unexplainable, AI copy-pasted PRs will close the related PRs and block the user from making further contributions. ⚠️
-
-In a perfect world, AI would produce high-quality, accurate work every time. But today, that reality depends on the driver of the AI. And today, most drivers of AI are just not good enough. So, until either the people get better, the AI gets better, or both, we have to have strict rules to protect Maintainers.
+See [LLM_POLICY.md](./LLM_POLICY.md).
 
 <a id="getting-started"></a>
 ### Getting started
@@ -82,12 +135,12 @@ The `stable` branch represents the current stable sbt 1.x release. Once sbt 2.x 
 
 Before you submit a Pull Request (PR) from your forked repo, check that it meets these guidelines:
 
+- Make sure your PR is small (both scope and lines of change) and focused on one change only. Avoid adding unrelated changes, mixing adding features and refactoring.
 - Confirm that you can reproduce the problem prior to making the changes to the code.
 - Include tests, either as scripted test or unit tests to your pull request, or screenshots from a manual test.
 - Follow our project's [Commit message guideline](#commit).
 - Follow our project's [Coding style and best practices][03].
 - Sign the [Scala Contributor License Agreement](https://cla.scala-lang.org/sbt/sbt).
-- Make sure your PR is small and focused on one change only - avoid adding unrelated changes, mixing adding features and refactoring. Keeping to that rule will make it easier to review your PR and will make it easier for core devs if they decide that your change should be cherry-picked to release it in a stable release of sbt.
 - Maintainers will not merge a PR that regresses linting or does not pass CI tests (unless you have good justification that it a transient error or something that is being fixed in other PR).
 - Maintainers will not merge a PR that breaks binary compatibility ("bincompat"). Run `mimaReportBinaryIssues` from the sbt shell.
 - When merging PRs, Maintainer may use **Squash and Merge** which means then your PR will be merged as **one commit**, regardless of the number of commits in your PR. During the review cycle, you can keep a commit history for easier review.
@@ -158,72 +211,6 @@ On macOS, the following can be used to target ARM64:
 ```bash
 $ ARCHS=arm64 sbt nativeImage
 ```
-
-<a id="issues"></a>
-Reporting Issues
-----------------
-
-When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable and usable.
-
-Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
-
-Please open a GitHub issue when you are 90% sure it's an actual bug.
-
-### Preliminaries
-
-- Make sure your sbt version is up to date.
-- Search [StackOverflow] and [Issues] to see whether your bug has already been reported.
-- Open one case for each problem.
-- Proceed to the next steps for details.
-
-### What to report
-
-The developers need three things from you: **steps**, **problems**, and **expectations**.
-
-The most important thing to remember about bug reporting is to clearly distinguish facts and opinions.
-
-#### Steps
-
-What we need first is **the exact steps to reproduce your problems on our computers**. This is called *reproduction steps*, which is often shortened to "repro steps" or "steps." Describe your method of running sbt. Provide `build.sbt` that caused the problem and the version of sbt or Scala that was used. Provide sample Scala code if it's to do with incremental compilation. If possible, minimize the problem to reduce non-essential factors.
-
-Repro steps are the most important part of a bug report. If we cannot reproduce the problem in one way or the other, the problem can't be fixed. Telling us the error messages is not enough.
-
-#### Problems
-
-Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For compilation errors, include the stack trace. The more raw info the better.
-
-#### Expectations
-
-Same as the problems. Describe what *you think* should've happened.
-
-#### Notes
-
-Add any optional notes section to describe your analysis.
-
-### Subject
-
-The subject of the bug report doesn't matter. A more descriptive subject is certainly better, but a good subject really depends on the analysis of the problem, so don't worry too much about it. "StackOverflowError while name hashing is enabled" is good enough.
-
-### Formatting
-
-If possible, please format code or console outputs.
-
-On GitHub it's:
-
-    ```scala
-    name := "foo"
-    ```
-
-On StackOverflow, it's:
-
-```
-<!-- language: lang-scala -->
-
-    name := "foo"
-```
-
-Here's a simple sample case: [#327][327].
-Finally, thank you for taking the time to report a problem.
 
 Profiling sbt
 -------------
