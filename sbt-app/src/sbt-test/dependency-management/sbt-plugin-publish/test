@@ -6,6 +6,12 @@
 > testMaven1 / checkUpdate
 > testMavenConflict / checkUpdate
 
+> sbtPlugin1Legacy / checkPackagedArtifacts
+> sbtPlugin1Legacy / checkPublish
+> testMaven1Legacy / checkUpdate
+
+> customArtifact / checkCustomPublish
+
 > sbtPlugin1 / publishLocal
 > testLocal1 / checkUpdate
 

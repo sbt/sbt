@@ -3667,7 +3667,8 @@ object Classpaths:
           fullResolvers.value.toVector,
           csrProject.value.withPublications(csrPublications.value),
           allCredentials.value,
-          knownResolvers
+          knownResolvers,
+          CrossVersion(projectID.value, scalaModuleInfo.value)
         )
       )
     },

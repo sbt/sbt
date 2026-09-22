@@ -1,5 +1,8 @@
 import java.nio.charset.StandardCharsets
+import java.util.jar.JarFile
 
+import scala.jdk.CollectionConverters.*
+import scala.util.Using
 import scala.util.matching.Regex
 
 ThisBuild / scalaVersion := "2.12.21"
@@ -18,6 +21,46 @@ lazy val sbtPlugin1 = project.in(file("sbt-plugin-1"))
     publishTo := Some(resolver),
     checkPackagedArtifacts := checkPackagedArtifactsDef("sbt-plugin-1", false).value,
     checkPublish := checkPublishDef("sbt-plugin-1", false).value
+  )
+
+lazy val sbtPlugin1Legacy = project.in(file("sbt-plugin-1-legacy"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    organization := "org.example",
+    name := "sbt-alpha",
+    addSbtPlugin("ch.epfl.scala" % "sbt-plugin-example-diamond" % "0.5.0"),
+    addSbtPlugin("ch.epfl.scala" % "sbt-plugin-example-left" % "0.3.0"),
+    sbtPluginPublishLegacyMavenStyle := true,
+    publishTo := Some(resolver),
+    checkPackagedArtifacts := checkPackagedArtifactsDef("sbt-alpha", true).value,
+    checkPublish := checkPublishDef("sbt-alpha", true).value
+  )
+
+lazy val testMaven1Legacy = project.in(file("test-maven-1-legacy"))
+  .settings(
+    addSbtPlugin("org.example" % "sbt-alpha" % "0.1.0-SNAPSHOT"),
+    externalResolvers -= Resolver.defaultLocal,
+    resolvers += {
+      val base = (ThisBuild / baseDirectory).value
+      MavenRepository("test-repo", s"file://$base/test-repo")
+    },
+    checkUpdate := checkUpdateDef(
+      "sbt-alpha_2.12_1.0-0.1.0-SNAPSHOT.jar",
+      "sbt-plugin-example-diamond_2.12_1.0-0.5.0.jar",
+      "sbt-plugin-example-left_2.12_1.0-0.3.0.jar",
+      "sbt-plugin-example-right_2.12_1.0-0.3.0.jar",
+      "sbt-plugin-example-bottom_2.12_1.0-0.3.0.jar",
+    ).value
+  )
+
+lazy val customArtifact = project.in(file("custom-artifact"))
+  .settings(
+    organization := "org.example",
+    name := "mylib",
+    version := "0.1.0",
+    publishTo := Some(resolver),
+    addArtifact(Artifact("mylib-extra", "jar", "jar"), Compile / packageSrc),
+    checkCustomPublish := checkCustomPublishDef.value
   )
 
 lazy val testMaven1 = project.in(file("test-maven-1"))
@@ -129,6 +172,8 @@ lazy val checkPackagedArtifacts = taskKey[Unit]("check the packaged artifacts")
 lazy val checkPublish = taskKey[Unit]("check publish")
 @transient
 lazy val checkUpdate = taskKey[Unit]("check update")
+@transient
+lazy val checkCustomPublish = taskKey[Unit]("check custom artifact publishing")
 
 def checkPackagedArtifactsDef(artifactName: String, withLegacy: Boolean): Def.Initialize[Task[Unit]] = Def.task {
   val packagedArtifacts = Keys.packagedArtifacts.value
@@ -144,6 +189,8 @@ def checkPackagedArtifactsDef(artifactName: String, withLegacy: Boolean): Def.In
     val legacyPomContent = readPom(legacyPom.get)
     assert(legacyPomContent.contains(s"<artifactId>$artifactName</artifactId>"))
     assert(legacyPomContent.contains(s"<artifactId>sbt-plugin-example-diamond</artifactId>"))
+    assert(legacyPomContent.contains(s"<artifactId>sbt-plugin-example-left</artifactId>"))
+    checkPluginProperties(legacyPomContent, "")
   } else {
     assert(legacyArtifacts.size == 0)
   }
@@ -172,6 +219,8 @@ def checkPublishDef(artifactName: String, withLegacy: Boolean): Def.Initialize[T
     s"$artifactName-${Regex.quote("0.1.0-SNAPSHOT")}(-javadoc|-sources)?(\\.jar|\\.pom)".r
   val legacyArtifacts = files.filter(f => legacyRegex.unapplySeq(f.name).isDefined)
   if (withLegacy) {
+    val uncrossedDir = repo / org.replace('.', '/') / artifactName / "0.1.0-SNAPSHOT"
+    assert(!uncrossedDir.exists, s"unexpected uncrossed Maven directory: $uncrossedDir")
     val legacyJars = legacyArtifacts.map(_.name).filter(_.endsWith(".jar"))
     assert(legacyJars.size == 3, legacyJars.mkString(", ")) // bin, sources and javadoc
     val legacyPom = legacyArtifacts.find(_.name.endsWith(".pom"))
@@ -179,6 +228,8 @@ def checkPublishDef(artifactName: String, withLegacy: Boolean): Def.Initialize[T
     val legacyPomContent = IO.read(legacyPom.get)
     assert(legacyPomContent.contains(s"<artifactId>$artifactName</artifactId>"))
     assert(legacyPomContent.contains(s"<artifactId>sbt-plugin-example-diamond</artifactId>"))
+    assert(legacyPomContent.contains(s"<artifactId>sbt-plugin-example-left</artifactId>"))
+    checkPluginProperties(legacyPomContent, "")
   } else {
     assert(legacyArtifacts.size == 0)
   }
@@ -234,4 +285,24 @@ def checkUpdateDef(expected: String*): Def.Initialize[Task[Unit]] = Def.task {
   val obtainedSet = obtainedFiles.map(_.getName).toSet
   val expectedSet = expected.toSet + s"scala-library-${scalaVersion.value}.jar"
   assert(obtainedSet == expectedSet, obtainedSet)
+}
+
+def checkCustomPublishDef: Def.Initialize[Task[Unit]] = Def.task {
+  val _ = publish.value
+  val moduleName = s"${name.value}_${scalaBinaryVersion.value}"
+  val versionString = version.value
+  val directory =
+    repo / organization.value.replace('.', '/') / moduleName / versionString
+  val mainJar = directory / s"$moduleName-$versionString.jar"
+  val extraJar = directory / s"${name.value}-extra_${scalaBinaryVersion.value}-$versionString.jar"
+  assert(mainJar.exists, s"missing main JAR: $mainJar")
+  assert(extraJar.exists, s"missing custom JAR: $extraJar")
+  val mainEntries = Using.resource(new JarFile(mainJar)) { jar =>
+    jar.entries.asScala.map(_.getName).toSet
+  }
+  val extraEntries = Using.resource(new JarFile(extraJar)) { jar =>
+    jar.entries.asScala.map(_.getName).toSet
+  }
+  assert(mainEntries.contains("example/PublishedClass.class"), mainEntries)
+  assert(extraEntries.contains("example/PublishedClass.scala"), extraEntries)
 }
