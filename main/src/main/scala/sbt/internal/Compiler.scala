@@ -10,12 +10,12 @@ package sbt
 package internal
 
 import java.io.{ File, PrintWriter }
-import java.nio.file.{ Path, Paths }
-import java.util.ArrayList
+import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.util.{ ArrayList, Optional }
 import sbt.BuildExtra.*
 import sbt.Keys.Classpath
 import sbt.internal.CommandStrings
-import sbt.internal.inc.{ AnalyzingCompiler, ScalaInstance, ZincLmUtil }
+import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ScalaInstance, ZincLmUtil }
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
 import sbt.internal.worker1.{ ConsoleInfo, WorkerMain }
@@ -36,8 +36,10 @@ import sbt.librarymanagement.{
 }
 import sbt.util.Logger
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 import scala.util.Random
 import xsbti.{ HashedVirtualFileRef, ScalaProvider }
+import xsbti.compile.{ CompileAnalysis, Inputs, PreviousResult }
 
 object Compiler:
   private val r = Random()
@@ -664,5 +666,31 @@ object Compiler:
         case None           => value
 
     options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
+
+  /**
+   * Gets the early output into a state Zinc can update incrementally.
+   *
+   * An action-cache hit restores the early jar as a symlink into the CAS. Zinc rewrites the jar in
+   * place when it merges a round's pickles, which would corrupt the cached blob, so Zinc gets a
+   * real copy. When there is a previous analysis but no early jar (a cache populated before the
+   * jar was an output, `exportPipelining` switched on for an existing build, a deleted `early`
+   * directory), an incremental round would create the jar from its own pickles alone, so the
+   * subproject is recompiled from scratch instead.
+   */
+  private[sbt] def prepareEarlyOutput(ci: Inputs, earlyJar: Path, log: Logger): Inputs =
+    if Files.isSymbolicLink(earlyJar) then
+      val tmp = earlyJar.resolveSibling(earlyJar.getFileName.toString + ".tmp")
+      Files.copy(earlyJar.toRealPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+      Files.move(tmp, earlyJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      ci
+    else if !Files.exists(earlyJar) && hasCompilations(ci.previousResult.analysis.toScala) then
+      log.debug(s"early output $earlyJar is missing, recompiling from scratch")
+      ci.withPreviousResult(PreviousResult.of(Optional.empty(), Optional.empty()))
+    else ci
+
+  private def hasCompilations(analysis: Option[CompileAnalysis]): Boolean =
+    analysis match
+      case Some(a: Analysis) => a.compilations.allCompilations.nonEmpty
+      case _                 => false
 
 end Compiler
