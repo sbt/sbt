@@ -12,6 +12,7 @@ package librarymanagement
 
 import java.io.{ File, IOException }
 import java.net.{ URI, URL }
+import java.nio.file.{ Files, StandardCopyOption }
 import java.util.regex.Matcher
 
 import gigahorse.{ AuthScheme, Realm }
@@ -23,6 +24,7 @@ import sbt.io.IO
 import sbt.io.syntax.*
 import scala.concurrent.Await
 import scala.concurrent.duration.*
+import scala.util.control.NonFatal
 import lmcoursier.definitions.Project as CsrProject
 
 /**
@@ -103,7 +105,8 @@ class GenericPublisher private[sbt] (
         )
     val artifacts = configuration.artifacts
     target match
-      case urlRepo: URLRepository if urlRepo.patterns.isMavenCompatible =>
+      case urlRepo: URLRepository
+          if urlRepo.patterns.isMavenCompatible && !isFilePatterned(urlRepo) =>
         val pat = urlRepo.patterns.artifactPatterns.headOption.getOrElse(
           sys.error("URLRepository has no artifact pattern")
         )
@@ -116,7 +119,7 @@ class GenericPublisher private[sbt] (
           configuration.overwrite,
           log
         )
-      case urlRepo: URLRepository =>
+      case urlRepo: URLRepository if !isFilePatterned(urlRepo) =>
         ivylessPublish(artifacts, configuration.checksums, urlRepo, configuration.overwrite, log)
       case fileRepo: FileRepository =>
         ivylessPublishToFile(
@@ -126,9 +129,7 @@ class GenericPublisher private[sbt] (
           configuration.overwrite,
           log
         )
-      case pbr: PatternsBasedRepository if pbr.patterns.artifactPatterns.headOption.exists { pat =>
-            pat.contains("[organisation]") && !pat.trim.startsWith("http")
-          } =>
+      case pbr: PatternsBasedRepository if isFilePatterned(pbr) =>
         // File repo detected by pattern (e.g. scripted classloader makes type match fail)
         val pat = pbr.patterns.artifactPatterns.head
         val baseStr =
@@ -193,6 +194,14 @@ class GenericPublisher private[sbt] (
     end match
   end publish
 
+  /**
+   * True when a repository's patterns name a directory rather than an HTTP endpoint, including a
+   * `file:` URLRepository, which sbt 1.x routed to the filesystem via `LocalIfFileRepo`.
+   */
+  private def isFilePatterned(repo: PatternsBasedRepository): Boolean =
+    repo.patterns.artifactPatterns.headOption.exists: pat =>
+      pat.contains("[organisation]") && !pat.trim.startsWith("http")
+
   private def pluginCrossPath: Seq[String] =
     val attrs = project.module.attributes
     attrs.get(PomExtraAttributeKeys.ScalaVersionKey).map("scala_" + _).toSeq ++
@@ -232,11 +241,7 @@ class GenericPublisher private[sbt] (
     val ivyXmlFile = ivysDir / "ivy.xml"
     IO.createDirectory(ivysDir)
     val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
-    if !ivyXmlFile.exists || overwrite then
-      IO.write(ivyXmlFile, ivyXmlContent)
-      log.info(s"published $ivyXmlFile")
-      writeChecksumsForFile(ivyXmlFile, checksumAlgorithms, log)
-    else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
+    publishBytes(ivyXmlFile, overwrite, checksumAlgorithms, log)(IO.write(_, ivyXmlContent))
 
     // Build a lookup from (type, classifier, ext) to cross-versioned publication name
     val pubNameLookup: Map[(String, String, String), String] =
@@ -257,13 +262,7 @@ class GenericPublisher private[sbt] (
       val fileName = s"$artName$classifier.${artifact.extension}"
       val targetFile = targetDir / fileName
 
-      if !targetFile.exists || overwrite then
-        IO.createDirectory(targetDir)
-        IO.copyFile(sourceFile, targetFile)
-        log.info(s"published $targetFile")
-        if !targetFile.getName.endsWith(signatureExt) then
-          writeChecksumsForFile(targetFile, checksumAlgorithms, log)
-      else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
+      publishFile(sourceFile, targetFile, overwrite, checksumAlgorithms, log)
   end ivylessPublishLocal
 
   /**
@@ -348,6 +347,45 @@ class GenericPublisher private[sbt] (
     log.info(s"published $url")
 
   /**
+   * HEAD probe used to decide whether a remote artifact is already published.
+   *
+   * Fails open: a server that rejects HEAD (405, 501) or is unreachable reports "absent", so
+   * publishing keeps working exactly as it does today rather than failing on a probe.
+   */
+  private def httpExists(url: URL, authentication: Option[Realm], log: Logger): Boolean =
+    val baseReq = Gigahorse.url(url.toString).head
+    val req = authentication match
+      case Some(a) => baseReq.withAuth(a)
+      case None    => baseReq
+    try
+      val response = Await.result(sbt.librarymanagement.Http.http.processFull(req), 5.minutes)
+      response.status >= 200 && response.status < 300
+    catch
+      case NonFatal(e) =>
+        log.debug(s"HEAD $url failed (${e.getMessage}); assuming it is not published yet")
+        false
+
+  /**
+   * Refuses to overwrite an artifact that is already published remotely.
+   *
+   * A remote repository may be immutable, where a silent overwrite is unrecoverable, so this is
+   * the opposite of the file-repository rule in `publishFile`. Matches sbt 1.x's `LocalIfFileRepo`.
+   */
+  private def checkRemoteOverwrite(
+      url: URL,
+      authentication: Option[Realm],
+      overwrite: Boolean,
+      log: Logger
+  ): Unit =
+    if !overwrite && httpExists(url, authentication, log) then
+      throw new IOException(
+        s"$url already exists and overwriting is disabled.\n\t" +
+          "If a staging repository failed, drop it and start over. Otherwise publish a new " +
+          "version, or relax the setting as follows:\n\t" +
+          "publish / publishConfiguration := publishConfiguration.value.withOverwrite(true)"
+      )
+
+  /**
    * Publishes artifacts to a remote Ivy repo (URLRepository) without using Apache Ivy.
    * Uses HTTP PUT; supports credentials. Produces the same layout as ivylessPublishLocal.
    */
@@ -384,6 +422,7 @@ class GenericPublisher private[sbt] (
         artifact.extension
       )
       val url = URI.create(pathPattern).toURL()
+      checkRemoteOverwrite(url, credentialFor(url, directCreds, None), overwrite, log)
       httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
       if !url.toString.endsWith(signatureExt) then
         val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
@@ -409,6 +448,7 @@ class GenericPublisher private[sbt] (
     val ivyTmp = File.createTempFile("ivy", ".xml")
     try
       IO.write(ivyTmp, ivyXmlContent)
+      checkRemoteOverwrite(ivyUrl, credentialFor(ivyUrl, directCreds, None), overwrite, log)
       httpPut(ivyUrl, ivyTmp, credentialFor(ivyUrl, directCreds, None), log)
       val checksums = writeChecksumsToTempFiles(ivyTmp, checksumAlgorithms)
       checksums.foreach { case (cf, suffix) =>
@@ -456,6 +496,56 @@ class GenericPublisher private[sbt] (
       case a @ ("md5" | "sha1") => a
       case other                =>
         throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+
+  /**
+   * Replaces `targetFile` in place, going through a sibling temp file so an interrupted
+   * publish cannot leave a half-written artifact behind.
+   */
+  private def atomicWrite(targetFile: File, write: File => Unit): Unit =
+    IO.createDirectory(targetFile.getParentFile)
+    val tmp = new File(targetFile.getPath + ".tmp")
+    try
+      write(tmp)
+      try
+        Files.move(
+          tmp.toPath,
+          targetFile.toPath,
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE
+        )
+      catch
+        case _: java.nio.file.AtomicMoveNotSupportedException =>
+          Files.move(tmp.toPath, targetFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+    finally IO.delete(tmp)
+
+  /**
+   * Writes one artifact into a file repository, overwriting whatever is there.
+   *
+   * A file repository is the developer's own scratch space, so what was just built always
+   * wins; `overwrite = false` only downgrades that to a warning. This matches sbt 1.x, where
+   * `WarnOnOverwriteFileRepo` warned and then re-`put` with `overwrite = true`.
+   */
+  private def publishFile(
+      sourceFile: File,
+      targetFile: File,
+      overwrite: Boolean,
+      checksumAlgorithms: Vector[String],
+      log: Logger
+  ): Unit =
+    publishBytes(targetFile, overwrite, checksumAlgorithms, log)(IO.copyFile(sourceFile, _))
+
+  private def publishBytes(
+      targetFile: File,
+      overwrite: Boolean,
+      checksumAlgorithms: Vector[String],
+      log: Logger
+  )(write: File => Unit): Unit =
+    if targetFile.exists && !overwrite then
+      log.warn(s"$targetFile already exists, overwriting (overwrite=$overwrite)")
+    atomicWrite(targetFile, write)
+    log.info(s"published $targetFile")
+    if !targetFile.getName.endsWith(signatureExt) then
+      writeChecksumsForFile(targetFile, checksumAlgorithms, log)
 
   /**
    * Writes a `targetFile.<algo>` checksum file alongside `targetFile` for each algorithm.
@@ -517,15 +607,9 @@ class GenericPublisher private[sbt] (
     log.info(s"Publishing to Maven repo: $versionDir")
 
     mavenArtifacts.foreach:
-      case (artifact, sourceFile, path) =>
+      case (_, sourceFile, path) =>
         val targetFile = new File(repoBase, path.replace('/', File.separatorChar))
-        if !targetFile.exists || overwrite then
-          targetFile.getParentFile.mkdirs()
-          IO.copyFile(sourceFile, targetFile)
-          log.info(s"published $targetFile")
-          if !targetFile.toString.endsWith(signatureExt) then
-            writeChecksumsForFile(targetFile, checksumAlgorithms, log)
-        else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
+        publishFile(sourceFile, targetFile, overwrite, checksumAlgorithms, log)
 
     if version.endsWith("-SNAPSHOT") then
       writeMavenMetadataLocal(versionDir, groupId, artifactId, version, log)
@@ -617,7 +701,10 @@ class GenericPublisher private[sbt] (
           throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
 
     mavenArtifacts.foreach:
-      case (_, sourceFile, path) => putWithChecksums(path, sourceFile)
+      case (_, sourceFile, path) =>
+        val url = URI.create(base + path).toURL()
+        checkRemoteOverwrite(url, credentialFor(url, directCreds, None), overwrite, log)
+        putWithChecksums(path, sourceFile)
 
     snapshot.foreach: snap =>
       val metadata = File.createTempFile("maven-metadata", ".xml")
