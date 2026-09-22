@@ -100,8 +100,9 @@ private[sbt] object Load:
     val loader = getClass.getClassLoader
     val converter = MappedFileConverter(rootPaths, true)
     val cp0 = provider.mainClasspath.toIndexedSeq ++ scalaProvider.jars.toIndexedSeq
+    // The launcher's order is a directory listing, and this classpath is hashed into the compile key.
     val classpath = Attributed.blankSeq(
-      cp0.map(_.toPath).map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
+      cp0.map(_.toPath).map(p => converter.toVirtualFile(p): HashedVirtualFileRef).sortBy(_.id)
     )
     val csrConfig = CoursierConfiguration()
       .withResolvers(Resolver.combineDefaultResolvers(Vector.empty).toVector)
