@@ -1,0 +1,14 @@
+# publishLocal must reflect what was just built, even at a non-snapshot version where
+# overwrite is false. See https://github.com/sbt/sbt/issues/9813.
+
+> publishLocal
+> checkMarker first
+> checkChecksums
+
+# Republish the same version with different contents
+$ copy-file changes/marker.txt src/main/resources/marker.txt
+> publishLocal
+> checkMarker second
+> checkChecksums
+
+> checkUserIvyUntouched
