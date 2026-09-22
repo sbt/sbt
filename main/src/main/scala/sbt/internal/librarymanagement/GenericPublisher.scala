@@ -33,8 +33,17 @@ class GenericPublisher private[sbt] (
     pomRepositories: Vector[Resolver],
     project: CsrProject,
     credentials: Seq[Credentials],
-    resolvers: Seq[Resolver]
+    resolvers: Seq[Resolver],
+    artifactNameCross: Option[String => String]
 ) extends PublisherInterface:
+
+  private[sbt] def this(
+      dependencyResolution: DependencyResolution,
+      pomRepositories: Vector[Resolver],
+      project: CsrProject,
+      credentials: Seq[Credentials],
+      resolvers: Seq[Resolver]
+  ) = this(dependencyResolution, pomRepositories, project, credentials, resolvers, None)
 
   // Extension used for PGP signature files; checksums are not generated for these.
   private val signatureExt = ".asc"
@@ -442,28 +451,6 @@ class GenericPublisher private[sbt] (
       ivylessPublishLocal(artifacts, checksumAlgorithms, repoDir, overwrite, log)
   end ivylessPublishToFile
 
-  /**
-   * Maven layout path: groupId/artifactId/version/artifactId-version[-classifier].ext
-   */
-  private def mavenLayoutPath(
-      groupId: String,
-      artifactId: String,
-      version: String,
-      artifact: Artifact
-  ): String = mavenLayoutPath(groupId, artifactId, version, version, artifact)
-
-  private def mavenLayoutPath(
-      groupId: String,
-      artifactId: String,
-      version: String,
-      fileVersion: String,
-      artifact: Artifact
-  ): String =
-    val groupPath = groupId.replace('.', '/')
-    val classifierPart = artifact.classifier.map("-" + _).getOrElse("")
-    val fileName = s"$artifactId-$fileVersion$classifierPart.${artifact.extension}"
-    s"$groupPath/$artifactId/$version/$fileName"
-
   private def normalizedChecksumAlgorithm(algo: String): String =
     algo.toLowerCase match
       case a @ ("md5" | "sha1") => a
@@ -514,21 +501,23 @@ class GenericPublisher private[sbt] (
   ): Unit =
     if repoBase == null then throw new IllegalArgumentException("repoBase must not be null")
     val groupId = project.module.organization.value
-    // Derive artifactId: for sbt 2 plugins, module.name has cross-version (e.g. sbt-example_sbt2_3).
-    // For sbt 1 plugins, mavenArtifactsOfSbtPlugin cross-versions the POM artifact name (e.g. sbt-example_2.12_1.0).
-    val baseModuleName = project.module.name.value
-    val pomArtName = artifacts.collectFirst { case (a, _) if a.`type` == "pom" => a.name }
-    val artifactId = pomArtName match
-      case Some(name) if name.startsWith(baseModuleName) && name != baseModuleName => name
-      case _                                                                       => baseModuleName
+    val artifactId =
+      GenericPublisher.mavenModuleArtifactId(project.module.name.value, project.module.attributes)
     val version = project.version
     val groupPath = groupId.replace('.', '/')
     val versionDir = new File(repoBase, s"$groupPath/$artifactId/$version")
+    val mavenArtifacts = GenericPublisher.mavenArtifacts(
+      groupId,
+      artifactId,
+      version,
+      version,
+      artifacts,
+      artifactNameCross
+    )
     log.info(s"Publishing to Maven repo: $versionDir")
 
-    artifacts.foreach:
-      case (artifact, sourceFile) =>
-        val path = mavenLayoutPath(groupId, artifactId, version, artifact)
+    mavenArtifacts.foreach:
+      case (artifact, sourceFile, path) =>
         val targetFile = new File(repoBase, path.replace('/', File.separatorChar))
         if !targetFile.exists || overwrite then
           targetFile.getParentFile.mkdirs()
@@ -583,13 +572,8 @@ class GenericPublisher private[sbt] (
     if baseUrl == null || baseUrl.trim.isEmpty then
       throw new IllegalArgumentException("baseUrl must not be null or empty")
     val groupId = project.module.organization.value
-    // Derive artifactId: for sbt 2 plugins, module.name has cross-version (e.g. sbt-example_sbt2_3).
-    // For sbt 1 plugins, mavenArtifactsOfSbtPlugin cross-versions the POM artifact name (e.g. sbt-example_2.12_1.0).
-    val baseModuleName = project.module.name.value
-    val pomArtName = artifacts.collectFirst { case (a, _) if a.`type` == "pom" => a.name }
-    val artifactId = pomArtName match
-      case Some(name) if name.startsWith(baseModuleName) && name != baseModuleName => name
-      case _                                                                       => baseModuleName
+    val artifactId =
+      GenericPublisher.mavenModuleArtifactId(project.module.name.value, project.module.attributes)
     val version = project.version
     val directCreds = credentials.collect:
       case d: Credentials.DirectCredentials => d
@@ -608,6 +592,14 @@ class GenericPublisher private[sbt] (
         Some(SnapshotVersion(snapshotTimestamp(), previous + 1, version.stripSuffix("-SNAPSHOT")))
       else None
     val fileVersion = snapshot.map(_.qualifier).getOrElse(version)
+    val mavenArtifacts = GenericPublisher.mavenArtifacts(
+      groupId,
+      artifactId,
+      version,
+      fileVersion,
+      artifacts,
+      artifactNameCross
+    )
 
     def putWithChecksums(path: String, sourceFile: File): Unit =
       val url = URI.create(base + path).toURL()
@@ -624,12 +616,8 @@ class GenericPublisher private[sbt] (
         case e: IOException =>
           throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
 
-    artifacts.foreach:
-      case (artifact, sourceFile) =>
-        putWithChecksums(
-          mavenLayoutPath(groupId, artifactId, version, fileVersion, artifact),
-          sourceFile
-        )
+    mavenArtifacts.foreach:
+      case (_, sourceFile, path) => putWithChecksums(path, sourceFile)
 
     snapshot.foreach: snap =>
       val metadata = File.createTempFile("maven-metadata", ".xml")
@@ -695,7 +683,7 @@ class GenericPublisher private[sbt] (
           |        <value>$value</value>
           |        <updated>$updated</updated>
           |      </snapshotVersion>""".stripMargin
-    val published = artifacts.map(a => (a.classifier, a.extension)).toSet
+    val published = GenericPublisher.distinctSnapshotArtifacts(artifacts)
     val retained = remote.toSeq
       .flatMap(m => m \ "versioning" \ "snapshotVersions" \ "snapshotVersion")
       .flatMap: sv =>
@@ -704,8 +692,8 @@ class GenericPublisher private[sbt] (
         if extension.isEmpty || published.contains((classifier, extension)) then None
         else
           Some(entry(classifier, extension, (sv \ "value").text.trim, (sv \ "updated").text.trim))
-    val current = artifacts.map: artifact =>
-      entry(artifact.classifier, artifact.extension, snapshot.qualifier, snapshot.lastUpdated)
+    val current = published.map: (classifier, extension) =>
+      entry(classifier, extension, snapshot.qualifier, snapshot.lastUpdated)
     val snapshotVersions = (current ++ retained).mkString("\n")
     s"""|<?xml version="1.0" encoding="UTF-8"?>
         |<metadata modelVersion="1.1.0">
@@ -728,6 +716,67 @@ class GenericPublisher private[sbt] (
 end GenericPublisher
 
 object GenericPublisher:
+  private[sbt] def distinctSnapshotArtifacts(
+      artifacts: Vector[Artifact]
+  ): Vector[(Option[String], String)] =
+    artifacts.map(a => (a.classifier, a.extension)).distinct
+
+  private[sbt] def mavenModuleArtifactId(
+      moduleName: String,
+      attributes: Map[String, String]
+  ): String =
+    val suffix = for
+      scalaVersion <- attributes.get(PomExtraAttributeKeys.ScalaVersionKey)
+      sbtVersion <- attributes.get(PomExtraAttributeKeys.SbtVersionKey)
+    yield s"_${scalaVersion}_$sbtVersion"
+    suffix.filterNot(moduleName.endsWith).fold(moduleName)(moduleName + _)
+
+  private[sbt] def mavenLayoutPath(
+      groupId: String,
+      moduleArtifactId: String,
+      artifactName: String,
+      version: String,
+      fileVersion: String,
+      artifact: Artifact
+  ): String =
+    val groupPath = groupId.replace('.', '/')
+    val classifierPart = artifact.classifier.map("-" + _).getOrElse("")
+    val fileName = s"$artifactName-$fileVersion$classifierPart.${artifact.extension}"
+    s"$groupPath/$moduleArtifactId/$version/$fileName"
+
+  private[sbt] def mavenArtifacts(
+      groupId: String,
+      moduleArtifactId: String,
+      version: String,
+      fileVersion: String,
+      artifacts: Vector[(Artifact, File)],
+      artifactNameCross: Option[String => String]
+  ): Vector[(Artifact, File, String)] =
+    val result = artifacts.map: (artifact, sourceFile) =>
+      val artifactName = artifactNameCross.fold(artifact.name)(_(artifact.name))
+      val path =
+        mavenLayoutPath(groupId, moduleArtifactId, artifactName, version, fileVersion, artifact)
+      (artifact, sourceFile, path)
+    val collisions = result
+      .groupBy(_._3)
+      .toVector
+      .collect:
+        case (path, entries) if entries.sizeIs > 1 =>
+          val descriptions = entries.map:
+            case (artifact, sourceFile, _) =>
+              val classifier = artifact.classifier.getOrElse("")
+              s"${artifact.name}:${artifact.`type`}:$classifier:${artifact.extension} from $sourceFile"
+          path -> descriptions
+      .sortBy(_._1)
+    if collisions.nonEmpty then
+      val details = collisions.map: (path, descriptions) =>
+        s"$path <- ${descriptions.mkString(", ")}"
+      throw new IllegalArgumentException(
+        details.mkString("Multiple artifacts map to the same Maven path:\n", "\n", "")
+      )
+    result
+  end mavenArtifacts
+
   def apply(
       dependencyResolution: DependencyResolution,
       pomRepositories: Vector[Resolver],
@@ -744,4 +793,21 @@ object GenericPublisher:
       resolvers: Seq[Resolver]
   ): GenericPublisher =
     new GenericPublisher(dependencyResolution, pomRepositories, project, credentials, resolvers)
+
+  private[sbt] def apply(
+      dependencyResolution: DependencyResolution,
+      pomRepositories: Vector[Resolver],
+      project: CsrProject,
+      credentials: Seq[Credentials],
+      resolvers: Seq[Resolver],
+      artifactNameCross: Option[String => String]
+  ): GenericPublisher =
+    new GenericPublisher(
+      dependencyResolution,
+      pomRepositories,
+      project,
+      credentials,
+      resolvers,
+      artifactNameCross
+    )
 end GenericPublisher
