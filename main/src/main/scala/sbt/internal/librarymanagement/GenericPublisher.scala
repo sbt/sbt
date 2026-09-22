@@ -725,11 +725,11 @@ object GenericPublisher:
       moduleName: String,
       attributes: Map[String, String]
   ): String =
-    val suffix = for
-      scalaVersion <- attributes.get(PomExtraAttributeKeys.ScalaVersionKey)
-      sbtVersion <- attributes.get(PomExtraAttributeKeys.SbtVersionKey)
-    yield s"_${scalaVersion}_$sbtVersion"
-    suffix.filterNot(moduleName.endsWith).fold(moduleName)(moduleName + _)
+    val suffix = Vector(
+      attributes.get(PomExtraAttributeKeys.ScalaVersionKey),
+      attributes.get(PomExtraAttributeKeys.SbtVersionKey),
+    ).flatten.map("_" + _).mkString
+    if suffix.isEmpty || moduleName.endsWith(suffix) then moduleName else moduleName + suffix
 
   private[sbt] def mavenLayoutPath(
       groupId: String,

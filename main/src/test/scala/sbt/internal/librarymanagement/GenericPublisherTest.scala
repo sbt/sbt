@@ -47,7 +47,10 @@ object GenericPublisherTest extends Properties:
       ("mylib_2.12", Map.empty[String, String], "mylib_2.12"),
       ("sbt-plugin", pluginAttributes, "sbt-plugin_2.12_1.0"),
       ("sbt-plugin_2.12_1.0", pluginAttributes, "sbt-plugin_2.12_1.0"),
-      ("plain", Map(PomExtraAttributeKeys.ScalaVersionKey -> "2.12"), "plain"),
+      ("plain", Map(PomExtraAttributeKeys.ScalaVersionKey -> "2.12"), "plain_2.12"),
+      ("plain_2.12", Map(PomExtraAttributeKeys.ScalaVersionKey -> "2.12"), "plain_2.12"),
+      ("plain", Map(PomExtraAttributeKeys.SbtVersionKey -> "1.0"), "plain_1.0"),
+      ("plain_1.0", Map(PomExtraAttributeKeys.SbtVersionKey -> "1.0"), "plain_1.0"),
     )
     Result.all(
       cases
@@ -58,6 +61,7 @@ object GenericPublisherTest extends Properties:
             .log(s"$moduleName: expected $expected, obtained $obtained")
         .toList
     )
+  end testModuleArtifactIds
 
   private def testOrdinaryArtifactPaths: Result =
     val obtained = ordinaryPaths(ordinaryArtifacts).map(_._3).toSet
