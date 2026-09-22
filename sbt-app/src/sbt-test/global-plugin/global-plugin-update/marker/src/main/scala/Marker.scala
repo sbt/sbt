@@ -1,2 +1,2 @@
 object Marker:
-  def version: String = "0.1.0"
+  def version: String = "one"

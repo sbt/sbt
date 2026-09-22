@@ -1,39 +1,33 @@
-# sbt/sbt#1084: the global plugin's dependencies are resolved once and then served from
-# the update cache. The marker library comes from an ivy-style repository under global/repo,
-# so a newer release lives at a new path while the cached report still points at the old one.
+# sbt/sbt#1084: a global plugin that depends on a snapshot never sees a newer publication of it,
+# because the global plugin's dependencies are resolved once and then served from the update cache.
+# The snapshot is served over HTTP so that coursier caches it as it would a remote repository; a jar
+# republished to a local file repository is read in place and would not show the problem.
 
+> startRepoServer
 > marker/publish
-$ exists global/repo/com.example/marker_3/0.1.0/jars/marker_3.jar
-
-# depend on latest.integration from the global plugin and load it
 $ copy-file changes/plugins.sbt global/plugins/plugins.sbt
 > reload
-> eval assert(Marker.version == "0.1.0")
-# in 2.x the global plugin's update cache lives under the current build's output directory
-$ exists target/out/jvm/*/global-plugins/update/*/output
+> eval assert(Marker.version == "one")
 
-# publish a newer release; a plain reload keeps serving the cached 0.1.0
-$ copy-file changes/Marker-0.2.0.scala marker/src/main/scala/Marker.scala
-> set marker / version := "0.2.0"
+# a republished snapshot is not picked up by a plain reload
+$ copy-file changes/Marker-two.scala marker/src/main/scala/Marker.scala
 > marker/publish
-$ exists global/repo/com.example/marker_3/0.2.0/jars/marker_3.jar
 > reload
-> eval assert(Marker.version == "0.1.0")
+> eval assert(Marker.version == "one")
 
-# updateGlobalPlugins forces one resolution of the global plugin project and reloads
+# updateGlobalPlugins re-resolves the global plugin project and re-checks the snapshot
 > updateGlobalPlugins
-> eval assert(Marker.version == "0.2.0")
+> eval assert(Marker.version == "two")
 
-# the refreshed report is cached in turn: a plain reload does not resolve again
-$ copy-file changes/Marker-0.3.0.scala marker/src/main/scala/Marker.scala
-> set marker / version := "0.3.0"
+# the request is not carried over, so a later plain reload does not resolve again
+$ copy-file changes/Marker-three.scala marker/src/main/scala/Marker.scala
 > marker/publish
-$ exists global/repo/com.example/marker_3/0.3.0/jars/marker_3.jar
 > reload
-> eval assert(Marker.version == "0.2.0")
+> eval assert(Marker.version == "two")
 
 # The tests of one scripted run share a directory, and `global` is the part of it that is kept between
 # them, so delete what this test installed there.
-$ delete global/plugins global/repo
-$ absent global/plugins global/repo
+> stopRepoServer
+$ delete global/plugins global/repo global/repo-port global/coursier-cache
+$ absent global/plugins global/repo global/repo-port global/coursier-cache
 > reload

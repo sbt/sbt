@@ -1,7 +1,8 @@
 csrCacheDirectory := (baseDirectory.value / ".." / "coursier-cache").getCanonicalFile
 
-resolvers += Resolver.file("test-repo", (baseDirectory.value / ".." / "repo").getCanonicalFile)(using
-  Resolver.ivyStylePatterns
-)
+resolvers += {
+  val port = java.nio.file.Files.readString((baseDirectory.value / ".." / "repo-port").toPath).trim
+  Resolver.url("test-repo", url(s"http://127.0.0.1:$port/"))(using Resolver.ivyStylePatterns)
+}
 
-libraryDependencies += "com.example" %% "marker" % "latest.integration"
+libraryDependencies += "com.example" %% "marker" % "0.1.0-SNAPSHOT"

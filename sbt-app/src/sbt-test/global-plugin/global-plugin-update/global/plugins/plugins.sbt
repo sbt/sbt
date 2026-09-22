@@ -1,3 +1,1 @@
-resolvers += Resolver.file("test-repo", (baseDirectory.value / ".." / "repo").getCanonicalFile)(using
-  Resolver.ivyStylePatterns
-)
+// replaced by changes/plugins.sbt once the repository server is up
