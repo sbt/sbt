@@ -515,13 +515,7 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.jvm +: axisValues
-      ): p =>
-        p.settings(settings)
+      jvmPlatform(scalaVersions, axisValues, _.settings(settings))
 
     override def jvmPlatform(
         scalaVersions: Seq[String],
@@ -548,7 +542,7 @@ object ProjectMatrix:
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary = true, scalaVersions, settings)
+      jvmPlatform(scalaVersions, Nil, settings)
 
     override def jvm: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.jvm))
 
@@ -577,8 +571,7 @@ object ProjectMatrix:
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, Seq(VirtualAxis.js)):
-        p => p.settings(settings)
+      jsPlatform(scalaVersions, Nil, settings)
 
     override def jsPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
@@ -588,13 +581,7 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.js +: axisValues
-      ): p =>
-        p.settings(settings)
+      jsPlatform(scalaVersions, axisValues, _.settings(settings))
 
     override def jsPlatform(
         scalaVersions: Seq[String],
@@ -606,8 +593,7 @@ object ProjectMatrix:
         crossVersion = None,
         scalaVersions,
         VirtualAxis.js +: axisValues
-      ): p =>
-        configure(p)
+      )(configure)
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
@@ -655,13 +641,7 @@ object ProjectMatrix:
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        Seq(VirtualAxis.native)
-      ): p =>
-        p.settings(settings)
+      nativePlatform(scalaVersions, Nil, settings)
 
     override def nativePlatform(
         crossVersion: CrossVersion,
@@ -674,13 +654,7 @@ object ProjectMatrix:
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        p.settings(settings)
+      nativePlatform(scalaVersions, axisValues, _.settings(settings))
 
     override def nativePlatform(
         scalaVersions: Seq[String],
@@ -692,8 +666,7 @@ object ProjectMatrix:
         crossVersion = None,
         scalaVersions,
         VirtualAxis.native +: axisValues
-      ): p =>
-        configure(p)
+      )(configure)
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
