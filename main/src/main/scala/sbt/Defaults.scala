@@ -4702,9 +4702,11 @@ object Classpaths:
     val app = appConfiguration.value
     def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
     val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
+    // Sorted for the same reason as the metabuild classpath in `Load`.
     val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath)
       .map(_.toPath)
       .map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
+      .sortBy(_.id)
       .map(Attributed.blank)
     val cpConfig = classpathConfiguration.value
     val up = update.value
