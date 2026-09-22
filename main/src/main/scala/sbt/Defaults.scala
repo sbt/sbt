@@ -2386,8 +2386,12 @@ object Defaults extends BuildCommon with DefExtra:
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val earlyAnalysisFile = (earlyCompileAnalysisFile.value: @nowarn("msg=transient")).toPath()
+      // Present iff exportPipelining: the jar scalac's -Ypickle-write pickles end up in.
+      val earlyJar = ci.options.earlyOutput.toScala.flatMap(_.getSingleOutputAsPath.toScala)
+      val ci1 = earlyJar.fold(ci)(Compiler.prepareEarlyOutput(ci, _, s.log))
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
       val dirZip = ActionCache.dirZipPath(dir)
@@ -2403,6 +2407,13 @@ object Defaults extends BuildCommon with DefExtra:
       // which forces a recompile, rather than a current analysis paired with an outdated zip.
       store.set(contents)
       Def.declareOutput(analysisOut)
+      // Downstream pipelined compiles read the early jar and the early analysis, so a cache hit
+      // has to bring them back too. Otherwise the hit leaves no early jar and the next incremental
+      // round builds one from its own pickles alone, and downstream then fails to resolve every
+      // type this subproject did not just recompile.
+      earlyJar.filter(Files.exists(_)).foreach(jar => Def.declareOutput(c.toVirtualFile(jar)))
+      if earlyJar.isDefined && Files.exists(earlyAnalysisFile) then
+        Def.declareOutput(c.toVirtualFile(earlyAnalysisFile))
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
