@@ -593,8 +593,7 @@ object ProjectMatrix:
         crossVersion = None,
         scalaVersions,
         VirtualAxis.js +: axisValues
-      ): p =>
-        configure(p)
+      )(configure)
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
@@ -667,8 +666,7 @@ object ProjectMatrix:
         crossVersion = None,
         scalaVersions,
         VirtualAxis.native +: axisValues
-      ): p =>
-        configure(p)
+      )(configure)
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
