@@ -315,9 +315,9 @@ $LoadProject return
 \tdirectory under the global base, `~/.config/sbt/2/plugins` by default) and then
 \treloads the build.
 
-\tA plain `$LoadProject` reuses the cached resolution, so a newer snapshot or a newer
-\tmatch of a dynamic version is not picked up until this command runs. Remote snapshots
-\tare still subject to coursier's TTL (COURSIER_TTL)."""
+\tA plain `$LoadProject` reuses the cached resolution, so a newly published snapshot is
+\tnot picked up until this command runs. The forced resolution re-checks snapshots
+\tinstead of trusting coursier's cache TTL."""
 
   def InitCommand = "initialize"
   def InitBrief = (InitCommand, "Initializes command processing.")

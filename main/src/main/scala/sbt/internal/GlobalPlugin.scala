@@ -11,6 +11,7 @@ package internal
 
 import java.io.File
 import java.net.URI
+import scala.concurrent.duration.Duration
 import sbt.librarymanagement.{
   Configuration,
   Configurations,
@@ -60,12 +61,22 @@ object GlobalPlugin:
     )
     val (eval, structure) = Load(base, s, globalConfig)
     val session = Load.initialSession(structure, eval)
-    (structure, Project.setProject(session, structure, s))
+    val state = Project.setProject(session, structure, s)
+    if forced(s) then
+      val refreshed = Project.extract(state).appendWithoutSession(forcedUpdateSettings, state)
+      (Project.extract(refreshed).structure, refreshed)
+    else (structure, state)
   def load(base: File, s: State, config: LoadBuildConfiguration): GlobalPlugin =
     val (structure, state) = build(base, s, config)
     val (newS, data) = extract(state, structure)
     Project.runUnloadHooks(newS) // discard state
     GlobalPlugin(data, structure, inject(data), base)
+
+  private def forced(s: State): Boolean = s.get(forceGlobalPluginUpdate).getOrElse(false)
+
+  /** A forced refresh re-checks changing modules such as snapshots instead of trusting the cache TTL. */
+  private[sbt] val forcedUpdateSettings: Seq[Setting[?]] =
+    Seq(csrConfiguration ~= { _.withTtl(Some(Duration.Zero)) })
 
   /** Referencing `update` directly makes it an execution root, which forces resolution. */
   private[sbt] def updateReportInit(force: Boolean): Def.Initialize[Task[UpdateReport]] =
@@ -75,8 +86,7 @@ object GlobalPlugin:
   def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) =
     import structure.{ data, root, rootProject }
     val p: Scope = Scope.GlobalScope.rescope(ProjectRef(root, rootProject(root)))
-    val force = state.get(forceGlobalPluginUpdate).getOrElse(false)
-    val updateReport = updateReportInit(force)
+    val updateReport = updateReportInit(forced(state))
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
