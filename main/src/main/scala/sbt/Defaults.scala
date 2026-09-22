@@ -2337,15 +2337,32 @@ object Defaults extends BuildCommon {
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val earlyAnalysisFile = (earlyCompileAnalysisFile.value: @nowarn("msg=transient")).toPath()
+      // Present iff exportPipelining: the jar scalac's -Ypickle-write pickles end up in.
+      val earlyJar = ci.options.earlyOutput.toScala.flatMap(_.getSingleOutputAsPath.toScala)
+      val ci1 = earlyJar.fold(ci)(Compiler.prepareEarlyOutput(ci, _, s.log))
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping))
+      val dir = ci.options.classesDirectory
+      val vfDir = c.toVirtualFile(dir)
+      val dirZip = ActionCache.dirZipPath(dir)
+      // Zinc leaves the class directory alone when it invalidates nothing, so the zip the previous
+      // run left behind still describes it and re-packing only reproduces a blob the store has.
+      val packedDir =
+        if analysisResult.hasModified() || !Files.exists(dirZip) then
+          Def.declareOutputDirectory(vfDir)
+        else Def.declareOutput(c.toVirtualFile(dirZip))
       val analysisOut = c.toVirtualFile(setup.cachePath())
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
       Def.declareOutput(analysisOut)
-      val dir = ci.options.classesDirectory
-      val vfDir = c.toVirtualFile(dir)
-      val packedDir = Def.declareOutputDirectory(vfDir)
+      // Downstream pipelined compiles read the early jar and the early analysis, so a cache hit
+      // has to bring them back too. Otherwise the hit leaves no early jar and the next incremental
+      // round builds one from its own pickles alone, and downstream then fails to resolve every
+      // type this subproject did not just recompile.
+      earlyJar.filter(Files.exists(_)).foreach(jar => Def.declareOutput(c.toVirtualFile(jar)))
+      if earlyJar.isDefined && Files.exists(earlyAnalysisFile) then
+        Def.declareOutput(c.toVirtualFile(earlyAnalysisFile))
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
