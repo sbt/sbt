@@ -116,6 +116,8 @@ object SysProp:
 
   def workerMaxInstances: Int = int("sbt.worker_max_instances", 2)
 
+  def analysisCacheMaxCount: Int = int("sbt.local_cache.analysis_count", 20)
+
   /**
    * Indicates whether formatting has been disabled in environment variables.
    * 1. -Dsbt.log.noformat=true means no formatting.
