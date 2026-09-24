@@ -1396,6 +1396,7 @@ private[sbt] object Load:
         pluginData := Def.uncached {
           val gpClasspath = globalPluginClasspath(config.globalPlugin)
           val prod = (Configurations.Runtime / exportedProducts).value
+          val prodVersioned = (Configurations.Runtime / exportedProductsVersioned).value
           val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
           val cp = (Configurations.Runtime / fullClasspath).value
           val opts = (Configurations.Compile / scalacOptions).value
@@ -1407,7 +1408,7 @@ private[sbt] object Load:
           val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
           val converter = fileConverter.value
           PluginData(
-            (removeEntries(cp, prod) ++ gpClasspath).distinct,
+            (removeEntries(cp, prod ++ prodVersioned) ++ gpClasspath).distinct,
             prod,
             Some(fullResolvers.value.toVector),
             Some(update.value),
