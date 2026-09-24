@@ -2768,7 +2768,7 @@ object Defaults extends BuildCommon with DefExtra:
 
   lazy val defaultConfigs: Seq[Setting[?]] = inConfig(Compile)(compileSettings) ++
     inConfig(Test)(testSettings) ++
-    inConfig(Runtime)(Classpaths.configSettings)
+    inConfig(Runtime)(Classpaths.configSettings ++ Classpaths.runtimeClasspaths)
 
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[?]] =
@@ -2878,6 +2878,15 @@ object Classpaths:
       )
     )
   )
+  private[sbt] lazy val runtimeClasspaths: Seq[Setting[?]] = Seq(
+    fullClasspath := Def.uncached(
+      concatDistinct(exportedProductsVersioned, dependencyClasspath).value
+    ),
+    fullClasspathAsJars := Def.uncached(
+      concatDistinct(exportedProductJarsVersioned, dependencyClasspathAsJars).value
+    ),
+  )
+
   private def classpaths: Seq[Setting[?]] =
     Seq(
       externalDependencyClasspath := Def.uncached(
