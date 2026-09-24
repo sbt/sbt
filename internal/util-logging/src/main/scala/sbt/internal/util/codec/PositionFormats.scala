@@ -12,10 +12,11 @@ import sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 import xsbti.Position
 import java.util.Optional
 
-trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
-  given PositionFormat: JsonFormat[Position] = new JsonFormat[Position] {
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Position = {
-      jsOpt match {
+trait PositionFormats:
+  self: sjsonnew.BasicJsonProtocol =>
+  given PositionFormat: JsonFormat[Position] = new JsonFormat[Position]:
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Position =
+      jsOpt match
         case Some(js) =>
           unbuilder.beginObject(js)
           val line0 = unbuilder.readField[Optional[java.lang.Integer]]("line")
@@ -33,7 +34,7 @@ trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
           val endColumn0 = unbuilder.readField[Optional[java.lang.Integer]]("endColumn")
 
           unbuilder.endObject()
-          new Position() {
+          new Position():
             override val line = line0
             override val lineContent = lineContent0
             override val offset = offset0
@@ -48,12 +49,9 @@ trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
             override val endLine = endLine0
             override val endColumn = endColumn0
 
-          }
         case None =>
           deserializationError("Expected JsObject but found None")
-      }
-    }
-    override def write[J](obj: Position, builder: Builder[J]): Unit = {
+    override def write[J](obj: Position, builder: Builder[J]): Unit =
       builder.beginObject()
       builder.addField("line", obj.line)
       builder.addField("lineContent", obj.lineContent)
@@ -70,6 +68,4 @@ trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
       builder.addField("endColumn", obj.endColumn)
 
       builder.endObject()
-    }
-  }
-}
+end PositionFormats

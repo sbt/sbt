@@ -1,0 +1,39 @@
+> captureTestLog testquick-capture.log
+> test
+> dropSuccessSorted testquick-capture.log
+$ must-mirror testquick.log.check target/drop.log
+
+# Both invocations below are now fully cached, thanks to the block above.
+> captureLog recap-capture.log
+> test
+> test
+> dropSuccess recap-capture.log
+$ must-mirror test.log.check target/drop.log
+
+# Test success
+> captureLog recap-capture2.log
+> test --test_summary=success
+> dropSuccess recap-capture2.log
+$ must-mirror success.log.check target/drop.log
+
+# Test failures
+$ copy-file changes/BadTestA.java a/src/test/java/com/example/a/TestA.java
+$ copy-file changes/BadTestB.java b/src/test/java/com/example/b/TestB.java
+> captureLog recap-capture3.log
+-> test
+> dropSuccess recap-capture3.log
+$ must-mirror failure.log.check target/drop.log
+> dropSuccessSorted testquick-capture.log
+$ must-mirror testquick2.log.check target/drop.log
+
+# Test failures and success
+> captureLog recap-capture4.log
+-> test --test_summary=success
+> dropSuccess recap-capture4.log
+$ must-mirror both.log.check target/drop.log
+
+# None
+> captureLog recap-capture5.log
+-> test --test_summary=none
+> dropSuccess recap-capture5.log
+$ must-mirror none.log.check target/drop.log

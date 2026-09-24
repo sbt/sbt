@@ -14,7 +14,10 @@ object ArgParser:
         opt[Unit]('h', "help").action((_, c) => c.copy(help = true)),
         opt[Unit]('v', "verbose").action((_, c) => c.copy(verbose = true)),
         opt[Unit]('d', "debug").action((_, c) => c.copy(debug = true)),
-        opt[Unit]('V', "version").action((_, c) => c.copy(version = true)),
+        opt[Unit]('V', "version").action((_, c) =>
+          if c.residual.nonEmpty then c.copy(residual = c.residual :+ "-V")
+          else c.copy(version = true)
+        ),
         opt[Unit]("numeric-version").action((_, c) => c.copy(numericVersion = true)),
         opt[Unit]("script-version").action((_, c) => c.copy(scriptVersion = true)),
         opt[Unit]("shutdownall").action((_, c) => c.copy(shutdownAll = true)),
@@ -52,10 +55,12 @@ object ArgParser:
           .optional()
           .action((x, c) => c.copy(residual = c.residual :+ x)),
       )
+    end parser
     OParser
       .parse(parser, args, LauncherOptions())
       .map: opts =>
         val sbtNew = opts.residual.contains("new") || opts.residual.contains("init")
         val isScript = opts.residual.exists(_.startsWith("-Dsbt.main.class=sbt.ScriptMain"))
         opts.copy(sbtNew = sbtNew, allowEmpty = opts.allowEmpty || isScript)
+  end parse
 end ArgParser

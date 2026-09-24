@@ -16,7 +16,7 @@ import scala.concurrent.duration.FiniteDuration
  * Used with the `repositoryUpdateStrategy` setting key to control when
  * remote project dependencies are updated from their upstream repositories.
  */
-enum RepositoryUpdateStrategy {
+enum RepositoryUpdateStrategy:
 
   /**
    * Never update automatically.
@@ -29,5 +29,3 @@ enum RepositoryUpdateStrategy {
 
   /** Update at most once per the given interval. */
   case Every(interval: FiniteDuration)
-
-}

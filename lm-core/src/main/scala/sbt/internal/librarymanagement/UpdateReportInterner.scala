@@ -16,7 +16,7 @@ import sbt.librarymanagement.*
  *
  * The pools are weak, so an entry lives only as long as some report references it.
  */
-object UpdateReportInterner {
+object UpdateReportInterner:
 
   private val configRefs = new WeakInterner[ConfigRef]
   private val rules = new WeakInterner[InclExclRule]
@@ -36,16 +36,15 @@ object UpdateReportInterner {
     artifacts.internWith(a) { artifact =>
       // Canonicalize the nested vectors so value-equal artifacts share their pieces even when only
       // encountered once.
-      if (artifact.configurations.isEmpty) artifact
+      if artifact.configurations.isEmpty then artifact
       else artifact.withConfigurations(artifact.configurations.map(intern))
     }
 
   def intern(m: ModuleID): ModuleID =
     moduleIds.internWith(m) { moduleId =>
-      if (
-        moduleId.inclusions.isEmpty && moduleId.exclusions.isEmpty &&
+      if moduleId.inclusions.isEmpty && moduleId.exclusions.isEmpty &&
         moduleId.explicitArtifacts.isEmpty
-      ) moduleId
+      then moduleId
       else
         moduleId
           .withInclusions(moduleId.inclusions.map(intern))
@@ -62,7 +61,7 @@ object UpdateReportInterner {
 
   def intern(mr: ModuleReport): ModuleReport =
     // A publicationDate is a mutable Calendar, so canonicalize such a report but never pool it.
-    if (mr.publicationDate.isDefined) canonicalize(mr)
+    if mr.publicationDate.isDefined then canonicalize(mr)
     else moduleReports.internWith(mr)(canonicalize)
 
   private def canonicalize(mr: ModuleReport): ModuleReport =
@@ -71,4 +70,4 @@ object UpdateReportInterner {
       .withMissingArtifacts(mr.missingArtifacts.map(intern))
       .withConfigurations(mr.configurations.map(intern))
       .withCallers(mr.callers.map(intern))
-}
+end UpdateReportInterner

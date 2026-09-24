@@ -10,11 +10,10 @@ package sbt
 package internal
 package bsp
 
-object SourceItemKind {
+object SourceItemKind:
 
   /** The source item references a normal file. */
   val File: Int = 1
 
   /** The source item references a directory. */
   val Directory: Int = 2
-}

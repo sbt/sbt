@@ -13,10 +13,9 @@ import sbt.util.*
 import sjsonnew.JsonFormat
 import sbt.internal.util.appmacro.StringTypeTag
 
-private[sbt] trait MiniLogger {
+private[sbt] trait MiniLogger:
   def log[T](level: Level.Value, message: ObjectEvent[T]): Unit
   def log(level: Level.Value, message: => String): Unit
-}
 
 /**
  * Delegates log events to the associated LogExchange.
@@ -28,7 +27,7 @@ class ManagedLogger(
     xlogger: MiniLogger,
     terminal: Option[Terminal],
     private[sbt] val context: LoggerContext,
-) extends Logger {
+) extends Logger:
   def this(
       name: String,
       channelName: Option[String],
@@ -42,15 +41,11 @@ class ManagedLogger(
     xlogger.log(level, message)
 
   // send special event for success since it's not a real log level
-  override def success(message: => String): Unit = {
-    if (terminal.fold(true)(_.isSuccessEnabled)) {
-      infoEvent[SuccessEvent](SuccessEvent(message))
-    }
-  }
+  override def success(message: => String): Unit =
+    if terminal.fold(true)(_.isSuccessEnabled) then infoEvent[SuccessEvent](SuccessEvent(message))
 
-  def registerStringCodec[A: ShowLines: StringTypeTag]: Unit = {
+  def registerStringCodec[A: ShowLines: StringTypeTag]: Unit =
     LogExchange.registerStringCodec[A]
-  }
 
   final def debugEvent[A: JsonFormat: StringTypeTag](event: => A): Unit =
     logEvent(Level.Debug, event)
@@ -60,10 +55,9 @@ class ManagedLogger(
     logEvent(Level.Error, event)
   def logEvent[A: JsonFormat](level: Level.Value, event: => A)(using
       tag: StringTypeTag[A]
-  ): Unit = {
+  ): Unit =
     val v: A = event
     // println("logEvent " + tag.key)
     val entry: ObjectEvent[A] = ObjectEvent(level, v, channelName, execId, tag.key)
     xlogger.log(level, entry)
-  }
-}
+end ManagedLogger

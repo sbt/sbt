@@ -15,7 +15,7 @@ lazy val root = (project in file("."))
     publishRepoBase := baseDirectory.value / "repo",
     publishTo := Some(
       Resolver
-        .url("test-repo", new java.net.URI(s"http://localhost:$publishPort/").toURL)(using
+        .uri("test-repo", new java.net.URI(s"http://localhost:$publishPort/"))(using
           Resolver.ivyStylePatterns
         )
         .withAllowInsecureProtocol(true)

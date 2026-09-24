@@ -6,15 +6,15 @@ package librarymanagement
 
 import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 
-trait ConfigurationFormats {
+trait ConfigurationFormats:
   self: sbt.librarymanagement.ConfigurationFormats & sjsonnew.BasicJsonProtocol =>
   given ConfigurationFormat: JsonFormat[sbt.librarymanagement.Configuration] =
-    new JsonFormat[sbt.librarymanagement.Configuration] {
+    new JsonFormat[sbt.librarymanagement.Configuration]:
       override def read[J](
           jsOpt: Option[J],
           unbuilder: Unbuilder[J]
-      ): sbt.librarymanagement.Configuration = {
-        jsOpt match {
+      ): sbt.librarymanagement.Configuration =
+        jsOpt match
           case Some(js) =>
             unbuilder.beginObject(js)
             val id = unbuilder.readField[String]("id")
@@ -35,9 +35,7 @@ trait ConfigurationFormats {
             )
           case None =>
             deserializationError("Expected JsObject but found None")
-        }
-      }
-      override def write[J](obj: sbt.librarymanagement.Configuration, builder: Builder[J]): Unit = {
+      override def write[J](obj: sbt.librarymanagement.Configuration, builder: Builder[J]): Unit =
         builder.beginObject()
         builder.addField("id", obj.id)
         builder.addField("name", obj.name)
@@ -46,6 +44,4 @@ trait ConfigurationFormats {
         builder.addField("extendsConfigs", obj.extendsConfigs)
         builder.addField("transitive", obj.transitive)
         builder.endObject()
-      }
-    }
-}
+end ConfigurationFormats

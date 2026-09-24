@@ -38,6 +38,12 @@ lazy val util = project.settings(
   Compile / classDirectory := baseDirectory.value / "classes"
 )
 
+lazy val scalacOptionsPlugin = project
+  .in(file("scalac-options-plugin"))
+  .settings(
+    addCompilerPlugin(("org.typelevel" % "kind-projector" % "0.13.3").cross(CrossVersion.full))
+  )
+
 lazy val diagnostics = project
 
 lazy val javaProj = project

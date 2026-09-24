@@ -60,17 +60,14 @@ object SettingsTest extends Properties("settings") {
         val derivedSettings: Seq[Setting[Int]] = (
           for {
             List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
-            nextInit = if (scoped0 == chk) chk
-            else
-              (scoped0 zipWith chk) { (p, _) =>
-                p + 1
-              }
+            nextInit = if (scoped0 == chk) chk else (scoped0 zipWith chk) { (p, _) => p + 1 }
           } yield derive(setting(scoped1, nextInit))
         ).toSeq
 
         {
           // Note: This causes a cycle reference error, quite frequently.
-          checkKey(last, Some(nr - 1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?"
+          checkKey(last, Some(nr - 1), evaluate(setting(chk, value(0)) +: derivedSettings)) :|
+            "Not derived?"
         } && {
           checkKey(last, None, evaluate(derivedSettings)) :| "Should not be derived"
         }
@@ -132,24 +129,24 @@ object SettingsTest extends Properties("settings") {
     "DerivedSetting in ThisBuild scopes derived settings under projects thus allowing safe +="
   ) = forAllNoShrink(Gen.choose(1, 100)) { derivedSettingsScope }
   final def derivedSettingsScope(nrProjects: Int): Prop = {
-    forAll(mkAttrKeys[Int](2)) {
-      case List(key, derivedKey) =>
-        val projectKeys = for { proj <- 1 to nrProjects } yield ScopedKey(Scope(1, proj), key)
-        val projectDerivedKeys = for { proj <- 1 to nrProjects } yield ScopedKey(
+    forAll(mkAttrKeys[Int](2)) { case List(key, derivedKey) =>
+      val projectKeys = for { proj <- 1 to nrProjects } yield ScopedKey(Scope(1, proj), key)
+      val projectDerivedKeys =
+        for { proj <- 1 to nrProjects } yield ScopedKey(
           Scope(1, proj),
           derivedKey
         )
-        val globalKey = ScopedKey(Scope(0), key)
-        val globalDerivedKey = ScopedKey(Scope(0), derivedKey)
-        // Each project defines an initial value, but the update is defined in globalKey.
-        // However, the derived Settings that come from this should be scoped in each project.
-        val settings: Seq[Setting[_]] =
-          derive(setting(globalDerivedKey, settingsExample.map(globalKey)(_ + 1))) +: projectKeys
-            .map(pk => setting(pk, value(0)))
-        val ev = evaluate(settings)
-        // Also check that the key has no value at the "global" scope
-        val props = for { pk <- projectDerivedKeys } yield checkKey(pk, Some(1), ev)
-        checkKey(globalDerivedKey, None, ev) && Prop.all(props: _*)
+      val globalKey = ScopedKey(Scope(0), key)
+      val globalDerivedKey = ScopedKey(Scope(0), derivedKey)
+      // Each project defines an initial value, but the update is defined in globalKey.
+      // However, the derived Settings that come from this should be scoped in each project.
+      val settings: Seq[Setting[_]] =
+        derive(setting(globalDerivedKey, settingsExample.map(globalKey)(_ + 1))) +: projectKeys
+          .map(pk => setting(pk, value(0)))
+      val ev = evaluate(settings)
+      // Also check that the key has no value at the "global" scope
+      val props = for { pk <- projectDerivedKeys } yield checkKey(pk, Some(1), ev)
+      checkKey(globalDerivedKey, None, ev) && Prop.all(props: _*)
     }
   }
 

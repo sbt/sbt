@@ -14,15 +14,15 @@ import sbt.internal.util.LineRange
 import xsbti.VirtualFileRef
 import dotty.tools.dotc.ast.untpd.Tree
 
-trait SplitExpression {
+trait SplitExpression:
   extension (splitter: SplitExpressions.SplitExpression)
     def apply(s: String): (Seq[(String, Int)], Seq[(String, Tree, LineRange)]) =
       splitter(VirtualFileRef.of("noFile"), s.split('\n').toSeq)
-}
 
-trait SplitExpressionsBehavior extends SplitExpression { this: verify.BasicTestSuite =>
+trait SplitExpressionsBehavior extends SplitExpression:
+  this: verify.BasicTestSuite =>
 
-  def newExpressionsSplitter(splitter: SplitExpressions.SplitExpression) = {
+  def newExpressionsSplitter(splitter: SplitExpressions.SplitExpression) =
 
     test("parse a two settings without intervening blank line") {
       val (imports, settings) = splitter(
@@ -64,6 +64,5 @@ trait SplitExpressionsBehavior extends SplitExpression { this: verify.BasicTestS
       assert(imports.size == 1)
       assert(settingsAndDefs.size == 1)
     }
-  }
-
-}
+  end newExpressionsSplitter
+end SplitExpressionsBehavior

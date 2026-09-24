@@ -10,7 +10,7 @@ package sbt.internal.parser
 
 import sbt.internal.util.MessageOnlyException
 
-object EmbeddedXmlSpec extends CheckIfParsedSpec {
+object EmbeddedXmlSpec extends CheckIfParsedSpec:
 
   test("File with xml content  should Handle last xml part") {
     val errorLine = """<version>4.0<version>"""
@@ -35,17 +35,16 @@ object EmbeddedXmlSpec extends CheckIfParsedSpec {
                        |
                        |""".stripMargin
 
-    try {
+    try
       splitter(buildSbt)
       sys.error("expected MessageOnlyException")
-    } catch {
+    catch
       case exception: MessageOnlyException =>
         val index = buildSbt.linesIterator.indexWhere(line => line.contains(errorLine)) + 1
         val numberRegex = """(\d+)""".r
         val message = exception.getMessage
         val list = numberRegex.findAllIn(message).toList
         assert(list.contains(index.toString))
-    }
   }
 
   protected val files = Seq(
@@ -169,5 +168,4 @@ object EmbeddedXmlSpec extends CheckIfParsedSpec {
       true
     )
   )
-
-}
+end EmbeddedXmlSpec

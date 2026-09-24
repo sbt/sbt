@@ -12,17 +12,19 @@ package librarymanagement
 
 import java.io.{ File, IOException }
 import java.net.{ URI, URL }
+import java.nio.file.{ Files, StandardCopyOption }
 import java.util.regex.Matcher
 
-import gigahorse.AuthScheme
+import gigahorse.{ AuthScheme, Realm }
 import gigahorse.support.apachehttp.Gigahorse
-import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
+import sbt.internal.librarymanagement.mavenint.PomExtraAttributeKeys
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import sbt.io.IO
 import sbt.io.syntax.*
 import scala.concurrent.Await
 import scala.concurrent.duration.*
+import scala.util.control.NonFatal
 import lmcoursier.definitions.Project as CsrProject
 
 /**
@@ -33,8 +35,17 @@ class GenericPublisher private[sbt] (
     pomRepositories: Vector[Resolver],
     project: CsrProject,
     credentials: Seq[Credentials],
-    resolvers: Seq[Resolver]
+    resolvers: Seq[Resolver],
+    artifactNameCross: Option[String => String]
 ) extends PublisherInterface:
+
+  private[sbt] def this(
+      dependencyResolution: DependencyResolution,
+      pomRepositories: Vector[Resolver],
+      project: CsrProject,
+      credentials: Seq[Credentials],
+      resolvers: Seq[Resolver]
+  ) = this(dependencyResolution, pomRepositories, project, credentials, resolvers, None)
 
   // Extension used for PGP signature files; checksums are not generated for these.
   private val signatureExt = ".asc"
@@ -73,6 +84,7 @@ class GenericPublisher private[sbt] (
     scala.xml.XML.save(file.getAbsolutePath, formatted, "UTF-8", xmlDecl = true)
     log.info("Wrote " + file.getAbsolutePath)
     file
+  end makePomFile
 
   override def publish(
       module: ModuleDescriptor,
@@ -93,7 +105,21 @@ class GenericPublisher private[sbt] (
         )
     val artifacts = configuration.artifacts
     target match
-      case urlRepo: URLRepository =>
+      case urlRepo: URLRepository
+          if urlRepo.patterns.isMavenCompatible && !isFilePatterned(urlRepo) =>
+        val pat = urlRepo.patterns.artifactPatterns.headOption.getOrElse(
+          sys.error("URLRepository has no artifact pattern")
+        )
+        val idx = pat.indexOf("[organisation]")
+        if idx < 0 then sys.error(s"Maven-compatible pattern '$pat' has no [organisation] token")
+        ivylessPublishMavenToUrl(
+          artifacts,
+          configuration.checksums,
+          pat.substring(0, idx),
+          configuration.overwrite,
+          log
+        )
+      case urlRepo: URLRepository if !isFilePatterned(urlRepo) =>
         ivylessPublish(artifacts, configuration.checksums, urlRepo, configuration.overwrite, log)
       case fileRepo: FileRepository =>
         ivylessPublishToFile(
@@ -103,15 +129,13 @@ class GenericPublisher private[sbt] (
           configuration.overwrite,
           log
         )
-      case pbr: PatternsBasedRepository if pbr.patterns.artifactPatterns.headOption.exists { pat =>
-            pat.contains("[organisation]") && !pat.trim.startsWith("http")
-          } =>
+      case pbr: PatternsBasedRepository if isFilePatterned(pbr) =>
         // File repo detected by pattern (e.g. scripted classloader makes type match fail)
         val pat = pbr.patterns.artifactPatterns.head
         val baseStr =
           pat.substring(0, pat.indexOf("[organisation]")).replace('\\', '/').stripSuffix("/")
         val repoDir =
-          (if (baseStr.startsWith("file:")) new File(new java.net.URI(baseStr))
+          (if baseStr.startsWith("file:") then new File(new java.net.URI(baseStr))
            else new File(baseStr)).getAbsoluteFile
         if pbr.patterns.isMavenCompatible then
           log.info(s"Ivyless publish (Maven layout) to file repo: $repoDir")
@@ -162,16 +186,26 @@ class GenericPublisher private[sbt] (
           sys.error(
             s"ivyless Maven publish: unsupported root '$root'; use a supported repository (http/https/file)."
           )
+        end if
       case other =>
         sys.error(
           s"ivyless publish does not support ${other.getClass.getName}; use URLRepository, FileRepository, or MavenRepository."
         )
+    end match
   end publish
+
+  /**
+   * True when a repository's patterns name a directory rather than an HTTP endpoint, including a
+   * `file:` URLRepository, which sbt 1.x routed to the filesystem via `LocalIfFileRepo`.
+   */
+  private def isFilePatterned(repo: PatternsBasedRepository): Boolean =
+    repo.patterns.artifactPatterns.headOption.exists: pat =>
+      pat.contains("[organisation]") && !pat.trim.startsWith("http")
 
   private def pluginCrossPath: Seq[String] =
     val attrs = project.module.attributes
-    attrs.get(PomExtraDependencyAttributes.ScalaVersionKey).map("scala_" + _).toSeq ++
-      attrs.get(PomExtraDependencyAttributes.SbtVersionKey).map("sbt_" + _).toSeq
+    attrs.get(PomExtraAttributeKeys.ScalaVersionKey).map("scala_" + _).toSeq ++
+      attrs.get(PomExtraAttributeKeys.SbtVersionKey).map("sbt_" + _).toSeq
 
   private def typeToFolder(tpe: String): String = tpe match
     case "jar"                                   => "jars"
@@ -207,11 +241,7 @@ class GenericPublisher private[sbt] (
     val ivyXmlFile = ivysDir / "ivy.xml"
     IO.createDirectory(ivysDir)
     val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
-    if !ivyXmlFile.exists || overwrite then
-      IO.write(ivyXmlFile, ivyXmlContent)
-      log.info(s"published $ivyXmlFile")
-      writeChecksumsForFile(ivyXmlFile, checksumAlgorithms, log)
-    else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
+    publishBytes(ivyXmlFile, overwrite, checksumAlgorithms, log)(IO.write(_, ivyXmlContent))
 
     // Build a lookup from (type, classifier, ext) to cross-versioned publication name
     val pubNameLookup: Map[(String, String, String), String] =
@@ -232,13 +262,7 @@ class GenericPublisher private[sbt] (
       val fileName = s"$artName$classifier.${artifact.extension}"
       val targetFile = targetDir / fileName
 
-      if !targetFile.exists || overwrite then
-        IO.createDirectory(targetDir)
-        IO.copyFile(sourceFile, targetFile)
-        log.info(s"published $targetFile")
-        if !targetFile.getName.endsWith(signatureExt) then
-          writeChecksumsForFile(targetFile, checksumAlgorithms, log)
-      else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
+      publishFile(sourceFile, targetFile, overwrite, checksumAlgorithms, log)
   end ivylessPublishLocal
 
   /**
@@ -254,7 +278,7 @@ class GenericPublisher private[sbt] (
       artifactName: String,
       classifier: String,
       ext: String
-  ): String = {
+  ): String =
     var s = pattern
     s = s.replace("[organisation]", org)
     s = s.replace("[module]", moduleName)
@@ -262,12 +286,12 @@ class GenericPublisher private[sbt] (
     s = s.replace("[type]s", typeFolder)
     s = s.replace("[artifact]", artifactName)
     s = s.replace("[ext]", ext)
-    if (classifier.nonEmpty) s = s.replace("(-[classifier])", s"-$classifier")
+    if classifier.nonEmpty then s = s.replace("(-[classifier])", s"-$classifier")
     else s = s.replace("(-[classifier])", "")
     // Substitute or drop optional Ivy pattern parts (scala/sbt version), remove branch for ivyless layout
     val attrs = project.module.attributes
-    val scalaV = attrs.get(PomExtraDependencyAttributes.ScalaVersionKey)
-    val sbtV = attrs.get(PomExtraDependencyAttributes.SbtVersionKey)
+    val scalaV = attrs.get(PomExtraAttributeKeys.ScalaVersionKey)
+    val sbtV = attrs.get(PomExtraAttributeKeys.SbtVersionKey)
     s = s.replaceAll(
       "\\(scala_[^)]+/\\)",
       scalaV.map(v => Matcher.quoteReplacement(s"scala_$v/")).getOrElse("")
@@ -278,7 +302,7 @@ class GenericPublisher private[sbt] (
     )
     s = s.replaceAll("\\(\\[branch\\]/\\)", "")
     s
-  }
+  end substituteIvyArtifactPattern
 
   /**
    * Picks credentials for a URL. Matches host; when realm is given, prefers credential with matching realm (per Publishing docs).
@@ -286,12 +310,18 @@ class GenericPublisher private[sbt] (
   private def credentialFor(
       url: URL,
       credentials: Seq[Credentials.DirectCredentials],
-      realm: Option[String] = None
-  ): Option[Credentials.DirectCredentials] =
+      realm: Option[String]
+  ): Option[Realm] =
     val byHost = credentials.filter(_.host == url.getHost)
-    realm match
+    val credsOpt = realm match
       case Some(r) => byHost.find(_.realm == r).orElse(byHost.headOption)
       case None    => byHost.headOption
+    credsOpt.map: creds =>
+      Realm(
+        username = creds.userName,
+        password = creds.passwd,
+        scheme = AuthScheme.Basic,
+      ).withRealmNameOpt(realm)
 
   /**
    * HTTP PUT a file to a URL with optional Basic auth.
@@ -300,13 +330,13 @@ class GenericPublisher private[sbt] (
   private def httpPut(
       url: URL,
       sourceFile: File,
-      credentials: Option[Credentials.DirectCredentials],
+      authentication: Option[Realm],
       log: Logger
   ): Unit =
     val baseReq = Gigahorse.url(url.toString).put(sourceFile)
-    val req = credentials match
-      case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
-      case None     => baseReq
+    val req = authentication match
+      case Some(a) => baseReq.withAuth(a)
+      case None    => baseReq
     val f = sbt.librarymanagement.Http.http.processFull(req)
     val response = Await.result(f, 5.minutes)
     val body = response.bodyAsString
@@ -315,6 +345,45 @@ class GenericPublisher private[sbt] (
         s"PUT $url failed: ${response.status} ${response.statusText}$body"
       )
     log.info(s"published $url")
+
+  /**
+   * HEAD probe used to decide whether a remote artifact is already published.
+   *
+   * Fails open: a server that rejects HEAD (405, 501) or is unreachable reports "absent", so
+   * publishing keeps working exactly as it does today rather than failing on a probe.
+   */
+  private def httpExists(url: URL, authentication: Option[Realm], log: Logger): Boolean =
+    val baseReq = Gigahorse.url(url.toString).head
+    val req = authentication match
+      case Some(a) => baseReq.withAuth(a)
+      case None    => baseReq
+    try
+      val response = Await.result(sbt.librarymanagement.Http.http.processFull(req), 5.minutes)
+      response.status >= 200 && response.status < 300
+    catch
+      case NonFatal(e) =>
+        log.debug(s"HEAD $url failed (${e.getMessage}); assuming it is not published yet")
+        false
+
+  /**
+   * Refuses to overwrite an artifact that is already published remotely.
+   *
+   * A remote repository may be immutable, where a silent overwrite is unrecoverable, so this is
+   * the opposite of the file-repository rule in `publishFile`. Matches sbt 1.x's `LocalIfFileRepo`.
+   */
+  private def checkRemoteOverwrite(
+      url: URL,
+      authentication: Option[Realm],
+      overwrite: Boolean,
+      log: Logger
+  ): Unit =
+    if !overwrite && httpExists(url, authentication, log) then
+      throw new IOException(
+        s"$url already exists and overwriting is disabled.\n\t" +
+          "If a staging repository failed, drop it and start over. Otherwise publish a new " +
+          "version, or relax the setting as follows:\n\t" +
+          "publish / publishConfiguration := publishConfiguration.value.withOverwrite(true)"
+      )
 
   /**
    * Publishes artifacts to a remote Ivy repo (URLRepository) without using Apache Ivy.
@@ -326,7 +395,7 @@ class GenericPublisher private[sbt] (
       urlRepo: URLRepository,
       overwrite: Boolean,
       log: Logger
-  ): Unit = {
+  ): Unit =
     val org = project.module.organization.value
     val moduleName = project.module.name.value
     val version = project.version
@@ -353,6 +422,7 @@ class GenericPublisher private[sbt] (
         artifact.extension
       )
       val url = URI.create(pathPattern).toURL()
+      checkRemoteOverwrite(url, credentialFor(url, directCreds, None), overwrite, log)
       httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
       if !url.toString.endsWith(signatureExt) then
         val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
@@ -376,8 +446,9 @@ class GenericPublisher private[sbt] (
     )
     val ivyUrl = URI.create(ivyPathPattern).toURL()
     val ivyTmp = File.createTempFile("ivy", ".xml")
-    try {
+    try
       IO.write(ivyTmp, ivyXmlContent)
+      checkRemoteOverwrite(ivyUrl, credentialFor(ivyUrl, directCreds, None), overwrite, log)
       httpPut(ivyUrl, ivyTmp, credentialFor(ivyUrl, directCreds, None), log)
       val checksums = writeChecksumsToTempFiles(ivyTmp, checksumAlgorithms)
       checksums.foreach { case (cf, suffix) =>
@@ -385,8 +456,8 @@ class GenericPublisher private[sbt] (
         try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
         finally cf.delete()
       }
-    } finally ivyTmp.delete()
-  }
+    finally ivyTmp.delete()
+  end ivylessPublish
 
   /**
    * Publishes artifacts to a local file repo (FileRepository) without using Apache Ivy.
@@ -398,17 +469,17 @@ class GenericPublisher private[sbt] (
       fileRepo: FileRepository,
       overwrite: Boolean,
       log: Logger
-  ): Unit = {
+  ): Unit =
     val pattern = fileRepo.patterns.artifactPatterns.headOption.getOrElse(
       sys.error("FileRepository has no artifact pattern")
     )
     val baseStr =
-      if (pattern.contains("[organisation]"))
+      if pattern.contains("[organisation]") then
         pattern.substring(0, pattern.indexOf("[organisation]"))
       else pattern
     val normalized = baseStr.replace('\\', '/').stripSuffix("/")
     val localRepoBase =
-      if (normalized.startsWith("file:")) new File(new java.net.URI(normalized))
+      if normalized.startsWith("file:") then new File(new java.net.URI(normalized))
       else new File(normalized)
     val repoDir = localRepoBase.getAbsoluteFile
     val isMavenLayout = fileRepo.patterns.isMavenCompatible
@@ -418,27 +489,63 @@ class GenericPublisher private[sbt] (
     else
       log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
       ivylessPublishLocal(artifacts, checksumAlgorithms, repoDir, overwrite, log)
-  }
-
-  /**
-   * Maven layout path: groupId/artifactId/version/artifactId-version[-classifier].ext
-   */
-  private def mavenLayoutPath(
-      groupId: String,
-      artifactId: String,
-      version: String,
-      artifact: Artifact
-  ): String =
-    val groupPath = groupId.replace('.', '/')
-    val classifierPart = artifact.classifier.map("-" + _).getOrElse("")
-    val fileName = s"$artifactId-$version$classifierPart.${artifact.extension}"
-    s"$groupPath/$artifactId/$version/$fileName"
+  end ivylessPublishToFile
 
   private def normalizedChecksumAlgorithm(algo: String): String =
     algo.toLowerCase match
       case a @ ("md5" | "sha1") => a
       case other                =>
         throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+
+  /**
+   * Replaces `targetFile` in place, going through a sibling temp file so an interrupted
+   * publish cannot leave a half-written artifact behind.
+   */
+  private def atomicWrite(targetFile: File, write: File => Unit): Unit =
+    IO.createDirectory(targetFile.getParentFile)
+    val tmp = new File(targetFile.getPath + ".tmp")
+    try
+      write(tmp)
+      try
+        Files.move(
+          tmp.toPath,
+          targetFile.toPath,
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE
+        )
+      catch
+        case _: java.nio.file.AtomicMoveNotSupportedException =>
+          Files.move(tmp.toPath, targetFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+    finally IO.delete(tmp)
+
+  /**
+   * Writes one artifact into a file repository, overwriting whatever is there.
+   *
+   * A file repository is the developer's own scratch space, so what was just built always
+   * wins; `overwrite = false` only downgrades that to a warning. This matches sbt 1.x, where
+   * `WarnOnOverwriteFileRepo` warned and then re-`put` with `overwrite = true`.
+   */
+  private def publishFile(
+      sourceFile: File,
+      targetFile: File,
+      overwrite: Boolean,
+      checksumAlgorithms: Vector[String],
+      log: Logger
+  ): Unit =
+    publishBytes(targetFile, overwrite, checksumAlgorithms, log)(IO.copyFile(sourceFile, _))
+
+  private def publishBytes(
+      targetFile: File,
+      overwrite: Boolean,
+      checksumAlgorithms: Vector[String],
+      log: Logger
+  )(write: File => Unit): Unit =
+    if targetFile.exists && !overwrite then
+      log.warn(s"$targetFile already exists, overwriting (overwrite=$overwrite)")
+    atomicWrite(targetFile, write)
+    log.info(s"published $targetFile")
+    if !targetFile.getName.endsWith(signatureExt) then
+      writeChecksumsForFile(targetFile, checksumAlgorithms, log)
 
   /**
    * Writes a `targetFile.<algo>` checksum file alongside `targetFile` for each algorithm.
@@ -484,32 +591,29 @@ class GenericPublisher private[sbt] (
   ): Unit =
     if repoBase == null then throw new IllegalArgumentException("repoBase must not be null")
     val groupId = project.module.organization.value
-    // Derive artifactId: for sbt 2 plugins, module.name has cross-version (e.g. sbt-example_sbt2_3).
-    // For sbt 1 plugins, mavenArtifactsOfSbtPlugin cross-versions the POM artifact name (e.g. sbt-example_2.12_1.0).
-    val baseModuleName = project.module.name.value
-    val pomArtName = artifacts.collectFirst { case (a, _) if a.`type` == "pom" => a.name }
-    val artifactId = pomArtName match
-      case Some(name) if name.startsWith(baseModuleName) && name != baseModuleName => name
-      case _                                                                       => baseModuleName
+    val artifactId =
+      GenericPublisher.mavenModuleArtifactId(project.module.name.value, project.module.attributes)
     val version = project.version
     val groupPath = groupId.replace('.', '/')
     val versionDir = new File(repoBase, s"$groupPath/$artifactId/$version")
+    val mavenArtifacts = GenericPublisher.mavenArtifacts(
+      groupId,
+      artifactId,
+      version,
+      version,
+      artifacts,
+      artifactNameCross
+    )
     log.info(s"Publishing to Maven repo: $versionDir")
 
-    artifacts.foreach:
-      case (artifact, sourceFile) =>
-        val path = mavenLayoutPath(groupId, artifactId, version, artifact)
+    mavenArtifacts.foreach:
+      case (_, sourceFile, path) =>
         val targetFile = new File(repoBase, path.replace('/', File.separatorChar))
-        if !targetFile.exists || overwrite then
-          targetFile.getParentFile.mkdirs()
-          IO.copyFile(sourceFile, targetFile)
-          log.info(s"published $targetFile")
-          if !targetFile.toString.endsWith(signatureExt) then
-            writeChecksumsForFile(targetFile, checksumAlgorithms, log)
-        else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
+        publishFile(sourceFile, targetFile, overwrite, checksumAlgorithms, log)
 
     if version.endsWith("-SNAPSHOT") then
       writeMavenMetadataLocal(versionDir, groupId, artifactId, version, log)
+  end ivylessPublishMavenToFile
 
   private def writeMavenMetadataLocal(
       versionDir: File,
@@ -536,6 +640,7 @@ class GenericPublisher private[sbt] (
     val metadataFile = new File(versionDir, "maven-metadata-local.xml")
     IO.write(metadataFile, metadata)
     log.info(s"published $metadataFile")
+  end writeMavenMetadataLocal
 
   /**
    * Publishes artifacts to a remote Maven repo (HTTP) without using Apache Ivy.
@@ -551,37 +656,214 @@ class GenericPublisher private[sbt] (
     if baseUrl == null || baseUrl.trim.isEmpty then
       throw new IllegalArgumentException("baseUrl must not be null or empty")
     val groupId = project.module.organization.value
-    // Derive artifactId: for sbt 2 plugins, module.name has cross-version (e.g. sbt-example_sbt2_3).
-    // For sbt 1 plugins, mavenArtifactsOfSbtPlugin cross-versions the POM artifact name (e.g. sbt-example_2.12_1.0).
-    val baseModuleName = project.module.name.value
-    val pomArtName = artifacts.collectFirst { case (a, _) if a.`type` == "pom" => a.name }
-    val artifactId = pomArtName match
-      case Some(name) if name.startsWith(baseModuleName) && name != baseModuleName => name
-      case _                                                                       => baseModuleName
+    val artifactId =
+      GenericPublisher.mavenModuleArtifactId(project.module.name.value, project.module.attributes)
     val version = project.version
     val directCreds = credentials.collect:
       case d: Credentials.DirectCredentials => d
 
     val base = baseUrl.stripSuffix("/") + "/"
-    artifacts.foreach:
-      case (artifact, sourceFile) =>
-        val path = mavenLayoutPath(groupId, artifactId, version, artifact)
+    val versionPath = s"${groupId.replace('.', '/')}/$artifactId/$version"
+    val remoteMetadata =
+      if version.endsWith("-SNAPSHOT") then
+        fetchMetadata(base + versionPath + "/maven-metadata.xml", directCreds, log)
+      else None
+    val snapshot =
+      if version.endsWith("-SNAPSHOT") then
+        val previous = remoteMetadata
+          .flatMap(m => (m \\ "versioning" \\ "snapshot" \\ "buildNumber").text.trim.toIntOption)
+          .getOrElse(0)
+        Some(SnapshotVersion(snapshotTimestamp(), previous + 1, version.stripSuffix("-SNAPSHOT")))
+      else None
+    val fileVersion = snapshot.map(_.qualifier).getOrElse(version)
+    val mavenArtifacts = GenericPublisher.mavenArtifacts(
+      groupId,
+      artifactId,
+      version,
+      fileVersion,
+      artifacts,
+      artifactNameCross
+    )
+
+    def putWithChecksums(path: String, sourceFile: File): Unit =
+      val url = URI.create(base + path).toURL()
+      try
+        httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
+        if !sourceFile.toString.endsWith(signatureExt) then
+          val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
+          checksums.foreach:
+            case (cf, suffix) =>
+              val checksumUrl = URI.create(base + path + suffix).toURL()
+              try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
+              finally cf.delete()
+      catch
+        case e: IOException =>
+          throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
+
+    mavenArtifacts.foreach:
+      case (_, sourceFile, path) =>
         val url = URI.create(base + path).toURL()
-        try
-          httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
-          if !sourceFile.toString.endsWith(signatureExt) then
-            val checksums = writeChecksumsToTempFiles(sourceFile, checksumAlgorithms)
-            checksums.foreach:
-              case (cf, suffix) =>
-                val checksumUrl = URI.create(base + path + suffix).toURL()
-                try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
-                finally cf.delete()
-        catch
-          case e: IOException =>
-            throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
+        checkRemoteOverwrite(url, credentialFor(url, directCreds, None), overwrite, log)
+        putWithChecksums(path, sourceFile)
+
+    snapshot.foreach: snap =>
+      val metadata = File.createTempFile("maven-metadata", ".xml")
+      try
+        IO.write(
+          metadata,
+          mavenMetadataXml(groupId, artifactId, version, snap, artifacts.map(_._1), remoteMetadata)
+        )
+        putWithChecksums(versionPath + "/maven-metadata.xml", metadata)
+      finally metadata.delete()
+  end ivylessPublishMavenToUrl
+
+  private case class SnapshotVersion(timestamp: String, buildNumber: Int, baseVersion: String):
+    def qualifier: String = s"$baseVersion-$timestamp-$buildNumber"
+    def lastUpdated: String = timestamp.replace(".", "")
+
+  private def snapshotTimestamp(): String =
+    java.time.format.DateTimeFormatter
+      .ofPattern("yyyyMMdd.HHmmss")
+      .withZone(java.time.ZoneOffset.UTC)
+      .format(java.time.Instant.now())
+
+  /**
+   * Fetches the remote maven-metadata.xml for a snapshot version, or None when the
+   * repository has no metadata for this version yet.
+   */
+  private def fetchMetadata(
+      metadataUrl: String,
+      credentials: Seq[Credentials.DirectCredentials],
+      log: Logger
+  ): Option[scala.xml.Elem] =
+    try
+      val url = URI.create(metadataUrl).toURL()
+      val baseReq = Gigahorse.url(metadataUrl).get
+      val req = credentialFor(url, credentials, None) match
+        case Some(a) => baseReq.withAuth(a)
+        case None    => baseReq
+      val response = Await.result(sbt.librarymanagement.Http.http.processFull(req), 1.minute)
+      if response.status == 404 then None
+      else if response.status < 200 || response.status >= 300 then
+        log.warn(
+          s"GET $metadataUrl failed: ${response.status} ${response.statusText}; snapshot numbering restarts at 1"
+        )
+        None
+      else Some(scala.xml.XML.loadString(response.bodyAsString))
+    catch
+      case scala.util.control.NonFatal(e) =>
+        log.warn(s"could not read $metadataUrl: ${e.getMessage}; snapshot numbering restarts at 1")
+        None
+
+  private def mavenMetadataXml(
+      groupId: String,
+      artifactId: String,
+      version: String,
+      snapshot: SnapshotVersion,
+      artifacts: Vector[Artifact],
+      remote: Option[scala.xml.Elem]
+  ): String =
+    def entry(classifier: Option[String], extension: String, value: String, updated: String) =
+      val cls = classifier.fold("")(c => s"<classifier>$c</classifier>")
+      s"""|      <snapshotVersion>
+          |        $cls<extension>$extension</extension>
+          |        <value>$value</value>
+          |        <updated>$updated</updated>
+          |      </snapshotVersion>""".stripMargin
+    val published = GenericPublisher.distinctSnapshotArtifacts(artifacts)
+    val retained = remote.toSeq
+      .flatMap(m => m \ "versioning" \ "snapshotVersions" \ "snapshotVersion")
+      .flatMap: sv =>
+        val classifier = Option((sv \ "classifier").text.trim).filter(_.nonEmpty)
+        val extension = (sv \ "extension").text.trim
+        if extension.isEmpty || published.contains((classifier, extension)) then None
+        else
+          Some(entry(classifier, extension, (sv \ "value").text.trim, (sv \ "updated").text.trim))
+    val current = published.map: (classifier, extension) =>
+      entry(classifier, extension, snapshot.qualifier, snapshot.lastUpdated)
+    val snapshotVersions = (current ++ retained).mkString("\n")
+    s"""|<?xml version="1.0" encoding="UTF-8"?>
+        |<metadata modelVersion="1.1.0">
+        |  <groupId>$groupId</groupId>
+        |  <artifactId>$artifactId</artifactId>
+        |  <version>$version</version>
+        |  <versioning>
+        |    <snapshot>
+        |      <timestamp>${snapshot.timestamp}</timestamp>
+        |      <buildNumber>${snapshot.buildNumber}</buildNumber>
+        |    </snapshot>
+        |    <lastUpdated>${snapshot.lastUpdated}</lastUpdated>
+        |    <snapshotVersions>
+        |$snapshotVersions
+        |    </snapshotVersions>
+        |  </versioning>
+        |</metadata>
+        |""".stripMargin
+  end mavenMetadataXml
 end GenericPublisher
 
 object GenericPublisher:
+  private[sbt] def distinctSnapshotArtifacts(
+      artifacts: Vector[Artifact]
+  ): Vector[(Option[String], String)] =
+    artifacts.map(a => (a.classifier, a.extension)).distinct
+
+  private[sbt] def mavenModuleArtifactId(
+      moduleName: String,
+      attributes: Map[String, String]
+  ): String =
+    val suffix = Vector(
+      attributes.get(PomExtraAttributeKeys.ScalaVersionKey),
+      attributes.get(PomExtraAttributeKeys.SbtVersionKey),
+    ).flatten.map("_" + _).mkString
+    if suffix.isEmpty || moduleName.endsWith(suffix) then moduleName else moduleName + suffix
+
+  private[sbt] def mavenLayoutPath(
+      groupId: String,
+      moduleArtifactId: String,
+      artifactName: String,
+      version: String,
+      fileVersion: String,
+      artifact: Artifact
+  ): String =
+    val groupPath = groupId.replace('.', '/')
+    val classifierPart = artifact.classifier.map("-" + _).getOrElse("")
+    val fileName = s"$artifactName-$fileVersion$classifierPart.${artifact.extension}"
+    s"$groupPath/$moduleArtifactId/$version/$fileName"
+
+  private[sbt] def mavenArtifacts(
+      groupId: String,
+      moduleArtifactId: String,
+      version: String,
+      fileVersion: String,
+      artifacts: Vector[(Artifact, File)],
+      artifactNameCross: Option[String => String]
+  ): Vector[(Artifact, File, String)] =
+    val result = artifacts.map: (artifact, sourceFile) =>
+      val artifactName = artifactNameCross.fold(artifact.name)(_(artifact.name))
+      val path =
+        mavenLayoutPath(groupId, moduleArtifactId, artifactName, version, fileVersion, artifact)
+      (artifact, sourceFile, path)
+    val collisions = result
+      .groupBy(_._3)
+      .toVector
+      .collect:
+        case (path, entries) if entries.sizeIs > 1 =>
+          val descriptions = entries.map:
+            case (artifact, sourceFile, _) =>
+              val classifier = artifact.classifier.getOrElse("")
+              s"${artifact.name}:${artifact.`type`}:$classifier:${artifact.extension} from $sourceFile"
+          path -> descriptions
+      .sortBy(_._1)
+    if collisions.nonEmpty then
+      val details = collisions.map: (path, descriptions) =>
+        s"$path <- ${descriptions.mkString(", ")}"
+      throw new IllegalArgumentException(
+        details.mkString("Multiple artifacts map to the same Maven path:\n", "\n", "")
+      )
+    result
+  end mavenArtifacts
+
   def apply(
       dependencyResolution: DependencyResolution,
       pomRepositories: Vector[Resolver],
@@ -598,4 +880,21 @@ object GenericPublisher:
       resolvers: Seq[Resolver]
   ): GenericPublisher =
     new GenericPublisher(dependencyResolution, pomRepositories, project, credentials, resolvers)
+
+  private[sbt] def apply(
+      dependencyResolution: DependencyResolution,
+      pomRepositories: Vector[Resolver],
+      project: CsrProject,
+      credentials: Seq[Credentials],
+      resolvers: Seq[Resolver],
+      artifactNameCross: Option[String => String]
+  ): GenericPublisher =
+    new GenericPublisher(
+      dependencyResolution,
+      pomRepositories,
+      project,
+      credentials,
+      resolvers,
+      artifactNameCross
+    )
 end GenericPublisher

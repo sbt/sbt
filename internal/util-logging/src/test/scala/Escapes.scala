@@ -16,7 +16,7 @@ import EscHelpers.{ ESC, hasEscapeSequence, isEscapeTerminator, removeEscapeSequ
 
 import scala.annotation.tailrec
 
-object Escapes extends Properties("Escapes") {
+object Escapes extends Properties("Escapes"):
   property("genTerminator only generates terminators") =
     forAllNoShrink(genTerminator)((c: Char) => isEscapeTerminator(c))
 
@@ -69,39 +69,29 @@ object Escapes extends Properties("Escapes") {
           (original == removed)
     }
 
-  def diffIndex(expect: String, original: String): String = {
+  def diffIndex(expect: String, original: String): String =
     @tailrec
-    def loop(i: Int): Option[String] = {
-      if (i < expect.length && i < original.length) {
-        if (expect.charAt(i) != original.charAt(i)) {
+    def loop(i: Int): Option[String] =
+      if i < expect.length && i < original.length then
+        if expect.charAt(i) != original.charAt(i) then
           Some(
             "Differing character, idx: " + i + ", char: " + original.charAt(i) +
               ", expected: " + expect.charAt(i)
           )
-        } else {
-          loop(i + 1)
-        }
-      } else {
-        None
-      }
-    }
+        else loop(i + 1)
+      else None
     loop(0).getOrElse(
-      if (expect.length != original.length) {
-        "Strings are different lengths!"
-      } else {
-        "No differences found"
-      }
+      if expect.length != original.length then "Strings are different lengths!"
+      else "No differences found"
     )
-  }
 
-  final case class EscapeAndNot(escape: EscapeSequence, notEscape: String) {
+  final case class EscapeAndNot(escape: EscapeSequence, notEscape: String):
     override def toString =
       s"EscapeAntNot(escape = [$escape], notEscape = [${notEscape.map(_.toInt)}])"
-  }
 
   // 2.10.5 warns on "implicit numeric widening" but it looks like a bug: https://issues.scala-lang.org/browse/SI-8450
-  final case class EscapeSequence(content: String, terminator: Char) {
-    if (!content.isEmpty) {
+  final case class EscapeSequence(content: String, terminator: Char):
+    if !content.isEmpty then
       assert(
         content.tail.forall(c => !isEscapeTerminator(c)),
         "Escape sequence content contains an escape terminator: '" + content + "'"
@@ -110,14 +100,12 @@ object Escapes extends Properties("Escapes") {
         (content.head == '[') || !isEscapeTerminator(content.head),
         "Escape sequence content contains an escape terminator: '" + content.headOption + "'"
       )
-    }
     assert(isEscapeTerminator(terminator))
     def makeString: String = s"$ESC$content$terminator"
 
     override def toString =
-      if (content.isEmpty) s"ESC (${terminator.toInt})"
+      if content.isEmpty then s"ESC (${terminator.toInt})"
       else s"ESC ($content) (${terminator.toInt})"
-  }
 
   private def noEscape(s: String): String = s.replace(ESC, ' ')
 
@@ -125,13 +113,13 @@ object Escapes extends Properties("Escapes") {
     oneOf(genKnownSequence, genTwoCharacterSequence, genArbitraryEscapeSequence)
 
   lazy val genEscapePair: Gen[EscapeAndNot] =
-    for (esc <- genEscapeSequence; not <- genWithoutEscape) yield EscapeAndNot(esc, not)
+    for esc <- genEscapeSequence; not <- genWithoutEscape yield EscapeAndNot(esc, not)
 
   lazy val genEscapePairs: Gen[List[EscapeAndNot]] = listOf(genEscapePair)
 
   lazy val genArbitraryEscapeSequence: Gen[EscapeSequence] =
-    for (content <- genWithoutTerminator if !content.isEmpty; term <- genTerminator)
-      yield new EscapeSequence("[" + content, term)
+    for content <- genWithoutTerminator if !content.isEmpty; term <- genTerminator
+    yield new EscapeSequence("[" + content, term)
 
   lazy val genKnownSequence: Gen[EscapeSequence] =
     oneOf((misc ++ setGraphicsMode ++ setMode ++ resetMode).map(toEscapeSequence))
@@ -141,8 +129,8 @@ object Escapes extends Properties("Escapes") {
   lazy val misc = Seq("14;23H", "5;3f", "2A", "94B", "19C", "85D", "s", "u", "2J", "K")
 
   lazy val setGraphicsMode: Seq[String] =
-    for (txt <- 0 to 8; fg <- 30 to 37; bg <- 40 to 47)
-      yield txt.toString + ";" + fg.toString + ";" + bg.toString + "m"
+    for txt <- 0 to 8; fg <- 30 to 37; bg <- 40 to 47
+    yield txt.toString + ";" + fg.toString + ";" + bg.toString + "m"
 
   lazy val resetMode = setModeLike('I')
   lazy val setMode = setModeLike('h')
@@ -159,8 +147,8 @@ object Escapes extends Properties("Escapes") {
   lazy val genWithoutEscape: Gen[String] = genRawString.map(noEscape)
 
   def genWithRandomEscapes: Gen[String] =
-    for (ls <- listOf(genRawString); end <- genRawString)
-      yield ls.mkString("", ESC.toString, ESC.toString + end)
+    for ls <- listOf(genRawString); end <- genRawString
+    yield ls.mkString("", ESC.toString, ESC.toString + end)
 
   private def genRawString = Arbitrary.arbString.arbitrary
-}
+end Escapes

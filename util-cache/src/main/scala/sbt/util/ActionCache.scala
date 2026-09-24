@@ -10,14 +10,8 @@ package sbt.util
 
 import java.io.{ File, PrintWriter }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{
-  AtomicMoveNotSupportedException,
-  Files,
-  NoSuchFileException,
-  Path,
-  Paths,
-  StandardCopyOption
-}
+import java.nio.file.{ NoSuchFileException, Path, Paths }
+import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.util.{
   ActionCacheEvent,
   CacheEventLog,
@@ -28,15 +22,16 @@ import sbt.internal.util.{
 }
 import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.io.IO.Implicits.zipContext
 import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
 import scala.reflect.ClassTag
-import scala.annotation.{ meta, StaticAnnotation }
+import scala.annotation.{ meta, tailrec, StaticAnnotation }
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import sjsonnew.{ HashWriter, JsonFormat }
-import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser, PrettyPrinter }
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
 import xsbti.{ CompileFailed, FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
@@ -51,6 +46,18 @@ object ActionCache:
     val writer = PrintWriter(log.toFile, "UTF-8")
     execLog = Option(writer)
     writer
+
+  /** Internal state used for clean support. */
+  private[sbt] enum ScopeInvalidation:
+    /** Set by clean. */
+    case Invalidated(cycle: Int)
+
+    /** Set by running a cached task. */
+    case Pending
+
+  private[sbt] val commandCycle = new AtomicInteger(0)
+  private[sbt] val invalidatedScopes: TrieMap[String, ScopeInvalidation] =
+    TrieMap.empty
 
   /**
    * This is a key function that drives remote caching.
@@ -68,6 +75,33 @@ object ActionCache:
    * - action: The actual action to be cached.
    */
   def cache[I: HashWriter, O: JsonFormat](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
+  )(
+      action: I => InternalActionResult[O],
+  ): O = cache(taskName = "", key, codeContentHash, extraHash, tags, config)(action)
+
+  /**
+   * This is a key function that drives remote caching.
+   * This is intended to be called from the cached task macro for the most part.
+   *
+   * - taskName: Slash representation of the current task.
+   * - key: This represents the input key for this action, typically consists
+   *   of all the input into the action. For the purpose of caching,
+   *   all we need from the input is to generate some hash value.
+   * - codeContentHash: This hash represents the Scala code of the task.
+   *   Even if the input tasks are the same, the code part needs to be tracked.
+   * - extraHash: Extra hash for cache invalidation (combined with config.cacheVersion).
+   * - tags: Tags to track cache level.
+   * - config: The configuration that's used to store where the cache backends are.
+   *   config.cacheVersion is incorporated into the cache key to allow global invalidation.
+   * - action: The actual action to be cached.
+   */
+  def cache[I: HashWriter, O: JsonFormat](
+      taskName: String,
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
@@ -147,11 +181,14 @@ object ActionCache:
               )
               result
             case Left(e) => throw e
+        end if
       catch
         case NonFatal(e) =>
           logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
           cacheEventLog.append(ActionCacheEvent.Error)
           result
+      end try
+    end organicTask
 
     def spawnInput = SpawnInput(
       digest = inputDigest,
@@ -164,7 +201,7 @@ object ActionCache:
       execLog.foreach: log =>
         logEvent(event, log)
     // Single cache lookup - use exitCode to distinguish success from failure
-    getWithFailure(inputDigest, tags, config) match
+    getWithFailure(taskName, inputDigest, tags, config) match
       case Right((value, result)) =>
         logExec(
           SpawnExec(
@@ -192,6 +229,15 @@ object ActionCache:
    * or Left(None) for cache miss.
    */
   private def getWithFailure[O: JsonFormat](
+      taskName: String,
+      inputDigest: Digest,
+      tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
+  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
+    if markScopePending(taskName) then Left(None)
+    else getWithFailure0(inputDigest, tags, config)
+
+  private def getWithFailure0[O: JsonFormat](
       inputDigest: Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
@@ -238,6 +284,8 @@ object ActionCache:
             )
             Left(None)
       case Left(_) => Left(None)
+    end match
+  end getWithFailure0
 
   /**
    * Retrieves the cached value.
@@ -250,7 +298,7 @@ object ActionCache:
       config: BuildWideCacheConfiguration,
   ): Option[O] =
     val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
-    getWithFailure(inputDigest, tags, config) match
+    getWithFailure(taskName = "", inputDigest, tags, config) match
       case Right(value) => Some(value._1)
       case Left(_)      => None
 
@@ -309,8 +357,8 @@ object ActionCache:
   ): Digest =
     // Hashing serializes every task input; surface a missing input file directly rather than as an
     // opaque serialization failure that buries it.
-    val inputHash =
-      try Hasher.hashUnsafe[I](key)
+    val inputDigest =
+      try DigestHasher.hashUnsafe[I](key)
       catch
         case NonFatal(t) =>
           findMissingFile(t) match
@@ -320,15 +368,17 @@ object ActionCache:
     Digest.sha256Hash(
       (Vector(
         codeContentHash,
-        Digest.dummy(inputHash),
+        inputDigest,
         extraHash
       ) ++ {
         if cacheVersion == 0 then Vector.empty
         else Vector(Digest.dummy(cacheVersion))
       })*
     )
+  end mkInput
 
   /** Walks `t`'s cause chain for a `NoSuchFileException`, returning the missing file's path. */
+  @tailrec
   private[sbt] def findMissingFile(t: Throwable): Option[String] =
     t match
       case null                   => None
@@ -345,36 +395,6 @@ object ActionCache:
 
   private val default2010Timestamp: Long = 1262304000000L
 
-  /**
-   * Publishes `builtZip` as `destZip` by staging next to the destination and renaming into place.
-   * Avoids races from a direct `Files.copy` into `destZip` under parallel task execution.
-   */
-  private def installPackagedZip(builtZip: Path, destZip: Path, fallbackStagingDir: Path): Unit =
-    val stagingDir = Option(destZip.getParent) match
-      case Some(parent) =>
-        Files.createDirectories(parent)
-        parent
-      case None => fallbackStagingDir
-
-    val staging = Files.createTempFile(
-      stagingDir,
-      destZip.getFileName.toString + ".",
-      dirZipExt + ".tmp",
-    )
-    try
-      Files.copy(builtZip, staging, StandardCopyOption.REPLACE_EXISTING)
-      try
-        Files.move(
-          staging,
-          destZip,
-          StandardCopyOption.REPLACE_EXISTING,
-          StandardCopyOption.ATOMIC_MOVE,
-        )
-      catch
-        case _: AtomicMoveNotSupportedException =>
-          Files.move(staging, destZip, StandardCopyOption.REPLACE_EXISTING)
-    finally Files.deleteIfExists(staging)
-
   /** Appends a declared output; called from code generated by the cached-task macro. */
   def registerOutput(
       vf: VirtualFile,
@@ -382,6 +402,10 @@ object ActionCache:
   ): VirtualFile =
     outputs += vf
     vf
+
+  /** The zip `packageDirectory` writes for `dirPath`, as a sibling of the directory itself. */
+  def dirZipPath(dirPath: Path): Path =
+    Paths.get(dirPath.toString + dirZipExt)
 
   def packageDirectory(
       dir: VirtualFileRef,
@@ -410,7 +434,7 @@ object ActionCache:
     IO.withTemporaryDirectory: tempDir =>
       val mPath = (tempDir / manifestFileName).toPath()
       makeManifest(mPath)
-      val zipPath = Paths.get(dirPath.toString + dirZipExt)
+      val zipPath = dirZipPath(dirPath)
       val rebase: Path => Seq[(File, String)] =
         (p: Path) =>
           p match
@@ -419,14 +443,16 @@ object ActionCache:
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
       // Create the zip in a temp directory to avoid overwriting the cache if `zipPath` is a symlink to the CAS
       val tempZipPath = (tempDir / (dirPath.getFileName.toString + dirZipExt)).toPath()
-      IO.zip(
+      IO.zipParallel(
         (allPaths ++ Seq(mPath)).flatMap(rebase),
         tempZipPath.toFile(),
         Some(default2010Timestamp)
       )
-      installPackagedZip(tempZipPath, zipPath, tempDir.toPath())
+      // a parallel task reads this zip, and copyFile stages it and renames it into place
+      IO.copyFile(tempZipPath.toFile, zipPath.toFile)
 
       conv.toVirtualFile(zipPath)
+  end packageDirectory
 
   inline def actionResult[A1](inline value: A1): InternalActionResult[A1] =
     InternalActionResult(value, Nil)
@@ -452,6 +478,28 @@ object ActionCache:
     val s = PrettyPrinter(json)
     log.println(s)
     log.flush()
+
+  /** Marks prefix so that subsequent cache lookups for a `taskName` starting with it are skipped. */
+  private[sbt] def invalidateScope(prefix: String): Unit =
+    if prefix.nonEmpty then
+      invalidatedScopes.update(prefix, ScopeInvalidation.Invalidated(commandCycle.get))
+
+  /** Checks whether `taskName` falls under a scope invalidated by `clean`. */
+  private[sbt] def markScopePending(taskName: String): Boolean =
+    taskName.nonEmpty && (invalidatedScopes.keys.exists: prefix =>
+      taskName.startsWith(prefix) && {
+        invalidatedScopes(prefix) match
+          case ScopeInvalidation.Invalidated(n) if n < commandCycle.get =>
+            invalidatedScopes.update(prefix, ScopeInvalidation.Pending)
+          case _ => ()
+        true
+      })
+
+  /** Removes every `Pending` scope prefix; called after each command finishes running. */
+  private[sbt] def agePendingScopes(): Unit =
+    commandCycle.incrementAndGet()
+    invalidatedScopes.foreach: (prefix, state) =>
+      if state == ScopeInvalidation.Pending then invalidatedScopes.remove(prefix)
 
 end ActionCache
 

@@ -14,7 +14,7 @@ import jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 
-object JLineCompletion {
+object JLineCompletion:
   def installCustomCompletor(reader: ConsoleReader, parser: Parser[?]): Unit =
     installCustomCompletor(reader)(parserAsCompletor(parser))
 
@@ -26,14 +26,13 @@ object JLineCompletion {
   def installCustomCompletor(
       complete: (ConsoleReader, Int) => Boolean,
       reader: ConsoleReader
-  ): Unit = {
+  ): Unit =
     reader.removeCompleter(DummyCompletor)
     reader.addCompleter(DummyCompletor)
     reader.setCompletionHandler(new CustomHandler(complete))
-  }
 
   private final class CustomHandler(completeImpl: (ConsoleReader, Int) => Boolean)
-      extends CompletionHandler {
+      extends CompletionHandler:
     private var previous: Option[(String, Int)] = None
     private var level: Int = 1
 
@@ -41,144 +40,120 @@ object JLineCompletion {
         reader: ConsoleReader,
         candidates: java.util.List[CharSequence],
         position: Int
-    ) = {
+    ) =
       val current = Some(bufferSnapshot(reader))
-      level = if (current == previous) level + 1 else 1
+      level = if current == previous then level + 1 else 1
       previous = current
       try completeImpl(reader, level)
-      catch {
+      catch
         case e: Exception =>
           reader.print("\nException occurred while determining completions.")
           e.printStackTrace()
           false
-      }
-    }
-  }
 
   // always provides dummy completions so that the custom completion handler gets called
   //   (ConsoleReader doesn't call the handler if there aren't any completions)
   //   the custom handler will then throw away the candidates and call the custom function
-  private object DummyCompletor extends Completer {
+  private object DummyCompletor extends Completer:
     override def complete(
         buffer: String,
         cursor: Int,
         candidates: java.util.List[CharSequence]
-    ): Int = {
+    ): Int =
       candidates.add("dummy")
       0
-    }
-  }
 
   def parserAsCompletor(p: Parser[?]): (String, Int) => (Seq[String], Seq[String]) =
     (str, level) => convertCompletions(Parser.completions(p, str, level))
 
-  def convertCompletions(c: Completions): (Seq[String], Seq[String]) = {
+  def convertCompletions(c: Completions): (Seq[String], Seq[String]) =
     val cs = c.get
-    if (cs.isEmpty)
-      (Nil, "{invalid input}" :: Nil)
-    else
-      convertCompletions(cs)
-  }
+    if cs.isEmpty then (Nil, "{invalid input}" :: Nil)
+    else convertCompletions(cs)
 
-  def convertCompletions(cs: Set[Completion]): (Seq[String], Seq[String]) = {
+  def convertCompletions(cs: Set[Completion]): (Seq[String], Seq[String]) =
     val (insert, display) =
       cs.foldLeft((Set.empty[String], Set.empty[String])) { case (t @ (insert, display), comp) =>
-        if (comp.isEmpty) t
+        if comp.isEmpty then t
         else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
       }
     (insert.toSeq, display.toSeq.sorted)
-  }
 
-  def appendNonEmpty(set: Set[String], add: String) = if (add.trim.isEmpty) set else set + add
+  def appendNonEmpty(set: Set[String], add: String) = if add.trim.isEmpty then set else set + add
 
   def customCompletor(
       f: (String, Int) => (Seq[String], Seq[String])
   ): (ConsoleReader, Int) => Boolean =
-    (reader, level) => {
+    (reader, level) =>
       val success = complete(beforeCursor(reader), string => f(string, level), reader)
       reader.flush()
       success
-    }
 
-  def bufferSnapshot(reader: ConsoleReader): (String, Int) = {
+  def bufferSnapshot(reader: ConsoleReader): (String, Int) =
     val b = reader.getCursorBuffer
     (b.buffer.toString, b.cursor)
-  }
 
-  def beforeCursor(reader: ConsoleReader): String = {
+  def beforeCursor(reader: ConsoleReader): String =
     val b = reader.getCursorBuffer
     b.buffer.substring(0, b.cursor)
-  }
 
   // returns false if there was nothing to insert and nothing to display
   def complete(
       beforeCursor: String,
       completions: String => (Seq[String], Seq[String]),
       reader: ConsoleReader
-  ): Boolean = {
+  ): Boolean =
     val (insert, display) = completions(beforeCursor)
     val common = commonPrefix(insert)
-    if (common.isEmpty)
-      if (display.isEmpty)
-        ()
-      else
-        showCompletions(display, reader)
-    else
-      appendCompletion(common, reader)
+    if common.isEmpty then
+      if display.isEmpty then ()
+      else showCompletions(display, reader)
+    else appendCompletion(common, reader)
 
     !(common.isEmpty && display.isEmpty)
-  }
 
-  def appendCompletion(common: String, reader: ConsoleReader): Unit = {
+  def appendCompletion(common: String, reader: ConsoleReader): Unit =
     reader.getCursorBuffer.write(common)
     reader.redrawLine()
-  }
 
   /**
    * `display` is assumed to be the exact strings requested to be displayed. In particular,
    * duplicates should have been removed already.
    */
-  def showCompletions(display: Seq[String], reader: ConsoleReader): Unit = {
+  def showCompletions(display: Seq[String], reader: ConsoleReader): Unit =
     printCompletions(display, reader)
     reader.drawLine()
-  }
 
-  def printCompletions(cs: Seq[String], reader: ConsoleReader): Unit = {
+  def printCompletions(cs: Seq[String], reader: ConsoleReader): Unit =
     val print = shouldPrint(cs, reader)
     reader.println()
-    if (print) printLinesAndColumns(cs, reader)
-  }
+    if print then printLinesAndColumns(cs, reader)
 
-  def printLinesAndColumns(cs: Seq[String], reader: ConsoleReader): Unit = {
+  def printLinesAndColumns(cs: Seq[String], reader: ConsoleReader): Unit =
     val (lines, columns) = cs partition hasNewline
-    for (line <- lines) {
+    for line <- lines do
       reader.print(line)
-      if (line.charAt(line.length - 1) != '\n')
-        reader.println()
-    }
+      if line.charAt(line.length - 1) != '\n' then reader.println()
     reader.printColumns(columns.map(_.trim).asJava)
-  }
 
   def hasNewline(s: String): Boolean = s.indexOf('\n') >= 0
 
-  def shouldPrint(cs: Seq[String], reader: ConsoleReader): Boolean = {
+  def shouldPrint(cs: Seq[String], reader: ConsoleReader): Boolean =
     val size = cs.size
     (size <= reader.getAutoprintThreshold) ||
     confirm("Display all %d possibilities? (y or n) ".format(size), 'y', 'n', reader)
-  }
 
-  def confirm(prompt: String, trueC: Char, falseC: Char, reader: ConsoleReader): Boolean = {
+  def confirm(prompt: String, trueC: Char, falseC: Char, reader: ConsoleReader): Boolean =
     reader.println()
     reader.print(prompt)
     reader.flush()
     reader.readCharacter(trueC, falseC) == trueC
-  }
 
-  def commonPrefix(s: Seq[String]): String = if (s.isEmpty) "" else s reduceLeft commonPrefix
+  def commonPrefix(s: Seq[String]): String = if s.isEmpty then "" else s reduceLeft commonPrefix
 
-  def commonPrefix(a: String, b: String): String = {
+  def commonPrefix(a: String, b: String): String =
     val len = scala.math.min(a.length, b.length)
-    @tailrec def loop(i: Int): Int = if (i >= len) len else if (a(i) != b(i)) i else loop(i + 1)
+    @tailrec def loop(i: Int): Int =
+      if i >= len then len else if a(i) != b(i) then i else loop(i + 1)
     a.substring(0, loop(0))
-  }
-}
+end JLineCompletion

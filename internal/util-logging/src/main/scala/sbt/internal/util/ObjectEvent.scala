@@ -22,12 +22,11 @@ final class ObjectEvent[A](
     val execId: Option[String],
     val contentType: String,
     val json: JValue
-) extends Serializable {
+) extends Serializable:
   override def toString: String =
     s"ObjectEvent($level, $message, $channelName, $execId, $contentType, $json)"
-}
 
-object ObjectEvent {
+object ObjectEvent:
   def apply[A: JsonFormat](
       level: Level.Value,
       message: A,
@@ -43,4 +42,3 @@ object ObjectEvent {
       contentType,
       Converter.toJsonUnsafe(message)
     )
-}

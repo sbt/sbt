@@ -14,15 +14,13 @@ import xsbt.IPC
 import scala.sys.process.{ BasicIO, Process }
 
 private[sbt] sealed trait RemoteSbtCreatorProp
-private[sbt] object RemoteSbtCreatorProp {
+private[sbt] object RemoteSbtCreatorProp:
   case class LauncherBased(launcherJar: File) extends RemoteSbtCreatorProp
   case class RunFromSourceBased(scalaVersion: String, sbtVersion: String, classpath: Seq[File])
       extends RemoteSbtCreatorProp
-}
 
-abstract class RemoteSbtCreator private[sbt] {
+abstract class RemoteSbtCreator private[sbt]:
   def newRemote(server: IPC.Server): Process
-}
 
 final class LauncherBasedRemoteSbtCreator(
     directory: File,
@@ -30,7 +28,7 @@ final class LauncherBasedRemoteSbtCreator(
     log: Logger,
     javaCommand: String,
     launchOpts: Seq[String],
-) extends RemoteSbtCreator {
+) extends RemoteSbtCreator:
   def this(
       directory: File,
       launcher: File,
@@ -38,7 +36,7 @@ final class LauncherBasedRemoteSbtCreator(
       launchOpts: Seq[String] = Nil,
   ) = this(directory, launcher, log, "java", launchOpts)
 
-  def newRemote(server: IPC.Server): Process = {
+  def newRemote(server: IPC.Server): Process =
     val launcherJar = launcher.getAbsolutePath
     val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
     val scripted = "-Dsbt.scripted=true"
@@ -47,13 +45,12 @@ final class LauncherBasedRemoteSbtCreator(
       javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-jar" :: launcherJar :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory).run(io)
-    val thread = new Thread() {
-      override def run(): Unit = { p.exitValue(); server.close() }
-    }
+    val thread = new Thread():
+      override def run(): Unit =
+        p.exitValue(); server.close()
     thread.start()
     p
-  }
-}
+end LauncherBasedRemoteSbtCreator
 
 final class RunFromSourceBasedRemoteSbtCreator(
     directory: File,
@@ -63,7 +60,7 @@ final class RunFromSourceBasedRemoteSbtCreator(
     scalaVersion: String,
     sbtVersion: String,
     classpath: Seq[File],
-) extends RemoteSbtCreator {
+) extends RemoteSbtCreator:
   def this(
       directory: File,
       log: Logger,
@@ -73,7 +70,7 @@ final class RunFromSourceBasedRemoteSbtCreator(
       classpath: Seq[File],
   ) = this(directory, log, "java", launchOpts, scalaVersion, sbtVersion, classpath)
 
-  def newRemote(server: IPC.Server): Process = {
+  def newRemote(server: IPC.Server): Process =
     val globalBase = "-Dsbt.global.base=" + new File(directory, "global").getAbsolutePath
     val scripted = "-Dsbt.scripted=true"
     val mainClassName = "sbt.RunFromSourceMain"
@@ -84,8 +81,9 @@ final class RunFromSourceBasedRemoteSbtCreator(
       javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-cp" :: cpString :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory) run (io)
-    val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
+    val thread = new Thread():
+      override def run() =
+        p.exitValue(); server.close()
     thread.start()
     p
-  }
-}
+end RunFromSourceBasedRemoteSbtCreator

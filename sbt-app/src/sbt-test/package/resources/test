@@ -1,6 +1,7 @@
-#This test verifies two things:
+#This test verifies three things:
 # 1) That sbt properly puts resources from src/main/resources on the runtime classpath
 # 2) That sbt properly packages resources from src/main/resources into the jar
+# 3) That sbt properly packages generated resources (resourceGenerators) into the jar
 
 # This should fail because the Main object is in package jartest and the resource is directly
 # in src/main/resources
@@ -28,3 +29,6 @@ $ delete src/main/resources/main_resource_test
 
 # This should succeed because sbt should include the resource in the jar with the right directory structure
 $ exec java -jar ./target/out/jvm/u/main-resources-test/main-resources-test-0.1.jar
+
+# This should succeed because sbt should include generated resources in the packaged jar
+> checkGeneratedResourceInJar

@@ -8,14 +8,10 @@
 
 package sbt.util
 
-trait ShowLines[A] {
+trait ShowLines[A]:
   def showLines(a: A): Seq[String]
-}
-object ShowLines {
+object ShowLines:
   def apply[A](f: A => Seq[String]): ShowLines[A] =
     (a: A) => f(a)
 
-  extension [A: ShowLines](a: A) {
-    def lines: Seq[String] = implicitly[ShowLines[A]].showLines(a)
-  }
-}
+  extension [A: ShowLines](a: A) def lines: Seq[String] = implicitly[ShowLines[A]].showLines(a)

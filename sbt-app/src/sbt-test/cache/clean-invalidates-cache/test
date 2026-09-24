@@ -1,0 +1,41 @@
+# cold caches: both subprojects miss
+> foo/compile
+> checkMiss
+
+> bar/compile
+> checkMiss
+
+# unchanged inputs: both subprojects now hit the disk cache
+> foo/compile
+> checkHit
+
+> bar/compile
+> checkHit
+
+# clean foo only: its next compile must not resurrect the disk-cached result
+> foo/clean
+> foo/compile
+> checkMiss
+
+# bar was untouched, so it still hits its own disk-cached result
+> bar/compile
+> checkHit
+
+# the invalidation only forces one miss: a second foo/compile is cached again
+> foo/compile
+> checkHit
+
+# cold cache for foo's Test config
+> foo/Test/compile
+> checkMiss
+
+> foo/Test/compile
+> checkHit
+
+# Test/clean should only invalidate the Test config, not Compile
+> foo/Test/clean
+> foo/compile
+> checkHit
+
+> foo/Test/compile
+> checkMiss

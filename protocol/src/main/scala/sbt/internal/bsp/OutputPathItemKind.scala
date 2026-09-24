@@ -8,11 +8,10 @@
 
 package sbt.internal.bsp
 
-object OutputPathItemKind {
+object OutputPathItemKind:
 
   /** The output path item references a normal file. */
   val File: Int = 1
 
   /** The output path item references a directory. */
   val Directory: Int = 2
-}

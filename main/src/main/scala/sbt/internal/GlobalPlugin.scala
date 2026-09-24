@@ -26,7 +26,7 @@ import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
 import sbt.SlashSyntax0.*
 import sbt.librarymanagement.LibraryManagementCodec.given
 
-object GlobalPlugin {
+object GlobalPlugin:
   // constructs a sequence of settings that may be appended to a project's settings to
   //  statically add the global plugin as a classpath dependency.
   //  static here meaning that the relevant tasks for the global plugin have already been evaluated
@@ -51,7 +51,7 @@ object GlobalPlugin {
       (prev ++ cp).distinct
     }
 
-  def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) = {
+  def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
     val newInject =
       config.injectSettings.copy(global = config.injectSettings.global ++ globalPluginSettings)
     val globalConfig = config.copy(
@@ -61,15 +61,13 @@ object GlobalPlugin {
     val (eval, structure) = Load(base, s, globalConfig)
     val session = Load.initialSession(structure, eval)
     (structure, Project.setProject(session, structure, s))
-  }
-  def load(base: File, s: State, config: LoadBuildConfiguration): GlobalPlugin = {
+  def load(base: File, s: State, config: LoadBuildConfiguration): GlobalPlugin =
     val (structure, state) = build(base, s, config)
     val (newS, data) = extract(state, structure)
     Project.runUnloadHooks(newS) // discard state
     GlobalPlugin(data, structure, inject(data), base)
-  }
 
-  def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) = {
+  def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) =
     import structure.{ data, root, rootProject }
     val p: Scope = Scope.GlobalScope.rescope(ProjectRef(root, rootProject(root)))
 
@@ -94,13 +92,13 @@ object GlobalPlugin {
     val task = resolvedTaskInit.evaluate(data)
     val roots = resolvedTaskInit.dependencies
     evaluate(state, structure, task, roots)
-  }
+  end extract
   def evaluate[T](
       state: State,
       structure: BuildStructure,
       t: Task[T],
       roots: Seq[ScopedKey[?]]
-  ): (State, T) = {
+  ): (State, T) =
     import EvaluateTask.*
     withStreams(structure, state) { str =>
       val nv = nodeView(state, str, roots)
@@ -108,7 +106,6 @@ object GlobalPlugin {
       val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(using nv)
       (newS, processResult2(result))
     }
-  }
 
   val globalPluginSettings = Project.inScope(Scope.GlobalScope.rescope(LocalRootProject))(
     Seq(
@@ -119,7 +116,7 @@ object GlobalPlugin {
       version := "0.0"
     )
   )
-}
+end GlobalPlugin
 final case class GlobalPluginData(
     projectID: ModuleID,
     dependencies: Seq[ModuleID],

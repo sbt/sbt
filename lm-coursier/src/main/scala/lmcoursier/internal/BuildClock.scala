@@ -4,14 +4,14 @@ import coursier.core.{ Configuration, Dependency, Repository }
 import java.security.MessageDigest
 import scala.collection.immutable.Seq
 
-object BuildClock {
+object BuildClock:
 
   def compute(
       dependencies: Seq[(Configuration, Dependency)],
       repositories: Seq[Repository],
       scalaVersion: Option[String],
       params: ResolutionParams
-  ): String = {
+  ): String =
     val digest = MessageDigest.getInstance("SHA-1")
 
     dependencies
@@ -50,7 +50,7 @@ object BuildClock {
 
     val hashBytes = digest.digest()
     hashBytes.map("%02x".format(_)).mkString
-  }
+  end compute
 
   def matches(
       lockFileData: LockFileData,
@@ -58,8 +58,7 @@ object BuildClock {
       repositories: Seq[Repository],
       scalaVersion: Option[String],
       params: ResolutionParams
-  ): Boolean = {
+  ): Boolean =
     val currentClock = compute(dependencies, repositories, scalaVersion, params)
     lockFileData.buildClock == currentClock
-  }
-}
+end BuildClock

@@ -1,6 +1,7 @@
 val a = project
 val b = project
 
+@transient
 val checkCompileSourcesNonEmpty = taskKey[Unit]("Verify Compile / sources is still non-empty")
 
 checkCompileSourcesNonEmpty := {
@@ -9,6 +10,7 @@ checkCompileSourcesNonEmpty := {
     sys.error("Compile / sources should not be empty, but it was.")
 }
 
+@transient
 val checkTestSourcesEmpty = taskKey[Unit]("Verify Test / sources is empty")
 
 checkTestSourcesEmpty := {

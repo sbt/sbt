@@ -8,7 +8,7 @@
 
 package sbt
 
-object KeyRanks {
+object KeyRanks:
   // task and setting ranks, used to prioritize displaying information
   // main tasks
   final val APlusTask = 4
@@ -49,4 +49,4 @@ object KeyRanks {
 
   // implementation details
   val Invisible = Int.MaxValue
-}
+end KeyRanks

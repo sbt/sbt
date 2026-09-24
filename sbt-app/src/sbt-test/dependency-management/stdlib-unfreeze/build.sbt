@@ -18,7 +18,7 @@ lazy val a3 = project.settings(
 lazy val b3 = project.dependsOn(a3).settings(
   allowUnsafeScalaLibUpgrade := true, // b3 has 3.3.2, a3 brings 3.3.4; demote to warn so b3/run still passes
   scalaVersion := "3.3.2", // 2.13.12 library
-  TaskKey[Unit]("checkScala") := {
+  TaskKey[Unit]("checkScala") := Def.uncached {
     val i = scalaInstance.value
     i.libraryJars.filter(_.toString.contains("scala-library")).toList match {
       case List(l) => assert(l.toString.contains("2.13.14"), i.toString)

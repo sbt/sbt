@@ -11,16 +11,16 @@ package sbt.internal.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
-trait JsonRpcNotificationMessageFormats {
+trait JsonRpcNotificationMessageFormats:
   self: sbt.internal.util.codec.JValueFormats & sjsonnew.BasicJsonProtocol =>
   given JsonRpcNotificationMessageFormat
       : JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] =
-    new JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] {
+    new JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage]:
       override def read[J](
           jsOpt: Option[J],
           unbuilder: Unbuilder[J]
-      ): sbt.internal.protocol.JsonRpcNotificationMessage = {
-        jsOpt match {
+      ): sbt.internal.protocol.JsonRpcNotificationMessage =
+        jsOpt match
           case Some(js) =>
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
@@ -32,17 +32,13 @@ trait JsonRpcNotificationMessageFormats {
             sbt.internal.protocol.JsonRpcNotificationMessage(jsonrpc, method, params)
           case None =>
             deserializationError("Expected JsObject but found None")
-        }
-      }
       override def write[J](
           obj: sbt.internal.protocol.JsonRpcNotificationMessage,
           builder: Builder[J]
-      ): Unit = {
+      ): Unit =
         builder.beginObject()
         builder.addField("jsonrpc", obj.jsonrpc)
         builder.addField("method", obj.method)
         builder.addField("params", obj.params)
         builder.endObject()
-      }
-    }
-}
+end JsonRpcNotificationMessageFormats

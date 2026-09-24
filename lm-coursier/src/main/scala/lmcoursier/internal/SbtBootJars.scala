@@ -5,7 +5,7 @@ import java.io.File
 import coursier.core.{ Module, ModuleName, Organization }
 
 // private[coursier]
-object SbtBootJars {
+object SbtBootJars:
   def apply(
       scalaOrg: Organization,
       scalaVersion: String,
@@ -18,4 +18,3 @@ object SbtBootJars {
 
         (mod, scalaVersion) -> jar
     }.toMap
-}

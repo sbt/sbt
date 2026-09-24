@@ -16,13 +16,12 @@ import java.net.{ URLEncoder, URI }
 
 import sbt.io.IO
 
-object DagreHTML {
-  def createLink(dotGraph: String, targetDirectory: File): URI = {
+object DagreHTML:
+  def createLink(dotGraph: String, targetDirectory: File): URI =
     val graphHTML = createFile(dotGraph, targetDirectory)
     new URI(graphHTML.toURI.toString)
-  }
 
-  def createFile(dotGraph: String, targetDirectory: File): File = {
+  def createFile(dotGraph: String, targetDirectory: File): File =
     targetDirectory.mkdirs()
     val graphHTML = new File(targetDirectory, "graph.html")
     TreeView.saveResource("graph.html", graphHTML)
@@ -39,5 +38,4 @@ object DagreHTML {
       IO.utf8
     )
     graphHTML
-  }
-}
+end DagreHTML

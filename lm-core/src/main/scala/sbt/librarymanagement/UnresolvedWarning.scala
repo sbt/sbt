@@ -8,7 +8,7 @@ final class ResolveException(
     val messages: Seq[String],
     val failed: Seq[ModuleID],
     val failedPaths: Map[ModuleID, Seq[ModuleID]]
-) extends RuntimeException(messages.mkString("\n")) {
+) extends RuntimeException(messages.mkString("\n")):
   def this(messages: Seq[String], failed: Seq[ModuleID]) =
     this(
       messages,
@@ -17,7 +17,6 @@ final class ResolveException(
         m -> Nil
       }*)
     )
-}
 
 /**
  * Represents unresolved dependency warning, which displays reconstructed dependency tree
@@ -28,11 +27,11 @@ final class UnresolvedWarning(
     val failedPaths: Seq[Seq[(ModuleID, Option[SourcePosition])]]
 )
 
-object UnresolvedWarning {
+object UnresolvedWarning:
   def apply(
       err: ResolveException,
       config: UnresolvedWarningConfiguration
-  ): UnresolvedWarning = {
+  ): UnresolvedWarning =
     def modulePosition(m0: ModuleID): Option[SourcePosition] =
       config.modulePositions.find { case (m, _) =>
         (m.organization == m0.organization) &&
@@ -47,44 +46,38 @@ object UnresolvedWarning {
       }
     }
     new UnresolvedWarning(err, failedPaths)
-  }
 
   private[sbt] def sourcePosStr(posOpt: Option[SourcePosition]): String =
-    posOpt match {
+    posOpt match
       case Some(LinePosition(path, start))                  => s" ($path#L$start)"
       case Some(RangePosition(path, LineRange(start, end))) => s" ($path#L$start-$end)"
       case _                                                => ""
-    }
   given unresolvedWarningLines: ShowLines[UnresolvedWarning] = ShowLines { a =>
     val withExtra = a.resolveException.failed.filter(_.extraDependencyAttributes.nonEmpty)
     val buffer = mutable.ListBuffer[String]()
-    if (withExtra.nonEmpty) {
+    if withExtra.nonEmpty then
       buffer += "\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes."
       withExtra foreach { id =>
         buffer += "\t\t" + id
       }
-    }
-    if (a.failedPaths.nonEmpty) {
+    if a.failedPaths.nonEmpty then
       buffer += "\n\tNote: Unresolved dependencies path:"
       a.failedPaths foreach { path =>
-        if (path.nonEmpty) {
+        if path.nonEmpty then
           val head = path.head
           buffer += "\t\t" + head._1.toString + sourcePosStr(head._2)
           path.tail foreach { (m, pos) =>
             buffer += "\t\t  +- " + m.toString + sourcePosStr(pos)
           }
-        }
       }
-    }
     buffer.toList
   }
-}
+end UnresolvedWarning
 
 final class UnresolvedWarningConfiguration private[sbt] (
     val modulePositions: Map[ModuleID, SourcePosition]
 )
-object UnresolvedWarningConfiguration {
+object UnresolvedWarningConfiguration:
   def apply(): UnresolvedWarningConfiguration = apply(Map())
   def apply(modulePositions: Map[ModuleID, SourcePosition]): UnresolvedWarningConfiguration =
     new UnresolvedWarningConfiguration(modulePositions)
-}

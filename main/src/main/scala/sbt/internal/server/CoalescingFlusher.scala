@@ -41,7 +41,9 @@ private[server] final class CoalescingFlusher(
         try
           pending.set(
             executor.schedule(
-              (() => { pending.set(null); drain() }): Runnable,
+              (() =>
+                pending.set(null); drain()
+              ): Runnable,
               delayMillis,
               TimeUnit.MILLISECONDS
             )

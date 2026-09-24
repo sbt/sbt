@@ -16,7 +16,7 @@ import Prop.*
 
 import java.io.Writer
 
-object LogWriterTest extends Properties("Log Writer") {
+object LogWriterTest extends Properties("Log Writer"):
   final val MaxLines = 100
   final val MaxSegments = 10
 
@@ -37,27 +37,22 @@ object LogWriterTest extends Properties("Log Writer") {
    * `Log` types and non-printable characters should be escaped
    */
   def show(event: LogEvent): String =
-    event match {
+    event match
       case l: Log => "Log('" + Escape(l.msg) + "', " + l.level + ")"
       case _      => "Not Log"
-    }
 
   /**
    * Writes the given lines to the Writer. `lines` is taken to be a list of lines, which are
    * represented as separately written segments (ToLog instances). ToLog.`byCharacter` indicates
    * whether to write the segment by character (true) or all at once (false)
    */
-  def logLines(writer: Writer, lines: List[List[ToLog]], newLine: String): Unit = {
-    for (line <- lines; section <- line) {
+  def logLines(writer: Writer, lines: List[List[ToLog]], newLine: String): Unit =
+    for line <- lines; section <- line do
       val content = section.content
       val normalized = Escape.newline(content, newLine)
-      if (section.byCharacter)
-        normalized.foreach(c => writer.write(c.toInt))
-      else
-        writer.write(normalized)
-    }
+      if section.byCharacter then normalized.foreach(c => writer.write(c.toInt))
+      else writer.write(normalized)
     writer.flush()
-  }
 
   /**
    * Converts the given lines in segments to lines as Strings for checking the results of the test.
@@ -85,23 +80,22 @@ object LogWriterTest extends Properties("Log Writer") {
   implicit lazy val arbLevel: Arbitrary[Level.Value] = Arbitrary(genLevel)
 
   implicit def genLine(using logG: Gen[ToLog]): Gen[List[ToLog]] =
-    for (l <- listOf[ToLog](MaxSegments); last <- logG)
-      yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
+    for l <- listOf[ToLog](MaxSegments); last <- logG
+    yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
 
   implicit def genLog(using content: Arbitrary[String], byChar: Arbitrary[Boolean]): Gen[ToLog] =
-    for (c <- content.arbitrary; by <- byChar.arbitrary) yield {
+    for c <- content.arbitrary; by <- byChar.arbitrary yield
       assert(c != null)
       new ToLog(removeNewlines(c), by)
-    }
 
   given genNewLine: Gen[NewLine] =
-    for (str <- oneOf("\n", "\r", "\r\n")) yield new NewLine(str)
+    for str <- oneOf("\n", "\r", "\r\n") yield new NewLine(str)
 
   given genLevel: Gen[Level.Value] =
     oneOf(Level.values.toSeq)
 
   given genOutput: Gen[Output] =
-    for (ls <- listOf[List[ToLog]](MaxLines); lv <- genLevel) yield new Output(ls, lv)
+    for ls <- listOf[List[ToLog]](MaxLines); lv <- genLevel yield new Output(ls, lv)
 
   def removeNewlines(s: String) = s.replaceAll("""[\n\r]+""", "")
   def addNewline(l: ToLog): ToLog =
@@ -112,63 +106,54 @@ object LogWriterTest extends Properties("Log Writer") {
 
   def listOf[T](max: Int)(using content: Arbitrary[T]): Gen[List[T]] =
     Gen.choose(0, max) flatMap (sz => listOfN(sz, content.arbitrary))
-}
+end LogWriterTest
 
 /* Helper classes*/
 
-final class Output(val lines: List[List[ToLog]], val level: Level.Value) {
+final class Output(val lines: List[List[ToLog]], val level: Level.Value):
   override def toString =
     "Level: " + level + "\n" + lines.map(_.mkString).mkString("\n")
-}
 
-final class NewLine(val str: String) {
+final class NewLine(val str: String):
   override def toString = Escape(str)
-}
 
-final class ToLog(val content: String, val byCharacter: Boolean) {
+final class ToLog(val content: String, val byCharacter: Boolean):
   def contentOnly = Escape.newline(content, "")
 
   override def toString =
-    if (content.isEmpty) "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
-}
+    if content.isEmpty then "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
 
 /** Defines some utility methods for escaping unprintable characters. */
-object Escape {
+object Escape:
 
   /** Escapes characters with code less than 20 by printing them as unicode escapes. */
-  def apply(s: String): String = {
+  def apply(s: String): String =
     val builder = new StringBuilder(s.length)
-    for (c <- s) {
+    for c <- s do
       val char = c.toInt
       def escaped = pad(char.toHexString.toUpperCase, 4, '0')
-      if (c < 20) builder.append("\\u").append(escaped) else builder.append(c)
-    }
+      if c < 20 then builder.append("\\u").append(escaped) else builder.append(c)
     builder.toString
-  }
 
-  def pad(s: String, minLength: Int, extra: Char) = {
+  def pad(s: String, minLength: Int, extra: Char) =
     val diff = minLength - s.length
-    if (diff <= 0) s else List.fill(diff)(extra).mkString("", "", s)
-  }
+    if diff <= 0 then s else List.fill(diff)(extra).mkString("", "", s)
 
   /** Replaces a \n character at the end of a string `s` with `nl`. */
   def newline(s: String, nl: String): String =
-    if (s.endsWith("\n")) s.substring(0, s.length - 1) + nl else s
-
-}
+    if s.endsWith("\n") then s.substring(0, s.length - 1) + nl else s
 
 /** Records logging events for later retrieval. */
-final class RecordingLogger extends BasicLogger {
+final class RecordingLogger extends BasicLogger:
   private var events: List[LogEvent] = Nil
 
   def getEvents = events.reverse
 
   def ansiCodesSupported = true
-  def trace(t: => Throwable): Unit = { events ::= new Trace(t) }
-  def log(level: Level.Value, message: => String): Unit = { events ::= new Log(level, message) }
-  def success(message: => String): Unit = { events ::= new Success(message) }
-  def logAll(es: Seq[LogEvent]): Unit = { events :::= es.toList }
+  def trace(t: => Throwable): Unit = events ::= new Trace(t)
+  def log(level: Level.Value, message: => String): Unit = events ::= new Log(level, message)
+  def success(message: => String): Unit = events ::= new Success(message)
+  def logAll(es: Seq[LogEvent]): Unit = events :::= es.toList
 
   def control(event: ControlEvent.Value, message: => String): Unit =
     events ::= new ControlEvent(event, message)
-}

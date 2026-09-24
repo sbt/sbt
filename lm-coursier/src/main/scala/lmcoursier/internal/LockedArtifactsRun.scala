@@ -10,25 +10,23 @@ import java.io.File
 import scala.concurrent.{ Await, ExecutionContext }
 import scala.concurrent.duration.Duration
 
-object LockedArtifactsRun {
+object LockedArtifactsRun:
 
   def fetchFromLockFile(
       lockFileData: LockFileData,
       cache: FileCache[coursier.util.Task],
       verbosityLevel: Int,
       log: Logger
-  ): Either[String, Seq[(Dependency, Publication, Artifact, Option[File])]] = {
+  ): Either[String, Seq[(Dependency, Publication, Artifact, Option[File])]] =
     given ExecutionContext = cache.ec
 
-    if (verbosityLevel >= 1) {
-      log.info("Fetching artifacts from lock file")
-    }
+    if verbosityLevel >= 1 then log.info("Fetching artifacts from lock file")
 
-    val artifactsToFetch = for {
+    val artifactsToFetch = for
       configLock <- lockFileData.configurations
       depLock <- configLock.dependencies
       artLock <- depLock.artifacts
-    } yield {
+    yield
       val module = coursier.Module(
         coursier.Organization(depLock.organization),
         coursier.ModuleName(depLock.name),
@@ -61,36 +59,30 @@ object LockedArtifactsRun {
       )
 
       (dependency, publication, artifact)
-    }
 
     val fetchTasks = artifactsToFetch.map { case (dep, pub, art) =>
       cache.file(art).run.map { result =>
-        result match {
+        result match
           case Left(err) =>
-            if (verbosityLevel >= 2) {
-              log.debug(s"Failed to fetch ${art.url}: ${err.describe}")
-            }
+            if verbosityLevel >= 2 then log.debug(s"Failed to fetch ${art.url}: ${err.describe}")
             (dep, pub, art, None: Option[File])
           case Right(file) =>
             (dep, pub, art, Some(file))
-        }
       }
     }
 
-    try {
+    try
       val results = fetchTasks.map { task =>
         Await.result(task.future(), Duration.Inf)
       }
 
       val failures = results.filter(_._4.isEmpty)
-      if (failures.nonEmpty && verbosityLevel >= 1) {
+      if failures.nonEmpty && verbosityLevel >= 1 then
         log.warn(s"Failed to fetch ${failures.size} artifacts from lock file")
-      }
 
       Right(results)
-    } catch {
+    catch
       case ex: Exception =>
         Left(s"Failed to fetch artifacts: ${ex.getMessage}")
-    }
-  }
-}
+  end fetchFromLockFile
+end LockedArtifactsRun

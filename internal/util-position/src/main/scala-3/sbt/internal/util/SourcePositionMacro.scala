@@ -9,7 +9,7 @@ package sbt.internal.util
 
 import scala.quoted.{ Expr, Quotes, quotes }
 
-abstract class SourcePositionImpl {
+abstract class SourcePositionImpl:
 
   /**
    * Creates a SourcePosition by using the enclosing position of the invocation of this method.
@@ -18,11 +18,10 @@ abstract class SourcePositionImpl {
    */
   inline def fromEnclosing(): SourcePosition =
     ${ SourcePositionImpl.fromEnclosingImpl }
-}
 
-object SourcePositionImpl {
+object SourcePositionImpl:
 
-  def fromEnclosingImpl(using Quotes): Expr[SourcePosition] = {
+  def fromEnclosingImpl(using Quotes): Expr[SourcePosition] =
     val pos = quotes.reflect.Position.ofMacroExpansion
     if pos.startLine >= 0 then
       '{
@@ -32,5 +31,3 @@ object SourcePositionImpl {
         ).withSourceCode(${ Expr(pos.sourceCode) })
       }
     else '{ NoPosition }
-  }
-}

@@ -13,7 +13,7 @@ import Prop.*
 import TaskGen.*
 import math.abs
 
-object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
+object TaskRunnerForkTest extends Properties("TaskRunner Fork"):
   property("fork m tasks and wait for all to complete") = forAll(MaxTasksGen, MaxWorkersGen) {
     (m: Int, workers: Int) =>
       val values = (0 until m).toList
@@ -31,15 +31,14 @@ object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
       runDoubleJoin(abs(a), abs(b), workers)
       true
   }
-  def runDoubleJoin(a: Int, b: Int, workers: Int): Unit = {
+  def runDoubleJoin(a: Int, b: Int, workers: Int): Unit =
     def inner = List.range(0, b).map(j => task(j).named(j.toString)).join
     tryRun(List.range(0, a).map(_ => inner).join, false, workers)
     ()
-  }
   property("fork and reduce") = forAll(TaskListGen, MaxWorkersGen) { (m: List[Int], workers: Int) =>
     m.nonEmpty ==> {
       val expected = m.sum
       checkResult(tryRun(m.tasks.reduced(_ + _), false, workers), expected)
     }
   }
-}
+end TaskRunnerForkTest

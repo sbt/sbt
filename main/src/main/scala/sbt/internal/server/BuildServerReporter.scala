@@ -32,7 +32,7 @@ import java.nio.file.Path
 /**
  * Provides methods for sending success and failure reports and publishing diagnostics.
  */
-sealed trait BuildServerReporter extends Reporter {
+sealed trait BuildServerReporter extends Reporter:
   private final val sigFilesWritten = "[sig files written]"
   private final val pureExpression = "a pure expression does nothing in statement position"
 
@@ -63,20 +63,17 @@ sealed trait BuildServerReporter extends Reporter {
 
   override def problems(): Array[Problem] = underlying.problems()
 
-  override def log(problem: Problem): Unit = {
-    if (problem.message == sigFilesWritten) {
-      logger.debug(sigFilesWritten)
-    } else if (isMetaBuild && problem.message.startsWith(pureExpression)) {
+  override def log(problem: Problem): Unit =
+    if problem.message == sigFilesWritten then logger.debug(sigFilesWritten)
+    else if isMetaBuild && problem.message.startsWith(pureExpression) then
       // work around https://github.com/scala/bug/issues/12112 by ignoring it in the reporter
       logger.debug(problem.message)
-    } else {
+    else
       publishDiagnostic(problem)
       underlying.log(problem)
-    }
-  }
 
   override def comment(pos: XPosition, msg: String): Unit = underlying.comment(pos, msg)
-}
+end BuildServerReporter
 
 /**
  * @param bspCompileState what has already been reported in previous compilation.
@@ -91,7 +88,7 @@ final class BuildServerReporterImpl(
     protected override val isMetaBuild: Boolean,
     protected override val logger: ManagedLogger,
     protected override val underlying: Reporter
-) extends BuildServerReporter {
+) extends BuildServerReporter:
   import sbt.internal.bsp.codec.JsonProtocol.given
 
   private lazy val exchange = StandardMain.exchange
@@ -111,13 +108,11 @@ final class BuildServerReporterImpl(
    *
    * @param analysis current compile analysis
    */
-  override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
-    for ((source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala) {
+  override def sendSuccessReport(analysis: CompileAnalysis): Unit =
+    for (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala do
       val problems = infos.getReportedProblems.toVector
       sendReport(source, problems)
-    }
     notifyFirstReport()
-  }
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit =
     sendFailureReport(sources, None)
@@ -125,7 +120,7 @@ final class BuildServerReporterImpl(
   override def sendFailureReport(
       sources: Array[VirtualFile],
       failure: Option[CompileFailed]
-  ): Unit = {
+  ): Unit =
     val fallbackByFile: Map[Path, Vector[Problem]] = failure match
       case Some(failed) =>
         failed
@@ -140,22 +135,21 @@ final class BuildServerReporterImpl(
       case None =>
         Map.empty
 
-    for (source <- sources) {
+    for source <- sources do
       val path = converter.toPath(source)
       val problems = problemsByFile.getOrElse(path, fallbackByFile.getOrElse(path, Vector.empty))
       sendReport(source, problems)
-    }
     notifyFirstReport()
-  }
+  end sendFailureReport
 
-  private def sendReport(source: VirtualFileRef, problems: Vector[Problem]): Unit = {
+  private def sendReport(source: VirtualFileRef, problems: Vector[Problem]): Unit =
     val oldDocuments = getAndClearPreviousDocuments(source)
 
     // publish diagnostics if:
     // 1. file had any problems previously: update them with new ones
     // 2. file has fresh problems: report them
     // 3. build project is compiled for the first time: send success report
-    if (oldDocuments.nonEmpty || problems.nonEmpty || isFirstReport) {
+    if oldDocuments.nonEmpty || problems.nonEmpty || isFirstReport then
       val diagsByDocuments = problems
         .flatMap(mapProblemToDiagnostic)
         .groupMap((document, _) => document)((_, diag) => diag)
@@ -173,14 +167,13 @@ final class BuildServerReporterImpl(
         )
         exchange.notifyEvent("build/publishDiagnostics", params)
       }
-    }
-  }
+  end sendReport
 
-  protected override def publishDiagnostic(problem: Problem): Unit = {
-    for {
+  protected override def publishDiagnostic(problem: Problem): Unit =
+    for
       id <- problem.position.sourcePath.toScala
       (document, diagnostic) <- mapProblemToDiagnostic(problem)
-    } {
+    do
       // Note: We're putting the real path in `fileRef` because the `id` String can take
       // two forms, either a ${something}/relativePath, or the absolute path of the source.
       // But where we query this, we always have _only_ a ${something}/relativePath available.
@@ -196,8 +189,6 @@ final class BuildServerReporterImpl(
         reset = false
       )
       exchange.notifyEvent("build/publishDiagnostics", params)
-    }
-  }
 
   private def getAndClearPreviousDocuments(source: VirtualFileRef): Seq[TextDocumentIdentifier] =
     bspCompileState.problemsBySourceFiles.getAndUpdate(_ - source).getOrElse(source, Seq.empty)
@@ -205,14 +196,12 @@ final class BuildServerReporterImpl(
   private def updateNewDocuments(
       source: VirtualFileRef,
       documents: Vector[TextDocumentIdentifier]
-  ): Unit = {
+  ): Unit =
     val _ = bspCompileState.problemsBySourceFiles.updateAndGet(_ + (source -> documents))
-  }
 
   private def isFirstReport: Boolean = bspCompileState.isFirstReport.get
-  private def notifyFirstReport(): Unit = {
+  private def notifyFirstReport(): Unit =
     val _ = bspCompileState.isFirstReport.set(false)
-  }
 
   /**
    * Map a given problem, in a Scala source file, to a Diagnostic in an user-facing source file.
@@ -220,12 +209,12 @@ final class BuildServerReporterImpl(
    */
   private def mapProblemToDiagnostic(
       problem: Problem
-  ): Option[(TextDocumentIdentifier, Diagnostic)] = {
+  ): Option[(TextDocumentIdentifier, Diagnostic)] =
     val mappedPosition = sourcePositionMapper(problem.position)
-    for {
+    for
       mappedSource <- mappedPosition.sourcePath.toScala
       document <- toDocument(VirtualFileRef.of(mappedSource))
-    } yield {
+    yield
       val diagnostic = Diagnostic(
         toRange(mappedPosition),
         Option(toDiagnosticSeverity(problem.severity)),
@@ -234,10 +223,8 @@ final class BuildServerReporterImpl(
         problem.message
       )
       (document, diagnostic)
-    }
-  }
 
-  private def toRange(position: xsbti.Position): Range = {
+  private def toRange(position: xsbti.Position): Range =
     val startLineOpt = position.startLine.toScala.map(_.toLong - 1)
     val startColumnOpt = position.startColumn.toScala.map(_.toLong)
     val endLineOpt = position.endLine.toScala.map(_.toLong - 1)
@@ -253,20 +240,18 @@ final class BuildServerReporterImpl(
       .getOrElse(Position(0L, 0L))
     val endPosOpt = toPosition(endLineOpt, endColumnOpt)
     Range(startPos, endPosOpt.getOrElse(startPos))
-  }
 
-  private def toDiagnosticSeverity(severity: Severity): Long = severity match {
+  private def toDiagnosticSeverity(severity: Severity): Long = severity match
     case Severity.Info  => DiagnosticSeverity.Information
     case Severity.Warn  => DiagnosticSeverity.Warning
     case Severity.Error => DiagnosticSeverity.Error
-  }
-}
+end BuildServerReporterImpl
 
 final class BuildServerForwarder(
     protected override val isMetaBuild: Boolean,
     protected override val logger: ManagedLogger,
     protected override val underlying: Reporter
-) extends BuildServerReporter {
+) extends BuildServerReporter:
 
   override def sendSuccessReport(
       analysis: CompileAnalysis,
@@ -281,4 +266,3 @@ final class BuildServerForwarder(
   ): Unit = ()
 
   protected override def publishDiagnostic(problem: Problem): Unit = ()
-}

@@ -93,6 +93,7 @@ object ClassStamperTest extends Properties:
           ),
       )
     )
+  end regressionGoldens
 
   // ---------- helpers ----------
 
@@ -156,6 +157,7 @@ object ClassStamperTest extends Properties:
       libraryDeps = libraryDeps.map { case (vf, cn) => (vf, cn, EmptyStamp) },
     )
     Analysis.empty.copy(relations = rels)
+  end analysisOf
 
   private def stamper(analyses: Analysis*): ClassStamper =
     new ClassStamper(analyses.toSeq, StubConverter)
@@ -213,6 +215,7 @@ object ClassStamperTest extends Properties:
         Result.diffNamed("internal dep should change digest", d1, d2)(_ != _),
       )
     )
+  end digestReflectsInternalDeps
 
   def digestReflectsLibraryDeps: Result =
     val a = analysisOf(
@@ -236,6 +239,7 @@ object ClassStamperTest extends Properties:
         Result.diffNamed("digests for different libraries should differ", d1, d2)(_ != _),
       )
     )
+  end digestReflectsLibraryDeps
 
   def externalDepWithoutLibraryIsNoOp: Result =
     // An external dep with no matching library entry contributes nothing
@@ -329,6 +333,7 @@ object ClassStamperTest extends Properties:
         Result.assert(stamp(stamper(a2), "X").isEmpty).log("X must be None without a1"),
       )
     )
+  end multipleAnalysesAreWalked
 
   def cyclesDoNotLoopForever: Result =
     // A -> B and B -> A in internal deps. The `alreadySeen` guard prevents

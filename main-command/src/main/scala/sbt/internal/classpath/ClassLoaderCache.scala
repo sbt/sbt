@@ -27,13 +27,12 @@ import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
-private object ClassLoaderCache {
+private object ClassLoaderCache:
   private def threadID = new AtomicInteger(0)
-}
 private[sbt] class ClassLoaderCache(
     val parent: ClassLoader,
     private val miniProvider: Option[(File, ClassLoader)]
-) extends AbstractClassLoaderCache {
+) extends AbstractClassLoaderCache:
   private val parentHolder = new AtomicReference(parent)
   def commonParent = parentHolder.get()
   def setParent(parent: ClassLoader): Unit = parentHolder.set(parent)
@@ -43,36 +42,32 @@ private[sbt] class ClassLoaderCache(
       scalaProvider.launcher.topLoader, {
         scalaProvider.jars.find(_.getName == "scala-library.jar").flatMap { lib =>
           val clazz = scalaProvider.getClass
-          try {
+          try
             val loader = clazz.getDeclaredMethod("libraryLoaderOnly").invoke(scalaProvider)
             Some(lib -> loader.asInstanceOf[ClassLoader])
-          } catch { case NonFatal(_) => None }
+          catch case NonFatal(_) => None
         }
       }
     )
   private val scalaProviderKey = miniProvider.map { (f, cl) =>
-    new Key((f -> IO.getModifiedTimeOrZero(f)) :: Nil, commonParent) {
+    new Key((f -> IO.getModifiedTimeOrZero(f)) :: Nil, commonParent):
       override def toClassLoader: ClassLoader = cl
-    }
   }
-  private class Key(val fileStamps: Seq[(File, Long)], val parent: ClassLoader) {
+  private class Key(val fileStamps: Seq[(File, Long)], val parent: ClassLoader):
     def this(files: List[File], parent: ClassLoader) =
       this(files.map(f => f -> IO.getModifiedTimeOrZero(f)), parent)
     def this(files: List[File]) = this(files, commonParent)
     lazy val files: Seq[File] = fileStamps.map(_._1)
     lazy val maxStamp: Long = fileStamps.maxBy(_._2)._2
     class CachedClassLoader
-        extends URLClassLoader(fileStamps.map(_._1.toURI.toURL).toArray, parent) {
+        extends URLClassLoader(fileStamps.map(_._1.toURI.toURL).toArray, parent):
       override def toString: String =
         s"CachedClassloader {\n  parent: $parent\n  urls:\n" + getURLs.mkString("    ", "\n", "\n}")
-    }
     def toClassLoader: ClassLoader = new CachedClassLoader
-    override def equals(o: Any): Boolean = o match {
+    override def equals(o: Any): Boolean = o match
       case that: Key => this.fileStamps == that.fileStamps && this.parent == that.parent
-    }
     override def hashCode(): Int = (fileStamps.hashCode * 31) ^ parent.hashCode
     override def toString: String = s"Key(${fileStamps mkString ","}, $parent)"
-  }
   private val delegate =
     new java.util.concurrent.ConcurrentHashMap[Key, Reference[ClassLoader]]()
   private val referenceQueue = new ReferenceQueue[ClassLoader]
@@ -91,59 +86,48 @@ private[sbt] class ClassLoaderCache(
     java.util.Collections.synchronizedMap(new java.util.WeakHashMap[ClassLoader, java.lang.Boolean])
 
   private def clearExpiredLoaders(): Unit = lock.synchronized {
-    val clear = (k: Key, ref: Reference[ClassLoader]) => {
-      ref.get() match {
+    val clear = (k: Key, ref: Reference[ClassLoader]) =>
+      ref.get() match
         case w: WrappedLoader => w.invalidate()
         case _                =>
-      }
-      ref match {
+      ref match
         case ClassLoaderReference(_, underlying) =>
           retired.put(underlying, java.lang.Boolean.TRUE)
         case r =>
-          r.get() match {
+          r.get() match
             case null   =>
             case loader => retired.put(loader, java.lang.Boolean.TRUE)
-          }
-      }
       delegate.remove(k)
       ()
-    }
-    def isInvalidated(classLoader: ClassLoader): Boolean = classLoader match {
+    def isInvalidated(classLoader: ClassLoader): Boolean = classLoader match
       case w: WrappedLoader => w.invalidated()
       case _                => false
-    }
     delegate.asScala.groupBy { case (k, _) => k.parent -> k.files.toSet }.foreach {
       case (_, pairs) if pairs.size > 1 =>
         val max = pairs.map(_._1.maxStamp).max
-        pairs.foreach { (k, v) => if (k.maxStamp != max) clear(k, v) }
+        pairs.foreach { (k, v) => if k.maxStamp != max then clear(k, v) }
       case _ =>
     }
-    delegate.forEach((k, v) => if (isInvalidated(k.parent)) clear(k, v))
+    delegate.forEach((k, v) => if isInvalidated(k.parent) then clear(k, v))
   }
-  private class CleanupThread(private val id: Int)
-      extends Thread(s"classloader-cache-cleanup-$id") {
+  private class CleanupThread(private val id: Int) extends Thread(s"classloader-cache-cleanup-$id"):
     setDaemon(true)
     start()
     @tailrec
-    override final def run(): Unit = {
+    override final def run(): Unit =
       val stop =
-        try {
-          referenceQueue.remove(1000) match {
+        try
+          referenceQueue.remove(1000) match
             case ClassLoaderReference(key, classLoader) =>
               close(classLoader)
               retired.remove(classLoader)
               delegate.remove(key)
               ()
             case _ =>
-          }
           clearExpiredLoaders()
           false
-        } catch {
-          case _: InterruptedException => true
-        }
-      if (!stop) run()
-    }
-  }
+        catch case _: InterruptedException => true
+      if !stop then run()
 
   /*
    * We need to manage the cache differently depending on whether or not sbt is started up with
@@ -180,16 +164,15 @@ private[sbt] class ClassLoaderCache(
     ManagementFactory.getMemoryPoolMXBeans.asScala
       .exists(b => (b.getName == "Metaspace") && (b.getUsage.getMax > 0))
   private val mkReference: (Key, ClassLoader) => Reference[ClassLoader] =
-    if (metaspaceIsLimited) { (_, cl) =>
-      (new SoftReference[ClassLoader](cl, referenceQueue): Reference[ClassLoader])
-    } else ClassLoaderReference.apply
+    if metaspaceIsLimited then
+      (_, cl) => (new SoftReference[ClassLoader](cl, referenceQueue): Reference[ClassLoader])
+    else ClassLoaderReference.apply
   private val cleanupThread = new CleanupThread(ClassLoaderCache.threadID.getAndIncrement())
   private val lock = new Object
 
-  private def close(classLoader: ClassLoader): Unit = classLoader match {
+  private def close(classLoader: ClassLoader): Unit = classLoader match
     case a: AutoCloseable => a.close()
     case _                =>
-  }
   private case class ClassLoaderReference(key: Key, classLoader: ClassLoader)
       extends SoftReference[ClassLoader](
         new WrappedLoader(classLoader),
@@ -199,62 +182,51 @@ private[sbt] class ClassLoaderCache(
       files: List[(File, Long)],
       parent: ClassLoader,
       mkLoader: () => ClassLoader
-  ): ClassLoader = {
+  ): ClassLoader =
     val key = new Key(files, parent)
     get(key, mkLoader)
-  }
-  def apply(files: List[File], parent: ClassLoader): ClassLoader = {
+  def apply(files: List[File], parent: ClassLoader): ClassLoader =
     val key = new Key(files, parent)
     get(key, () => key.toClassLoader)
-  }
-  override def apply(files: List[File]): ClassLoader = {
-    files match {
+  override def apply(files: List[File]): ClassLoader =
+    files match
       case d :: s :: Nil
           if d.getName.startsWith("dotty-library") || d.getName.startsWith("scala3-library") =>
         apply(files, classOf[org.jline.terminal.Terminal].getClassLoader)
       case _ =>
         val key = new Key(files)
         get(key, () => key.toClassLoader)
-    }
-  }
   override def cachedCustomClassloader(
       files: List[File],
       mkLoader: () => ClassLoader
-  ): ClassLoader = {
+  ): ClassLoader =
     val key = new Key(files)
     get(key, mkLoader)
-  }
-  private def get(key: Key, f: () => ClassLoader): ClassLoader = {
-    scalaProviderKey match {
+  private def get(key: Key, f: () => ClassLoader): ClassLoader =
+    scalaProviderKey match
       case Some(k) if k == key => k.toClassLoader
       case _                   =>
-        def addLoader(): ClassLoader = {
+        def addLoader(): ClassLoader =
           val ref = mkReference(key, f())
           val loader = ref.get
           delegate.put(key, ref)
           clearExpiredLoaders()
           loader
-        }
         lock.synchronized {
-          delegate.get(key) match {
+          delegate.get(key) match
             case null => addLoader()
             case ref  =>
-              ref.get match {
+              ref.get match
                 case null => addLoader()
                 case l    => l
-              }
-          }
         }
-    }
-  }
-  private def clear(lock: Object): Unit = {
+  private def clear(lock: Object): Unit =
     delegate.asScala.foreach {
       case (_, ClassLoaderReference(_, classLoader)) => close(classLoader)
       case (_, r: Reference[ClassLoader])            =>
-        r.get match {
+        r.get match
           case null        =>
           case classLoader => close(classLoader)
-        }
     }
     delegate.clear()
     /* Also close loaders that were evicted from the delegate map but never closed (see
@@ -263,7 +235,6 @@ private[sbt] class ClassLoaderCache(
     val evicted = retired.synchronized(new java.util.ArrayList(retired.keySet()).asScala.toList)
     evicted.foreach(close)
     retired.clear()
-  }
 
   /**
    * Clears any ClassLoader instances from the internal cache and closes them. Calling this
@@ -282,15 +253,15 @@ private[sbt] class ClassLoaderCache(
     cleanupThread.join()
     clear(lock)
   }
-}
+end ClassLoaderCache
 
-private[sbt] object AlternativeZincUtil {
+private[sbt] object AlternativeZincUtil:
   def scalaCompiler(
       scalaInstance: ScalaInstance,
       compilerBridgeJar: File,
       classpathOptions: ClasspathOptions,
       classLoaderCache: Option[IncClassLoaderCache]
-  ): AnalyzingCompiler = {
+  ): AnalyzingCompiler =
     val bridgeProvider = ZincUtil.constantBridgeProvider(scalaInstance, compilerBridgeJar)
     new AnalyzingCompiler(
       scalaInstance,
@@ -299,5 +270,3 @@ private[sbt] object AlternativeZincUtil {
       _ => (),
       classLoaderCache
     )
-  }
-}

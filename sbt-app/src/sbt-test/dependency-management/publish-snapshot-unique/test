@@ -1,0 +1,9 @@
+# https://github.com/sbt/sbt/issues/9729
+# A repository with unique snapshot naming stamps every upload separately unless the
+# client names the files itself, which left maven-metadata.xml pointing at a jar that
+# was never published.
+> cleanPublishRepo
+> startPublishServer
+> a/publish
+> checkSnapshotConsistency
+> stopPublishServer

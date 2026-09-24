@@ -17,7 +17,7 @@ import scala.sys.process.Process
  * killed with the killAll method. In particular, this can be used in a signal handler to kill these
  * processes when the user inputs ctrl+c.
  */
-private[sbt] object RunningProcesses {
+private[sbt] object RunningProcesses:
   val active = ConcurrentHashMap.newKeySet[AnyRef]
   def add(process: AnyRef): Unit = active.synchronized {
     active.add(process)
@@ -35,4 +35,3 @@ private[sbt] object RunningProcesses {
     }
     active.clear()
   }
-}

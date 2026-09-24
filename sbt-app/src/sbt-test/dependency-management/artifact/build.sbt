@@ -28,7 +28,7 @@ lazy val root = (project in file("."))
     Compile / packageBin / artifact := mainArtifact,
     libraryDependencies ++= (if (baseDirectory.value / "retrieve").exists then publishedID :: Nil else Nil),
       // needed to add a jar with a different type to the managed classpath
-    Compile / unmanagedClasspath ++= {
+    Compile / unmanagedClasspath ++= Def.uncached {
       val converter = fileConverter.value
       val xs = scalaInstance.value.libraryJars.toSeq
       xs.map(x => converter.toVirtualFile(x.toPath()): HashedVirtualFileRef)

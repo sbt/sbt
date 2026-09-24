@@ -117,6 +117,7 @@ object DependencyLockManager:
       configurations = configurations,
       metadata = metadata
     )
+  end createFromUpdateReport
 
   def getLockedVersions(
       lock: LockFileData
@@ -126,3 +127,4 @@ object DependencyLockManager:
         (dep.organization, dep.name) -> dep.version
       }
     }.toMap
+end DependencyLockManager

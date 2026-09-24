@@ -26,7 +26,7 @@ import scala.annotation.tailrec
 import sbt.internal.util.Util.nilSeq
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
-trait Parsers {
+trait Parsers:
 
   /** Matches the end of input, providing no useful result on success. */
   lazy val EOF = not(any, "Expected EOF")
@@ -116,22 +116,18 @@ trait Parsers {
     start ~ rep.* map { case x ~ xs => (x +: xs).mkString }
 
   def opOrIDSpaced(s: String): Parser[Char] =
-    if (DefaultParsers.matches(ID, s))
-      OpChar | SpaceClass
-    else if (DefaultParsers.matches(Op, s))
-      IDChar | SpaceClass
-    else
-      any
+    if DefaultParsers.matches(ID, s) then OpChar | SpaceClass
+    else if DefaultParsers.matches(Op, s) then IDChar | SpaceClass
+    else any
 
   /** Returns true if `c` an operator character. */
   def isOpChar(c: Char) = !isDelimiter(c) && isOpType(getType(c))
 
-  def isOpType(cat: Int) = cat match {
+  def isOpType(cat: Int) = cat match
     case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL |
         CURRENCY_SYMBOL =>
       true
     case _ => false
-  }
 
   /** Returns true if `c` is a dash `-`, a letter, digit, or an underscore `_`. */
   def isIDChar(c: Char) = isScalaIDChar(c) || c == '-'
@@ -139,9 +135,9 @@ trait Parsers {
   /** Returns true if `c` is a letter, digit, or an underscore `_`. */
   def isScalaIDChar(c: Char) = c.isLetterOrDigit || c == '_'
 
-  def isDelimiter(c: Char) = c match {
-    case '`' | '\'' | '\"' | /*';' | */ ',' | '.' => true; case _ => false
-  }
+  def isDelimiter(c: Char) = c match
+    case '`' | '\'' | '\"' | /*';' | */ ',' | '.' => true;
+    case _                                        => false
 
   /** Matches a single character that is not a whitespace character. */
   lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
@@ -187,14 +183,14 @@ trait Parsers {
   /** Matches any character except a double quote or whitespace. */
   lazy val NotDQuoteSpaceClass =
     charClass(
-      (c: Char) => { (c != DQuoteChar) && !c.isWhitespace },
+      (c: Char) => (c != DQuoteChar) && !c.isWhitespace,
       "non-double-quote-space character"
     )
 
   /** Matches any character except a double quote or backslash. */
   lazy val NotDQuoteBackslashClass =
     charClass(
-      (c: Char) => { (c != DQuoteChar) && (c != BackslashChar) },
+      (c: Char) => (c != DQuoteChar) && (c != BackslashChar),
       "non-double-quote-backslash character"
     )
 
@@ -281,9 +277,9 @@ trait Parsers {
    * @return
    *   a parser for the brace enclosed string.
    */
-  private[sbt] def braces(open: Char, close: Char): Parser[String] = {
+  private[sbt] def braces(open: Char, close: Char): Parser[String] =
     val notDelim = charClass(c => c != open && c != close).*.string
-    def impl(): Parser[String] = {
+    def impl(): Parser[String] =
       (open ~ (notDelim ~ close).?).flatMap {
         case (l, Some((content, r))) => Parser.success(s"$l$content$r")
         case (l, None)               =>
@@ -293,9 +289,7 @@ trait Parsers {
             s"$l${nested.mkString}$suffix$r"
           }
       }
-    }
     impl()
-  }
 
   /**
    * Parses a single escape sequence into the represented Char. Escapes start with a backslash and
@@ -351,9 +345,8 @@ trait Parsers {
    */
   def mapOrFail[S, T](p: Parser[S])(f: S => T): Parser[T] =
     p flatMap { s =>
-      try {
-        success(f(s))
-      } catch { case e: Exception => failure(e.toString) }
+      try success(f(s))
+      catch case e: Exception => failure(e.toString)
     }
 
   /**
@@ -376,17 +369,15 @@ trait Parsers {
    * discarded and only the sequence of values from the parsers returned by `p` is used for the
    * result.
    */
-  def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] = {
-    def loop(acc: Seq[A]): Parser[Seq[A]] = {
+  def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] =
+    def loop(acc: Seq[A]): Parser[Seq[A]] =
       val next = (sep ~> p(acc)) flatMap { result =>
         loop(acc :+ result)
       }
       next ?? acc
-    }
     p(Vector()) flatMap { first =>
       loop(Seq(first))
     }
-  }
 
   /** Applies String.trim to the result of `p`. */
   def trimmed(p: Parser[String]) = p map { _.trim }
@@ -399,29 +390,24 @@ trait Parsers {
    * `ex` as tab completion examples.
    */
   def Uri(ex: Set[URI]) = basicUri.examples(ex.map(_.toString))
-}
+end Parsers
 
 /** Provides standard [[Parser]] implementations. */
 object Parsers extends Parsers
 
 /** Provides common [[Parser]] implementations and helper methods. */
-object DefaultParsers extends Parsers with ParserMain {
+object DefaultParsers extends Parsers with ParserMain:
 
   /** Applies parser `p` to input `s` and returns `true` if the parse was successful. */
   def matches(p: Parser[?], s: String): Boolean =
     apply(p)(s).resultEmpty.isValid
 
   /** Returns `true` if `s` parses successfully according to [[ID]]. */
-  def validID(s: String): Boolean = {
+  def validID(s: String): Boolean =
     // Handwritten version of `matches(ID, s)` because validID turned up in profiling.
     def isIdChar(c: Char): Boolean = Character.isLetterOrDigit(c) || (c == '-') || (c == '_')
     @tailrec def isRestIdChar(cur: Int, s: String, length: Int): Boolean =
-      if (cur < length)
-        isIdChar(s.charAt(cur)) && isRestIdChar(cur + 1, s, length)
-      else
-        true
+      if cur < length then isIdChar(s.charAt(cur)) && isRestIdChar(cur + 1, s, length)
+      else true
 
     !s.isEmpty && Character.isLetter(s.charAt(0)) && isRestIdChar(1, s, s.length)
-  }
-
-}

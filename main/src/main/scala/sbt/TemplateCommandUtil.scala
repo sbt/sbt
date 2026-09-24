@@ -25,7 +25,7 @@ import sbt.ProjectExtra.*
 
 import scala.annotation.tailrec
 
-private[sbt] object TemplateCommandUtil {
+private[sbt] object TemplateCommandUtil:
   def templateCommand: Command = templateCommand0(TemplateCommand)
   def templateCommandAlias: Command = templateCommand0("init")
   private def templateCommand0(command: String): Command =
@@ -36,7 +36,7 @@ private[sbt] object TemplateCommandUtil {
   private def templateCommandParser: Parser[Seq[String]] =
     (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF).map(_ => Nil))
 
-  private def runTemplate(s0: State, inputArg: Seq[String]): State = {
+  private def runTemplate(s0: State, inputArg: Seq[String]): State =
     import BuildPaths.*
     val globalBase = getGlobalBase(s0)
     val infos = s0.get(templateResolverInfos).getOrElse(Nil).toList
@@ -46,23 +46,21 @@ private[sbt] object TemplateCommandUtil {
     val scalaModuleInfo = extracted.get(Keys.updateSbtClassifiers / Keys.scalaModuleInfo)
     val templateDescriptions = extracted.get(Keys.templateDescriptions)
     val args0 = inputArg.toList ++
-      (s0.remainingCommands match {
+      (s0.remainingCommands match
         case exec :: Nil if exec.commandLine == "shell" => Nil
-        case xs                                         => xs map (_.commandLine)
-      })
+        case xs                                         => xs map (_.commandLine))
     def terminate = TerminateAction :: s1.copy(remainingCommands = Nil)
     def reload = "reboot" :: s1.copy(remainingCommands = Nil)
-    if (args0.nonEmpty) {
-      args0 match {
+    if args0.nonEmpty then
+      args0 match
         case arg :: Nil if arg.endsWith(".local") =>
           extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
           reload
         case _ =>
           run(infos, args0, s0.configuration, lm, globalBase, scalaModuleInfo, log)
           terminate
-      }
-    } else {
-      fortifyArgs(templateDescriptions.toList) match {
+    else
+      fortifyArgs(templateDescriptions.toList) match
         case Nil                                  => terminate
         case arg :: Nil if arg.endsWith(".local") =>
           extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
@@ -70,9 +68,7 @@ private[sbt] object TemplateCommandUtil {
         case args =>
           run(infos, args, s0.configuration, lm, globalBase, scalaModuleInfo, log)
           terminate
-      }
-    }
-  }
+  end runTemplate
 
   private def run(
       infos: List[TemplateResolverInfo],
@@ -86,36 +82,31 @@ private[sbt] object TemplateCommandUtil {
     infos find { info =>
       val loader = infoLoader(info, config, lm, globalBase, scalaModuleInfo, log)
       val hit = tryTemplate(info, arguments, loader)
-      if (hit) {
-        runTemplate(info, arguments, loader)
-      }
+      if hit then runTemplate(info, arguments, loader)
       hit
-    } match {
+    } match
       case Some(_) => // do nothing
       case None    =>
         val error = "Template not found for: " + arguments.mkString(" ")
         throw new IllegalArgumentException(error)
-    }
 
   private def tryTemplate(
       info: TemplateResolverInfo,
       arguments: List[String],
       loader: ClassLoader
-  ): Boolean = {
+  ): Boolean =
     val resultObj = call(info.implementationClass, "isDefined", loader)(
       classOf[Array[String]]
     )(arguments.toArray)
     resultObj.asInstanceOf[Boolean]
-  }
 
   private def runTemplate(
       info: TemplateResolverInfo,
       arguments: List[String],
       loader: ClassLoader
-  ): Unit = {
+  ): Unit =
     call(info.implementationClass, "run", loader)(classOf[Array[String]])(arguments.toArray)
     ()
-  }
 
   private def infoLoader(
       info: TemplateResolverInfo,
@@ -124,25 +115,20 @@ private[sbt] object TemplateCommandUtil {
       globalBase: File,
       scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
-  ): ClassLoader = {
+  ): ClassLoader =
     val cp = classpathForInfo(info, lm, globalBase, scalaModuleInfo, log)
     ClasspathUtil.toLoader(cp, config.provider.loader)
-  }
 
   private def call(
       interfaceClassName: String,
       methodName: String,
       loader: ClassLoader
-  )(argTypes: Class[?]*)(args: AnyRef*): AnyRef = {
+  )(argTypes: Class[?]*)(args: AnyRef*): AnyRef =
     val interfaceClass = getInterfaceClass(interfaceClassName, loader)
     val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
     val method = interfaceClass.getMethod(methodName, argTypes*)
-    try {
-      method.invoke(interface, args*)
-    } catch {
-      case e: InvocationTargetException => throw e.getCause
-    }
-  }
+    try method.invoke(interface, args*)
+    catch case e: InvocationTargetException => throw e.getCause
 
   private def getInterfaceClass(name: String, loader: ClassLoader) =
     Class.forName(name, true, loader)
@@ -155,22 +141,19 @@ private[sbt] object TemplateCommandUtil {
       globalBase: File,
       scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
-  ): List[Path] = {
+  ): List[Path] =
     val templatesBaseDirectory = new File(globalBase, "templates")
     val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
     val templateDirectory = new File(templatesBaseDirectory, templateId)
     def jars = (templateDirectory ** -DirectoryFilter).get()
     if !info.module.revision.endsWith("-SNAPSHOT") && jars.nonEmpty then jars.toList.map(_.toPath)
-    else {
+    else
       IO.createDirectory(templateDirectory)
       val m = lm.wrapDependencyInModule(info.module, scalaModuleInfo)
-      val xs = lm.retrieve(m, templateDirectory, log) match {
+      val xs = lm.retrieve(m, templateDirectory, log) match
         case Left(_)      => sys.error(s"Retrieval of ${info.module} failed.")
         case Right(files) => files.toList
-      }
       xs.map(_.toPath)
-    }
-  }
 
   private final val ScalaToolkitSlug = "scala/toolkit.local"
   private final val TypelevelToolkitSlug = "typelevel/toolkit.local"
@@ -193,7 +176,7 @@ private[sbt] object TemplateCommandUtil {
     "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
   )
   private def fortifyArgs(templates: List[(String, String)]): List[String] =
-    if (!hasConsole) Nil
+    if !hasConsole then Nil
     else
       ITerminal.withStreams(true, false) {
         assert(templates.size <= 20, "template list cannot have more than 20 items")
@@ -213,21 +196,20 @@ private[sbt] object TemplateCommandUtil {
     nonMoveLetters(idx).toString
 
   @tailrec
-  private def askTemplate(mappingList: List[(String, (String, String))], focus: Int): String = {
+  private def askTemplate(mappingList: List[(String, (String, String))], focus: Int): String =
     val msg = "Select a template"
     displayMappings(mappingList, focus)
     val focusValue = toLetter(focus)
-    if (!isAnsiSupported) ask(msg, focusValue)
-    else {
+    if !isAnsiSupported then ask(msg, focusValue)
+    else
       val out = term.printStream
       out.print(s"$msg: ")
       val ans0 = term.readArrow
-      def printThenReturn(ans: String): String = {
+      def printThenReturn(ans: String): String =
         out.println(ans) // this is necessary to move the cursor
         out.flush()
         ans
-      }
-      ans0 match {
+      ans0 match
         case '\r' | '\n'                   => printThenReturn(focusValue)
         case 'q' | 'Q' | -1                => printThenReturn("")
         case 'j' | 'J' | ITerminal.VK_DOWN =>
@@ -241,39 +223,31 @@ private[sbt] object TemplateCommandUtil {
         case _ =>
           clearMenu(mappingList)
           askTemplate(mappingList, focus)
-      }
-    }
-  }
+    end if
+  end askTemplate
 
-  private def clearMenu(mappingList: List[(String, (String, String))]): Unit = {
+  private def clearMenu(mappingList: List[(String, (String, String))]): Unit =
     val out = term.printStream
     out.print(ConsoleAppender.CursorLeft1000)
     out.print(ConsoleAppender.cursorUp(mappingList.size + 1))
-  }
 
-  private def displayMappings(mappingList: List[(String, (String, String))], focus: Int): Unit = {
+  private def displayMappings(mappingList: List[(String, (String, String))], focus: Int): Unit =
     import scala.Console.{ RESET, REVERSED }
     val out = term.printStream
     mappingList.zipWithIndex.foreach { case ((k, (slug, desc)), idx) =>
-      if (idx == focus && isAnsiSupported) {
-        out.print(REVERSED)
-      }
+      if idx == focus && isAnsiSupported then out.print(REVERSED)
       out.print(s" $k) ${slug.padTo(33, ' ')} - $desc")
-      if (idx == focus && isAnsiSupported) {
-        out.print(RESET)
-      }
+      if idx == focus && isAnsiSupported then out.print(RESET)
       out.println()
     }
     out.println(" q) quit")
     out.flush()
-  }
 
-  private def ask(question: String, default: String): String = {
+  private def ask(question: String, default: String): String =
     System.out.print(s"$question (default: $default): ")
     val ans0 = System.console.readLine()
-    if (ans0 == "") default
+    if ans0 == "" then default
     else ans0
-  }
 
   // This is used by Defaults.runLocalTemplate, which implements
   // templateRunLocal input task.
@@ -281,17 +255,16 @@ private[sbt] object TemplateCommandUtil {
       arguments: List[String],
       log: Logger
   ): Unit =
-    arguments match {
+    arguments match
       case ScalaToolkitSlug :: Nil     => scalaToolkitTemplate()
       case TypelevelToolkitSlug :: Nil => typelevelToolkitTemplate()
       case SbtCrossPlatformSlug :: Nil => sbtCrossPlatformTemplate()
       case _                           =>
         val error = "Local template not found for: " + arguments.mkString(" ")
         throw new IllegalArgumentException(error)
-    }
 
   private final val defaultScalaV = "3.3.8"
-  private def scalaToolkitTemplate(): Unit = {
+  private def scalaToolkitTemplate(): Unit =
     val defaultScalaToolkitV = "0.9.2"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Scala Toolkit version", defaultScalaToolkitV)
@@ -307,9 +280,8 @@ libraryDependencies += (toolkitTest % Test)
     IO.write(new File("build.sbt"), content)
     copyResource("ScalaMain.scala.txt", new File("src/main/scala/example/Main.scala"))
     copyResource("MUnitSuite.scala.txt", new File("src/test/scala/example/ExampleSuite.scala"))
-  }
 
-  private def typelevelToolkitTemplate(): Unit = {
+  private def typelevelToolkitTemplate(): Unit =
     val defaultTypelevelToolkitV = "0.2.0"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
@@ -328,9 +300,8 @@ libraryDependencies += (toolkitTest % Test)
       "TypelevelExampleSuite.scala.txt",
       new File("src/test/scala/example/ExampleSuite.scala")
     )
-  }
 
-  private def sbtCrossPlatformTemplate(): Unit = {
+  private def sbtCrossPlatformTemplate(): Unit =
     val scalaV = ask("Scala version", defaultScalaV)
     val content = s"""
 ThisBuild / scalaVersion := "$scalaV"
@@ -351,21 +322,15 @@ addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.12")
 """
     IO.write(new File("project/plugins.sbt"), pluginsContent)
     copyResource("ScalaMain.scala.txt", new File("core/src/main/scala/example/Main.scala"))
-  }
+  end sbtCrossPlatformTemplate
 
-  private def copyResource(resourcePath: String, out: File): Unit = {
-    if (out.exists()) {
-      sys.error(s"the file $out already exists!")
-    }
-    if (!out.getParentFile().exists()) {
-      IO.createDirectory(out.getParentFile())
-    }
+  private def copyResource(resourcePath: String, out: File): Unit =
+    if out.exists() then sys.error(s"the file $out already exists!")
+    if !out.getParentFile().exists() then IO.createDirectory(out.getParentFile())
     val is = getClass.getClassLoader().getResourceAsStream(resourcePath)
     require(is ne null, s"Couldn't load '$resourcePath' from classpath.")
-    try {
+    try
       IO.transfer(is, out)
-    } finally {
+    finally
       is.close()
-    }
-  }
-}
+end TemplateCommandUtil

@@ -18,14 +18,12 @@ class RelayAppender(override val name: String, targetChannel: Option[String] = N
       name,
       ConsoleAppender.Properties.from(ConsoleOut.NullConsoleOut, true, true),
       _ => None
-    ) {
+    ):
   def this(name: String) = this(name, None)
 
   lazy val exchange = StandardMain.exchange
-  override def appendLog(level: Level.Value, message: => String): Unit = {
+  override def appendLog(level: Level.Value, message: => String): Unit =
     val event = LogEvent(level = level.toString, message = message)
     targetChannel match
       case Some(ch) => exchange.logMessage(ch, event)
       case None     => exchange.logMessage(event)
-  }
-}

@@ -11,7 +11,7 @@ package internal
 
 import sbt.io.Path
 
-object CommandStrings {
+object CommandStrings:
 
   /** The prefix used to identify a request to execute the remaining input on source changes. */
   val AboutCommand = "about"
@@ -222,10 +222,9 @@ $label
 	settings at once.
 """
 
-  def moreAvailableMessage(label: String, search: Boolean) = {
-    val verb = if (search) "searched" else "viewed"
+  def moreAvailableMessage(label: String, search: Boolean) =
+    val verb = if search then "searched" else "viewed"
     s"More $label may be $verb by increasing verbosity.  See '$HelpCommand $label'\n"
-  }
 
   def aboutBrief = "Displays basic information about sbt and the build."
   def aboutDetailed = aboutBrief
@@ -452,4 +451,4 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
   reloads the build. If <command> is provided, it is then executed.
   See also `help $JavaSwitchCommand`
 """
-}
+end CommandStrings

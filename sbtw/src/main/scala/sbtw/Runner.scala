@@ -6,25 +6,6 @@ import scala.sys.process.*
 
 object Runner:
 
-  def findJavaCmd(javaHome: Option[String]): String =
-    val cmd = javaHome match
-      case Some(h) =>
-        val exe = new File(h, "bin/java.exe")
-        if exe.isFile then exe.getAbsolutePath
-        else
-          sys.env
-            .get("JAVACMD")
-            .orElse(
-              sys.env.get("JAVA_HOME").map(h0 => new File(h0, "bin/java.exe").getAbsolutePath)
-            )
-            .getOrElse("java")
-      case None =>
-        sys.env
-          .get("JAVACMD")
-          .orElse(sys.env.get("JAVA_HOME").map(h => new File(h, "bin/java.exe").getAbsolutePath))
-          .getOrElse("java")
-    cmd.replace("\"", "")
-
   def javaVersion(javaCmd: String): Int =
     try
       val pb = Process(Seq(javaCmd, "-Xms32M", "-Xmx32M", "-version"))
@@ -36,7 +17,7 @@ object Runner:
       if quoted.startsWith("1.") && parts.nonEmpty then
         scala.util.Try(parts(0).toInt).toOption.getOrElse(major)
       else major
-    catch { case _: Exception => 0 }
+    catch case _: Exception => 0
 
   /** Returns the minimum JDK version required for the given sbt version. */
   def minimumJdkVersion(sbtVersion: Option[String]): Int =
@@ -70,8 +51,14 @@ object Runner:
     if opts.noServer then s = s ++ Seq("-Dsbt.io.virtual=false", "-Dsbt.server.autostart=false")
     if opts.jvmClient then s = s :+ "--client"
     s
+  end buildSbtOpts
 
-  def runNativeClient(sbtBinDir: File, scriptPath: String, opts: LauncherOptions): Int =
+  def runNativeClient(
+      sbtBinDir: File,
+      scriptPath: String,
+      opts: LauncherOptions,
+      selected: SelectedJava
+  ): Int =
     val sbtn = new File(sbtBinDir, "sbtn-x86_64-pc-win32.exe")
     if !sbtn.isFile then
       System.err.println("[error] sbtn-x86_64-pc-win32.exe not found in " + sbtBinDir)
@@ -84,11 +71,13 @@ object Runner:
       if opts.verbose then
         System.err.println("# running native client")
         cmd.foreach(a => System.err.println(a))
-      val proc = Process(cmd, None, "SBT_SCRIPT" -> scriptPath)
+      val extraEnv = ("SBT_SCRIPT" -> scriptPath) +: selected.handoffEnv
+      val proc = Process(cmd, None, extraEnv*)
       proc.!
+  end runNativeClient
 
   def runJvm(
-      javaCmd: String,
+      selected: SelectedJava,
       javaOpts: Seq[String],
       sbtOpts: Seq[String],
       sbtJar: String,
@@ -99,21 +88,24 @@ object Runner:
       sys.env.get("JAVA_TOOL_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
     val jdkOpts = sys.env.get("JDK_JAVA_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
     val fullJavaOpts = javaOpts ++ sbtOpts ++ toolOpts ++ jdkOpts
-    val cmd = Seq(javaCmd) ++ fullJavaOpts ++ Seq("-cp", sbtJar, "xsbt.boot.Boot") ++ bootArgs
+    val cmd =
+      Seq(selected.javaCmd) ++ fullJavaOpts ++ Seq("-cp", sbtJar, "xsbt.boot.Boot") ++ bootArgs
     if verbose then
       System.err.println("# Executing command line:")
       cmd.foreach(a => System.err.println(if a.contains(" ") then s""""$a"""" else a))
     val jpb = new JProcessBuilder(cmd*)
     jpb.inheritIO()
+    selected.envOverlay.foreach((k, v) => jpb.environment().put(k, v))
     val p = jpb.start()
     try
       p.waitFor()
       p.exitValue()
     finally if p.isAlive then p.destroy()
+  end runJvm
 
-  def shutdownAll(javaCmd: String): Int =
+  def shutdownAll(selected: SelectedJava): Int =
     try
-      val jpsOut = Process(Seq("jps", "-lv")).!!
+      val jpsOut = Process(Seq("jps", "-lv"), None, selected.envOverlay*).!!
       val pids = jpsOut.linesIterator
         .filter(_.contains("xsbt.boot.Boot"))
         .flatMap: line =>
@@ -122,10 +114,11 @@ object Runner:
         .toList
       pids.foreach: pid =>
         try Process(Seq("taskkill", "/F", "/PID", pid.toString)).!
-        catch { case _: Exception => }
+        catch
+          case _: Exception =>
       System.err.println(s"shutdown ${pids.size} sbt processes")
       0
-    catch { case _: Exception => 1 }
+    catch case _: Exception => 1
 
   def splitResidual(residual: Seq[String]): (Seq[String], Seq[String]) =
     var javaOpts: Seq[String] = Nil

@@ -25,7 +25,6 @@ trait HashAlgo[A1: Access]:
    * @param buf the input data
    * @param off the start offset in buf
    * @param len the number of bytes to hash
-   * @param seed the seed to use
    * @return the hash value
    */
   def hash(buf: A1, off: Int, len: Int): Long

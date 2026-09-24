@@ -18,7 +18,12 @@ object TerminalColorSpec extends BasicTestSuite:
       out: ByteArrayOutputStream
   ): Terminal.TerminalImpl =
     new Terminal.TerminalImpl(
-      new Terminal.WriteableInputStream(new InputStream { def read() = -1 }, "test"),
+      new Terminal.WriteableInputStream(
+        new InputStream:
+          def read() = -1
+        ,
+        "test"
+      ),
       out,
       new ByteArrayOutputStream(),
       "test"

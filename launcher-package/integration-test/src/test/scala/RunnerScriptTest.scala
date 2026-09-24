@@ -24,11 +24,12 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assert(out.contains[String]("-Dsbt.log.noformat=true"))
 
   testOutput("sbt --color=false")("compile", "--color=false", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.color=false"))
+    // Note: the -v preview quotes this (see #9660), so match by substring.
+    assert(out.exists(_.contains("-Dsbt.color=false")))
 
   testOutput("sbt --no-colors in SBT_OPTS", sbtOpts = "--no-colors")("compile", "-v"):
     (out: List[String]) =>
-      if (isWindows) cancel("Test not supported on windows")
+      if isWindows then cancel("Test not supported on windows")
       assert(out.contains[String]("-Dsbt.log.noformat=true"))
 
   testOutput("sbt --no-server")("compile", "--no-server", "-v"): (out: List[String]) =>
@@ -38,16 +39,21 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assert(out.contains[String]("-Dxsbt.inc.debug=true"))
 
   testOutput("sbt --supershell=never")("compile", "--supershell=never", "-v"):
-    (out: List[String]) => assert(out.contains[String]("-Dsbt.supershell=never"))
+    (out: List[String]) =>
+      // Note: the -v preview quotes this (see #9660), so match by substring.
+      assert(out.exists(_.contains("-Dsbt.supershell=never")))
 
   testOutput("sbt --timings")("compile", "--timings", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.task.timings=true"))
 
   testOutput("sbt -D arguments")("-Dsbt.supershell=false", "compile", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.supershell=false"))
+    // Note: the -v preview quotes CLI -D arguments (see #9660), so match by
+    // substring rather than exact line equality.
+    assert(out.exists(_.contains("-Dsbt.supershell=false")))
 
   testOutput("sbt --sbt-version")("--sbt-version", "1.3.13", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.version=1.3.13"))
+    // Note: the -v preview quotes this (see #9660), so match by substring.
+    assert(out.exists(_.contains("-Dsbt.version=1.3.13")))
 
   testOutput(
     name = "sbt with -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 in SBT_OPTS",
@@ -86,7 +92,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     javaOpts = "",
     sbtOpts = "-debug"
   )("compile", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
 
     // Debug argument must appear in the 'commands' section (after the sbt-launch.jar argument) to work
     val sbtLaunchMatcher = """^.+sbt-launch.jar["]{0,1}$""".r
@@ -121,9 +127,18 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
       assert(out.contains[String]("-Dsbt.boot.directory=project/.boot"))
       assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
 
+  testOutput("sbt does not set sbt.global.base without --sbt-dir", citestVariant = "citest")(
+    "-v"
+  ): (out: List[String]) =>
+    val globalBaseArgs = out.filter(_.contains("-Dsbt.global.base"))
+    assert(
+      globalBaseArgs.isEmpty,
+      s"-Dsbt.global.base should not be set: ${globalBaseArgs.mkString(", ")}"
+    )
+
   testOutput("accept `--ivy` in `SBT_OPTS`", sbtOpts = "--ivy /ivy/dir")("-v"):
     (out: List[String]) =>
-      if (isWindows) cancel("Test not supported on windows")
+      if isWindows then cancel("Test not supported on windows")
       else assert(out.contains[String]("-Dsbt.ivy.home=/ivy/dir"))
 
   testOutput(
@@ -153,6 +168,67 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
   )("--version"): (out: List[String]) =>
     assertVersionOutput(out)
     ()
+
+  testOutput("sbt -V should work")("-V"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt -version should work")("-version"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt -V followed by a launcher option should work")("-V", "-v"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput("sbt launcher option followed by --version should work")("--no-colors", "--version"):
+    (out: List[String]) =>
+      assertVersionOutput(out)
+      ()
+
+  testOutput("sbt --version followed by an empty argument should work")("--version", ""):
+    (out: List[String]) =>
+      assertVersionOutput(out)
+      ()
+
+  testOutput("sbt tasks -V forwards the tasks option")("tasks", "-V", "-v"): (out: List[String]) =>
+    assert(out.contains("-V"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt tasks -version forwards the tasks option",
+    windowsSupport = false,
+  )("tasks", "-version", "-v"): (out: List[String]) =>
+    assert(out.contains("-version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt tasks --version forwards the tasks option",
+    windowsSupport = false,
+  )("tasks", "--version", "-v"): (out: List[String]) =>
+    assert(out.contains("--version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt -V tasks forwards the tasks option",
+    windowsSupport = false,
+  )("-V", "tasks", "-v"): (out: List[String]) =>
+    assert(out.contains("-V"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt -version tasks forwards the tasks option",
+    windowsSupport = false,
+  )("-version", "tasks", "-v"): (out: List[String]) =>
+    assert(out.contains("-version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
+
+  testOutput(
+    "sbt --version tasks forwards the tasks option",
+    windowsSupport = false,
+  )("--version", "tasks", "-v"): (out: List[String]) =>
+    assert(out.contains("--version"))
+    assert(!out.exists(_.startsWith("sbt runner version:")))
 
   testOutput(
     "sbt --version reports spaced sbt.version from project/build.properties (sbt 1.x)",
@@ -194,7 +270,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     distSbtoptsContents = "-Dsbt.test.config=dist-default",
     sbtOptsFileContents = "-Dsbt.test.config=project-local"
   )("-d", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       // Find the command line section
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
@@ -216,7 +292,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     machineSbtoptsContents = "-Dsbt.test.config=machine-config",
     sbtOptsFileContents = "-Dsbt.test.config=project-local"
   )("-d", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       // Find the command line section
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
@@ -239,7 +315,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     machineSbtoptsContents = "-Dsbt.test.config=machine-config",
     sbtOptsFileContents = "-Dsbt.test.config=project-local"
   )("-d", "-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       // Find the command line section
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
@@ -265,7 +341,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     sbtOptsFileContents =
       "-J-Xmx2g\n-J-XX:ReservedCodeCacheSize=1g\n-J-XX:MaxMetaspaceSize=2g\n-J-Xss512m\n-J-XX:+UseG1GC"
   )("-d", "-v", "-mem", "12288"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on windows")
+    if isWindows then cancel("Test not supported on windows")
     else
       val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
       assert(cmdLineStart >= 0, "Command line section not found")
@@ -357,6 +433,12 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
       s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
     )
 
+  // NOTE on https://github.com/sbt/sbt/issues/9660: an argument with an
+  // unquoted &, (, or ) can be split apart by cmd.exe's parse of the command
+  // line used to *invoke* sbt.bat, before any line of sbt.bat runs -- no code
+  // inside the script can intervene there. Closing that would require a real
+  // executable entry point instead of a .bat file (see the sbtw project).
+
   // Test for issue #8755: Inline comments should be supported in .jvmopts
   testOutput(
     "sbt with inline comments in .jvmopts",
@@ -403,7 +485,9 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     )
 
   testOutput("sbt --experimental_execution_log=true")("--experimental_execution_log=true", "-v"):
-    (out: List[String]) => assert(out.contains[String]("-Dsbt.experimental_execution_log=true"))
+    (out: List[String]) =>
+      // Note: the -v preview quotes this (see #9660), so match by substring.
+      assert(out.exists(_.contains("-Dsbt.experimental_execution_log=true")))
 
 end RunnerScriptTest
 

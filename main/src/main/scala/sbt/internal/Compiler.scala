@@ -10,12 +10,12 @@ package sbt
 package internal
 
 import java.io.{ File, PrintWriter }
-import java.nio.file.{ Path, Paths }
-import java.util.ArrayList
+import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.util.{ ArrayList, Optional }
 import sbt.BuildExtra.*
 import sbt.Keys.Classpath
 import sbt.internal.CommandStrings
-import sbt.internal.inc.{ AnalyzingCompiler, ScalaInstance, ZincLmUtil }
+import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ScalaInstance, ZincLmUtil }
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
 import sbt.internal.worker1.{ ConsoleInfo, WorkerMain }
@@ -36,8 +36,10 @@ import sbt.librarymanagement.{
 }
 import sbt.util.Logger
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 import scala.util.Random
 import xsbti.{ HashedVirtualFileRef, ScalaProvider }
+import xsbti.compile.{ CompileAnalysis, Inputs, PreviousResult }
 
 object Compiler:
   private val r = Random()
@@ -257,6 +259,7 @@ object Compiler:
            |""".stripMargin
       if err then sys.error(msg)
       else s.log.warn(msg)
+    end reportScalaLibEviction
 
     // For Scala 3, update scala-library.jar in `scala-tool` and `scala-doc-tool` in case a newer version
     // is present in the `compile` configuration. This is needed once forwards binary compatibility is dropped
@@ -264,17 +267,17 @@ object Compiler:
     def updateLibraryToCompileConfiguration(report: ConfigurationReport) =
       if !ScalaArtifacts.isScala3(sv) then report
       else
-        (for {
+        (for
           compileConf <- fullReport.configuration(Configurations.Compile)
           compileLibMod <- compileConf.modules.find(_.module.name == ScalaArtifacts.LibraryID)
           reportLibMod <- report.modules.find(_.module.name == ScalaArtifacts.LibraryID)
           if VersionNumber(reportLibMod.module.revision)
             .matchesSemVer(SemanticSelector(s"<${compileLibMod.module.revision}"))
-        } yield {
+        yield
           val newMods = report.modules
             .filterNot(_.module.name == ScalaArtifacts.LibraryID) :+ compileLibMod
           report.withModules(newMods)
-        }).getOrElse(report)
+        ).getOrElse(report)
 
     val toolReport = updateLibraryToCompileConfiguration(
       fullReport
@@ -329,6 +332,7 @@ object Compiler:
           )
         else ()
     else ()
+    end if
     def file(id: String): Option[File] =
       for
         m <- toolReport.modules.find(_.module.name.startsWith(id))
@@ -385,6 +389,7 @@ object Compiler:
       allJars = allJars,
       explicitActual = Some(version)
     )
+  end makeScalaInstance
 
   private def noToolConfiguration(autoInstance: Boolean): String =
     val pre = "Missing Scala tool configuration from the 'update' report.  "
@@ -565,13 +570,13 @@ object Compiler:
         val rootPaths = Keys.rootPaths.value
         val tFiles = Keys.tastyFiles.value
         val sv = Keys.scalaVersion.value
-        (hasScala, hasJava) match {
+        (hasScala, hasJava) match
           case (true, _) =>
             val xapisFiles = xapis.map { (k, v) =>
               converter.toPath(k).toFile() -> v
             }
             val externalApiOpts =
-              if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
+              if ScalaArtifacts.isScala3(sv) then Opts.doc.externalAPIScala3(xapisFiles)
               else Opts.doc.externalAPI(xapisFiles)
             val options = sOpts ++ externalApiOpts
             val resolvedOptions = resolveVirtualizedScalacOptions(options, rootPaths)
@@ -611,7 +616,7 @@ object Compiler:
               s.log,
             )
           case _ => () // do nothing
-        }
+        end match
         out
     }
 
@@ -661,5 +666,31 @@ object Compiler:
         case None           => value
 
     options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
+
+  /**
+   * Gets the early output into a state Zinc can update incrementally.
+   *
+   * An action-cache hit restores the early jar as a symlink into the CAS. Zinc rewrites the jar in
+   * place when it merges a round's pickles, which would corrupt the cached blob, so Zinc gets a
+   * real copy. When there is a previous analysis but no early jar (a cache populated before the
+   * jar was an output, `exportPipelining` switched on for an existing build, a deleted `early`
+   * directory), an incremental round would create the jar from its own pickles alone, so the
+   * subproject is recompiled from scratch instead.
+   */
+  private[sbt] def prepareEarlyOutput(ci: Inputs, earlyJar: Path, log: Logger): Inputs =
+    if Files.isSymbolicLink(earlyJar) then
+      val tmp = earlyJar.resolveSibling(earlyJar.getFileName.toString + ".tmp")
+      Files.copy(earlyJar.toRealPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+      Files.move(tmp, earlyJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      ci
+    else if !Files.exists(earlyJar) && hasCompilations(ci.previousResult.analysis.toScala) then
+      log.debug(s"early output $earlyJar is missing, recompiling from scratch")
+      ci.withPreviousResult(PreviousResult.of(Optional.empty(), Optional.empty()))
+    else ci
+
+  private def hasCompilations(analysis: Option[CompileAnalysis]): Boolean =
+    analysis match
+      case Some(a: Analysis) => a.compilations.allCompilations.nonEmpty
+      case _                 => false
 
 end Compiler

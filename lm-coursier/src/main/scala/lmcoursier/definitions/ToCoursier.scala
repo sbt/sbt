@@ -8,7 +8,7 @@ import scala.annotation.nowarn
 
 // TODO Make private[lmcoursier]
 // private[coursier]
-object ToCoursier {
+object ToCoursier:
 
   def configuration(configuration: Configuration): coursier.core.Configuration =
     coursier.core.Configuration(configuration.value)
@@ -30,11 +30,13 @@ object ToCoursier {
   def authentication(authentication: Authentication): coursier.core.Authentication =
     coursier.core
       .Authentication(authentication.user, authentication.password)
-      .withOptional(authentication.optional)
-      .withRealmOpt(authentication.realmOpt)
-      .withHttpHeaders(authentication.headers)
-      .withHttpsOnly(authentication.httpsOnly)
-      .withPassOnRedirect(authentication.passOnRedirect)
+      .copy(
+        optional = authentication.optional,
+        realmOpt = authentication.realmOpt,
+        httpHeaders = authentication.headers,
+        httpsOnly = authentication.httpsOnly,
+        passOnRedirect = authentication.passOnRedirect
+      )
 
   def module(mod: Module): coursier.core.Module =
     module(mod.organization.value, mod.name.value, mod.attributes)
@@ -63,12 +65,11 @@ object ToCoursier {
 
   @nowarn
   def reconciliation(r: Reconciliation): coursier.core.Reconciliation =
-    r match {
+    r match
       case Reconciliation.Default => coursier.core.Reconciliation.Default
       case Reconciliation.Relaxed => coursier.core.Reconciliation.Relaxed
       case Reconciliation.Strict  => coursier.core.Reconciliation.Strict
       case Reconciliation.SemVer  => coursier.core.Reconciliation.SemVer
-    }
 
   @nowarn
   def reconciliation(
@@ -162,25 +163,26 @@ object ToCoursier {
     )
 
   def credentials(credentials: Credentials): coursier.credentials.Credentials =
-    credentials match {
+    credentials match
       case d: DirectCredentials =>
         coursier.credentials
           .DirectCredentials()
-          .withHost(d.host)
           .withUsername(d.username)
           .withPassword(d.password)
-          .withRealm(d.realm)
-          .withOptional(d.optional)
-          .withMatchHost(d.matchHost)
-          .withHttpsOnly(d.httpsOnly)
+          .copy(
+            host = d.host,
+            realm = d.realm,
+            optional = d.optional,
+            matchHost = d.matchHost,
+            httpsOnly = d.httpsOnly
+          )
       case f: FileCredentials =>
         coursier.credentials
           .FileCredentials(f.path)
-          .withOptional(f.optional)
-    }
+          .copy(optional = f.optional)
 
   def cacheLogger(logger: CacheLogger): coursier.cache.CacheLogger =
-    new coursier.cache.CacheLogger {
+    new coursier.cache.CacheLogger:
       override def foundLocally(url: String): Unit =
         logger.foundLocally(url)
       override def downloadingArtifact(url: String): Unit =
@@ -214,27 +216,28 @@ object ToCoursier {
         logger.init(sizeHint)
       override def stop(): Unit =
         logger.stop()
-    }
 
   def strict(strict: Strict): coursier.params.rule.Strict =
     coursier.params.rule
       .Strict()
-      .withInclude(strict.include.map { (o, n) =>
-        coursier.util.ModuleMatcher(
-          coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
-        )
-      })
-      .withExclude(strict.exclude.map { (o, n) =>
-        coursier.util.ModuleMatcher(
-          coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
-        )
-      })
-      .withIncludeByDefault(strict.includeByDefault)
-      .withIgnoreIfForcedVersion(strict.ignoreIfForcedVersion)
-      .withSemVer(strict.semVer)
+      .copy(
+        include = strict.include.map { (o, n) =>
+          coursier.util.ModuleMatcher(
+            coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
+          )
+        },
+        exclude = strict.exclude.map { (o, n) =>
+          coursier.util.ModuleMatcher(
+            coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
+          )
+        },
+        includeByDefault = strict.includeByDefault,
+        ignoreIfForcedVersion = strict.ignoreIfForcedVersion,
+        semVer = strict.semVer
+      )
 
   def cachePolicy(r: CachePolicy): coursier.cache.CachePolicy =
-    r match {
+    r match
       case CachePolicy.LocalOnly           => coursier.cache.CachePolicy.LocalOnly
       case CachePolicy.LocalOnlyIfValid    => coursier.cache.CachePolicy.LocalOnlyIfValid
       case CachePolicy.LocalUpdateChanging => coursier.cache.CachePolicy.LocalUpdateChanging
@@ -243,5 +246,4 @@ object ToCoursier {
       case CachePolicy.Update              => coursier.cache.CachePolicy.Update
       case CachePolicy.FetchMissing        => coursier.cache.CachePolicy.FetchMissing
       case CachePolicy.ForceDownload       => coursier.cache.CachePolicy.ForceDownload
-    }
-}
+end ToCoursier

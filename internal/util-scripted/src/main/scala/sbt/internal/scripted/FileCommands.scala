@@ -16,7 +16,7 @@ import sbt.io.{ IO, Path }
 import sbt.io.syntax.*
 import Path.*
 
-class FileCommands(baseDirectory: File) extends BasicStatementHandler {
+class FileCommands(baseDirectory: File) extends BasicStatementHandler:
   final val OR = "||"
   lazy val view = FileTreeView.Ops(FileTreeView.default)
   val baseGlob = Glob(baseDirectory)
@@ -46,10 +46,9 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     )
 
   def apply(command: String, arguments: List[String]): Unit =
-    commands.get(command).map(_(arguments)) match {
+    commands.get(command).map(_(arguments)) match
       case Some(_) => ()
       case _       => scriptError("Unknown command " + command); ()
-    }
 
   def scriptError(message: String): Unit = sys.error("Test script error: " + message)
   def spaced[T](l: Seq[T]) = l.mkString(" ")
@@ -77,6 +76,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       List(combined)
     if exprs.contains("||") then orGlobs
     else globs(exprs)
+  end filterFromStrings
 
   def touch(paths: List[String]): Unit = IO.touch(fromStrings(paths))
   def delete(paths: List[String]): Unit =
@@ -92,47 +92,37 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     IO.copyFile(fromString(from), fromString(to))
   def makeDirectories(paths: List[String]) =
     IO.createDirectories(fromStrings(paths))
-  def diffFiles(file1: String, file2: String): Unit = {
+  def diffFiles(file1: String, file2: String): Unit =
     val lines1 = IO.readLines(fromString(file1))
     val lines2 = IO.readLines(fromString(file2))
-    if (lines1 != lines2)
+    if lines1 != lines2 then
       scriptError(
         "File contents are different:\n" + lines1.mkString("\n") +
           "\nAnd:\n" + lines2.mkString("\n")
       )
-  }
 
-  def newer(a: String, b: String): Unit = {
+  def newer(a: String, b: String): Unit =
     val pathA = fromString(a)
     val pathB = fromString(b)
     val isNewer = pathA.exists &&
       (!pathB.exists || IO.getModifiedTimeOrZero(pathA) > IO.getModifiedTimeOrZero(pathB))
-    if (!isNewer) {
-      scriptError(s"$pathA is not newer than $pathB")
-    }
-  }
+    if !isNewer then scriptError(s"$pathA is not newer than $pathB")
   // use FileTreeView to test if a file with the given filter exists
   def exists0(filter: PathFilter): Boolean =
     view.list(baseGlob / RecursiveGlob, filter).nonEmpty
-  def exists(paths: List[String]): Unit = {
+  def exists(paths: List[String]): Unit =
     val notPresent = filterFromStrings(paths).filter(!exists0(_))
-    if (notPresent.nonEmpty)
+    if notPresent.nonEmpty then
       scriptError("File(s) did not exist: " + notPresent.mkString("[ ", " , ", " ]"))
-  }
-  def absent(paths: List[String]): Unit = {
+  def absent(paths: List[String]): Unit =
     val present = filterFromStrings(paths).filter(exists0)
-    if (present.nonEmpty)
-      scriptError("File(s) existed: " + present.mkString("[ ", " , ", " ]"))
-  }
+    if present.nonEmpty then scriptError("File(s) existed: " + present.mkString("[ ", " , ", " ]"))
   def execute(command: List[String]): Unit = execute0(command.head, command.tail)
-  def execute0(command: String, args: List[String]): Unit = {
-    if (command.trim.isEmpty) scriptError("Command was empty.")
-    else {
+  def execute0(command: String, args: List[String]): Unit =
+    if command.trim.isEmpty then scriptError("Command was empty.")
+    else
       val exitValue = sys.process.Process(command :: args, baseDirectory).!
-      if (exitValue != 0)
-        sys.error("Nonzero exit value (" + exitValue + ")")
-    }
-  }
+      if exitValue != 0 then sys.error("Nonzero exit value (" + exitValue + ")")
 
   type NamedCommand = (String, List[String] => Unit)
 
@@ -140,10 +130,8 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   extension (commandName: String)
     def nonEmpty(action: List[String] => Unit): NamedCommand =
       commandName -> { paths =>
-        if (paths.isEmpty)
-          scriptError("No arguments specified for " + commandName + " command.")
-        else
-          action(paths)
+        if paths.isEmpty then scriptError("No arguments specified for " + commandName + " command.")
+        else action(paths)
       }
     def twoArg(requiredArgs: String, action: (String, String) => Unit): NamedCommand =
       commandName -> {
@@ -181,4 +169,5 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         "Wrong number of arguments to " + commandName + " command.  " +
           requiredArgs + " required, found: '" + spaced(args) + "'."
       )
-}
+  end extension
+end FileCommands

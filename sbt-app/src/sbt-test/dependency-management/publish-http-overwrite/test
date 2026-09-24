@@ -1,0 +1,17 @@
+# Publishing over an artifact that a remote repository already holds must fail while
+# overwriting is disabled. See https://github.com/sbt/sbt/issues/9813.
+
+> startPublishServer
+
+> publish
+> checkPublished
+
+# The artifact is now on the server, so republishing the same version must be refused
+-> publish
+
+# ... unless the build opts into overwriting
+> set publishConfiguration := publishConfiguration.value.withOverwrite(true)
+> publish
+> checkPublished
+
+> stopPublishServer

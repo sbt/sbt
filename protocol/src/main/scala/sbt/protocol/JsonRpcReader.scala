@@ -12,13 +12,13 @@ import java.io.InputStream
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
-object JsonRpcReader {
+object JsonRpcReader:
 
   def read(
       inputStream: InputStream,
       running: AtomicBoolean,
       onHeader: Option[String => Unit]
-  ): Seq[Byte] = {
+  ): Seq[Byte] =
     val newline = '\n'.toInt
     val carriageReturn = '\r'.toInt
     val contentLength = "Content-Length: "
@@ -32,28 +32,26 @@ object JsonRpcReader {
      * with headers, we may need to adjust this buffer size.
      */
     var headerBuffer = new Array[Byte](128)
-    def expandHeaderBuffer(): Unit = {
+    def expandHeaderBuffer(): Unit =
       val newHeaderBuffer = java.util.Arrays.copyOf(headerBuffer, headerBuffer.length * 2)
       headerBuffer = newHeaderBuffer
-    }
-    def getLine(): String = {
+    def getLine(): String =
       val line = new String(headerBuffer, 0, index, "UTF-8")
       index = 0
       onHeader.foreach(oh => oh(line))
       line
-    }
     var content: Seq[Byte] = Seq.empty[Byte]
     var consecutiveLineEndings = 0
     var onCarriageReturn = false
 
     def run(): Unit =
       val byte = inputStream.read
-      byte match {
+      byte match
         case `newline` =>
           val line = getLine()
-          if (onCarriageReturn) consecutiveLineEndings += 1
+          if onCarriageReturn then consecutiveLineEndings += 1
           onCarriageReturn = false
-          if (line.startsWith(contentLength)) {
+          if line.startsWith(contentLength) then
             line.drop(contentLength.length).toIntOption foreach { len =>
               def doDrainHeaders(): Unit =
                 inputStream.read match
@@ -64,12 +62,11 @@ object JsonRpcReader {
                   case `carriageReturn` => onCarriageReturn = true
                   case -1               => running.set(false)
                   case c                =>
-                    if (c == newline) getLine()
-                    else {
-                      if (index >= headerBuffer.length) expandHeaderBuffer()
+                    if c == newline then getLine()
+                    else
+                      if index >= headerBuffer.length then expandHeaderBuffer()
                       headerBuffer(index) = c.toByte
                       index += 1
-                    }
                     onCarriageReturn = false
                     consecutiveLineEndings = 0
 
@@ -78,36 +75,35 @@ object JsonRpcReader {
                 while consecutiveLineEndings < 2 && running.get do doDrainHeaders()
 
               drainHeaders()
-              if (running.get) {
+              if running.get then
                 val buf = new Array[Byte](len)
                 var offset = 0
                 def run1(): Unit = offset += inputStream.read(buf, offset, len - offset)
                 run1()
                 while offset < len && running.get do run1()
-                if (running.get) content = buf.toSeq
-              }
+                if running.get then content = buf.toSeq
             }
-          } else if (line.startsWith("{")) {
+          else if line.startsWith("{") then
             // Assume this is a json object with no headers
             content = line.getBytes.toSeq
-          }
+          end if
         case i if i < 0 =>
           running.set(false)
           throw new ClosedChannelException
         case `carriageReturn` => onCarriageReturn = true
         case c                =>
           onCarriageReturn = false
-          if (index >= headerBuffer.length) expandHeaderBuffer()
+          if index >= headerBuffer.length then expandHeaderBuffer()
           headerBuffer(index) = c.toByte
           index += 1
-
-      }
+      end match
+    end run
 
     run()
     while content.isEmpty && running.get do run()
     content
-  }
+  end read
 
   def readAsString(inputStream: InputStream, running: AtomicBoolean): String =
     new String(read(inputStream, running, onHeader = None).toArray, "UTF-8")
-}
+end JsonRpcReader

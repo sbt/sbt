@@ -13,7 +13,7 @@ import java.io.File
 import org.scalatest.Assertion
 import sbt.io.IO
 
-class FileExamplesTest extends UnitSpec {
+class FileExamplesTest extends UnitSpec:
 
   "listing all files in an absolute base directory" should
     "produce the entire base directory's contents" in {
@@ -60,16 +60,15 @@ class FileExamplesTest extends UnitSpec {
 
   def withDirectoryStructure(withCompletionPrefix: String = "")(
       thunk: DirectoryStructure => Assertion
-  ): Assertion = {
+  ): Assertion =
     IO.withTemporaryDirectory { tempDir =>
       val ds = new DirectoryStructure(withCompletionPrefix)
       ds.createSampleDirStructure(tempDir)
       ds.fileExamples = new FileExamples(ds.baseDir, withCompletionPrefix)
       thunk(ds)
     }
-  }
 
-  final class DirectoryStructure(withCompletionPrefix: String) {
+  final class DirectoryStructure(withCompletionPrefix: String):
     var fileExamples: FileExamples = scala.compiletime.uninitialized
     var baseDir: File = scala.compiletime.uninitialized
     var childFiles: List[File] = scala.compiletime.uninitialized
@@ -86,7 +85,7 @@ class FileExamplesTest extends UnitSpec {
         .withFilter(_.startsWith(withCompletionPrefix))
         .map(_.substring(withCompletionPrefix.length))
 
-    def createSampleDirStructure(tempDir: File): Unit = {
+    def createSampleDirStructure(tempDir: File): Unit =
       childFiles = toChildFiles(tempDir, List("foo", "bar", "bazaar"))
       childDirectories = toChildFiles(tempDir, List("moo", "far"))
       nestedFiles = toChildFiles(childDirectories(1), List("farfile1", "barfile2"))
@@ -96,10 +95,8 @@ class FileExamplesTest extends UnitSpec {
       (childFiles ++ nestedFiles).foreach(_.createNewFile())
 
       baseDir = tempDir
-    }
 
     private def toChildFiles(baseDir: File, files: List[String]): List[File] =
       files.map(new File(baseDir, _))
-  }
-
-}
+  end DirectoryStructure
+end FileExamplesTest

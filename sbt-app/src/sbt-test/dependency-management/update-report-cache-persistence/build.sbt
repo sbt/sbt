@@ -1,5 +1,6 @@
 ThisBuild / scalaVersion := "2.13.16"
 
+@transient
 lazy val checkCacheBehavior = taskKey[Unit]("Validates update cache miss then hit")
 
 lazy val root = (project in file("."))

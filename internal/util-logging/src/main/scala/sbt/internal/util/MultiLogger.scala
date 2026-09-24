@@ -12,22 +12,19 @@ import sbt.util.*
 
 // note that setting the logging level on this logger has no effect on its behavior, only
 //   on the behavior of the delegates.
-class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
+class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger:
 
-  override def setLevel(newLevel: Level.Value): Unit = {
+  override def setLevel(newLevel: Level.Value): Unit =
     super.setLevel(newLevel)
     dispatch(new SetLevel(newLevel))
-  }
 
-  override def setTrace(level: Int): Unit = {
+  override def setTrace(level: Int): Unit =
     super.setTrace(level)
     dispatch(new SetTrace(level))
-  }
 
-  override def setSuccessEnabled(flag: Boolean): Unit = {
+  override def setSuccessEnabled(flag: Boolean): Unit =
     super.setSuccessEnabled(flag)
     dispatch(new SetSuccess(flag))
-  }
 
   def trace(t: => Throwable): Unit = dispatch(new Trace(t))
   def log(level: Level.Value, message: => String): Unit = dispatch(new Log(level, message))
@@ -37,9 +34,6 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
   def control(event: ControlEvent.Value, message: => String): Unit =
     delegates.foreach(_.control(event, message))
 
-  private def dispatch(event: LogEvent): Unit = {
-    for (d <- delegates) {
-      d.log(event)
-    }
-  }
-}
+  private def dispatch(event: LogEvent): Unit =
+    for d <- delegates do d.log(event)
+end MultiLogger

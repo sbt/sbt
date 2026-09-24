@@ -1,9 +1,22 @@
 package sbt.internal.worker1
 
+import java.net.{ StandardProtocolFamily, UnixDomainSocketAddress }
+import java.nio.channels.ServerSocketChannel
+import scala.util.Using
 import sbt.io.IO
 
 object WorkerTest extends verify.BasicTestSuite:
   val main = WorkerMain()
+
+  test("JDK UNIX domain socket connects via Multi-Release JAR"):
+    IO.withTemporaryDirectory: dir =>
+      val path = dir.toPath.resolve("test.sock")
+      Using.resource(ServerSocketChannel.open(StandardProtocolFamily.UNIX)): server =>
+        server.bind(UnixDomainSocketAddress.of(path))
+        Using.resource(JdkCompat.connectUnixSocket(path)): client =>
+          Using.resource(server.accept()): accepted =>
+            assert(client.isConnected)
+            assert(accepted != null)
 
   test("process") {
     val u0 = IO.classLocationPath(classOf[example.Hello]).toUri()

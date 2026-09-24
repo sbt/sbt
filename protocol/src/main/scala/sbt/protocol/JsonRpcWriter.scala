@@ -10,19 +10,16 @@ package sbt.protocol
 
 import java.io.OutputStream
 
-object JsonRpcWriter {
+object JsonRpcWriter:
 
-  def write(out: OutputStream, message: String): Unit = {
+  def write(out: OutputStream, message: String): Unit =
     val bytes = message.getBytes("UTF-8")
     writeLine(out, s"Content-Length: ${bytes.length + 2}".getBytes("UTF-8"))
     writeLine(out, Array.emptyByteArray)
     writeLine(out, bytes)
-  }
 
-  def writeLine(out: OutputStream, bytes: Array[Byte]): Unit = {
-    if (bytes.nonEmpty) out.write(bytes)
+  def writeLine(out: OutputStream, bytes: Array[Byte]): Unit =
+    if bytes.nonEmpty then out.write(bytes)
     out.write('\r'.toByte.toInt)
     out.write('\n'.toByte.toInt)
     out.flush()
-  }
-}

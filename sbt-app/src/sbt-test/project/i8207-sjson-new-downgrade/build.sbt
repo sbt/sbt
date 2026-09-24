@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / organization := "com.example"
 
 libraryDependencies += "com.typesafe" % "config" % "1.4.5"

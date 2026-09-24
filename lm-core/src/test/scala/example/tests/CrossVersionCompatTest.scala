@@ -5,12 +5,11 @@ import verify.BasicTestSuite
 import scala.annotation.nowarn
 
 @nowarn
-object CrossVersionCompatTest extends BasicTestSuite {
+object CrossVersionCompatTest extends BasicTestSuite:
   test("CrossVersion.Disabled is typed to be Disabled") {
-    assert(CrossVersion.Disabled match {
+    assert(CrossVersion.Disabled match
       case _: Disabled => true
-      case _           => false
-    })
+      case _           => false)
   }
 
   test("CrossVersion.Disabled functions as disabled") {
@@ -19,10 +18,9 @@ object CrossVersionCompatTest extends BasicTestSuite {
   }
 
   test("CrossVersion.Disabled() is typed to be Disabled") {
-    assert(CrossVersion.Disabled() match {
+    assert(CrossVersion.Disabled() match
       case _: Disabled => true
-      case _           => false
-    })
+      case _           => false)
   }
 
   test("CrossVersion.Disabled() functions as disabled") {
@@ -31,31 +29,27 @@ object CrossVersionCompatTest extends BasicTestSuite {
   }
 
   test("CrossVersion.Disabled is stable") {
-    assert(CrossVersion.Disabled match {
+    assert(CrossVersion.Disabled match
       case CrossVersion.Disabled => true
-      case _                     => false
-    })
+      case _                     => false)
   }
 
   test("sbt.librarymanagement.Disabled is typed to be Disabled") {
-    assert(Disabled match {
+    assert(Disabled match
       case _: Disabled => true
-      case _           => false
-    })
+      case _           => false)
   }
 
   test("sbt.librarymanagement.Disabled is stable") {
-    assert(Disabled match {
+    assert(Disabled match
       case Disabled => true
-      case _        => false
-    })
+      case _        => false)
   }
 
   test("sbt.librarymanagement.Disabled() is typed to be Disabled") {
-    assert(Disabled() match {
+    assert(Disabled() match
       case _: Disabled => true
-      case _           => false
-    })
+      case _           => false)
   }
 
   test("CrossVersion.disabled is sbt.librarymanagement.Disabled") {
@@ -69,4 +63,4 @@ object CrossVersionCompatTest extends BasicTestSuite {
   test("CrossVersion.Disabled() is sbt.librarymanagement.Disabled") {
     assert(CrossVersion.Disabled() == Disabled)
   }
-}
+end CrossVersionCompatTest

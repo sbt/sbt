@@ -13,7 +13,7 @@ Global / localCacheDirectory := baseDirectory.value / "diskcache"
 lazy val compileClassesRestore = project
   .in(file("."))
   .settings(
-    scalaVersion := "3.8.4"
+    scalaVersion := "3.9.0"
   )
 
 delClasses := Def.uncached {

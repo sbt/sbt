@@ -21,7 +21,7 @@ final class BuildUtil[Proj](
     val project: (URI, String) => Proj,
     val configurations: Proj => Seq[ConfigKey],
     val aggregates: Relation[ProjectRef, ProjectRef]
-) {
+):
 
   def thisRootProject: Proj = rootProject(root)
 
@@ -30,15 +30,13 @@ final class BuildUtil[Proj](
   def resolveRef(ref: Reference): ResolvedReference =
     Scope.resolveReference(root, rootProjectID, ref)
 
-  def projectFor(ref: ResolvedReference): Proj = ref match {
+  def projectFor(ref: ResolvedReference): Proj = ref match
     case ProjectRef(uri, id) => project(uri, id)
     case BuildRef(uri)       => rootProject(uri)
-  }
 
-  def projectRefFor(ref: ResolvedReference): ProjectRef = ref match {
+  def projectRefFor(ref: ResolvedReference): ProjectRef = ref match
     case p: ProjectRef => p
     case BuildRef(uri) => ProjectRef(uri, rootProjectID(uri))
-  }
 
   def projectForAxis(ref: Option[ResolvedReference]): Proj = ref.fold(thisRootProject)(projectFor)
 
@@ -49,46 +47,40 @@ final class BuildUtil[Proj](
 
   val configurationsForAxis: Option[ResolvedReference] => Seq[String] =
     refOpt => configurations(projectForAxis(refOpt)).map(_.name)
+end BuildUtil
 
-}
-
-object BuildUtil {
+object BuildUtil:
   def apply(
       root: URI,
       units: Map[URI, LoadedBuildUnit],
       keyIndex: KeyIndex,
       data: Def.Settings
-  ): BuildUtil[ResolvedProject] = {
+  ): BuildUtil[ResolvedProject] =
     val getp = (build: URI, project: String) => Load.getProject(units, build, project)
     val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
     val aggregates = aggregationRelation(units)
     new BuildUtil(keyIndex, data, root, Load.getRootProject(units), getp, configs, aggregates)
-  }
 
-  def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies = {
+  def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies =
     import scala.collection.mutable
     val agg = new mutable.HashMap[ProjectRef, Seq[ProjectRef]]
     val cp = new mutable.HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
-    for (lbu <- units.values; rp <- lbu.projects) {
+    for lbu <- units.values; rp <- lbu.projects do
       val ref = ProjectRef(lbu.unit.uri, rp.id)
       cp(ref) = rp.dependencies
       agg(ref) = rp.aggregate
-    }
     BuildDependencies(cp.toMap, agg.toMap)
-  }
 
-  def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit = {
+  def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit =
     def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
     def deps(
         proj: ResolvedProject
     )(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject] =
       Dag.topologicalSort(proj)(p => base(p) map getRef)
     // check for cycles
-    for ((_, lbu) <- units; proj <- lbu.projects) {
+    for (_, lbu) <- units; proj <- lbu.projects do
       deps(proj)(_.dependencies.map(_.project))
       deps(proj)(_.aggregate)
-    }
-  }
 
   def baseImports: Seq[String] =
     ("import _root_.scala.xml.{TopScope=>$scope}"
@@ -109,7 +101,7 @@ object BuildUtil {
 
   /** Import just the names. */
   def importNames(names: Seq[String]): Seq[String] =
-    if (names.isEmpty) Nil else names.mkString("import ", ", ", "") :: Nil
+    if names.isEmpty then Nil else names.mkString("import ", ", ", "") :: Nil
 
   /** Prepend `_root_` and import just the names. */
   def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
@@ -119,17 +111,16 @@ object BuildUtil {
     Seq(s"$x.*", s"$x.given")
   })
   def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
-  def rootedName(s: String): String = if (s contains '.') "_root_." + s else s
+  def rootedName(s: String): String = if s contains '.' then "_root_." + s else s
 
-  def aggregationRelation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] = {
+  def aggregationRelation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
     val depPairs =
-      for {
+      for
         (uri, unit) <-
           units.toSeq // don't lose this toSeq, doing so breaks actions/cross-multiproject & actions/update-state-fail
         project <- unit.projects
         ref = ProjectRef(uri, project.id)
         agg <- project.aggregate
-      } yield (ref, agg)
+      yield (ref, agg)
     Relation.empty ++ depPairs
-  }
-}
+end BuildUtil

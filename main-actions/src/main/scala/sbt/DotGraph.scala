@@ -13,25 +13,25 @@ import sbt.internal.util.Relation
 
 import sbt.io.IO
 
-object DotGraph {
+object DotGraph:
   def generateGraph[K, V](
       file: File,
       graphName: String,
       relation: Relation[K, V],
       keyToString: K => String,
       valueToString: V => String
-  ): Unit = {
+  ): Unit =
     import scala.collection.mutable.{ HashMap, HashSet }
     val mappedGraph = new HashMap[String, HashSet[String]]
-    for ((key, values) <- relation.forwardMap; keyString = keyToString(key); value <- values)
+    for (key, values) <- relation.forwardMap; keyString = keyToString(key); value <- values do
       mappedGraph.getOrElseUpdate(keyString, new HashSet[String]) += valueToString(value)
 
     val mappings =
-      for {
+      for
         (dependsOn, dependents) <- mappedGraph.toSeq
         dependent <- dependents
         if dependent != dependsOn && !dependsOn.isEmpty && !dependent.isEmpty
-      } yield "\"" + dependent + "\" -> \"" + dependsOn + "\""
+      yield "\"" + dependent + "\" -> \"" + dependsOn + "\""
 
     val lines =
       ("digraph " + graphName + " {") +:
@@ -39,13 +39,12 @@ object DotGraph {
         "}"
 
     IO.writeLines(file, lines)
-  }
+  end generateGraph
   def sourceToString(roots: Iterable[File], source: File) =
     relativized(roots, source).trim.stripSuffix(".scala").stripSuffix(".java")
 
-  private def relativized(roots: Iterable[File], path: File): String = {
+  private def relativized(roots: Iterable[File], path: File): String =
     val relativized = roots.flatMap(root => IO.relativize(root, path))
     val shortest = relativized.foldLeft(Int.MaxValue)(_ min _.length)
     relativized.find(_.length == shortest).getOrElse(path.getName)
-  }
-}
+end DotGraph

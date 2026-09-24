@@ -15,6 +15,7 @@ import sbt.internal.util.appmacro.{ Cont, ContextUtil, ContextUtil0 }
 import sbt.internal.util.{ SourcePosition, SourcePositionImpl }
 
 import language.experimental.macros
+import scala.collection.mutable
 import scala.quoted.*
 import sbt.util.BuildWideCacheConfiguration
 import sjsonnew.JsonFormat
@@ -51,6 +52,60 @@ object TaskMacro:
 
   // import LinterDSL.{ Empty => EmptyLinter }
 
+  private def validateTaskReferences[C <: Quotes & Singleton](
+      convert: FullConvert[C],
+      expression: Expr[Any]
+  ): Unit =
+    import convert.qctx
+    import qctx.reflect.*
+    given qctx.type = qctx
+
+    val definitions = mutable.HashSet.empty[Symbol]
+    val inputs = mutable.ListBuffer.empty[Term]
+
+    def input(name: String, tpe: TypeRepr, argument: Term): Option[Term] = name match
+      case InputWrapper.WrapInitTaskName | InputWrapper.WrapPreviousName |
+          InputWrapper.WrapInitName | InputWrapper.WrapTaskValueName | InputWrapper.WrapTaskName =>
+        Option.when(convert.asPredicate(name, tpe, argument))(argument)
+      case _ => None
+
+    def dependency(tree: Tree): Option[Term] = tree match
+      case Apply(TypeApply(Select(_, name), tpe :: Nil), argument :: Nil) =>
+        input(name, tpe.tpe, argument)
+      case Apply(TypeApply(Ident(name), tpe :: Nil), argument :: Nil) =>
+        input(name, tpe.tpe, argument)
+      case _ => None
+
+    object collect extends TreeTraverser:
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit =
+        dependency(tree) match
+          case Some(argument) => inputs += argument
+          case None           =>
+            tree match
+              case definition: Definition => definitions += definition.symbol
+              case binding: Bind          => definitions += binding.symbol
+              case _                      => ()
+            super.traverseTree(tree)(owner)
+    end collect
+
+    object check extends TreeTraverser:
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit =
+        tree match
+          case reference: Ident if definitions.contains(reference.symbol) =>
+            val name = reference.name
+            report.errorAndAbort(
+              s"Illegal dynamic reference: $name\n" +
+                "Task dependency expressions cannot reference values defined inside this task.\n" +
+                s"Move '$name' outside the task definition, or use Def.taskDyn to construct the dependent task.",
+              reference.pos
+            )
+          case _ => super.traverseTree(tree)(owner)
+    end check
+
+    collect.traverseTree(expression.asTerm)(Symbol.spliceOwner)
+    inputs.foreach(argument => check.traverseTree(argument)(Symbol.spliceOwner))
+  end validateTaskReferences
+
   def taskMacroImpl[A1: Type](t: Expr[A1], key: Expr[TaskKey[?]])(using
       qctx: Quotes
   ): Expr[Initialize[Task[A1]]] =
@@ -72,37 +127,51 @@ object TaskMacro:
     val cl = cu0.cacheLevels(key.asTerm)
     val cached = ContextUtil.isTaskCacheByDefault && !isUncacheApplied && cl.nonEmpty
     t match
-      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
-      case _                                       =>
+      case '{ if $cond then $thenp else $elsep } => taskIfImpl[A1](t, cached)
+      case _                                     =>
         val convert1 = new FullConvert(qctx, 0)
+        validateTaskReferences(convert1, t)
         if cached then
           convert1.contMapN[A1, F, Id](
             t,
             convert1.appExpr,
             Some('{
+              InputWrapper.`wrapInit_\u2603\u2603`[String](
+                Def.resolvedScopedStr
+              )
+            }),
+            Some('{
               InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](
                 Def.cacheConfiguration
               )
-            })
+            }),
           )
         else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
+    end match
+  end taskMacroImpl
 
   def taskMacroImpl[A1: Type](t: Expr[A1], cached: Boolean)(using
       qctx: Quotes
   ): Expr[Initialize[Task[A1]]] =
     t match
-      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
-      case _                                       =>
+      case '{ if $cond then $thenp else $elsep } => taskIfImpl[A1](t, cached)
+      case _                                     =>
         val convert1 = new FullConvert(qctx, 0)
+        validateTaskReferences(convert1, t)
         if cached then
           convert1.contMapN[A1, F, Id](
             t,
             convert1.appExpr,
             Some('{
+              InputWrapper.`wrapInit_\u2603\u2603`[String](
+                Def.resolvedScopedStr
+              )
+            }),
+            Some('{
               InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](
                 Def.cacheConfiguration
               )
-            })
+            }),
           )
         else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
 
@@ -112,11 +181,11 @@ object TaskMacro:
     import qctx.reflect.*
     val convert1 = new FullConvert(qctx, 1000)
     expr match
-      case '{ if ($cond) then $thenp else $elsep } =>
+      case '{ if $cond then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
-      case '{ ${ stats }: a; if ($cond) then $thenp else $elsep } =>
+      case '{ ${ stats }: a; if $cond then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task { $stats; $cond })(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
@@ -127,6 +196,7 @@ object TaskMacro:
       t: Expr[Initialize[Task[A1]]]
   )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     val convert1 = new FullConvert(qctx, 1000)
+    validateTaskReferences(convert1, t)
     convert1.contFlatMap[A1, F, Id](t, convert1.appExpr, None)
 
   def previousImpl[A1: Type](t: Expr[TaskKey[A1]])(using qctx: Quotes): Expr[Option[A1]] =
@@ -200,6 +270,7 @@ object TaskMacro:
         '{
           $rec.append1[A2]($init)(using $ev)
         }
+  end settingAppend1Impl
 
   private[sbt] def sourcePosition(using qctx: Quotes): Expr[SourcePosition] =
     SourcePositionImpl.fromEnclosingImpl

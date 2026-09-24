@@ -21,7 +21,7 @@ import ConcurrentRestrictions.{ completionService, limitTotal }
 
 import java.util.concurrent.{ CountDownLatch, TimeUnit }
 
-object TaskSerial extends Properties("task serial") {
+object TaskSerial extends Properties("task serial"):
   val checkCycles = true
   val Timeout = 100L // in milliseconds
 
@@ -55,7 +55,7 @@ object TaskSerial extends Properties("task serial") {
       size: Int,
       restrictions: ConcurrentRestrictions,
       shouldSucceed: Boolean
-  ) = {
+  ) =
     val latch = task { new CountDownLatch(size) }
     def mktask = latch map { l =>
       l.countDown()
@@ -63,24 +63,23 @@ object TaskSerial extends Properties("task serial") {
     }
     val tasks = (0 until size).map(_ => mktask).toList.join.map { results =>
       val success = results.forall(idFun[Boolean])
-      assert(success == shouldSucceed, if (shouldSucceed) unschedulableMsg else scheduledMsg)
+      assert(success == shouldSucceed, if shouldSucceed then unschedulableMsg else scheduledMsg)
     }
     checkResult(evalRestricted(tasks)(restrictions), ())
-  }
   def unschedulableMsg =
     "Some tasks were unschedulable: verify this is an actual failure by extending the timeout to several seconds."
   def scheduledMsg = "All tasks were unexpectedly scheduled."
 
   def evalRestricted[T](t: Task[T])(restrictions: ConcurrentRestrictions): T =
     tryRun[T](t, checkCycles, restrictions)
-}
+end TaskSerial
 
-object TaskTest {
+object TaskTest:
   def run[T](
       root: Task[T],
       checkCycles: Boolean,
       restrictions: ConcurrentRestrictions
-  ): Result[T] = {
+  ): Result[T] =
     val (service, shutdown) =
       completionService(restrictions, (x: String) => System.err.println(x))
 
@@ -89,19 +88,16 @@ object TaskTest {
       Execute.noTriggers,
       ExecuteProgress.empty
     )(using taskToNode([A] => (id: TaskId[A]) => id.asInstanceOf))
-    try {
+    try
       x.run(root)(using service)
-    } finally {
+    finally
       shutdown()
-    }
-  }
   def tryRun[T](
       root: Task[T],
       checkCycles: Boolean,
       restrictions: ConcurrentRestrictions
   ): T =
-    run(root, checkCycles, restrictions) match {
+    run(root, checkCycles, restrictions) match
       case Result.Value(v) => v
       case Result.Inc(i)   => throw i
-    }
-}
+end TaskTest

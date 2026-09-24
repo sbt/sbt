@@ -20,11 +20,10 @@ import sbt.internal.langserver.CancelRequestParams as CRP
  * ServerHandler allows plugins to extend sbt server.
  * It's a wrapper around curried function ServerCallback => JsonRpcRequestMessage => Unit.
  */
-final class ServerHandler(val handler: ServerCallback => ServerIntent) {
+final class ServerHandler(val handler: ServerCallback => ServerIntent):
   override def toString: String = s"Serverhandler(...)"
-}
 
-object ServerHandler {
+object ServerHandler:
   def apply(handler: ServerCallback => ServerIntent): ServerHandler =
     new ServerHandler(handler)
 
@@ -40,17 +39,15 @@ object ServerHandler {
       },
     )
   })
-}
 
 final class ServerIntent(
     val onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
     val onResponse: PartialFunction[JsonRpcResponseMessage, Unit],
     val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]
-) {
+):
   override def toString: String = s"ServerIntent(...)"
-}
 
-object ServerIntent {
+object ServerIntent:
   def apply(
       onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
       onResponse: PartialFunction[JsonRpcResponseMessage, Unit],
@@ -65,12 +62,11 @@ object ServerIntent {
     new ServerIntent(PartialFunction.empty, onResponse, PartialFunction.empty)
   def notify(onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]): ServerIntent =
     new ServerIntent(PartialFunction.empty, PartialFunction.empty, onNotification)
-}
 
 /**
  * Interface to invoke JSON-RPC response.
  */
-trait ServerCallback {
+trait ServerCallback:
   def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit
   def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit
   def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit
@@ -87,4 +83,3 @@ trait ServerCallback {
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
   private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
   private[sbt] def onCancellationRequest(execId: Option[String], crp: CRP): Unit
-}

@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-object ScalaArtifacts {
+object ScalaArtifacts:
   final val Organization = "org.scala-lang"
   final val LibraryID = "scala-library"
   final val CompilerID = "scala-compiler"
@@ -28,19 +28,17 @@ object ScalaArtifacts {
   private[sbt] final val Scala3TastyInspectorPrefix = Scala3TastyInspectorID + "_"
   private[sbt] final val Scala3ReplPrefix = Scala3ReplID + "_"
 
-  def isScala2Artifact(name: String): Boolean = {
+  def isScala2Artifact(name: String): Boolean =
     name == LibraryID || name == CompilerID || name == ReflectID || name == ActorsID || name == ScalapID
-  }
-  def isScala3Artifact(name: String): Boolean = {
+  def isScala3Artifact(name: String): Boolean =
     name.startsWith(Scala3LibraryPrefix) ||
-    name.startsWith(Scala3CompilerPrefix) ||
-    name.startsWith(TastyCorePrefix) ||
-    name == Scala3InterfacesID ||
-    name.startsWith(ScaladocPrefix) ||
-    name.startsWith(Scala3DocPrefix) ||
-    name.startsWith(Scala3TastyInspectorPrefix) ||
-    name.startsWith(Scala3ReplPrefix)
-  }
+      name.startsWith(Scala3CompilerPrefix) ||
+      name.startsWith(TastyCorePrefix) ||
+      name == Scala3InterfacesID ||
+      name.startsWith(ScaladocPrefix) ||
+      name.startsWith(Scala3DocPrefix) ||
+      name.startsWith(Scala3TastyInspectorPrefix) ||
+      name.startsWith(Scala3ReplPrefix)
 
   def isScala3(scalaVersion: String): Boolean =
     scalaVersion.startsWith("3.") || scalaVersion.startsWith("3-latest.")
@@ -49,26 +47,22 @@ object ScalaArtifacts {
    * Returns true for pre-release nightlies intentionally.
    */
   def isScala3_8Plus(scalaVersion: String): Boolean =
-    isScala3(scalaVersion) && (scalaVersion match {
+    isScala3(scalaVersion) && (scalaVersion match
       case VersionNumber(numbers, _, _) if numbers.size > 2 && numbers(1) >= 8 => true
-      case _                                                                   => false
-    })
+      case _                                                                   => false)
 
   private[sbt] def isScala3M123(scalaVersion: String): Boolean =
     (scalaVersion == "3.0.0-M1") ||
       (scalaVersion == "3.0.0-M2") ||
       (scalaVersion == "3.0.0-M3")
 
-  def libraryIds(version: String): Array[String] = {
-    if (isScala3(version))
-      Array(Scala3LibraryID, LibraryID)
+  def libraryIds(version: String): Array[String] =
+    if isScala3(version) then Array(Scala3LibraryID, LibraryID)
     else Array(LibraryID)
-  }
 
-  def compilerId(version: String): String = {
-    if (isScala3(version)) Scala3CompilerID
+  def compilerId(version: String): String =
+    if isScala3(version) then Scala3CompilerID
     else CompilerID
-  }
 
   def libraryDependency(version: String): ModuleID = libraryDependency(Organization, version)
 
@@ -83,7 +77,7 @@ object ScalaArtifacts {
       org: String,
       version: String
   ): Seq[ModuleID] =
-    if (isScala3_8Plus(version))
+    if isScala3_8Plus(version) then
       Seq(
         ModuleID(org, Scala3ReplID, version)
           .withConfigurations(Some(Configurations.ScalaReplTool.name + "->default(compile)"))
@@ -95,13 +89,13 @@ object ScalaArtifacts {
       org: String,
       version: String
   ): Seq[ModuleID] =
-    if (isScala3M123(version))
+    if isScala3M123(version) then
       Seq(
         ModuleID(org, Scala3DocID, version)
           .withConfigurations(Some(Configurations.ScalaDocTool.name + "->default(compile)"))
           .withCrossVersion(CrossVersion.binary)
       )
-    else if (isScala3(version))
+    else if isScala3(version) then
       Seq(
         ModuleID(org, ScaladocID, version)
           .withConfigurations(Some(Configurations.ScalaDocTool.name + "->default(compile)"))
@@ -114,7 +108,7 @@ object ScalaArtifacts {
       org: String,
       version: String
   ): Seq[ModuleID] =
-    if (isScala3(version))
+    if isScala3(version) then
       Seq(
         ModuleID(org, Scala3CompilerID, version)
           .withConfigurations(Some(Configurations.ScalaTool.name + "->default(compile)"))
@@ -156,8 +150,7 @@ object ScalaArtifacts {
           .platform(Platform.jvm)
       )
     else Nil
-}
+end ScalaArtifacts
 
-object SbtArtifacts {
+object SbtArtifacts:
   val Organization = "org.scala-sbt"
-}

@@ -16,7 +16,7 @@ import sbt.internal.TestBuild.{ Build, Env, Proj, Taskk }
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.Configuration
 
-object AggregationSpec extends verify.BasicTestSuite {
+object AggregationSpec extends verify.BasicTestSuite:
   val timing = Aggregation.timing(0, _: Long)
 
   test(
@@ -52,4 +52,4 @@ object AggregationSpec extends verify.BasicTestSuite {
   test("timing should not emit special space characters") {
     assert(!timing(96003099).contains("\u202F"))
   }
-}
+end AggregationSpec

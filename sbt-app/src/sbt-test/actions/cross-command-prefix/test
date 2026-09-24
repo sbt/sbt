@@ -1,0 +1,3 @@
+# a command whose name starts with a task key name must not be split by + (https://github.com/sbt/sbt/issues/9529)
+> +compileAll
+> check

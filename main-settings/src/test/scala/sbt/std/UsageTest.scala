@@ -20,7 +20,7 @@ object UseTask:
   val set = Def.setting { 23 }
   val x = Def.task { set.value }
   val y = Def.task { true }
-  val z = Def.task { if (y.value) x.value else set.value }
+  val z = Def.task { if y.value then x.value else set.value }
   val a = Def.taskDyn {
     // if y.value then z
     // else x
@@ -53,7 +53,7 @@ object UseHktTypeArgument:
   )
 end UseHktTypeArgument
 
-object Assign {
+object Assign:
   import java.io.File
 
   import Def.{
@@ -195,4 +195,4 @@ object Assign {
   trait HigherKind[B[_]]
   // https://github.com/sbt/sbt/issues/2188
   val issue2188 = settingKey[HigherKind[Option]]("asdf")
-}
+end Assign

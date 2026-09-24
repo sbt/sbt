@@ -7,7 +7,7 @@ version := "0.2"
 crossPaths := false
 mainClass := Some("jartest.Main")
 
-Compile / packageBin / packageOptions := {
+Compile / packageBin / packageOptions := Def.uncached {
   def manifestExtra = {
     val mf = new Manifest
     mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJars.toSeq))

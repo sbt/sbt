@@ -8,13 +8,12 @@ import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 
-object LocalScriptedPlugin extends AutoPlugin {
+object LocalScriptedPlugin extends AutoPlugin:
   override def requires = plugins.JvmPlugin
 
   object autoImport extends ScriptedKeys
-}
 
-trait ScriptedKeys {
+trait ScriptedKeys:
   val publishLocalBinAll = taskKey[Unit]("")
   val scriptedUnpublished = inputKey[Unit](
     "Execute scripted without publishing sbt first. " +
@@ -26,18 +25,17 @@ trait ScriptedKeys {
   val scriptedKeepTempDirectory = settingKey[Boolean](
     "If true, keeps the temporary directory after scripted tests complete for debugging."
   )
-}
 
-object Scripted {
+object Scripted:
   // This is to workaround https://github.com/sbt/io/issues/110
-  if (!sys.props.contains("jna.nosys")) sys.props.put("jna.nosys", "true")
+  if !sys.props.contains("jna.nosys") then sys.props.put("jna.nosys", "true")
 
   val RepoOverrideTest = config("repoOverrideTest").extend(Compile)
 
   val sbtWindowsExcludeFilter: FileFilter =
-    if (scala.util.Properties.isWin)
+    if scala.util.Properties.isWin then
       new SimpleFileFilter(f =>
-        (f.getParentFile.getName, f.getName) match {
+        (f.getParentFile.getName, f.getName) match
           case ("classloader-cache", "jni")   => true // no native lib is built for windows
           case ("classloader-cache", "spark") =>
             true // the test spark server is unable to bind to a local socket on Visual Studio 2019
@@ -46,7 +44,6 @@ object Scripted {
           case ("cache", "compile-io-failure") =>
             true // a read-only dir doesn't block writes on windows, so the I/O failure won't reproduce
           case _ => false
-        }
       )
     else NothingFilter
 
@@ -57,7 +54,7 @@ object Scripted {
 
   // FIXME: Duplicated with ScriptedPlugin.scriptedParser, this can be
   // avoided once we upgrade build.properties to 0.13.14
-  def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
+  def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
     import DefaultParsers.*
 
     val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
@@ -73,7 +70,7 @@ object Scripted {
 
     // A parser for page definitions
     val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>
-      if (i <= pairs.size) Parser.success(i)
+      if i <= pairs.size then Parser.success(i)
       else Parser.failure(s"$i exceeds the number of tests (${pairs.size})")
     }
     val pageP: Parser[ScriptedTestPage] = ("*" ~> pageNumber ~ ("of" ~> pageNumber)) flatMap {
@@ -82,34 +79,32 @@ object Scripted {
     }
 
     // Grabs the filenames from a given test group in the current page definition.
-    def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
+    def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] =
       val files = pairMap.get(group).toSeq.flatten.sortBy(_.toLowerCase)
-      val pageSize = if (page.total == 0) files.size else files.size / page.total
+      val pageSize = if page.total == 0 then files.size else files.size / page.total
       // The last page may loose some values, so we explicitly keep them
       val dropped = files.drop(pageSize * (page.page - 1))
-      if (page.page == page.total) dropped
+      if page.page == page.total then dropped
       else dropped.take(pageSize)
-    }
 
-    def nameP(group: String) = {
+    def nameP(group: String) =
       token("*".id | id.examples(pairMap.getOrElse(group, Set.empty[String])))
-    }
 
     val PagedIds: Parser[Seq[String]] =
-      for {
+      for
         group <- groupP
         page <- pageP
         files = pagedFilenames(group, page)
-        // TODO -  Fail the parser if we don't have enough files for the given page size
-        // if !files.isEmpty
-      } yield files map (f => s"$group/$f")
+      // TODO -  Fail the parser if we don't have enough files for the given page size
+      // if !files.isEmpty
+      yield files map (f => s"$group/$f")
 
-    val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
+    val testID = (for group <- groupP; name <- nameP(group) yield (group, name))
     val testIdAsGroup = matched(testID).map(test => Seq(test))
 
     // (token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).*.map(_.flatten)
-  }
+  end scriptedParser
 
   @nowarn
   def doScripted(
@@ -127,7 +122,7 @@ object Scripted {
       keepTempDirectory: Boolean,
       includeFilter: java.io.FileFilter,
       excludeFilter: java.io.FileFilter,
-  ): Unit = {
+  ): Unit =
     logger.info(s"Tests selected: ${args.mkString("\n * ", "\n * ", "\n")}")
     logger.info("")
 
@@ -153,24 +148,23 @@ object Scripted {
     }
 
     val initLoader = Thread.currentThread.getContextClassLoader
-    try {
+    try
       Thread.currentThread.setContextClassLoader(loader)
       val bridge =
         bridgeClass.getDeclaredConstructor().newInstance().asInstanceOf[SbtScriptedRunner]
-      try {
+      try
         // Using java.util.List to encode File => Unit.
-        val callback = new java.util.AbstractList[File] {
-          override def add(x: File): Boolean = { prescripted(x); false }
+        val callback = new java.util.AbstractList[File]:
+          override def add(x: File): Boolean =
+            prescripted(x); false
           def get(x: Int): sbt.File = ???
           def size(): Int = 0
-        }
-        val instances: Int = (System.getProperty("sbt.scripted.parallel.instances") match {
+        val instances: Int = (System.getProperty("sbt.scripted.parallel.instances") match
           case null => 1
           case i    => scala.util.Try(i.toInt).getOrElse(1)
-        }) match {
+        ) match
           case i if i > 0 => i
           case _          => 1
-        }
         import scala.reflect.Selectable.reflectiveSelectable
 
         bridge.runInParallel(
@@ -186,9 +180,9 @@ object Scripted {
           includeFilter,
           excludeFilter,
         )
-      } catch { case ite: InvocationTargetException => throw ite.getCause }
-    } finally {
-      Thread.currentThread.setContextClassLoader(initLoader)
-    }
-  }
-}
+      catch case ite: InvocationTargetException => throw ite.getCause
+      end try
+    finally Thread.currentThread.setContextClassLoader(initLoader)
+    end try
+  end doScripted
+end Scripted

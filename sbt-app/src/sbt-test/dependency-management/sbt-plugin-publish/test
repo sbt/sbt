@@ -1,0 +1,25 @@
+> positiveControl / checkUpdate
+
+> sbtPlugin1 / checkPackagedArtifacts
+
+> sbtPlugin1 / checkPublish
+> testMaven1 / checkUpdate
+> testMavenConflict / checkUpdate
+
+> sbtPlugin1Legacy / checkPackagedArtifacts
+> sbtPlugin1Legacy / checkPublish
+> testMaven1Legacy / checkUpdate
+
+> customArtifact / checkCustomPublish
+
+> sbtPlugin1 / publishLocal
+> testLocal1 / checkUpdate
+
+> sbtPlugin2 / checkPackagedArtifacts
+
+# test publish without legacy artifacts and resolve
+> sbtPlugin2 / checkPublish
+> testMaven2 / checkUpdate
+
+> sbtPlugin2 / publishLocal
+> testLocal2 / checkUpdate

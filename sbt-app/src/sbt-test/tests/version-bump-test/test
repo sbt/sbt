@@ -1,0 +1,20 @@
+# the test suite writes this file as a side effect whenever it actually runs
+$ absent test-ran.marker
+
+# warm the disk cache
+> app/test
+$ exists test-ran.marker
+$ delete test-ran.marker
+
+# after a clean, retesting app should fully restore from the disk cache;
+# since nothing changed, the test body must not execute again
+> clean
+> app/test
+$ absent test-ran.marker
+
+# bumping foo's version alone (e.g. what sbt-dynver would do on a new commit) must not
+# invalidate app's test cache entry, since foo's jar content hasn't changed
+> set foo / version := "0.2.0"
+> clean
+> app/test
+$ absent test-ran.marker

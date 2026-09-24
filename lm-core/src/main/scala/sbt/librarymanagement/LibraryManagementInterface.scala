@@ -6,7 +6,7 @@ import sbt.util.Logger
 /**
  * Interface for dependency resolution intended for engine authors.
  */
-trait DependencyResolutionInterface {
+trait DependencyResolutionInterface:
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
@@ -32,12 +32,12 @@ trait DependencyResolutionInterface {
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport]
-}
+end DependencyResolutionInterface
 
 /**
  * Interface for publishing modules.
  */
-trait PublisherInterface {
+trait PublisherInterface:
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
@@ -65,13 +65,13 @@ trait PublisherInterface {
    * @return The `File` containing the POM descriptor.
    */
   def makePomFile(module: ModuleDescriptor, configuration: MakePomConfiguration, log: Logger): File
-}
+end PublisherInterface
 
 /**
  * Describes the representation of a module, including its dependencies
  * and the version of Scala it uses, if any.
  */
-trait ModuleDescriptor {
+trait ModuleDescriptor:
 
   /**
    * The direct dependencies of this module.
@@ -93,4 +93,4 @@ trait ModuleDescriptor {
    * Hash for extra parameter that were not captured as `moduleSettings`.
    */
   def extraInputHash: Long
-}
+end ModuleDescriptor

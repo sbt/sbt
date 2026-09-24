@@ -29,7 +29,7 @@ import scala.util.Try
  *    .jvmPlatform(Seq("2.12.6", "2.11.12"))
  *  }}}
  */
-sealed trait ProjectMatrix extends CompositeProject {
+sealed trait ProjectMatrix extends CompositeProject:
   def id: String
 
   /** The base directory for the project matrix. */
@@ -80,6 +80,11 @@ sealed trait ProjectMatrix extends CompositeProject {
    * The intended use is a convenience for applying default configuration provided by a plugin.
    */
   def configure(transforms: (Project => Project)*): ProjectMatrix
+
+  /** Applies to each row the transform a function returns for the row's axes. */
+  def configureRows(
+      transforms: (VirtualAxis.ProjectRowKey => Option[Project => Project])*
+  ): ProjectMatrix
 
   /**
    * If autoScalaLibrary is false, add non-Scala row.
@@ -207,26 +212,24 @@ sealed trait ProjectMatrix extends CompositeProject {
   def filterProjects(axisValues: Seq[VirtualAxis]): Seq[Project]
   def filterProjects(autoScalaLibrary: Boolean, axisValues: Seq[VirtualAxis]): Seq[Project]
   def finder(axisValues: VirtualAxis*): ProjectFinder
-  def allProjects(): Seq[(Project, Seq[VirtualAxis])]
+  def allProjects(): Seq[(Project, VirtualAxis.ProjectRowKey)]
 
   // resolve to the closest match for the given row
   private[sbt] def resolveMatch(thatRow: ProjectMatrix.ProjectRow): ProjectReference
-}
+end ProjectMatrix
 
 /**
  * Represents a reference to a project matrix with an optional configuration string.
  */
-sealed trait MatrixClasspathDep[MR <: ProjectMatrixReference] {
+sealed trait MatrixClasspathDep[MR <: ProjectMatrixReference]:
   def matrix: MR; def configuration: Option[String]
-}
 
-trait ProjectFinder {
+trait ProjectFinder:
   def apply(scalaVersion: String): Project
   def apply(autoScalaLibrary: Boolean): Project
   def get: Seq[Project]
-}
 
-object ProjectMatrix {
+object ProjectMatrix:
   import sbt.io.syntax.*
 
   val jvmIdSuffix: String = "JVM"
@@ -243,15 +246,18 @@ object ProjectMatrix {
    */
   final class ProjectRow(
       val autoScalaLibrary: Boolean,
-      val axisValues: Seq[VirtualAxis],
+      val axisValues: VirtualAxis.ProjectRowKey,
       val process: Project => Project
-  ) {
-    def scalaVersionOpt: Option[String] =
-      if (autoScalaLibrary)
-        axisValues collectFirst { case sv: VirtualAxis.ScalaVersionAxis =>
-          sv.scalaVersion
-        }
-      else None
+  ):
+    val scalaVersionAxisOpt: Option[VirtualAxis.ScalaVersionAxis] =
+      axisValues.collectFirst { case sv: VirtualAxis.ScalaVersionAxis => sv } match
+        case Some(sv) if !autoScalaLibrary =>
+          sys.error(s"autoScalaLibrary is false yet row has a scala version: $sv")
+        case None if autoScalaLibrary =>
+          sys.error(s"autoScalaLibrary is true yet row has no scala version: $axisValues")
+        case svOpt => svOpt
+
+    def scalaVersionOpt: Option[String] = scalaVersionAxisOpt.map(_.scalaVersion)
 
     def isMatch(that: ProjectRow): Boolean =
       VirtualAxis.isMatch(this.axisValues, that.axisValues)
@@ -271,15 +277,14 @@ object ProjectMatrix {
         VirtualAxis.isPartialVersionEquals(da, a)
 
     override def toString: String = s"ProjectRow($autoScalaLibrary, $axisValues)"
-  }
+  end ProjectRow
 
-  final class ProjectMatrixReferenceSyntax(m: ProjectMatrixReference) {
+  final class ProjectMatrixReferenceSyntax(m: ProjectMatrixReference):
     def %(conf: String): ProjectMatrix.MatrixClasspathDependency =
       ProjectMatrix.MatrixClasspathDependency(m, Some(conf))
 
     def %(conf: Configuration): ProjectMatrix.MatrixClasspathDependency =
       ProjectMatrix.MatrixClasspathDependency(m, Some(conf.name))
-  }
 
   final case class MatrixClasspathDependency(
       matrix: ProjectMatrixReference,
@@ -299,17 +304,19 @@ object ProjectMatrix {
       val configurations: Seq[Configuration],
       val plugins: Plugins,
       val transforms: Seq[Project => Project],
+      val rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]],
       val defAxes: Seq[VirtualAxis],
       val pluginClassLoader: ClassLoader
-  ) extends ProjectMatrix { self =>
+  ) extends ProjectMatrix:
+    self =>
     lazy val resolvedMappings: ListMap[ProjectRow, Project] = resolveMappings
-    private def resolveProjectIds: Map[ProjectRow, String] = {
-      Map((for {
-        r <- rows
-      } yield r -> (self.id + r.idSuffix(defAxes)))*)
-    }
+    private def resolveProjectIds: Map[ProjectRow, String] =
+      Map(
+        (for r <- rows
+        yield r -> (self.id + r.idSuffix(defAxes)))*
+      )
 
-    private def resolveMappings: ListMap[ProjectRow, Project] = {
+    private def resolveMappings: ListMap[ProjectRow, Project] =
       val projectIds = resolveProjectIds
       val projects =
         rows.map { r =>
@@ -321,18 +328,24 @@ object ProjectMatrix {
           } ++ nonMatrixAggregate
           val dotSbtMatrix = new java.io.File(".sbt") / "matrix"
           IO.createDirectory(dotSbtMatrix)
+          val axisPlugins = r.axisValues.collect {
+            case VirtualAxis.js     => enableScalaJSPlugin
+            case VirtualAxis.native => enableScalaNativePlugin
+          }
           val p = Project(childId, dotSbtMatrix / childId)
             .dependsOn(deps*)
             .aggregate(aggs*)
             .setPlugins(plugins)
             .configs(configurations*)
             .settings(baseSettings ++ rowSettings(r) ++ self.settings)
+            .configure(axisPlugins*)
             .configure(transforms*)
+            .configure(rowTransforms.flatMap(_(r.axisValues))*)
 
           r -> r.process(p)
         }
       ListMap(projects*)
-    }
+    end resolveMappings
 
     override lazy val componentProjects: Seq[Project] = resolvedMappings.values.toList
 
@@ -345,21 +358,18 @@ object ProjectMatrix {
         val data = settingsData.value
         val deps = buildDependencies.value
         deps.classpath(ref) flatMap { dep =>
-          for {
+          for
             depProjId <- (dep.project / projectID).get(data)
             depSBV <- (dep.project / scalaBinaryVersion).get(data)
             depCross <- (dep.project / crossVersion).get(data)
-          } yield {
-            depCross match {
-              case b: CrossVersion.Binary if VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
-                depProjId
-                  .withCrossVersion(CrossVersion.constant(depSBV))
-                  .withConfigurations(dep.configuration)
-                  .withExplicitArtifacts(Vector.empty)
-              case _ =>
-                depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
-            }
-          }
+          yield depCross match
+            case b: CrossVersion.Binary if VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
+              depProjId
+                .withCrossVersion(CrossVersion.constant(depSBV))
+                .withConfigurations(dep.configuration)
+                .withExplicitArtifacts(Vector.empty)
+            case _ =>
+              depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
         }
       }
 
@@ -386,10 +396,10 @@ object ProjectMatrix {
         axes.filterNot(_.isInstanceOf[ScalaVersionAxis | PlatformAxis])
       )
       Def.settings(
-        r.scalaVersionOpt match {
+        r.scalaVersionOpt match
           case Some(sv) => Seq(scalaVersion := sv)
           case _        => noScalaLibrary
-        },
+        ,
         if nonScalaNorPlatformDirSuffix.nonEmpty then
           Seq(outputPath ~= (o => s"$o/$nonScalaNorPlatformDirSuffix"))
         else Seq.empty,
@@ -397,6 +407,7 @@ object ProjectMatrix {
         ProjectExtra.inConfig(Test)(makeSources(nonScalaDirSuffix, scalaDirSuffix)),
         virtualAxes := axes,
       )
+    end rowSettings
 
     private def resolveMatrixAggregate(
         other: ProjectMatrix,
@@ -407,27 +418,24 @@ object ProjectMatrix {
         dep: MatrixClasspathDep[ProjectMatrixReference],
         thisRow: ProjectRow
     ): ClasspathDep[ProjectReference] =
-      dep match {
+      dep match
         case MatrixClasspathDependency(matrix0: LocalProjectMatrix, configuration) =>
           val other = lookupMatrix(matrix0)
           ClasspathDep.ClasspathDependency(other.resolveMatch(thisRow), configuration)
-      }
 
     // resolve to the closest match for the given row
     private[sbt] def resolveMatch(thatRow: ProjectRow): ProjectReference =
       (rows.find(r => r.isMatch(thatRow)) orElse
-        rows.find(r => r.isSecondaryMatch(thatRow))) match {
+        rows.find(r => r.isSecondaryMatch(thatRow))) match
         case Some(r) => LocalProject(resolveProjectIds(r))
         case _       => sys.error(s"no rows were found in $id matching $thatRow: $rows")
-      }
 
-    private def makeSources(dirSuffix: String, svDirSuffix: String): Def.Setting[?] = {
+    private def makeSources(dirSuffix: String, svDirSuffix: String): Def.Setting[?] =
       unmanagedSourceDirectories ++= Seq(
         scalaSource.value.getParentFile / s"scala${dirSuffix}",
         scalaSource.value.getParentFile / s"scala$svDirSuffix",
         javaSource.value.getParentFile / s"java${dirSuffix}"
       )
-    }
 
     override def withId(id: String): ProjectMatrix = copy(id = id)
 
@@ -472,6 +480,10 @@ object ProjectMatrix {
     override def configure(ts: (Project => Project)*): ProjectMatrix =
       copy(transforms = transforms ++ ts)
 
+    override def configureRows(
+        transforms: (VirtualAxis.ProjectRowKey => Option[Project => Project])*
+    ): ProjectMatrix = copy(rowTransforms = rowTransforms ++ transforms)
+
     def setPlugins(ns: Plugins): ProjectMatrix = copy(plugins = ns)
 
     override def jvmPlatform(
@@ -503,13 +515,7 @@ object ProjectMatrix {
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.jvm +: axisValues
-      ): p =>
-        p.settings(settings)
+      jvmPlatform(scalaVersions, axisValues, _.settings(settings))
 
     override def jvmPlatform(
         scalaVersions: Seq[String],
@@ -536,7 +542,7 @@ object ProjectMatrix {
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      jvmPlatform(autoScalaLibrary = true, scalaVersions, settings)
+      jvmPlatform(scalaVersions, Nil, settings)
 
     override def jvm: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.jvm))
 
@@ -559,14 +565,13 @@ object ProjectMatrix {
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
       customRow(autoScalaLibrary, Some(crossVersion), scalaVersions, VirtualAxis.js +: axisValues):
-        p => enableScalaJSPlugin(p).settings(settings)
+        p => p.settings(settings)
 
     override def jsPlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(autoScalaLibrary = true, crossVersion = None, scalaVersions, Seq(VirtualAxis.js)):
-        p => enableScalaJSPlugin(p).settings(settings)
+      jsPlatform(scalaVersions, Nil, settings)
 
     override def jsPlatform(crossVersion: CrossVersion, scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(autoScalaLibrary = true, crossVersion, scalaVersions, Nil, Nil)
@@ -576,13 +581,7 @@ object ProjectMatrix {
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.js +: axisValues
-      ): p =>
-        enableScalaJSPlugin(p).settings(settings)
+      jsPlatform(scalaVersions, axisValues, _.settings(settings))
 
     override def jsPlatform(
         scalaVersions: Seq[String],
@@ -594,8 +593,7 @@ object ProjectMatrix {
         crossVersion = None,
         scalaVersions,
         VirtualAxis.js +: axisValues
-      ): p =>
-        configure(enableScalaJSPlugin(p))
+      )(configure)
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
@@ -603,12 +601,11 @@ object ProjectMatrix {
     override def defaultAxes(axes: VirtualAxis*): ProjectMatrix =
       copy(defAxes = axes)
 
-    def scalajsPlugin: Try[AutoPlugin] = {
+    def scalajsPlugin: Try[AutoPlugin] =
       import ReflectionUtil.*
       withContextClassloader(pluginClassLoader) { loader =>
         getSingletonObject[AutoPlugin](loader, "org.scalajs.sbtplugin.ScalaJSPlugin$")
       }
-    }
 
     override def js: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.js))
 
@@ -638,19 +635,13 @@ object ProjectMatrix {
         scalaVersions,
         VirtualAxis.native +: axisValues
       ): p =>
-        enableScalaNativePlugin(p).settings(settings)
+        p.settings(settings)
 
     override def nativePlatform(
         scalaVersions: Seq[String],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        Seq(VirtualAxis.native)
-      ): p =>
-        enableScalaNativePlugin(p).settings(settings)
+      nativePlatform(scalaVersions, Nil, settings)
 
     override def nativePlatform(
         crossVersion: CrossVersion,
@@ -663,13 +654,7 @@ object ProjectMatrix {
         axisValues: Seq[VirtualAxis],
         settings: Seq[Def.Setting[?]]
     ): ProjectMatrix =
-      customRow(
-        autoScalaLibrary = true,
-        crossVersion = None,
-        scalaVersions,
-        VirtualAxis.native +: axisValues
-      ): p =>
-        enableScalaNativePlugin(p).settings(settings)
+      nativePlatform(scalaVersions, axisValues, _.settings(settings))
 
     override def nativePlatform(
         scalaVersions: Seq[String],
@@ -681,18 +666,16 @@ object ProjectMatrix {
         crossVersion = None,
         scalaVersions,
         VirtualAxis.native +: axisValues
-      ): p =>
-        configure(enableScalaNativePlugin(p))
+      )(configure)
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
 
-    def nativePlugin: Try[AutoPlugin] = {
+    def nativePlugin: Try[AutoPlugin] =
       import ReflectionUtil.*
       withContextClassloader(pluginClassLoader) { loader =>
         getSingletonObject[AutoPlugin](loader, "scala.scalanative.sbtplugin.ScalaNativePlugin$")
       }
-    }
 
     override def projectRefs: Seq[ProjectReference] = componentProjects.map(p => LocalProject(p.id))
 
@@ -711,7 +694,7 @@ object ProjectMatrix {
           p
       }
 
-    private final class AxisBaseProjectFinder(axisValues: Seq[VirtualAxis]) extends ProjectFinder {
+    private final class AxisBaseProjectFinder(axisValues: Seq[VirtualAxis]) extends ProjectFinder:
       def get: Seq[Project] = filterProjects(axisValues)
       def apply(sv: String): Project =
         filterProjects(true, axisValues ++ Seq(VirtualAxis.scalaABIVersion(sv))).headOption
@@ -719,7 +702,6 @@ object ProjectMatrix {
       def apply(autoScalaLibrary: Boolean): Project =
         filterProjects(autoScalaLibrary, axisValues).headOption
           .getOrElse(sys.error(s"project matching $axisValues and $autoScalaLibrary was not found"))
-    }
 
     /**
      * If autoScalaLibrary is false, add non-Scala row.
@@ -736,13 +718,19 @@ object ProjectMatrix {
       val process1 = crossVersion match
         case Some(cv) => (p: Project) => process(p.settings(Keys.crossVersion := cv))
         case None     => process
-      if autoScalaLibrary then
+      if scalaVersions.isEmpty then
+        val needJvm = !axisValues
+          .exists(_.isInstanceOf[VirtualAxis.ScalaVersionAxis | VirtualAxis.PlatformAxis])
+        val axes = if needJvm then axisValues :+ VirtualAxis.jvm else axisValues
+        customRow(autoScalaLibrary, axes, process1)
+      else
+        val scalaAxis =
+          if crossVersion.contains(CrossVersion.full) then
+            (sv: String) => VirtualAxis.scalaVersionAxis(sv, sv)
+          else VirtualAxis.scalaABIVersion
         scalaVersions.foldLeft(this: ProjectMatrix): (acc, sv) =>
-          val scalaAxis =
-            if crossVersion == Some(CrossVersion.full) then VirtualAxis.scalaVersionAxis(sv, sv)
-            else VirtualAxis.scalaABIVersion(sv)
-          acc.customRow(autoScalaLibrary, axisValues ++ Seq(scalaAxis), process1)
-      else customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.jvm), process1)
+          acc.customRow(autoScalaLibrary, axisValues :+ scalaAxis(sv), process1)
+    end customRow
 
     override def customRow(
         autoScalaLibrary: Boolean,
@@ -786,7 +774,7 @@ object ProjectMatrix {
     override def finder(axisValues: VirtualAxis*): ProjectFinder =
       new AxisBaseProjectFinder(axisValues)
 
-    override def allProjects(): Seq[(Project, Seq[VirtualAxis])] =
+    override def allProjects(): Seq[(Project, VirtualAxis.ProjectRowKey)] =
       resolvedMappings.map { (row, project) =>
         project -> row.axisValues
       }.toSeq
@@ -804,9 +792,10 @@ object ProjectMatrix {
         configurations: Seq[Configuration] = configurations,
         plugins: Plugins = plugins,
         transforms: Seq[Project => Project] = transforms,
+        rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]] = rowTransforms,
         defAxes: Seq[VirtualAxis] = defAxes,
         pluginClassLoader: ClassLoader = pluginClassLoader,
-    ): ProjectMatrix = {
+    ): ProjectMatrix =
       val matrix = unresolved(
         id,
         base,
@@ -820,16 +809,17 @@ object ProjectMatrix {
         configurations,
         plugins,
         transforms,
+        rowTransforms,
         defAxes,
         pluginClassLoader
       )
       allMatrices(id) = matrix
       matrix
-    }
-  }
+    end copy
+  end ProjectMatrixDef
 
   // called by macro
-  def apply(id: String, base: File, pluginClassLoader: ClassLoader): ProjectMatrix = {
+  def apply(id: String, base: File, pluginClassLoader: ClassLoader): ProjectMatrix =
     val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("3.3.3"))
     val matrix = unresolved(
       id,
@@ -844,12 +834,13 @@ object ProjectMatrix {
       Nil,
       Plugins.Empty,
       Nil,
+      Nil,
       defaultDefAxes,
       pluginClassLoader
     )
     allMatrices(id) = matrix
     matrix
-  }
+  end apply
 
   private[sbt] def unresolved(
       id: String,
@@ -864,6 +855,7 @@ object ProjectMatrix {
       configurations: Seq[Configuration],
       plugins: Plugins,
       transforms: Seq[Project => Project],
+      rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]],
       defAxes: Seq[VirtualAxis],
       pluginClassLoader: ClassLoader
   ): ProjectMatrix =
@@ -880,13 +872,13 @@ object ProjectMatrix {
       configurations,
       plugins,
       transforms,
+      rowTransforms,
       defAxes,
       pluginClassLoader
     )
 
-  def lookupMatrix(local: LocalProjectMatrix): ProjectMatrix = {
+  def lookupMatrix(local: LocalProjectMatrix): ProjectMatrix =
     allMatrices.getOrElse(local.id, sys.error(s"${local.id} was not found"))
-  }
 
   implicit def projectMatrixToLocalProjectMatrix(m: ProjectMatrix): LocalProjectMatrix =
     LocalProjectMatrix(m.id)
@@ -896,7 +888,7 @@ object ProjectMatrix {
       Try {
         val clazz = classLoader.loadClass(className)
         val t = implicitly[ClassTag[A]].runtimeClass
-        Option(clazz.getField("MODULE$").get(null)) match {
+        Option(clazz.getField("MODULE$").get(null)) match
           case None =>
             throw new ClassNotFoundException(
               s"Unable to find $className using classloader: $classLoader"
@@ -904,7 +896,6 @@ object ProjectMatrix {
           case Some(c) if !t.isInstance(c) =>
             throw new ClassCastException(s"${clazz.getName} is not a subtype of $t")
           case Some(c) => c.asInstanceOf[A]
-        }
       }
         .recover {
           case i: InvocationTargetException if i.getTargetException != null =>
@@ -912,31 +903,43 @@ object ProjectMatrix {
         }
 
     def objectExists(classLoader: ClassLoader, className: String): Boolean =
-      try {
-        classLoader.loadClass(className).getField("MODULE$").get(null) != null
-      } catch {
-        case _: Throwable => false
-      }
+      try classLoader.loadClass(className).getField("MODULE$").get(null) != null
+      catch case _: Throwable => false
 
-    def withContextClassloader[A](loader: ClassLoader)(body: ClassLoader => A): A = {
+    def withContextClassloader[A](loader: ClassLoader)(body: ClassLoader => A): A =
       val current = Thread.currentThread().getContextClassLoader
-      try {
+      try
         Thread.currentThread().setContextClassLoader(loader)
         body(loader)
-      } finally Thread.currentThread().setContextClassLoader(current)
-    }
+      finally Thread.currentThread().setContextClassLoader(current)
   end ReflectionUtil
 
-  def projectMatrixImpl(using Quotes): Expr[ProjectMatrix] = {
+  def projectMatrixImpl(using Quotes): Expr[ProjectMatrix] =
     val name = std.KeyMacro.definingValName(
       "projectMatrix must be directly assigned to a val, such as `val x = projectMatrix`. Alternatively, you can use `sbt.ProjectMatrix.apply`"
     )
     val callerThis = std.KeyMacro.callerThis
     '{ ProjectMatrix($name, new File($name), $callerThis.getClass.getClassLoader) }
-  }
-}
+end ProjectMatrix
 
 trait ProjectMatrixExtra:
+
+  extension (self: ProjectMatrix)
+
+    /** Applies `transform` to every row built for one of `platforms`. */
+    def configurePlatforms(
+        transform: Project => Project
+    )(platforms: VirtualAxis.PlatformAxis*): ProjectMatrix =
+      self.configureRows(axes => Option.when(platforms.exists(axes.contains))(transform))
+
+    /** Appends `settings` to every row built for one of `platforms`. */
+    def configurePlatforms(
+        settings: Def.SettingsDefinition*
+    )(platforms: VirtualAxis.PlatformAxis*): ProjectMatrix =
+      configurePlatforms(_.settings(settings*))(platforms*)
+
+  end extension
+
   given Conversion[ProjectMatrix, LocalProjectMatrix] =
     m => LocalProjectMatrix(m.id)
 
@@ -949,3 +952,7 @@ trait ProjectMatrixExtra:
       Conversion[A, ProjectMatrixReference]
   ): Conversion[A, ProjectMatrix.ProjectMatrixReferenceSyntax] =
     ref => ProjectMatrix.ProjectMatrixReferenceSyntax(ref)
+
+end ProjectMatrixExtra
+
+object ProjectMatrixExtra extends ProjectMatrixExtra

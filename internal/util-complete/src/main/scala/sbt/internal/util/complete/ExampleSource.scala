@@ -17,7 +17,7 @@ import sbt.io.IO
  * source is the [[sbt.internal.util.complete.FileExamples]] class, which provides a list of
  * suggested files to the user as they press the TAB key in the console.
  */
-trait ExampleSource {
+trait ExampleSource:
 
   /**
    * @return
@@ -35,14 +35,12 @@ trait ExampleSource {
    */
   def withAddedPrefix(addedPrefix: String): ExampleSource
 
-}
-
 /**
  * A convenience example source that wraps any collection of strings into a source of examples.
  * @param examples
  *   the examples that will be displayed to the user when they press the TAB key.
  */
-sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSource {
+sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSource:
   override def withAddedPrefix(addedPrefix: String): ExampleSource =
     FixedSetExamples(examplesWithRemovedPrefix(addedPrefix))
 
@@ -51,7 +49,6 @@ sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSo
   private def examplesWithRemovedPrefix(prefix: String) = examples.collect {
     case example if example.startsWith(prefix) => example.substring(prefix.length)
   }
-}
 
 /**
  * Provides path completion examples based on files in the base directory.
@@ -60,13 +57,13 @@ sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSo
  * @param prefix
  *   the part of the path already written by the user.
  */
-class FileExamples(base: File, prefix: String = "") extends ExampleSource {
+class FileExamples(base: File, prefix: String = "") extends ExampleSource:
   override def apply(): LazyList[String] = files(base).map(_.substring(prefix.length))
 
   override def withAddedPrefix(addedPrefix: String): FileExamples =
     new FileExamples(base, prefix + addedPrefix)
 
-  protected def files(directory: File): LazyList[String] = {
+  protected def files(directory: File): LazyList[String] =
     val childPaths = LazyList(IO.listFiles(directory)*)
     val prefixedDirectChildPaths = childPaths
       .map(IO.relativize(base, _).get)
@@ -76,8 +73,6 @@ class FileExamples(base: File, prefix: String = "") extends ExampleSource {
       .map(IO.relativize(base, _).get)
       .filter(dirStartsWithPrefix)
     prefixedDirectChildPaths ++ dirsToRecurseInto.flatMap(dir => files(new File(base, dir)))
-  }
 
   private def dirStartsWithPrefix(relativizedPath: String): Boolean =
     relativizedPath.startsWith(prefix) || prefix.startsWith(relativizedPath)
-}

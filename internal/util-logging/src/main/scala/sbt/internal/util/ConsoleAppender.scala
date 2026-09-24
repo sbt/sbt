@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import sbt.internal.util.ConsoleAppender.*
 import sbt.util.*
 
-object ConsoleLogger {
+object ConsoleLogger:
 
   /**
    * A new `ConsoleLogger` that logs to `out`.
@@ -59,7 +59,7 @@ object ConsoleLogger {
         ConsoleAppender.noSuppressedMessage
   ): ConsoleLogger =
     new ConsoleLogger(out, ansiCodesSupported, useFormat, suppressedMessage)
-}
+end ConsoleLogger
 
 /**
  * A logger that logs to the console. On supported systems, the level labels are colored.
@@ -69,7 +69,7 @@ class ConsoleLogger private[ConsoleLogger] (
     ansiCodesSupported: Boolean,
     useFormat: Boolean,
     suppressedMessage: SuppressedTraceContext => Option[String]
-) extends BasicLogger {
+) extends BasicLogger:
 
   private[sbt] val appender: Appender =
     ConsoleAppender(generateName(), out, ansiCodesSupported, useFormat, suppressedMessage)
@@ -78,22 +78,18 @@ class ConsoleLogger private[ConsoleLogger] (
     appender.control(event, message)
 
   override def log(level: Level.Value, message: => String): Unit =
-    if (atLevel(level)) {
-      appender.appendLog(level, message)
-    }
+    if atLevel(level) then appender.appendLog(level, message)
 
   override def success(message: => String): Unit =
-    if (successEnabled) {
-      appender.success(message)
-    }
+    if successEnabled then appender.success(message)
 
   override def trace(t: => Throwable): Unit =
     appender.trace(t, getTrace)
 
   override def logAll(events: Seq[LogEvent]) = events.foreach(log)
-}
+end ConsoleLogger
 
-object ConsoleAppender {
+object ConsoleAppender:
   private[sbt] def cursorLeft(n: Int): String = s"\u001B[${n}D"
   private[sbt] def cursorUp(n: Int): String = s"\u001B[${n}A"
   private[sbt] def cursorDown(n: Int): String = s"\u001B[${n}B"
@@ -108,24 +104,21 @@ object ConsoleAppender {
   private val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
   def showProgress: Boolean = showProgressHolder.get
-  private[sbt] trait Properties {
+  private[sbt] trait Properties:
     def isAnsiSupported: Boolean
     def isColorEnabled: Boolean
     def out: ConsoleOut
-  }
-  private[sbt] object Properties {
+  private[sbt] object Properties:
     def from(terminal: Terminal): Properties =
       from(ConsoleOut.terminalOut(terminal), terminal.isAnsiSupported, terminal.isColorEnabled)
 
     def safelyFrom(terminal: Terminal): Properties =
       from(ConsoleOut.safeTerminalOut(terminal), terminal.isAnsiSupported, terminal.isColorEnabled)
 
-    def from(o: ConsoleOut, ansi: Boolean, color: Boolean): Properties = new Properties {
+    def from(o: ConsoleOut, ansi: Boolean, color: Boolean): Properties = new Properties:
       override def isAnsiSupported: Boolean = ansi
       override def isColorEnabled: Boolean = color
       override def out = o
-    }
-  }
 
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -139,11 +132,10 @@ object ConsoleAppender {
   @deprecated("Use Terminal.isAnsiSupported or Terminal.isColorEnabled", "1.4.0")
   lazy val formatEnabledInEnv: Boolean = Terminal.isAnsiSupported
 
-  private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s) match {
+  private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s) match
     case Some(true)  => LogOption.Always
     case Some(false) => LogOption.Never
     case _           => LogOption.Auto
-  }
 
   private val generateId: AtomicInteger = new AtomicInteger
 
@@ -223,10 +215,9 @@ object ConsoleAppender {
       name: String,
       out: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender = {
+  ): Appender =
     val ansi = Terminal.isAnsiSupported
     apply(name, out, ansi, ansi, suppressedMessage)
-  }
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -253,9 +244,8 @@ object ConsoleAppender {
    * @return
    *   A new `ConsoleAppender` that writes to `out`.
    */
-  def apply(name: String, terminal: Terminal): Appender = {
+  def apply(name: String, terminal: Terminal): Appender =
     new ConsoleAppender(name, Properties.from(terminal), noSuppressedMessage)
-  }
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `terminal`.
@@ -265,9 +255,8 @@ object ConsoleAppender {
    * @param terminal  The terminal to which this appender corresponds
    * @return A new `ConsoleAppender` that writes to `terminal`.
    */
-  def safe(name: String, terminal: Terminal): Appender = {
+  def safe(name: String, terminal: Terminal): Appender =
     new ConsoleAppender(name, Properties.safelyFrom(terminal), noSuppressedMessage)
-  }
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -285,9 +274,8 @@ object ConsoleAppender {
       name: String,
       terminal: Terminal,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender = {
+  ): Appender =
     new ConsoleAppender(name, Properties.from(terminal), suppressedMessage)
-  }
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -309,16 +297,15 @@ object ConsoleAppender {
       ansiCodesSupported: Boolean,
       useFormat: Boolean,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender = {
+  ): Appender =
     new ConsoleAppender(
       name,
       Properties.from(out, ansiCodesSupported, useFormat),
       suppressedMessage
     )
-  }
 
   private[sbt] def generateName(): String = "out-" + generateId.incrementAndGet
-}
+end ConsoleAppender
 
 // See http://stackoverflow.com/questions/24205093/how-to-create-a-custom-appender-in-log4j2
 // for custom appender using Java.
@@ -334,10 +321,9 @@ class ConsoleAppender(
     override private[sbt] val name: String,
     override private[sbt] val properties: Properties,
     override private[sbt] val suppressedMessage: SuppressedTraceContext => Option[String]
-) extends Appender {
+) extends Appender:
   override def close(): Unit = ()
-}
-trait Appender extends AutoCloseable {
+trait Appender extends AutoCloseable:
   private[sbt] def name: String
   private[sbt] def properties: Properties
   private[sbt] def suppressedMessage: SuppressedTraceContext => Option[String]
@@ -373,15 +359,11 @@ trait Appender extends AutoCloseable {
    * @param traceLevel
    *   How to shorten the stack trace.
    */
-  def trace(t: => Throwable, traceLevel: Int): Unit = {
-    if (traceLevel >= 0)
-      write(StackTrace.trimmed(t, traceLevel))
-    if (traceLevel <= 2) {
+  def trace(t: => Throwable, traceLevel: Int): Unit =
+    if traceLevel >= 0 then write(StackTrace.trimmed(t, traceLevel))
+    if traceLevel <= 2 then
       val ctx = new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)
-      for (msg <- suppressedMessage(ctx))
-        appendLog(NO_COLOR, "trace", NO_COLOR, msg)
-    }
-  }
+      for msg <- suppressedMessage(ctx) do appendLog(NO_COLOR, "trace", NO_COLOR, msg)
 
   /**
    * Logs a `ControlEvent` to the log.
@@ -402,9 +384,8 @@ trait Appender extends AutoCloseable {
    * @param message
    *   The message to log.
    */
-  def appendLog(level: Level.Value, message: => String): Unit = {
+  def appendLog(level: Level.Value, message: => String): Unit =
     appendLog(labelColor(level), level.toString, NO_COLOR, message)
-  }
 
   /**
    * Select the right color for the label given `level`.
@@ -415,11 +396,10 @@ trait Appender extends AutoCloseable {
    *   The color to use to color the label.
    */
   private def labelColor(level: Level.Value): String =
-    level match {
+    level match
       case Level.Error => RED
       case Level.Warn  => YELLOW
       case _           => NO_COLOR
-    }
 
   /**
    * Appends a full message to the log. Each line is prefixed with `[$label]`, written in
@@ -441,81 +421,71 @@ trait Appender extends AutoCloseable {
       messageColor: String,
       message: String
   ): Unit =
-    try {
+    try
       // according to https://github.com/sbt/sbt/issues/5608, sometimes we get a null message
-      if (message == null) ()
-      else {
+      if message == null then ()
+      else
         val len = labelColor.length + label.length + messageColor.length + reset.length * 3
         val builder: StringBuilder = new StringBuilder(len)
         message.linesIterator.foreach { line =>
           builder.ensureCapacity(len + line.length + 4)
           builder.setLength(0)
 
-          def fmted(a: String, b: String) = {
-            if (useFormat) builder.append(reset).append(a).append(b).append(reset)
+          def fmted(a: String, b: String) =
+            if useFormat then builder.append(reset).append(a).append(b).append(reset)
             else builder.append(b)
-          }
 
-          if (useFormat) builder.append(reset)
+          if useFormat then builder.append(reset)
           builder.append('[')
           fmted(labelColor, label)
           builder.append("] ")
           fmted(messageColor, line)
           write(builder.toString)
         }
-      }
-    } catch { case _: InterruptedException => }
+    catch
+      case _: InterruptedException =>
 
   // success is called by ConsoleLogger.
-  private[sbt] def success(message: => String): Unit = {
+  private[sbt] def success(message: => String): Unit =
     appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
-  }
 
-  private def write(msg: String): Unit = {
+  private def write(msg: String): Unit =
     // There is no api for removing only colors but not other ansi escape sequences
     // so we do nothing if useFormat is false but ansiCodesSupported is true which is
     // a rare use case but if ansiCodesSupported is true, color codes should work so
     // the output may have unwanted colors but it would still be legible. This should
     // only be relevant if the log message string itself contains ansi escape sequences
     // other than color codes which is very unlikely.
-    val toWrite = if ((!ansiCodesSupported || !useFormat) && msg.getBytes.contains(27.toByte)) {
+    val toWrite = if (!ansiCodesSupported || !useFormat) && msg.getBytes.contains(27.toByte) then
       val (bytes, len) =
         EscHelpers.strip(msg.getBytes, stripAnsi = !ansiCodesSupported, stripColor = !useFormat)
       new String(bytes, 0, len)
-    } else msg
+    else msg
     out.println(toWrite)
-  }
 
-  private def appendTraceEvent(te: TraceEvent): Unit = {
+  private def appendTraceEvent(te: TraceEvent): Unit =
     val traceLevel = getTrace
-    if (traceLevel >= 0) {
+    if traceLevel >= 0 then
       val throwableShowLines: ShowLines[Throwable] =
-        ShowLines[Throwable]((t: Throwable) => {
-          List(StackTrace.trimmed(t, traceLevel))
-        })
+        ShowLines[Throwable]((t: Throwable) => List(StackTrace.trimmed(t, traceLevel)))
       val codec: ShowLines[TraceEvent] =
-        ShowLines[TraceEvent]((t: TraceEvent) => {
-          throwableShowLines.showLines(t.message)
-        })
+        ShowLines[TraceEvent]((t: TraceEvent) => throwableShowLines.showLines(t.message))
       codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
-    }
-    if (traceLevel <= 2) {
+    if traceLevel <= 2 then
       suppressedMessage(
         new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)
       ) foreach {
         appendLog(Level.Error, _)
       }
-    }
-  }
 
-  private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {
-    def appendEvent(oe: ObjectEvent[?]): Unit = {
+  private def appendMessageContent(level: Level.Value, o: AnyRef): Unit =
+    def appendEvent(oe: ObjectEvent[?]): Unit =
       val contentType = oe.contentType
-      contentType match {
+      contentType match
         case "sbt.internal.util.TraceEvent" => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
         case "sbt.internal.util.ProgressEvent" =>
         case _                                 =>
-          LogExchange.stringCodec[AnyRef](contentType) match {
+          LogExchange.stringCodec[AnyRef](contentType) match
             case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
               codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
             case Some(codec) =>
@@ -524,19 +494,14 @@ trait Appender extends AutoCloseable {
                 _
               ))
             case _ => appendLog(level, oe.message.toString)
-          }
-      }
-    }
 
-    o match {
+    o match
       case x: StringEvent    => Vector(x.message) foreach { appendLog(level, _) }
       case x: ObjectEvent[?] => appendEvent(x)
       case _                 => Vector(o.toString) foreach { appendLog(level, _) }
-    }
-  }
+  end appendMessageContent
   private[sbt] def appendObjectEvent[T](level: Level.Value, message: => ObjectEvent[T]): Unit =
     appendMessageContent(level, message)
-
-}
+end Appender
 
 final class SuppressedTraceContext(val traceLevel: Int, val useFormat: Boolean)

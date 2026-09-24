@@ -71,6 +71,7 @@ class XXHash64[A1: Access](seed: Long) extends HashAlgo[A1]:
         off += 8
         off <= limit
       do ()
+      end while
 
       h64 = rotateLeft(v1, 1) + rotateLeft(v2, 7) + rotateLeft(v3, 12) + rotateLeft(v4, 18)
 
@@ -98,6 +99,7 @@ class XXHash64[A1: Access](seed: Long) extends HashAlgo[A1]:
       h64 ^= v4
       h64 = h64 * PRIME64_1 + PRIME64_4
     else h64 = seed + PRIME64_5
+    end if
 
     h64 += len
 

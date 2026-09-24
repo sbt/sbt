@@ -27,57 +27,42 @@ import sbt.nio.Keys.*
 // See also LineReader.scala
 object SysProp:
   def booleanOpt(name: String): Option[Boolean] =
-    sys.props.get(name) match {
-      case Some(x) => parseBoolean(x)
-      case _       =>
-        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
-          case Some(x) => parseBoolean(x)
-          case _       => None
-        }
-    }
+    strOpt(name).flatMap(parseBoolean)
   private def parseBoolean(value: String): Option[Boolean] =
-    value.toLowerCase(Locale.ENGLISH) match {
+    value.toLowerCase(Locale.ENGLISH) match
       case "1" | "always" | "true" => Some(true)
       case "0" | "never" | "false" => Some(false)
       case "auto"                  => None
       case _                       => None
-    }
 
   def getOrFalse(name: String): Boolean = booleanOpt(name).getOrElse(false)
   def getOrTrue(name: String): Boolean = booleanOpt(name).getOrElse(true)
 
+  def strOpt(name: String): Option[String] =
+    sys.props
+      .get(name)
+      .orElse(sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')))
+
   def long(name: String, default: Long): Long =
-    sys.props.get(name) match {
+    sys.props.get(name) match
       case Some(str) =>
-        try {
-          str.toLong
-        } catch {
-          case NonFatal(_) => default
-        }
+        try str.toLong
+        catch case NonFatal(_) => default
       case _ => default
-    }
 
   def int(name: String, default: Int): Int =
-    sys.props.get(name) match {
+    sys.props.get(name) match
       case Some(str) =>
-        try {
-          str.toInt
-        } catch {
-          case NonFatal(_) => default
-        }
+        try str.toInt
+        catch case NonFatal(_) => default
       case _ => default
-    }
 
   def double(name: String, default: Double): Double =
-    sys.props.get(name) match {
+    sys.props.get(name) match
       case Some(str) =>
-        try {
-          str.toDouble
-        } catch {
-          case NonFatal(_) => default
-        }
+        try str.toDouble
+        catch case NonFatal(_) => default
       case _ => default
-    }
 
   // System property style:
   //   1. use sbt. prefix
@@ -123,6 +108,14 @@ object SysProp:
   @deprecated("Resident compilation is no longer supported", "1.4.0")
   def residentLimit: Int = int("sbt.resident.limit", 0)
 
+  def testSummary: TestSummary =
+    strOpt("sbt.test_summary").flatMap(Tests.parseTestSummary).getOrElse(TestSummary.default)
+
+  def cacheTestResult: Boolean =
+    getOrTrue("sbt.cache_test_result")
+
+  def workerMaxInstances: Int = int("sbt.worker_max_instances", 2)
+
   /**
    * Indicates whether formatting has been disabled in environment variables.
    * 1. -Dsbt.log.noformat=true means no formatting.
@@ -144,12 +137,11 @@ object SysProp:
   def supershellThreshold: FiniteDuration = long("sbt.supershell.threshold", 100L).millis
   def supershellBlankZone: Int = int("sbt.supershell.blankzone", 1)
 
-  def defaultUseCoursier: Boolean = {
+  def defaultUseCoursier: Boolean =
     val coursierOpt = booleanOpt("sbt.coursier")
     val ivyOpt = booleanOpt("sbt.ivy")
     val notIvyOpt = ivyOpt map { !_ }
     coursierOpt.orElse(notIvyOpt).getOrElse(true)
-  }
 
   def banner: Boolean = getOrTrue("sbt.banner")
 
@@ -163,7 +155,7 @@ object SysProp:
   def taskTimingsThreshold: Long = long("sbt.task.timings.threshold", 0L)
   def taskTimingsOmitPaths: Boolean = getOrFalse("sbt.task.timings.omit.paths")
   def taskTimingsUnit: (String, Int) =
-    System.getProperty("sbt.task.timings.unit", "ms") match {
+    System.getProperty("sbt.task.timings.unit", "ms") match
       case "ns" => ("ns", 0)
       case "us" => ("µs", 3)
       case "ms" => ("ms", 6)
@@ -171,7 +163,6 @@ object SysProp:
       case x    =>
         System.err.println(s"Unknown sbt.task.timings.unit: $x.\nUsing milliseconds.")
         ("ms", 6)
-    }
 
   def gcMonitor: Boolean = getOrTrue("sbt.gc.monitor")
   def gcWindow: FiniteDuration = int("sbt.gc.monitor.window", 10).seconds
@@ -179,14 +170,12 @@ object SysProp:
 
   /** Generate build.properties if missing. */
   def genBuildProps: Boolean =
-    booleanOpt("sbt.genbuildprops") match {
+    booleanOpt("sbt.genbuildprops") match
       case Some(x) => x
       case None    =>
-        booleanOpt("sbt.skip.version.write") match {
+        booleanOpt("sbt.skip.version.write") match
           case Some(skip) => !skip
           case None       => true
-        }
-    }
 
   def onChangedBuildSource: WatchBuildSourceOption =
     val sysPropKey = "sbt.build.onchange"
@@ -227,28 +216,25 @@ object SysProp:
   /**
    * Operating system specific cache directory, similar to Coursier cache.
    */
-  def globalLocalCache: File = {
+  def globalLocalCache: File =
     val appName = "sbt"
     def propCacheDir: Option[File] = sys.props.get("sbt.global.localcache").map(file)
     def propCacheDir2: Option[File] =
-      sys.props.get(BuildPaths.GlobalBaseProperty) match {
+      sys.props.get(BuildPaths.GlobalBaseProperty) match
         case Some(base) => Some(file(base) / "cache")
         case _          => None
-      }
     def envCacheDir: Option[File] = sys.env.get("SBT_LOCAL_CACHE").map(file)
     def windowsCacheDir: Option[File] =
-      sys.env.get("LOCALAPPDATA") match {
+      sys.env.get("LOCALAPPDATA") match
         case Some(app) if Util.isWindows => Some(file(app) / appName)
         case _                           => None
-      }
     def macCacheDir: Option[File] =
-      if (Util.isMac) Some(home / "Library" / "Caches" / appName)
+      if Util.isMac then Some(home / "Library" / "Caches" / appName)
       else None
     def linuxCache: File =
-      sys.env.get("XDG_CACHE_HOME") match {
+      sys.env.get("XDG_CACHE_HOME") match
         case Some(cache) => file(cache) / appName
         case _           => home / ".cache" / appName
-      }
     def baseCache: File =
       propCacheDir
         .orElse(propCacheDir2)
@@ -257,41 +243,38 @@ object SysProp:
         .orElse(macCacheDir)
         .getOrElse(linuxCache)
     baseCache.getAbsoluteFile / "v2"
-  }
+  end globalLocalCache
 
   lazy val sbtCredentialsEnv: Option[Credentials] =
     sys.env.get("SBT_CREDENTIALS").map(raw => new Credentials.FileCredentials(new File(raw)))
 
   def sonatypeCredentalsEnv: Option[Credentials] =
-    for {
+    for
       username <- sys.env.get("SONATYPE_USERNAME")
       password <- sys.env.get("SONATYPE_PASSWORD")
-    } yield Credentials(
+    yield Credentials(
       "Sonatype Nexus Repository Manager",
       sona.Sona.host,
       username,
       password
     )
 
-  private[sbt] def setSwovalTempDir(): Unit = {
+  private[sbt] def setSwovalTempDir(): Unit =
     val _ = getOrUpdateSwovalTmpDir(
       runtimeDirectory.resolve("swoval").toString
     )
-  }
-  private[sbt] def setIpcSocketTempDir(): Unit = {
+  private[sbt] def setIpcSocketTempDir(): Unit =
     val _ = getOrUpdateIpcSocketTmpDir(
       runtimeDirectory.resolve("ipcsocket").toString
     )
-  }
   private lazy val getOrUpdateSwovalTmpDir: String => String =
     getOrUpdateSysProp("swoval.tmpdir")(_)
   private lazy val getOrUpdateIpcSocketTmpDir: String => String =
     getOrUpdateSysProp("sbt.ipcsocket.tmpdir")(_)
-  private def getOrUpdateSysProp(key: String)(value: String): String = {
+  private def getOrUpdateSysProp(key: String)(value: String): String =
     val newVal = sys.props.getOrElse(key, value)
     sys.props += (key -> newVal)
     newVal
-  }
 
   /**
    * This returns a temporary directory that is friendly to macOS, Linux,
@@ -301,12 +284,11 @@ object SysProp:
    * A deterministic hash is appended in the directory name as "/tmp/.sbt1234ABCD/"
    * to avoid collision between multiple users in a shared server environment.
    */
-  private def runtimeDirectory: Path = {
+  private def runtimeDirectory: Path =
     val hashValue =
       java.lang.Long.toHexString(HashUtil.farmHash(home.toString.getBytes("UTF-8")))
     val halfhash = hashValue.take(8)
     Paths
       .get(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir")))
       .resolve(s".sbt$halfhash")
-  }
 end SysProp

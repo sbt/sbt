@@ -1,4 +1,4 @@
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 @transient
 lazy val check = taskKey[Unit]("")

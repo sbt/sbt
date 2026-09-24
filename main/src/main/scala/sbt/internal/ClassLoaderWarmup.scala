@@ -11,25 +11,19 @@ package sbt.internal
 import java.util.concurrent.{ ExecutorService, Executors }
 import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
 
-private[internal] object ClassLoaderWarmup {
-  def warmup(): Unit = {
-    if (Runtime.getRuntime.availableProcessors > 1) {
+private[internal] object ClassLoaderWarmup:
+  def warmup(): Unit =
+    if Runtime.getRuntime.availableProcessors > 1 then
       val executorService: ExecutorService =
         Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors - 1)
-      def submit[R](f: => R): Unit = {
-        executorService.submit(new Runnable {
-          override def run(): Unit = { f; () }
-        })
+      def submit[R](f: => R): Unit =
+        executorService.submit(new Runnable:
+          override def run(): Unit =
+            f; ())
         ()
-      }
 
       submit(Class.forName("sbt.internal.parser.SbtParserInit").getConstructor().newInstance())
       submit(CorePlugin.projectSettings)
       submit(IvyPlugin.projectSettings)
       submit(JvmPlugin.projectSettings)
-      submit(() => {
-        executorService.shutdown()
-      })
-    }
-  }
-}
+      submit(() => executorService.shutdown())

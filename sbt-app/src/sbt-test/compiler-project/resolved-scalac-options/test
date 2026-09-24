@@ -1,0 +1,2 @@
+# resolvedScalacOptions must resolve ${CSR_CACHE} placeholders to absolute machine paths (#9578)
+> check

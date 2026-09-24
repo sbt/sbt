@@ -73,4 +73,6 @@ import scala.concurrent.duration.{ Duration, FiniteDuration }
     localArtifactsShouldBeCached: Boolean = false,
     @since
     lockFile: Option[File] = None,
+    @since
+    userAgent: Option[String] = None,
 )

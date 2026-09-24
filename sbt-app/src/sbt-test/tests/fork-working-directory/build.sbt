@@ -1,6 +1,6 @@
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.19"
 
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 
 lazy val root = (project in file("."))
 

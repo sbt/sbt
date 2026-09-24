@@ -6,7 +6,7 @@ lazy val root = (project in file("."))
     scalaVersion := "3.3.4",
     autoAPIMappings := true,
     libraryDependencies += "org.typelevel" %% "cats-core" % "2.12.0",
-    TaskKey[Unit]("checkDocGenerated") := {
+    TaskKey[Unit]("checkDocGenerated") := Def.uncached {
       val docDir = (Compile / doc / target).value
       val indexFile = docDir / "index.html"
       assert(indexFile.exists(), s"Expected $indexFile to exist after doc generation")

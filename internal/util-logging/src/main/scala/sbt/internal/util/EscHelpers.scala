@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
-object EscHelpers {
+object EscHelpers:
 
   /** Escape character, used to introduce an escape sequence. */
   final val ESC = '\u001B'
@@ -64,43 +64,39 @@ object EscHelpers {
    *   isEscapeTerminator
    */
   def removeEscapeSequences(s: String): String =
-    if (s.isEmpty || !hasEscapeSequence(s)) s
-    else {
+    if s.isEmpty || !hasEscapeSequence(s) then s
+    else
       val sb = new java.lang.StringBuilder
       nextESC(s, 0, sb)
       sb.toString
-    }
 
   @tailrec
-  private def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
+  private def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit =
     val escIndex = s.indexOf(ESC, start)
-    if (escIndex < 0) {
+    if escIndex < 0 then
       sb.append(s, start, s.length)
       ()
-    } else {
+    else
       sb.append(s, start, escIndex)
       val next: Int =
-        if (escIndex + 1 >= s.length) skipESC(s, escIndex + 1)
+        if escIndex + 1 >= s.length then skipESC(s, escIndex + 1)
         // If it's a CSI we skip past it and then look for a terminator.
-        else if (isCSI(s.charAt(escIndex + 1))) skipESC(s, escIndex + 2)
-        else if (isAnsiTwoCharacterTerminator(s.charAt(escIndex + 1))) escIndex + 2
-        else {
+        else if isCSI(s.charAt(escIndex + 1)) then skipESC(s, escIndex + 2)
+        else if isAnsiTwoCharacterTerminator(s.charAt(escIndex + 1)) then escIndex + 2
+        else
           // There could be non-ANSI character sequences we should make sure we handle here.
           skipESC(s, escIndex + 1)
-        }
       nextESC(s, next, sb)
-    }
-  }
   private val esc = 1
   private val csi = 2
-  def cursorPosition(s: String): Int = {
+  def cursorPosition(s: String): Int =
     val bytes = s.getBytes
     var i = 0
     var index = 0
     var state = 0
     val digit = new ArrayBuffer[Byte]
-    while (i < bytes.length) {
-      bytes(i) match {
+    while i < bytes.length do
+      bytes(i) match
         case 27                                                       => state = esc
         case b if (state == esc || state == csi) && b >= 48 && b < 58 =>
           state = csi
@@ -112,23 +108,22 @@ object EscHelpers {
         case b if state == csi =>
           val leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
           state = 0
-          b.toChar match {
+          b.toChar match
             case 'D' => index = math.max(index - leftDigit, 0)
             case 'C' => index += leftDigit
             case 'K' =>
-            case 'J' => if (leftDigit == 2) index = 0
+            case 'J' => if leftDigit == 2 then index = 0
             case 'm' =>
             case ';' => state = csi
             case _   =>
-          }
           digit.clear()
         case _ =>
           index += 1
-      }
+      end match
       i += 1
-    }
+    end while
     index
-  }
+  end cursorPosition
 
   /**
    * Strips ansi escape and color codes from an input string.
@@ -143,7 +138,7 @@ object EscHelpers {
    *   a string with the escape and color codes removed depending on the input parameter along with
    *   the length of the output string (which may be smaller than the returned array)
    */
-  def strip(bytes: Array[Byte], stripAnsi: Boolean, stripColor: Boolean): (Array[Byte], Int) = {
+  def strip(bytes: Array[Byte], stripAnsi: Boolean, stripColor: Boolean): (Array[Byte], Int) =
     val res = new Array[Byte](bytes.length)
     var index = 0
     var state = 0
@@ -151,11 +146,11 @@ object EscHelpers {
     val digit = new ArrayBuffer[Byte]
     var escIndex = -1
     bytes.foreach { b =>
-      if (index < res.length) res(index) = b
+      if index < res.length then res(index) = b
       index += 1
       limit = math.max(limit, index)
-      if (state == 0) escIndex = -1
-      b match {
+      if state == 0 then escIndex = -1
+      b match
         case 27 =>
           escIndex = index - 1
           state = esc
@@ -169,20 +164,19 @@ object EscHelpers {
         case b if state == csi =>
           val leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
           state = 0
-          b.toChar match {
+          b.toChar match
             case 'h' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'J' | 'K' =>
-              if (stripAnsi) index = math.max(escIndex, 0)
-            case 'm'                   => if (stripColor) index = escIndex
+              if stripAnsi then index = math.max(escIndex, 0)
+            case 'm'                   => if stripColor then index = escIndex
             case ';' | 's' | 'u' | '?' => state = csi
             case b                     =>
-          }
           digit.clear()
         case b if state == esc => state = 0
         case b                 =>
-      }
+      end match
     }
     (res, index)
-  }
+  end strip
 
   /**
    * Removes the ansi escape sequences from a string and makes a best attempt at calculating any
@@ -197,7 +191,7 @@ object EscHelpers {
    *   a string containing the original characters of the input stream with the ansi escape codes
    *   removed.
    */
-  def stripColorsAndMoves(s: String): String = {
+  def stripColorsAndMoves(s: String): String =
     val bytes = s.getBytes
     val res = new Array[Byte](bytes.length)
     var index = 0
@@ -216,17 +210,16 @@ object EscHelpers {
       case b if state == csi =>
         val leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
         state = 0
-        b.toChar match {
+        b.toChar match
           case 'h'       => index = math.max(index - 1, 0)
           case 'D'       => index = math.max(index - leftDigit, 0)
           case 'C'       => index = math.min(limit, math.min(index + leftDigit, res.length - 1))
           case 'K' | 'J' =>
-            if (leftDigit > 0) (0 until index).foreach(res(_) = 32)
+            if leftDigit > 0 then (0 until index).foreach(res(_) = 32)
             else res(index) = 32
           case 'm' =>
           case ';' => state = csi
           case b   => state = csi
-        }
         digit.clear()
       case b if state == esc => state = 0
       case b                 =>
@@ -235,21 +228,15 @@ object EscHelpers {
         limit = math.max(limit, index)
     }
     new String(res, 0, limit)
-  }
+  end stripColorsAndMoves
 
   /**
    * Skips the escape sequence starting at `i-1`. `i` should be positioned at the character after
    * the ESC that starts the sequence.
    */
   @tailrec
-  private def skipESC(s: String, i: Int): Int = {
-    if (i >= s.length) {
-      i
-    } else if (isEscapeTerminator(s.charAt(i))) {
-      i + 1
-    } else {
-      skipESC(s, i + 1)
-    }
-  }
-
-}
+  private def skipESC(s: String, i: Int): Int =
+    if i >= s.length then i
+    else if isEscapeTerminator(s.charAt(i)) then i + 1
+    else skipESC(s, i + 1)
+end EscHelpers

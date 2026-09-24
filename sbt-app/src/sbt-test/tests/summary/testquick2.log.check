@@ -1,0 +1,9 @@
+        com.example.a.TestA
+        com.example.b.TestB
+failed tests:
+failed tests:
+failed: total 1, failed 1, errors 0, passed 0, cached 0
+failed: total 2, failed 1, errors 0, passed 1, cached 1
+passed: total 1, failed 0, errors 0, passed 1, cached 0
+passed: total 1, failed 0, errors 0, passed 1, cached 0
+passed: total 2, failed 0, errors 0, passed 2, cached 0

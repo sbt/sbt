@@ -1,0 +1,5 @@
+# A resourceGenerators task that writes outside of managedResourceDirectories (e.g. because it
+# references an unscoped key like `resourceManaged.value` instead of `(Compile / resourceManaged).value`
+# inside a Def.task block) used to be silently dropped from the packaged jar. It should now fail
+# the build with a clear error instead.
+> checkError

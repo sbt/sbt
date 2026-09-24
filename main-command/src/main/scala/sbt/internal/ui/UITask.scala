@@ -23,37 +23,30 @@ import sbt.internal.util.complete.Parser
 
 import scala.annotation.tailrec
 
-private[sbt] trait UITask extends Runnable with AutoCloseable {
+private[sbt] trait UITask extends Runnable with AutoCloseable:
   private[sbt] val channel: CommandChannel
   private[sbt] def reader: UITask.Reader
-  private final def handleInput(s: Either[String, String]): Boolean = s match {
+  private final def handleInput(s: Either[String, String]): Boolean = s match
     case Left(m)    => channel.onFastTrackTask(m)
     case Right(cmd) => channel.onCommandLine(cmd)
-  }
   private val isStopped = new AtomicBoolean(false)
-  override def run(): Unit = {
-    @tailrec def impl(): Unit = if (!isStopped.get) {
+  override def run(): Unit =
+    @tailrec def impl(): Unit = if !isStopped.get then
       val res = reader.readLine()
-      if (!handleInput(res) && !isStopped.get) impl()
-    }
+      if !handleInput(res) && !isStopped.get then impl()
     try impl()
-    catch { case _: InterruptedException | _: ClosedChannelException => isStopped.set(true) }
-  }
-  override def close(): Unit = {
+    catch case _: InterruptedException | _: ClosedChannelException => isStopped.set(true)
+  override def close(): Unit =
     isStopped.set(true)
     reader.close()
-  }
-}
 
-private[sbt] object UITask {
-  case object NoShellPrompt extends (State => String) {
+private[sbt] object UITask:
+  case object NoShellPrompt extends (State => String):
     override def apply(state: State): String = ""
-  }
-  trait Reader extends AutoCloseable {
+  trait Reader extends AutoCloseable:
     def readLine(): Either[String, String]
     override def close(): Unit = {}
-  }
-  object Reader {
+  object Reader:
     // Avoid filling the stack trace since it isn't helpful here
     object interrupted extends InterruptedException
 
@@ -63,28 +56,27 @@ private[sbt] object UITask {
     def splitCommand(cmd: String): Either[String, String] =
       // We need to put the empty string on the fast track queue so that we can
       // reprompt the user if another command is running on the server.
-      if (cmd.isEmpty()) Left("")
+      if cmd.isEmpty() then Left("")
       else
-        cmd match {
+        cmd match
           case Shutdown | TerminateAction | Cancel => Left(cmd)
           case cmd                                 => Right(cmd)
-        }
 
     def terminalReader(parser: Parser[?])(
         terminal: Terminal,
         state: State
-    ): Reader = new Reader {
+    ): Reader = new Reader:
       val closed = new AtomicBoolean(false)
       def readLine(): Either[String, String] =
-        try {
+        try
           val clear = terminal.ansi(ClearPromptLine, "")
-          val res = {
+          val res =
             val thread = Thread.currentThread
-            if (thread.isInterrupted || closed.get) throw interrupted
+            if thread.isInterrupted || closed.get then throw interrupted
             val reader = LineReader.createReader(history(state), parser, terminal)
-            if (thread.isInterrupted || closed.get) throw interrupted
+            if thread.isInterrupted || closed.get then throw interrupted
             (try reader.readLine(clear + terminal.prompt.mkPrompt())
-            finally reader.close) match {
+            finally reader.close) match
               case None if terminal == Terminal.console && !hasConsole =>
                 // No stdin is attached to the process so just ignore the result and
                 // block until the thread is interrupted.
@@ -94,33 +86,26 @@ private[sbt] object UITask {
               // ctrl+d with no imput as an exit
               case None            => Left(TerminateAction)
               case Some(s: String) => splitCommand(s.trim())
-            }
-          }
           terminal.setPrompt(Prompt.Pending)
           res
-        } catch { case e: InterruptedException => Left("") }
+        catch case e: InterruptedException => Left("")
       override def close(): Unit = closed.set(true)
-    }
-  }
+  end Reader
   private def history(s: State): Option[File] =
     s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
-    s.get(sbt.BasicKeys.shellPrompt) match {
+    s.get(sbt.BasicKeys.shellPrompt) match
       case Some(NoShellPrompt) | None =>
-        s.get(colorShellPrompt) match {
+        s.get(colorShellPrompt) match
           case Some(pf) => pf(terminal.isColorEnabled, s)
           case None     =>
-            def color(s: String): String = if (terminal.isColorEnabled) s"$s" else ""
+            def color(s: String): String = if terminal.isColorEnabled then s"$s" else ""
             s"${color(DeleteLine)}> ${color(ClearScreenAfterCursor)}"
-        }
       case Some(p) => p(s)
-    }
   private[sbt] class AskUserTask(
       state: State,
       override val channel: CommandChannel,
-  ) extends UITask {
-    override private[sbt] lazy val reader: UITask.Reader = {
+  ) extends UITask:
+    override private[sbt] lazy val reader: UITask.Reader =
       UITask.Reader.terminalReader(state.combinedParser)(channel.terminal, state)
-    }
-  }
-}
+end UITask

@@ -13,19 +13,15 @@ import scala.Console.{ BOLD, RESET }
 
 import sbt.internal.util.Terminal as UTerminal
 
-object Highlight {
+object Highlight:
 
-  def showMatches(pattern: Pattern)(line: String): Option[String] = {
+  def showMatches(pattern: Pattern)(line: String): Option[String] =
     val matcher = pattern.matcher(line)
-    if (UTerminal.isColorEnabled) {
+    if UTerminal.isColorEnabled then
       // ANSI codes like \033[39m (normal text color) don't work on Windows
       val highlighted = matcher.replaceAll(scala.Console.RED + "$0" + RESET)
-      if (highlighted == line) None else Some(highlighted)
-    } else if (matcher.find)
-      Some(line)
-    else
-      None
-  }
+      if highlighted == line then None else Some(highlighted)
+    else if matcher.find then Some(line)
+    else None
   def bold(s: String) =
-    if (UTerminal.isColorEnabled) BOLD + s.replace(RESET, RESET + BOLD) + RESET else s
-}
+    if UTerminal.isColorEnabled then BOLD + s.replace(RESET, RESET + BOLD) + RESET else s

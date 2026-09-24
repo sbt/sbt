@@ -18,7 +18,7 @@ import xsbti.compile.{ Compilers, Inputs }
 
 import scala.util.Try
 
-final class Console(compiler: AnalyzingCompiler) {
+final class Console(compiler: AnalyzingCompiler):
 
   /** Starts an interactive scala interpreter session with the given classpath. */
   def apply(classpath: Seq[File], log: Logger): Try[Unit] =
@@ -47,18 +47,17 @@ final class Console(compiler: AnalyzingCompiler) {
       options: Seq[String],
       initialCommands: String,
       cleanupCommands: String
-  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(using log: Logger): Try[Unit] = {
+  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(using log: Logger): Try[Unit] =
     apply(classpath, options, initialCommands, cleanupCommands, Terminal.get)(loader, bindings)
-  }
   def apply(
       classpath: Seq[File],
       options: Seq[String],
       initialCommands: String,
       cleanupCommands: String,
       terminal: Terminal
-  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(using log: Logger): Try[Unit] = {
+  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(using log: Logger): Try[Unit] =
     def console0(): Unit =
-      try {
+      try
         compiler.console(
           classpath map { x =>
             PlainVirtualFile(x.toPath)
@@ -72,26 +71,26 @@ final class Console(compiler: AnalyzingCompiler) {
           loader,
           bindings
         )
-      } catch { case _: InterruptedException | _: ClosedChannelException => }
+      catch
+        case _: InterruptedException | _: ClosedChannelException =>
     val previous = sys.props.get("scala.color").getOrElse("auto")
     val jline3term = sbt.internal.util.JLine3(terminal)
-    try {
-      sys.props("scala.color") = if (terminal.isColorEnabled) "true" else "false"
+    try
+      sys.props("scala.color") = if terminal.isColorEnabled then "true" else "false"
       terminal.withRawOutput {
         jline.TerminalFactory.set(terminal.toJLine)
         DeprecatedJLine.setTerminalOverride(jline3term)
         terminal.withRawInput(Run.executeSuccess(console0()))
       }
-    } finally {
+    finally
       sys.props("scala.color") = previous
       jline3term.close()
-    }
-  }
-}
+  end apply
+end Console
 
-object Console {
+object Console:
   def apply(conf: Inputs): Console =
-    conf.compilers match {
-      case cs: Compilers => new Console(cs.scalac match { case x: AnalyzingCompiler => x })
-    }
-}
+    conf.compilers match
+      case cs: Compilers =>
+        new Console(cs.scalac match
+          case x: AnalyzingCompiler => x)

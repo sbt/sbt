@@ -36,7 +36,7 @@ final class BuildStructure(
     val scopeLocal: ScopeLocal,
     private[sbt] val compiledMap: Map[ScopedKey[?], Def.Compiled[?]],
     private[sbt] val converter: MappedFileConverter,
-) {
+):
   val extra: BuildUtil[ResolvedProject] = BuildUtil(root, units, index.keyIndex, data)
 
   /** The root project for the specified build.  Throws if no build or empty build. */
@@ -65,8 +65,7 @@ final class BuildStructure(
   /** Foreach project in the specified build apply the specified function. */
   private def eachProject[A](build: URI, f: ResolvedProject => A): Seq[A] =
     units.get(build).iterator.flatMap(_.projects).map(f).toIndexedSeq
-
-}
+end BuildStructure
 
 // information that is not original, but can be reconstructed from the rest of BuildStructure
 final class StructureIndex(
@@ -89,7 +88,7 @@ final class LoadedBuildUnit(
     val defined: Map[String, ResolvedProject],
     val rootProjects: Seq[String],
     val buildSettings: Seq[Setting[?]]
-) extends BuildUnitBase {
+) extends BuildUnitBase:
 
   /**
    * The project to use as the default when one is not otherwise selected.
@@ -126,7 +125,7 @@ final class LoadedBuildUnit(
   def projects: Iterable[ResolvedProject] = defined.values
 
   override def toString = unit.toString
-}
+end LoadedBuildUnit
 
 // TODO: figure out how to deprecate and drop buildNames
 /**
@@ -151,7 +150,7 @@ final class LoadedDefinitions(
     val projects: Seq[Project],
     val buildNames: Seq[String],
     val dslDefinitions: DefinedSbtValues
-) {
+):
   def this(
       base: File,
       target: Seq[File],
@@ -160,10 +159,9 @@ final class LoadedDefinitions(
       projects: Seq[Project],
       buildNames: Seq[String]
   ) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
-}
 
 /** Auto-detected top-level modules (as in `object X`) of type `T` paired with their source names. */
-final class DetectedModules[T](val modules: Seq[(String, T)]) {
+final class DetectedModules[T](val modules: Seq[(String, T)]):
 
   /**
    * The source names of the modules.  This is "X" in `object X`, as opposed to the implementation class name "X$".
@@ -176,7 +174,6 @@ final class DetectedModules[T](val modules: Seq[(String, T)]) {
    * The values are returned in a stable order such that `names zip values` pairs a name with the actual module.
    */
   def values: Seq[T] = modules.map(_._2)
-}
 
 /** Auto-detected auto plugin. */
 case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Boolean)
@@ -191,7 +188,7 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
 final class DetectedPlugins(
     val autoPlugins: Seq[DetectedAutoPlugin],
     val builds: DetectedModules[BuildDef]
-) {
+):
 
   /**
    * Sequence of import expressions for the build definition.
@@ -206,25 +203,23 @@ final class DetectedPlugins(
   private lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
     autoPlugins
       .flatMap { case DetectedAutoPlugin(name, _, hasAutoImport) =>
-        if (hasAutoImport) Some(name) else None
+        if hasAutoImport then Some(name) else None
       }
       .partition(nonTopLevelPlugin)
 
   /** Selects the right [[AutoPlugin]]s from a [[Project]]. */
-  def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] = {
+  def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] =
     val ps0 = p.plugins
     val allDetected = autoPlugins.toList map { _.value }
-    val detected = p match {
+    val detected = p match
       case _: GeneratedRootProject => allDetected filterNot { _ == sbt.plugins.IvyPlugin }
       case _                       => allDetected
-    }
     Plugins.deducer(detected)(ps0, log)
-  }
 
   private def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
 
   private def nonTopLevelPlugin(name: String) = name.contains('.')
-}
+end DetectedPlugins
 
 /**
  * The built and loaded build definition project.
@@ -239,10 +234,9 @@ final class LoadedPlugins(
     val pluginData: PluginData,
     val loader: ClassLoader,
     val detected: DetectedPlugins
-) {
+):
   def fullClasspath: Def.Classpath = pluginData.classpath
   def classpath = data(fullClasspath)
-}
 
 /**
  * The loaded, but unresolved build unit.
@@ -256,13 +250,12 @@ final class BuildUnit(
     val definitions: LoadedDefinitions,
     val plugins: LoadedPlugins,
     val converter: FileConverter,
-) {
+):
   override def toString =
-    if (uri.getScheme == "file") localBase.toString
+    if uri.getScheme == "file" then localBase.toString
     else (uri.toString + " (locally: " + localBase + ")")
-}
 
-final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
+final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]):
   BuildUtil.checkCycles(units)
 
   def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] =
@@ -274,7 +267,6 @@ final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
     BuildUtil(root, units, keyIndex, data)
 
   private[sbt] def autos = GroupedAutoPlugins(units)
-}
 
 final class PartBuild(
     val root: URI,
@@ -282,23 +274,23 @@ final class PartBuild(
     val converter: MappedFileConverter,
 )
 
-sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[?]] }
+sealed trait BuildUnitBase:
+  def rootProjects: Seq[String]; def buildSettings: Seq[Setting[?]]
 
 final class PartBuildUnit(
     val unit: BuildUnit,
     val defined: Map[String, Project],
     val rootProjects: Seq[String],
     val buildSettings: Seq[Setting[?]]
-) extends BuildUnitBase {
+) extends BuildUnitBase:
 
   def resolve(f: Project => ResolvedProject): LoadedBuildUnit =
     new LoadedBuildUnit(unit, defined.view.mapValues(f).toMap, rootProjects, buildSettings)
 
   def resolveRefs(f: ProjectReference => Seq[ProjectRef]): LoadedBuildUnit =
     resolve(_.resolve(f))
-}
 
-object BuildStreams {
+object BuildStreams:
   type Streams = sbt.std.Streams[ScopedKey[?]]
 
   final val GlobalPath = "_global"
@@ -310,7 +302,7 @@ object BuildStreams {
       units: Map[URI, LoadedBuildUnit],
       root: URI,
       data: Def.Settings
-  ): State => Streams = s => {
+  ): State => Streams = s =>
     s.get(Keys.stateStreams).getOrElse {
       std.Streams(
         path(units, root, data)(_),
@@ -322,7 +314,6 @@ object BuildStreams {
         }
       )
     }
-  }
 
   def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Def.Settings)(
       scoped: ScopedKey[?]
@@ -335,26 +326,24 @@ object BuildStreams {
   def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[?], label: String)(
       show: T => String
   ): String =
-    axis match {
+    axis match
       case Zero      => GlobalPath
       case This      => sys.error(s"Unresolved This reference for $label in ${displayFull(scoped)}")
       case Select(t) => show(t)
-    }
 
-  def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] = {
+  def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] =
     val scope = scoped.scope
     pathComponent(scope.config, scoped, "config")(_.name) ::
       pathComponent(scope.task, scoped, "task")(_.label) ::
       pathComponent(scope.extra, scoped, "extra")(showAMap) ::
       scoped.key.label :: previousComponent(scope.extra)
-  }
 
   private def previousComponent(value: ScopeAxis[AttributeMap]): List[String] =
-    value match {
+    value match
       case Select(am) =>
-        am.get(Previous.scopedKeyAttribute) match {
+        am.get(Previous.scopedKeyAttribute) match
           case Some(sk) =>
-            val project = sk.scope.project match {
+            val project = sk.scope.project match
               case Zero                                           => GlobalPath
               case Select(BuildRef(_))                            => BuildUnitPath
               case Select(ProjectRef(_, id))                      => id
@@ -365,12 +354,9 @@ object BuildStreams {
               case Select(ThisBuild) | Select(ThisProject) | This =>
                 // Don't want to crash if somehow an unresolved key makes it in here.
                 This.toString
-            }
             List(Previous.DependencyDirectory, project) ++ nonProjectPath(sk)
           case _ => Nil
-        }
       case _ => Nil
-    }
   def showAMap(a: AttributeMap): String =
     a.entries
       .to(LazyList)
@@ -389,18 +375,17 @@ object BuildStreams {
       scoped: ScopedKey[?],
       data: Def.Settings
   ): File =
-    scoped.scope.project match {
+    scoped.scope.project match
       case Zero => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
       case Select(br @ BuildRef(uri)) => refTarget(br, units(uri).localBase, data) / BuildUnitPath
       case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
       case Select(pr)                       =>
         sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
       case This => sys.error("Unresolved project reference (This) in " + displayFull(scoped))
-    }
 
   def refTarget(ref: ResolvedReference, fallbackBase: File, data: Def.Settings): File =
     refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
 
   def refTarget(scope: Scope, fallbackBase: File, data: Def.Settings): File =
     ((scope / Keys.target).get(data) getOrElse outputDirectory(fallbackBase)) / StreamsDirectory
-}
+end BuildStreams

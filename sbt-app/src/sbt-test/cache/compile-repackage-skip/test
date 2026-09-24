@@ -1,0 +1,26 @@
+# An upstream method body change invalidates a downstream module's compile cache key without
+# invalidating any of its classes. Zinc then recompiles nothing, so its class directory must not
+# be packaged into the action cache again.
+
+> b/compile
+> b/recordIds
+
+# a no-op build: b's compile is a pure cache hit, nothing on disk moves
+> b/compile
+> b/checkAnalysisUnchanged
+> b/checkClassesZipUnchanged
+
+# the body change alters a's jar, so b's cached compile task re-runs -- rewriting b's analysis --
+# but zinc recompiles nothing in b
+$ copy-file changes/A2.scala a/src/main/scala/A.scala
+> b/compile
+> b/checkNotModified
+> b/checkAnalysisChanged
+> b/checkClassesZipUnchanged
+
+# the entry stored on that miss still has to describe b's class directory: dropping the sibling
+# zip forces the next hit to fetch it back out of the content-addressed store and re-extract it
+> b/recordIds
+> b/delClassesZip
+> b/compile
+> b/checkClasses

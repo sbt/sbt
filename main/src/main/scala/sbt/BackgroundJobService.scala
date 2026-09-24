@@ -19,7 +19,7 @@ import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import xsbti.FileConverter
 
-abstract class BackgroundJobService extends Closeable {
+abstract class BackgroundJobService extends Closeable:
 
   /**
    * Launch a background job which is a function that runs inside another thread;
@@ -59,15 +59,14 @@ abstract class BackgroundJobService extends Closeable {
    * @param job the job to wait for
    * @return the result of waiting for the job to complete.
    */
-  def waitForTry(job: JobHandle): Try[Unit] = {
+  def waitForTry(job: JobHandle): Try[Unit] =
     try Success(waitFor(job))
-    catch {
+    catch
       case NonFatal(e) =>
         try stop(job)
-        catch { case NonFatal(_) => }
+        catch
+          case NonFatal(_) =>
         Failure(e)
-    }
-  }
 
   def waitFor(job: JobHandle): Unit
 
@@ -90,12 +89,12 @@ abstract class BackgroundJobService extends Closeable {
   ): Classpath = copyClasspath(products, full, workingDirectory, converter)
 
   private[sbt] def pauseChannelDuringJob(state: State, handle: JobHandle): Unit
-}
+end BackgroundJobService
 
-object BackgroundJobService {
-  private[sbt] def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] = {
+object BackgroundJobService:
+  private[sbt] def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] =
     import DefaultParsers.*
-    (state, handles) => {
+    (state, handles) =>
       val idParser: Parser[Seq[Long]] = Space ~> token(
         LongBasic.examples(handles.map(_.id.toString).toSet),
         description = "<job id>"
@@ -103,16 +102,12 @@ object BackgroundJobService {
       idParser.map { ids =>
         ids.flatMap(id => handles.find(_.id == id))
       }
-    }
-  }
-}
 
-abstract class JobHandle {
+abstract class JobHandle:
   def id: Long
   def humanReadableName: String
   def spawningTask: ScopedKey[?]
   def isAutoCancel: Boolean
-}
 
 /**
  * This datatype is used signal the task engine or the commands

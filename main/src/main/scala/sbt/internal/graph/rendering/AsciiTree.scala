@@ -13,8 +13,8 @@ package rendering
 
 import sbt.internal.util.Terminal.red
 
-object AsciiTree {
-  def asciiTree(graph: ModuleGraph, graphWidth: Int): String = {
+object AsciiTree:
+  def asciiTree(graph: ModuleGraph, graphWidth: Int): String =
     val deps = graph.dependencyMap
 
     // there should only be one root node (the project itself)
@@ -30,7 +30,6 @@ object AsciiTree {
           )
       }
       .mkString("\n")
-  }
 
   def displayModule(module: Module): String =
     red(
@@ -40,4 +39,4 @@ object AsciiTree {
         module.evictedByVersion.map(v => s" (evicted by: $v)").getOrElse(""),
       module.hadError
     )
-}
+end AsciiTree

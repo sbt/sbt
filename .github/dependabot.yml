@@ -8,6 +8,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    target-branch: "1.12.x"
+    target-branch: "1.13.x"
     commit-message:
       prefix: "[1.x] "

@@ -74,15 +74,13 @@ case object ThisProject extends ProjectReference
 /** A placeholder for auto aggregation. */
 case object LocalAggregate extends ProjectReference
 
-object ProjectRef {
+object ProjectRef:
   def apply(base: File, id: String): ProjectRef = ProjectRef(IO.toURI(base), id)
-}
-object RootProject {
+object RootProject:
 
   /** Reference to the root project at 'base'. */
   def apply(base: File): RootProject = RootProject(IO.toURI(base))
-}
-object Reference {
+object Reference:
   given resolvedReferenceOrdering: Ordering[ResolvedReference] = {
     case (ba: BuildRef, bb: BuildRef)     => buildRefOrdering.compare(ba, bb)
     case (pa: ProjectRef, pb: ProjectRef) => projectRefOrdering.compare(pa, pb)
@@ -91,42 +89,36 @@ object Reference {
   }
   given buildRefOrdering: Ordering[BuildRef] = (a, b) => a.build.compareTo(b.build)
 
-  given projectRefOrdering: Ordering[ProjectRef] = (a, b) => {
+  given projectRefOrdering: Ordering[ProjectRef] = (a, b) =>
     val bc = a.build.compareTo(b.build)
     if bc == 0 then a.project.compareTo(b.project) else bc
-  }
 
   def display(ref: Reference): String =
-    ref match {
+    ref match
       case pr: ProjectReference => display(pr)
       case br: BuildReference   => display(br)
-    }
 
   def display(ref: BuildReference): String =
-    ref match {
+    ref match
       case ThisBuild     => "{<this>}"
       case BuildRef(uri) => "{" + uri + "}"
-    }
   def display(ref: ProjectReference): String =
-    ref match {
+    ref match
       case ThisProject         => "{<this>}<this>"
       case LocalRootProject    => "{<this>}<root>"
       case LocalAggregate      => "{<this>}<aggregate>"
       case LocalProject(id)    => "{<this>}" + id
       case RootProject(uri)    => "{" + uri + " }<root>"
       case ProjectRef(uri, id) => s"""ProjectRef(uri("$uri"), "$id")"""
-    }
 
-  def buildURI(ref: ResolvedReference): URI = ref match {
+  def buildURI(ref: ResolvedReference): URI = ref match
     case BuildRef(b)      => b
     case ProjectRef(b, _) => b
-  }
 
   /** Extracts the build URI from a Reference if one has been explicitly defined. */
-  def uri(ref: Reference): Option[URI] = ref match {
+  def uri(ref: Reference): Option[URI] = ref match
     case RootProject(b)   => Some(b)
     case ProjectRef(b, _) => Some(b)
     case BuildRef(b)      => Some(b)
     case _                => None
-  }
-}
+end Reference

@@ -1,5 +1,6 @@
 val a = project.settings(version := "2.8.1")
 
+@transient
 val trySetEvery = taskKey[Unit]("Tests \"set every\"")
 
 trySetEvery := {

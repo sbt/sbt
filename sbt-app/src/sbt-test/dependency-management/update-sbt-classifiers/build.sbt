@@ -35,14 +35,12 @@ lazy val root = (project in file("."))
         "com.github.ben-manes.caffeine:caffeine",
         "com.github.mwiede:jsch",
         "com.google.errorprone:error_prone_annotations",
-        "com.lmax:disruptor",
         "com.swoval:file-tree-views",
         "com.typesafe:config",
         "com.typesafe:ssl-config-core_3",
         "junit:junit",
         "net.java.dev.jna:jna",
         "net.java.dev.jna:jna-platform",
-        "org.checkerframework:checker-qual",
         "org.fusesource.jansi:jansi",
         "org.hamcrest:hamcrest-core",
         "org.jline:jline-builtins",
@@ -51,6 +49,7 @@ lazy val root = (project in file("."))
         "org.jline:jline-style",
         "org.jline:jline-terminal",
         "org.jline:jline-terminal-jni",
+        "org.jspecify:jspecify",
         "org.reactivestreams:reactive-streams",
         "org.scala-lang.modules:scala-asm",
         "org.scala-lang.modules:scala-collection-compat_3",
@@ -63,14 +62,17 @@ lazy val root = (project in file("."))
         "org.scala-lang:scala3-library_3",
         "org.scala-lang:tasty-core_3",
         "org.scala-sbt.ipcsocket:ipcsocket",
-        "org.scala-sbt.ivy:ivy",
         "org.scala-sbt.jline:jline",
         "org.scala-sbt.gson:shaded-gson",
         "org.slf4j:slf4j-api",
       )
       def assertCollectionsEqual(message: String, expected: Seq[String], actual: Seq[String]): Unit =
         // using the new line for a more readable comparison failure output
-        assert(expected.mkString("\n") == actual.mkString("\n"), message + ": " + actual)
+        val diff = ((expected.toVector diff actual.toVector)
+          .map("-" + _) ++
+          (actual.toVector diff expected.toVector).map("+" + _))
+          .mkString("\n")
+        assert(expected.mkString("\n") == actual.mkString("\n"), message + ": " + diff)
 
       assertCollectionsEqual(
         "Unexpected module ids in updateSbtClassifiers",

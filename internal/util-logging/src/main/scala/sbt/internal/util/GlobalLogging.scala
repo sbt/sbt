@@ -41,7 +41,7 @@ final case class GlobalLogging1(
  * the previous backing file, if there is one. `newBackingFile` creates a new temporary location for
  * the next backing file.
  */
-final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile: () => File) {
+final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile: () => File):
 
   /** Shifts the current backing file to `last` and sets the current backing to `newFile`. */
   def shift(newFile: File) = GlobalLogBacking(newFile, Some(file), newBackingFile)
@@ -58,14 +58,11 @@ final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile
    */
   def unshift = GlobalLogBacking(last getOrElse file, None, newBackingFile)
 
-}
-
-object GlobalLogBacking {
+object GlobalLogBacking:
   def apply(newBackingFile: => File): GlobalLogBacking =
     GlobalLogBacking(newBackingFile, None, () => newBackingFile)
-}
 
-object GlobalLogging {
+object GlobalLogging:
   import java.util.concurrent.atomic.AtomicInteger
 
   private def generateName: String = "GlobalLogging" + generateId.incrementAndGet
@@ -75,10 +72,9 @@ object GlobalLogging {
       newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1,
       newBackingFile: => File,
       console: ConsoleOut
-  ): GlobalLogging1 = {
+  ): GlobalLogging1 =
     val log = ConsoleLogger(console)
     GlobalLogging1(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
-  }
 
   def initial(
       newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
@@ -92,11 +88,10 @@ object GlobalLogging {
       newBackingFile: => File,
       console: ConsoleOut,
       initialLevel: Level.Value = Level.Info
-  ): GlobalLogging = {
+  ): GlobalLogging =
     val loggerName = generateName
     val log = LoggerContext.globalContext.logger(loggerName, None, None)
     val appender = ConsoleAppender(ConsoleAppender.generateName(), console)
     LoggerContext.globalContext.addAppender(loggerName, appender -> initialLevel)
     GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
-  }
-}
+end GlobalLogging

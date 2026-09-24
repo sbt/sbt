@@ -19,29 +19,26 @@ final case class Scope(nestIndex: Int, idAtIndex: Int = 0)
 //  Lots of type constructors would become binary, which as you may know requires lots of type lambdas
 //  when you want a type function with only one parameter.
 //  That would be a general pain.)
-case class SettingsExample() extends Init {
+case class SettingsExample() extends Init:
   type ScopeType = Scope
   // Provides a way of showing a Scope+AttributeKey[_]
-  val showFullKey: Show[ScopedKey[?]] = Show[ScopedKey[?]]((key: ScopedKey[?]) => {
+  val showFullKey: Show[ScopedKey[?]] = Show[ScopedKey[?]]((key: ScopedKey[?]) =>
     s"${key.scope.nestIndex}(${key.scope.idAtIndex})/${key.key.label}"
-  })
+  )
 
   // A sample delegation function that delegates to a Scope with a lower index.
   val delegates: Scope => Seq[Scope] = { case s @ Scope(index, proj) =>
-    s +: (if (index <= 0) Nil
-          else {
-            (if (proj > 0) List(Scope(index)) else Nil) ++: delegates(Scope(index - 1))
-          })
+    s +: (if index <= 0 then Nil
+          else (if proj > 0 then List(Scope(index)) else Nil) ++: delegates(Scope(index - 1)))
   }
 
   // Not using this feature in this example.
   val scopeLocal: ScopeLocal = _ => Nil
 
   // These three functions + a scope (here, Scope) are sufficient for defining our settings system.
-}
 
 /** Usage Example * */
-case class SettingsUsage(settingsExample: SettingsExample) {
+case class SettingsUsage(settingsExample: SettingsExample):
   import settingsExample.*
 
   // Define some keys
@@ -95,4 +92,4 @@ case class SettingsUsage(settingsExample: SettingsExample) {
    * a5 = Some(4)
    * b5 = Some(9)
    */
-}
+end SettingsUsage

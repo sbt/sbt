@@ -26,7 +26,7 @@ declare use_sbtn=
 declare use_jvm_client=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="2.0.0-731e6666"
+declare sbtn_version="2.1.0-M2"
 declare use_colors=1
 declare is_this_dir_sbt=""
 declare hide_jdk_warnings=1
@@ -222,7 +222,7 @@ acquire_sbtn () {
   else
     dlog "downloading sbtn ${sbtn_v} for ${arch}"
     download_url "$url" "$archive_target"
-    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "$OSTYPE" == "linux"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
       tar zxf "$archive_target" --directory "$p"
     else
       unzip "$archive_target" -d "$p"
@@ -801,7 +801,7 @@ process_args () {
     case "$1" in
             -h|-help|--help) print_help=1 && shift ;;
       -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
-      -V|-version|--version) print_version=1 && shift ;;
+      -V|-version|--version) print_version=1 && addResidual "$1" && shift ;;
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
                 shutdownall) shutdownall=1 && shift ;;
@@ -841,6 +841,19 @@ process_args () {
     residual_args=()
     process_my_args "${myargs[@]}"
   }
+
+  if [[ $print_version ]]; then
+    for arg in "${residual_args[@]}"; do
+      case "$arg" in
+        -V|-version|--version) ;;
+        *) if [[ "$arg" =~ [^[:space:]] ]]; then
+             print_version=
+             break
+           fi ;;
+      esac
+    done
+    [[ $print_version ]] && residual_args=()
+  fi
 }
 
 loadConfigFile() {
@@ -892,7 +905,7 @@ projectSbtVersion() {
 detectNativeClient() {
   if [[ "$sbtn_command" != "" ]]; then
     :
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  elif [[ "$OSTYPE" == "linux"* ]]; then
     arch=$(uname -m)
     [[ -f "${sbt_bin_dir}/sbtn-${arch}-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-pc-linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then

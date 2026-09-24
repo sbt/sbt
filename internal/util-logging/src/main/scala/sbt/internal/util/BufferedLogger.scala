@@ -12,7 +12,7 @@ import sbt.util.*
 import scala.collection.mutable.ListBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
-object BufferedAppender {
+object BufferedAppender:
   def generateName: String =
     "buffered-" + generateId.incrementAndGet
 
@@ -23,7 +23,6 @@ object BufferedAppender {
 
   def apply(name: String, delegate: Appender): BufferedAppender =
     new BufferedAppender(name, delegate)
-}
 
 /**
  * An appender that can buffer the logging done on it and then can flush the buffer to the delegate
@@ -31,7 +30,7 @@ object BufferedAppender {
  * the buffer to the backing appender. The logging level set at the time a message is originally
  * logged is used, not the level at the time 'play' is called.
  */
-class BufferedAppender(override val name: String, delegate: Appender) extends Appender {
+class BufferedAppender(override val name: String, delegate: Appender) extends Appender:
   override def close(): Unit = ()
   override private[sbt] def properties: ConsoleAppender.Properties = delegate.properties
   override private[sbt] def suppressedMessage: SuppressedTraceContext => Option[String] =
@@ -41,40 +40,37 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
     new java.util.Vector[(Level.Value, Option[String], Option[ObjectEvent[?]])]
   private var recording = false
 
-  override def appendLog(level: Level.Value, message: => String): Unit = {
-    if (recording) Util.ignoreResult(buffer.add((level, Some(message), None)))
+  override def appendLog(level: Level.Value, message: => String): Unit =
+    if recording then Util.ignoreResult(buffer.add((level, Some(message), None)))
     else delegate.appendLog(level, message)
-  }
   override private[sbt] def appendObjectEvent[T](
       level: Level.Value,
       message: => ObjectEvent[T]
-  ): Unit = {
-    if (recording) Util.ignoreResult(buffer.add(((level, None, Some(message)))))
+  ): Unit =
+    if recording then Util.ignoreResult(buffer.add(((level, None, Some(message)))))
     else delegate.appendObjectEvent(level, message)
-  }
 
   /** Enables buffering. */
   def record() = synchronized { recording = true }
-  def buffer[T](f: => T): T = {
+  def buffer[T](f: => T): T =
     record()
-    try {
+    try
       f
-    } finally {
+    finally
       stopQuietly()
-    }
-  }
-  def bufferQuietly[T](f: => T): T = {
+  def bufferQuietly[T](f: => T): T =
     record()
-    try {
+    try
       val result = f
       clearBuffer()
       result
-    } catch { case e: Throwable => stopQuietly(); throw e }
-  }
+    catch
+      case e: Throwable =>
+        stopQuietly()
+        throw e
   def stopQuietly() = synchronized {
-    try {
-      stopBuffer()
-    } catch { case _: Exception => () }
+    try stopBuffer()
+    catch case _: Exception => ()
   }
 
   /**
@@ -95,8 +91,7 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
 
   /** Plays buffered events and disables buffering. */
   def stopBuffer(): Unit = synchronized { play(); clearBuffer() }
-
-}
+end BufferedAppender
 
 /**
  * A logger that can buffer the logging done on it and then can flush the buffer to the delegate
@@ -106,32 +101,31 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
  *
  * This class assumes that it is the only client of the delegate logger.
  */
-class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
+class BufferedLogger(delegate: AbstractLogger) extends BasicLogger:
   private val buffer = new ListBuffer[LogEvent]
   private var recording = false
 
   /** Enables buffering. */
   def record() = synchronized { recording = true }
-  def buffer[T](f: => T): T = {
+  def buffer[T](f: => T): T =
     record()
-    try {
+    try
       f
-    } finally {
+    finally
       stopQuietly()
-    }
-  }
-  def bufferQuietly[T](f: => T): T = {
+  def bufferQuietly[T](f: => T): T =
     record()
-    try {
+    try
       val result = f
       clear()
       result
-    } catch { case e: Throwable => stopQuietly(); throw e }
-  }
+    catch
+      case e: Throwable =>
+        stopQuietly()
+        throw e
   def stopQuietly() = synchronized {
-    try {
-      stop()
-    } catch { case _: Exception => () }
+    try stop()
+    catch case _: Exception => ()
   }
 
   /**
@@ -148,28 +142,22 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
 
   override def setLevel(newLevel: Level.Value): Unit = synchronized {
     super.setLevel(newLevel)
-    if (recording)
-      buffer += new SetLevel(newLevel)
-    else
-      delegate.setLevel(newLevel)
+    if recording then buffer += new SetLevel(newLevel)
+    else delegate.setLevel(newLevel)
     ()
   }
 
   override def setSuccessEnabled(flag: Boolean): Unit = synchronized {
     super.setSuccessEnabled(flag)
-    if (recording)
-      buffer += new SetSuccess(flag)
-    else
-      delegate.setSuccessEnabled(flag)
+    if recording then buffer += new SetSuccess(flag)
+    else delegate.setSuccessEnabled(flag)
     ()
   }
 
   override def setTrace(level: Int): Unit = synchronized {
     super.setTrace(level)
-    if (recording)
-      buffer += new SetTrace(level)
-    else
-      delegate.setTrace(level)
+    if recording then buffer += new SetTrace(level)
+    else delegate.setTrace(level)
     ()
   }
 
@@ -182,10 +170,8 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
     doBufferable(level, new Log(level, message), _.log(level, message))
 
   def logAll(events: Seq[LogEvent]): Unit = synchronized {
-    if (recording)
-      buffer ++= events
-    else
-      delegate.logAll(events)
+    if recording then buffer ++= events
+    else delegate.logAll(events)
     ()
   }
 
@@ -204,12 +190,9 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       appendIfBuffered: => LogEvent,
       doUnbuffered: AbstractLogger => Unit
   ): Unit = synchronized {
-    if (condition) {
-      if (recording)
-        buffer += appendIfBuffered
-      else
-        doUnbuffered(delegate)
-    }
+    if condition then
+      if recording then buffer += appendIfBuffered
+      else doUnbuffered(delegate)
     ()
   }
-}
+end BufferedLogger

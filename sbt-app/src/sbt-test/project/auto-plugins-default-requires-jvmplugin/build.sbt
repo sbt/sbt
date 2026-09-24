@@ -5,7 +5,7 @@ val test123 = project.in(file(".")).enablePlugins(TestP).settings(
   }
 )
 
-TaskKey[Unit]("check") := {
+TaskKey[Unit]("check") := Def.uncached {
   val last = IO.read(BuiltinCommands.lastLogFile(state.value).get)
   def assertContains(expectedString: String) =
     if (!last.contains(expectedString)) sys error s"Expected string $expectedString to be present"

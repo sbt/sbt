@@ -1,0 +1,24 @@
+$ copy-file changes/good.sbt build.sbt
+> show version
+
+# class
+$ copy-file changes/bad1.sbt build.sbt
+-> reload
+$ copy-file changes/good.sbt build.sbt
+> checkGlobalLogContains "Defining types in *.sbt file is not supported"
+> exportFailedSessionLog
+$ must-mirror class.log.check target/out/jvm/u/hello/failed-session.log
+
+# case class
+$ copy-file changes/bad2.sbt build.sbt
+-> reload
+$ copy-file changes/good.sbt build.sbt
+> exportFailedSessionLog
+$ must-mirror caseclass.log.check target/out/jvm/u/hello/failed-session.log
+
+# enum
+$ copy-file changes/bad3.sbt build.sbt
+-> reload
+$ copy-file changes/good.sbt build.sbt
+> exportFailedSessionLog
+$ must-mirror enum.log.check target/out/jvm/u/hello/failed-session.log

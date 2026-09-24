@@ -10,11 +10,11 @@ package sbt
 package internal
 
 import sbt.librarymanagement.*
-import scala.xml.{ Elem, Node, NodeSeq }
+import sbt.internal.librarymanagement.mavenint.PomExtraAttributeKeys
+import scala.xml.{ Elem, Node, NodeSeq, PrefixedAttribute, Text }
 
 /**
  * Generates Maven POM XML from sbt's own types, without requiring Ivy.
- * This is used by the default publisher when the sbt-ivy plugin is not loaded.
  */
 private[sbt] object PomGenerator:
 
@@ -53,22 +53,18 @@ private[sbt] object PomGenerator:
       {info.map(makeScmInfo).getOrElse(NodeSeq.Empty)}
       {info.map(makeDeveloperInfo).getOrElse(NodeSeq.Empty)}
       {info.map(makeLicenses).getOrElse(NodeSeq.Empty)}
-      {makeProperties(crossMid)}
+      {makeProperties(crossMid, regularDeps)}
       {extra}
       {makeRepositories(resolvers, filterRepositories, allRepositories)}
       {makeDependencyManagement(bomDeps)}
       {makeDependencies(regularDeps)}
     </project>
+  end makePom
 
   private def crossVersionDep(dep: ModuleID, scalaInfo: Option[ScalaModuleInfo]): ModuleID =
-    // Platform suffix before cross suffix, matching the coordinate (sbt/sbt#9117).
-    val base = dep.crossVersion match
-      case _: Disabled => dep.name
-      case _           =>
-        CrossVersion.addPlatformSuffix(dep.name, dep.platformOpt, scalaInfo.flatMap(_.platform))
     val crossFn = CrossVersion(dep, scalaInfo)
     val crossDep = crossFn match
-      case Some(fn) => dep.withName(fn(base)).withCrossVersion(CrossVersion.disabled)
+      case Some(fn) => dep.withName(fn(dep.name)).withCrossVersion(CrossVersion.disabled)
       case None     => dep
     if crossDep.exclusions.isEmpty || scalaInfo.isEmpty then crossDep
     else
@@ -171,11 +167,14 @@ private[sbt] object PomGenerator:
       </licenses>
     else NodeSeq.Empty
 
-  private def makeProperties(mid: ModuleID): NodeSeq =
-    val props = mid.extraAttributes
-      .collect:
-        case (k, v) if k.startsWith("e:info.") => (k.stripPrefix("e:"), v)
-        case (k, v) if k.startsWith("info.")   => (k, v)
+  private def makeProperties(mid: ModuleID, deps: Vector[ModuleID]): NodeSeq =
+    val moduleProperties = mid.extraAttributes.map: (key, value) =>
+      key.stripPrefix("e:") -> value
+    val dependencyAttributes = deps.flatMap(encodeDependencyAttributes)
+    val props =
+      if dependencyAttributes.isEmpty then moduleProperties
+      else
+        moduleProperties.updated(ExtraDependencyAttributesKey, dependencyAttributes.mkString("\n"))
     if props.isEmpty then NodeSeq.Empty
     else
       <properties>
@@ -183,9 +182,39 @@ private[sbt] object PomGenerator:
         props.toSeq
           .sortBy(_._1)
           .map: (k, v) =>
-            Elem(null, k, scala.xml.Null, scala.xml.TopScope, false, scala.xml.Text(v))
+            val attributes =
+              if k == ExtraDependencyAttributesKey then XmlSpacePreserve else scala.xml.Null
+            Elem(null, k, attributes, scala.xml.TopScope, false, Text(v))
       }
       </properties>
+
+  private val ExtraDependencyAttributesKey = "extraDependencyAttributes"
+  private val EncodeSeparator = ":#@#:"
+  private val NullEncode = "@#:NULL:#@"
+  private val XmlSpacePreserve =
+    new PrefixedAttribute("xml", "space", "preserve", scala.xml.Null)
+
+  private def encodeDependencyAttributes(dep: ModuleID): Option[String] =
+    val extra = dep.extraAttributes
+    val sbtVersion = extra.get(s"e:${PomExtraAttributeKeys.SbtVersionKey}")
+    val scalaVersion = extra.get(s"e:${PomExtraAttributeKeys.ScalaVersionKey}")
+    if sbtVersion.isEmpty && scalaVersion.isEmpty then None
+    else
+      val attributes =
+        sbtVersion.map(s"e:${PomExtraAttributeKeys.SbtVersionKey}" -> _).toVector ++
+          Vector("module" -> dep.name) ++
+          scalaVersion.map(s"e:${PomExtraAttributeKeys.ScalaVersionKey}" -> _).toVector ++
+          Vector(
+            "organisation" -> dep.organization,
+            "branch" -> dep.branchName.orNull,
+            "revision" -> convertVersion(dep.revision),
+          )
+      Some(attributes.map(encodeAttribute).mkString)
+
+  private def encodeAttribute(attribute: (String, String)): String =
+    val (key, rawValue) = attribute
+    val value = if rawValue == null then NullEncode else rawValue
+    s"+$key$EncodeSeparator+$value$EncodeSeparator"
 
   private def makeRepositories(
       resolvers: Vector[Resolver],
@@ -264,13 +293,12 @@ private[sbt] object PomGenerator:
       val base = version.stripSuffix("+").stripSuffix(".")
       val parts = base.split('.')
       if parts.nonEmpty then
-        parts.last.toIntOption.map(_ + 1) match {
+        parts.last.toIntOption.map(_ + 1) match
           case Some(last) =>
             val upper = (parts.init :+ last.toString).mkString(".")
             s"[$base,$upper)"
           case None =>
             version
-        }
       else version
     else if version == "latest.integration" || version == "latest.release" then ""
     else version

@@ -15,20 +15,20 @@ import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
 
 /** Runs the thin client against a fake sbt script; exits with the client's exit code. */
-object ClientBootTimeoutMain {
-  def main(args: Array[String]): Unit = {
+object ClientBootTimeoutMain:
+  def main(args: Array[String]): Unit =
     val Array(base, script) = args
     val code = NetworkClient.client(
       new File(base),
       Array(s"--sbt-script=$script", "willSucceed"),
-      new InputStream { override def read(): Int = -1 },
+      new InputStream:
+        override def read(): Int = -1
+      ,
       new PrintStream(OutputStream.nullOutputStream),
       new PrintStream(System.err, true),
       false
     )
     System.exit(code)
-  }
-}
 
 /**
  * A forked server that never writes its portfile must not hang the client forever:
@@ -36,15 +36,14 @@ object ClientBootTimeoutMain {
  * forked JVM because the timeout is configured via the SBT_CLIENT_CONNECT_TIMEOUT
  * environment variable, which cannot be set in-process.
  */
-class ClientBootTimeoutTest extends AbstractServerTest {
+class ClientBootTimeoutTest extends AbstractServerTest:
   override val testDirectory: String = "client"
 
-  private def fakeServer(script: String): String = {
+  private def fakeServer(script: String): String =
     val f = Files.createTempFile("fake-sbt", ".sh")
     Files.writeString(f, script)
     f.toFile.setExecutable(true)
     f.toString
-  }
 
   test("a forked server that never starts fails within the connect timeout") {
     val base = Files.createTempDirectory("connect-timeout-project").toFile
@@ -54,7 +53,8 @@ class ClientBootTimeoutTest extends AbstractServerTest {
     )
     val script = fakeServer("#!/usr/bin/env bash\necho fake-server-wedged >&2\nsleep 600\n")
     val errFile = Files.createTempFile("client-err", ".log")
-    val javaBin = Path.of(sys.props("java.home"), "bin", if (Util.isWindows) "java.exe" else "java")
+    val javaBin =
+      Path.of(sys.props("java.home"), "bin", if Util.isWindows then "java.exe" else "java")
     val testClasses = Path.of(getClass.getProtectionDomain.getCodeSource.getLocation.toURI)
     val pb = new ProcessBuilder(
       javaBin.toString,
@@ -70,7 +70,7 @@ class ClientBootTimeoutTest extends AbstractServerTest {
     val p = pb.start()
     val finished = p.waitFor(60, TimeUnit.SECONDS)
     val elapsed = (System.nanoTime() - started) / 1000000000L
-    if (!finished) p.destroyForcibly()
+    if !finished then p.destroyForcibly()
     assert(finished, "client is still hanging after 60 seconds")
     assert(p.exitValue != 0, s"expected failure, got ${p.exitValue}")
     assert(elapsed < 45, s"connect wait was not bounded by the timeout (${elapsed}s)")
@@ -81,4 +81,4 @@ class ClientBootTimeoutTest extends AbstractServerTest {
     )
     assert(errText.contains("fake-server-wedged"), s"server stderr not forwarded: $errText")
   }
-}
+end ClientBootTimeoutTest

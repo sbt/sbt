@@ -1,0 +1,37 @@
+> test
+> test
+$ exists run-1
+$ absent run-2
+
+> test --cache_test_result=false
+> test --cache_test_result=false
+$ exists run-2
+$ exists run-3
+
+$ copy-file changes/CacheTest.scala src/test/scala/CacheTest.scala
+> disableTestResultCache
+> test --cache_test_result=true
+> test --cache_test_result=true
+> enableTestResultCache
+> test
+$ exists run-4
+$ absent run-5
+
+$ copy-file changes/CacheTestAgain.scala src/test/scala/CacheTest.scala
+> disableTestResultCache
+> test
+> test
+> enableTestResultCache
+$ exists run-5
+$ exists run-6
+
+> test
+> test
+$ exists run-7
+$ absent run-8
+
+> replaceTestFilter
+> test
+> test
+$ exists run-8
+$ exists run-9

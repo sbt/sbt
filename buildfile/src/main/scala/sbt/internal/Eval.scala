@@ -5,8 +5,9 @@ import dotty.tools.dotc.ast
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Contexts.{ atPhase, Context }
-import dotty.tools.dotc.core.{ Flags, NameKinds, Names, Phases, Symbols, Types }
+import dotty.tools.dotc.core.{ Flags, NameKinds, Names, Phases, Symbols, Types, Constants }
 import dotty.tools.dotc.core.Periods.Period
+import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.util.SourceFile
@@ -107,8 +108,9 @@ class Eval(
         val header =
           imports.strings.mkString("\n") +
             s"""
-               |object $moduleName {
-               |  def $WrapValName${returnType} = {""".stripMargin
+               |@scala.annotation.nowarn("name=IllegalIdentifier")
+               |object `$moduleName` {
+               |  def `$WrapValName`${returnType} = {""".stripMargin
         val contents = s"""$header
           |$expression
           |  }
@@ -170,7 +172,8 @@ class Eval(
         val header =
           imports.strings.mkString("\n") +
             s"""
-               |object $moduleName {""".stripMargin
+               |@scala.annotation.nowarn("name=IllegalIdentifier")
+               |object `$moduleName` {""".stripMargin
         val contents =
           s"""$header
           |${definitions.map(_._1).mkString("\n")}
@@ -252,6 +255,7 @@ class Eval(
       generated = generatedFiles,
       enclosingModule = moduleName,
     )
+  end evalCommon
 
   // location of the cached type or definition information
   private def cacheFile(base: Path, moduleName: String): Path =
@@ -267,14 +271,62 @@ class Eval(
     val run = driver.compiler.newRun
     val source = ev.makeSource(moduleName)
     run.compileSources(source :: Nil)
-    checkError("an error in expression")
     val unit = run.units.head
+    val traverser = new tpd.TreeTraverser:
+      override def traverse(tree: tpd.Tree)(using Context): Unit =
+        tree match
+          case x: tpd.TypeDef
+              if x.name.mangledString == s"${moduleName}${NameTransformer.MODULE_SUFFIX_STRING}" =>
+            x.rhs match
+              case template: tpd.Template =>
+                template.body.foreach {
+                  case defdef: tpd.DefDef if defdef.name.mangledString == WrapValName =>
+                    PartialFunction
+                      .condOpt(defdef.rhs) {
+                        case tpd.Block(
+                              (typeDef: tpd.TypeDef) :: Nil,
+                              ast.untpd.Literal(Constants.Constant(()))
+                            ) =>
+                          // class
+                          typeDef.sourcePos
+                        case tpd.Block(
+                              (valDef: tpd.ValDef) :: (typeDef: tpd.TypeDef) :: Nil,
+                              ast.untpd.Literal(Constants.Constant(()))
+                            ) if valDef.tpt.tpe =:= typeDef.tpe =>
+                          // object
+                          typeDef.sourcePos
+                        case tpd.Block(
+                              (typeDef1: tpd.TypeDef) :: (valDef: tpd.ValDef) :: (typeDef2: tpd.TypeDef) :: Nil,
+                              ast.untpd.Literal(Constants.Constant(()))
+                            )
+                            if (valDef.tpt.tpe =:= typeDef2.tpe) && (s"${typeDef1.name.mangledString}${NameTransformer.MODULE_SUFFIX_STRING}" ==
+                              typeDef2.name.mangledString) =>
+                          // enum, case class
+                          typeDef1.sourcePos
+                      }
+                      .foreach { pos =>
+                        reporter.report(
+                          Diagnostic.Error(
+                            "Defining types in *.sbt file is not supported",
+                            pos
+                          )
+                        )
+                      }
+                  case _ =>
+                }
+              case _ =>
+          case _: tpd.PackageDef =>
+            traverseChildren(tree)
+          case _ =>
+    traverser.traverse(unit.tpdTree)
+    checkError("an error in expression")
     val extra: A = ev.extract(run, unit)
     backingDir.foreach { backing =>
       ev.write(extra, cacheFile(backing, moduleName))
     }
     val loader = (parent: ClassLoader) => AbstractFileClassLoader(outputDir, parent)
     (extra, loader)
+  end compileAndLoad
 
   private final class EvalIntermediate[A](
       val extra: A,
@@ -480,11 +532,10 @@ final class EvalDefinitions(
     val enclosingModule: String,
     val valNames: Seq[String]
 ):
-  def values(parent: ClassLoader): Seq[Any] = {
+  def values(parent: ClassLoader): Seq[Any] =
     val module = Eval.getModule(enclosingModule, loader(parent))
     for n <- valNames
     yield module.getClass.getMethod(n).invoke(module)
-  }
 end EvalDefinitions
 
 final class EvalException(msg: String) extends RuntimeException(msg)

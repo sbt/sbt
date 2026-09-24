@@ -10,7 +10,7 @@ package sbt
 package internal
 package langserver
 
-object MessageType {
+object MessageType:
 
   /** An error message. */
   val Error = 1L
@@ -24,12 +24,9 @@ object MessageType {
   /** A log message. */
   val Log = 4L
 
-  def fromLevelString(level: String): Long = {
-    level.toLowerCase match {
+  def fromLevelString(level: String): Long =
+    level.toLowerCase match
       case "info"  => Info
       case "warn"  => Warning
       case "error" => Error
       case _       => Log
-    }
-  }
-}

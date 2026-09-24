@@ -19,7 +19,7 @@ import sbt.internal.util.RMap
  * callback will be called before the `initial` callback from ExecuteProgress, and the
  * `afterCommand` callback will be called after the `stop` callback from ExecuteProgress.
  */
-trait ExecuteProgress2 extends ExecuteProgress {
+trait ExecuteProgress2 extends ExecuteProgress:
 
   /**
    * Called before a command starts processing. The command has not yet been parsed.
@@ -39,9 +39,8 @@ trait ExecuteProgress2 extends ExecuteProgress {
    *               Right with the new state after command execution.
    */
   def afterCommand(cmd: String, result: Either[Throwable, State]): Unit
-}
 
-class ExecuteProgressAdapter(ep: ExecuteProgress) extends ExecuteProgress2 {
+class ExecuteProgressAdapter(ep: ExecuteProgress) extends ExecuteProgress2:
   override def beforeCommand(cmd: String, state: State): Unit = {}
   override def afterCommand(cmd: String, result: Either[Throwable, State]): Unit = {}
   override def initial(): Unit = ep.initial()
@@ -59,10 +58,9 @@ class ExecuteProgressAdapter(ep: ExecuteProgress) extends ExecuteProgress2 {
   override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
     ep.afterAllCompleted(results)
   override def stop(): Unit = ep.stop()
-}
 
-object ExecuteProgress2 {
-  def aggregate(xs: Seq[ExecuteProgress2]): ExecuteProgress2 = new ExecuteProgress2 {
+object ExecuteProgress2:
+  def aggregate(xs: Seq[ExecuteProgress2]): ExecuteProgress2 = new ExecuteProgress2:
     override def beforeCommand(cmd: String, state: State): Unit =
       xs.foreach(_.beforeCommand(cmd, state))
     override def afterCommand(cmd: String, result: Either[Throwable, State]): Unit =
@@ -82,5 +80,4 @@ object ExecuteProgress2 {
     override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
       xs.foreach(_.afterAllCompleted(results))
     override def stop(): Unit = xs.foreach(_.stop())
-  }
-}
+end ExecuteProgress2

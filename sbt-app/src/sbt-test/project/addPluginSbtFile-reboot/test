@@ -1,0 +1,43 @@
+# Regression test for sbt/sbt#4303: files added with --addPluginSbtFile must survive reboot.
+
+# Neither plugin is on the meta-build classpath to begin with, and nothing is registered.
+> checkPluginsAbsent BuildInfoPlugin ScalaJSPlugin ScalaNativePlugin
+> checkFiles
+
+# Add the first extra plugin sbt file and check that its plugin is picked up.
+> early(addPluginSbtFile=temp/extraA.sbt); reload
+> checkPlugins BuildInfoPlugin
+> checkFiles temp/extraA.sbt
+
+# The first reboot must not lose it.
+> reboot
+> checkPlugins BuildInfoPlugin
+> checkFiles temp/extraA.sbt
+
+# Add a second extra plugin sbt file on top of the first one.
+> early(addPluginSbtFile=temp/extraB.sbt); reload
+> checkPlugins BuildInfoPlugin ScalaJSPlugin
+> checkFiles temp/extraA.sbt temp/extraB.sbt
+
+# The second reboot must keep both of them, and must not add either of them twice.
+> reboot
+> checkPlugins BuildInfoPlugin ScalaJSPlugin
+> checkFiles temp/extraA.sbt temp/extraB.sbt
+
+# A third file, this one in a directory whose name contains spaces. The path has to be quoted
+# for sbt to parse it as one argument, and the reboot has to keep it quoted to replay it.
+> addPluginSbtFile "temp with spaces/extraC.sbt"
+> reload
+> checkPlugins BuildInfoPlugin ScalaJSPlugin ScalaNativePlugin
+> checkFiles temp/extraA.sbt temp/extraB.sbt "temp with spaces/extraC.sbt"
+
+# The third reboot must keep all three, in order, with the spaced path intact.
+> reboot
+> checkPlugins BuildInfoPlugin ScalaJSPlugin ScalaNativePlugin
+> checkFiles temp/extraA.sbt temp/extraB.sbt "temp with spaces/extraC.sbt"
+
+# Drop the extra files, because the sbt session can be shared with the other scripted tests.
+> clearExtraPluginSbtFiles
+> reload
+> checkPluginsAbsent BuildInfoPlugin ScalaJSPlugin ScalaNativePlugin
+> checkFiles

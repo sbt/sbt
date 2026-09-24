@@ -16,7 +16,7 @@ import sbt.ProjectExtra.*
 /**
  * Extends State with setting-level knowledge.
  */
-trait UpperStateOps extends Any {
+trait UpperStateOps extends Any:
 
   /**
    * ProjectRef to the current project of the state session that can be change using
@@ -93,6 +93,7 @@ trait UpperStateOps extends Any {
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
    *
+   * Warns and runs nothing if the key selects no tasks.
    * To avoid race conditions, this should NOT be called from a task.
    */
   def unsafeRunAggregated[A](key: TaskKey[A]): State
@@ -109,12 +110,12 @@ trait UpperStateOps extends Any {
   def respondEvent[A: JsonFormat](event: A): Unit
   def respondError(code: Long, message: String): Unit
   def notifyEvent[A: JsonFormat](method: String, params: A): Unit
-}
+end UpperStateOps
 
-object UpperStateOps {
+object UpperStateOps:
   lazy val exchange = StandardMain.exchange
 
-  implicit class UpperStateOpsImpl(val s: State) extends AnyVal with UpperStateOps {
+  implicit class UpperStateOpsImpl(val s: State) extends AnyVal with UpperStateOps:
     def extract: Extracted = Project.extract(s)
 
     def currentRef = extract.currentRef
@@ -149,14 +150,11 @@ object UpperStateOps {
     def appendWithoutSession(settings: Seq[Setting[?]], state: State): State =
       extract.appendWithoutSession(settings, s)
 
-    def respondEvent[A: JsonFormat](event: A): Unit = {
+    def respondEvent[A: JsonFormat](event: A): Unit =
       exchange.respondEvent(event, s.currentCommand.flatMap(_.execId), s.source)
-    }
-    def respondError(code: Long, message: String): Unit = {
+    def respondError(code: Long, message: String): Unit =
       exchange.respondError(code, message, s.currentCommand.flatMap(_.execId), s.source)
-    }
-    def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
+    def notifyEvent[A: JsonFormat](method: String, params: A): Unit =
       exchange.notifyEvent(method, params)
-    }
-  }
-}
+  end UpperStateOpsImpl
+end UpperStateOps

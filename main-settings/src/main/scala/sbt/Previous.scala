@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
  * Reads the previous value of tasks on-demand.  The read values are cached so that they are only read once per task execution.
  * `referenced` provides the `Format` to use for each key.
  */
-private[sbt] final class Previous(streams: Streams, referenced: IMap[Previous.Key, Referenced]) {
+private[sbt] final class Previous(streams: Streams, referenced: IMap[Previous.Key, Referenced]):
   private var map = IMap.empty[Previous.Key, ReferencedValue]
   // We can't use mapValues to transform the map because mapValues is lazy and evaluates the
   // transformation function every time a value is fetched from the map, defeating the entire
@@ -31,15 +31,13 @@ private[sbt] final class Previous(streams: Streams, referenced: IMap[Previous.Ke
   for case referenced.TPair(k, v) <- referenced.toTypedSeq do
     map = map.put(k, new ReferencedValue(v))
 
-  private final class ReferencedValue[T](referenced: Referenced[T]) {
+  private final class ReferencedValue[T](referenced: Referenced[T]):
     lazy val previousValue: Option[T] = referenced.read(streams)
-  }
 
   /** Used by the .previous runtime implementation to get the previous value for task `key`. */
   private def get[T](key: Key[T]): Option[T] =
     map.get(key).flatMap(_.previousValue)
-}
-object Previous {
+object Previous:
   import sjsonnew.BasicJsonProtocol.StringJsonFormat
   private[sbt] type ScopedTaskKey[T] = ScopedKey[Task[T]]
   private type AnyTaskKey = ScopedTaskKey[Any]
@@ -50,7 +48,7 @@ object Previous {
   private[sbt] final val DependencyDirectory = "previous-dependencies"
 
   /** Represents a reference task.previous */
-  private[sbt] final class Referenced[T](val key: Key[T], val format: JsonFormat[T]) {
+  private[sbt] final class Referenced[T](val key: Key[T], val format: JsonFormat[T]):
     def this(task: ScopedTaskKey[T], format: JsonFormat[T]) = this(Key(task, task), format)
 
     lazy val stamped: JsonFormat[T] =
@@ -59,8 +57,7 @@ object Previous {
     def setTask(newTask: ScopedKey[Task[T]]) = new Referenced(newTask, format)
     private[sbt] def read(streams: Streams): Option[T] =
       try Option(streams(key.cacheKey).cacheStoreFactory.make(StreamName).read[T]()(using stamped))
-      catch { case NonFatal(_) => None }
-  }
+      catch case NonFatal(_) => None
 
   private[sbt] val references = SettingKey[References](
     "previous-references",
@@ -73,30 +70,24 @@ object Previous {
     KeyRanks.Invisible
   )
 
-  private[sbt] class Key[T](val task: ScopedKey[Task[T]], val enclosing: AnyTaskKey) {
-    override def equals(o: Any): Boolean = o match {
+  private[sbt] class Key[T](val task: ScopedKey[Task[T]], val enclosing: AnyTaskKey):
+    override def equals(o: Any): Boolean = o match
       case that: Key[?] => this.task == that.task && this.enclosing == that.enclosing
       case _            => false
-    }
     override def hashCode(): Int = (task.## * 31) ^ enclosing.##
-    def cacheKey: AnyTaskKey = {
-      if (task == enclosing) task.asInstanceOf[ScopedKey[Task[Any]]]
-      else {
-        val am = enclosing.scope.extra match {
+    def cacheKey: AnyTaskKey =
+      if task == enclosing then task.asInstanceOf[ScopedKey[Task[Any]]]
+      else
+        val am = enclosing.scope.extra match
           case Select(a) => a.put(scopedKeyAttribute, task.asInstanceOf[AnyTaskKey])
           case _ => AttributeMap.empty.put(scopedKeyAttribute, task.asInstanceOf[AnyTaskKey])
-        }
         Def.ScopedKey(enclosing.scope.copy(extra = Select(am)), enclosing.key)
-      }
-    }
-  }
-  private[sbt] object Key {
+  private[sbt] object Key:
     def apply[T, U](key: ScopedKey[Task[T]], enclosing: ScopedKey[Task[U]]): Key[T] =
       new Key(key, enclosing.asInstanceOf[AnyTaskKey])
-  }
 
   /** Records references to previous task value. This should be completely populated after settings finish loading. */
-  private[sbt] final class References {
+  private[sbt] final class References:
     private var map = IMap.empty[Key, Referenced]
 
     // TODO: this arbitrarily chooses a JsonFormat.
@@ -105,14 +96,13 @@ object Previous {
       map = map.put(key, new Referenced(key, format))
     }
     def getReferences: IMap[Key, Referenced] = synchronized { map }
-  }
 
   /** Persists values of tasks t where there is some task referencing it via t.previous. */
   private[sbt] def complete(
       referenced: References,
       results: RMap[TaskId, Result],
       streams: Streams
-  ): Unit = {
+  ): Unit =
     val map = referenced.getReferences
     val reverse = map.keys.groupBy(_.task)
 
@@ -129,17 +119,17 @@ object Previous {
     // the previous value of another task. For each reference we find, we check if the task has
     // been successfully evaluated. If so, we write it to the appropriate previous cache for
     // the completed task.
-    for {
+    for
       (k, v) <- successfulTaskResults
       keys <- reverse.get(k)
       key <- keys if successfulTaskResults.contains(key.enclosing)
       ref <- map.get(key)
-    } {
+    do
       val out = streams(key.cacheKey).cacheStoreFactory.make(StreamName)
       try out.write(v)(using ref.stamped)
-      catch { case NonFatal(_) => }
-    }
-  }
+      catch
+        case NonFatal(_) =>
+  end complete
   private[sbt] val scopedKeyAttribute = AttributeKey[AnyTaskKey](
     "previous-scoped-key-attribute",
     "Specifies a scoped key for a task on which .previous is called. Used to " +
@@ -147,7 +137,7 @@ object Previous {
   )
 
   /** Public as a macro implementation detail.  Do not call directly. */
-  def runtime[T](skey: TaskKey[T])(using format: JsonFormat[T]): Initialize[Task[Option[T]]] = {
+  def runtime[T](skey: TaskKey[T])(using format: JsonFormat[T]): Initialize[Task[Option[T]]] =
     type Inputs = (Task[Previous], ScopedKey[Task[T]], References)
     val inputs = (Global / cache, Def.validated(skey, selfRefOk = true), Global / references)
     Def.app[Inputs, Task[Option[T]]](inputs) { (prevTask, resolved, refs) =>
@@ -155,12 +145,11 @@ object Previous {
       refs.recordReference(key, format) // always evaluated on project load
       prevTask.map(_.get(key)) // evaluated if this task is evaluated
     }
-  }
 
   /** Public as a macro implementation detail.  Do not call directly. */
   def runtimeInEnclosingTask[T](skey: TaskKey[T])(using
       format: JsonFormat[T]
-  ): Initialize[Task[Option[T]]] = {
+  ): Initialize[Task[Option[T]]] =
     type Inputs = (Task[Previous], ScopedKey[Task[T]], References, ScopedKey[?])
     val inputs = (
       Global / cache,
@@ -173,5 +162,4 @@ object Previous {
       refs.recordReference(key, format) // always evaluated on project load
       prevTask.map(_.get(key))
     }
-  }
-}
+end Previous

@@ -12,7 +12,7 @@ import scala.concurrent.duration.*
 import sbt.internal.langserver.SbtExecParams
 import sbt.internal.langserver.codec.JsonProtocol.given
 
-class ClientSubscriptionTest extends AbstractServerTest {
+class ClientSubscriptionTest extends AbstractServerTest:
   override val testDirectory: String = "handshake"
 
   test("subscribe-to-all (default) client receives broadcast build/logMessage when command runs") {
@@ -20,9 +20,8 @@ class ClientSubscriptionTest extends AbstractServerTest {
     svr.session.sendJsonRpc(id, "sbt/exec", SbtExecParams("show name")).get
     svr.session.waitForNotificationMsg(10.seconds)(_.method == "build/logMessage").get
   }
-}
 
-class ClientNoSubscriptionTest extends AbstractServerTest {
+class ClientNoSubscriptionTest extends AbstractServerTest:
   override val testDirectory: String = "handshake"
   override def subscribeToAllForTest: Boolean = false
 
@@ -31,4 +30,3 @@ class ClientNoSubscriptionTest extends AbstractServerTest {
     svr.session.sendJsonRpc(id, "sbt/exec", SbtExecParams("show name")).get
     svr.session.waitForNotificationMsg(10.seconds)(_.method == "build/logMessage").get
   }
-}

@@ -15,7 +15,7 @@ import java.io.File
 import scala.io.Source
 import sbt.internal.inc.PlainVirtualFileConverter
 
-object NewFormatSpec extends AbstractSpec {
+object NewFormatSpec extends AbstractSpec:
   val converter = PlainVirtualFileConverter.converter
   given splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 
@@ -36,4 +36,4 @@ object NewFormatSpec extends AbstractSpec {
       )
     }
   }
-}
+end NewFormatSpec

@@ -1,6 +1,6 @@
 import sbt.internal.util.CacheEventSummary
 
-scalaVersion := "3.8.4"
+scalaVersion := "3.9.0"
 
 Global / remoteCache := Some(new java.net.URI("grpc://127.0.0.1:2024"))
 Global / localCacheDirectory := baseDirectory.value / "diskcache"

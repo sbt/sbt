@@ -56,16 +56,14 @@ private[internal] final class ReverseLookupClassLoaderHolder(
    *
    * @return a ClassLoader
    */
-  def checkout(fullClasspath: Seq[File], tempDir: File): ClassLoader = {
-    if (closed.get()) {
+  def checkout(fullClasspath: Seq[File], tempDir: File): ClassLoader =
+    if closed.get() then
       val msg = "Tried to extract class loader from closed ReverseLookupClassLoaderHolder. " +
         "Try running the `clearCaches` command and re-trying."
       throw new IllegalStateException(msg)
-    }
-    val reverseLookupClassLoader = cached.getAndSet(null) match {
+    val reverseLookupClassLoader = cached.getAndSet(null) match
       case null => new ReverseLookupClassLoader(urls, parent, closeThis, allowZombies, logger)
       case c    => c
-    }
     reverseLookupClassLoader.setup(tempDir)
     new BottomClassLoader(
       ReverseLookupClassLoaderHolder.this,
@@ -76,27 +74,20 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       allowZombies,
       logger
     )
-  }
 
-  private[sbt] def checkin(reverseLookupClassLoader: ReverseLookupClassLoader): Unit = {
-    if (reverseLookupClassLoader.isDirty) reverseLookupClassLoader.close()
-    else {
-      if (closed.get()) reverseLookupClassLoader.close()
-      else
-        cached.getAndSet(reverseLookupClassLoader) match {
-          case null => if (closed.get) reverseLookupClassLoader.close()
-          case c    => c.close()
-        }
-    }
-  }
+  private[sbt] def checkin(reverseLookupClassLoader: ReverseLookupClassLoader): Unit =
+    if reverseLookupClassLoader.isDirty then reverseLookupClassLoader.close()
+    else if closed.get() then reverseLookupClassLoader.close()
+    else
+      cached.getAndSet(reverseLookupClassLoader) match
+        case null => if closed.get then reverseLookupClassLoader.close()
+        case c    => c.close()
 
-  override def close(): Unit = {
+  override def close(): Unit =
     closed.set(true)
-    cached.get() match {
+    cached.get() match
       case null =>
       case c    => c.close()
-    }
-  }
 end ReverseLookupClassLoaderHolder
 
 /**
@@ -105,10 +96,9 @@ end ReverseLookupClassLoaderHolder
  * to be dynamically reset. The explicit mappings feature isn't used by sbt. The dynamic
  * temp directory use case is needed in some layered class loading scenarios.
  */
-private[internal] trait NativeLoader extends AutoCloseable {
+private[internal] trait NativeLoader extends AutoCloseable:
   private[internal] def setTempDir(file: File): Unit = {}
-}
-private[internal] class NativeLookup extends NativeLoader {
+private[internal] class NativeLookup extends NativeLoader:
   private val mapped = new ConcurrentHashMap[String, String]
   private val searchPaths =
     sys.props.get("java.library.path").map(IO.parseClasspath).getOrElse(Nil)
@@ -117,62 +107,52 @@ private[internal] class NativeLookup extends NativeLoader {
   override def close(): Unit = setTempDir(new File("/dev/null"))
 
   def findLibrary(name: String): String = synchronized {
-    mapped.get(name) match {
+    mapped.get(name) match
       case null =>
-        findLibrary0(name) match {
+        findLibrary0(name) match
           case null => null
           case n    =>
             mapped.put(name, n)
             NativeLibs.addNativeLib(n)
             n
-        }
       case n => n
-    }
   }
 
-  private[internal] override def setTempDir(file: File): Unit = {
+  private[internal] override def setTempDir(file: File): Unit =
     deleteNativeLibs()
     tempDir.set(file)
-  }
 
-  private def deleteNativeLibs(): Unit = {
+  private def deleteNativeLibs(): Unit =
     mapped.values().forEach(NativeLibs.delete)
     mapped.clear()
-  }
 
-  private def findLibrary0(name: String): String = {
+  private def findLibrary0(name: String): String =
     val mappedName = System.mapLibraryName(name)
     val search = searchPaths.to(LazyList).flatMap(relativeLibrary(mappedName))
     search.headOption.map(copy).orNull
-  }
 
-  private def relativeLibrary(mappedName: String)(base: File): Seq[File] = {
+  private def relativeLibrary(mappedName: String)(base: File): Seq[File] =
     val f = new File(base, mappedName)
-    if (f.isFile) f :: Nil else Nil
-  }
+    if f.isFile then f :: Nil else Nil
 
-  private def copy(f: File): String = {
+  private def copy(f: File): String =
     val target = new File(tempDir.get(), f.getName)
     IO.copyFile(f, target)
     target.getAbsolutePath
-  }
-}
+end NativeLookup
 
-private[internal] object NativeLibs {
+private[internal] object NativeLibs:
   private val nativeLibs = new java.util.HashSet[File].asScala
-  ShutdownHooks.add(() => {
+  ShutdownHooks.add(() =>
     nativeLibs.foreach(IO.delete)
     IO.deleteIfEmpty(nativeLibs.map(_.getParentFile).toSet)
     nativeLibs.clear()
-  })
-  def addNativeLib(lib: String): Unit = {
+  )
+  def addNativeLib(lib: String): Unit =
     nativeLibs.add(new File(lib))
     ()
-  }
-  def delete(lib: String): Unit = {
+  def delete(lib: String): Unit =
     val file = new File(lib)
     nativeLibs.remove(file)
     file.delete()
     ()
-  }
-}

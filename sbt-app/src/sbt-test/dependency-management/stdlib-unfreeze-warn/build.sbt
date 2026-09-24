@@ -14,7 +14,7 @@ lazy val b = project.dependsOn(a).settings(
   TaskKey[Unit]("checkLibs") := checkLibs("2.13.13", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
 
   // check the compiler uses the 2.13.12 library on its runtime classpath
-  TaskKey[Unit]("checkScala") := {
+  TaskKey[Unit]("checkScala") := Def.uncached {
     val i = scalaInstance.value
     i.libraryJars.filter(_.toString.contains("scala-library")).toList match {
       case List(l) => assert(l.toString.contains("2.13.12"), i.toString)

@@ -51,4 +51,6 @@ object TupleMapExtension:
             case _ => scala.runtime.TupleXXL.fromIterator(tuple.iterator.map(f(_)))
       // format: on
       res.asInstanceOf[Tuple.Map[Tup, F2]]
+    end transform
+  end extension
 end TupleMapExtension

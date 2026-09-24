@@ -76,7 +76,7 @@ private[sbt] object SbtParser:
    * when we know for a fact that the user-provided snippet doesn't
    * parse.
    */
-  private[sbt] class UniqueParserReporter extends Reporter {
+  private[sbt] class UniqueParserReporter extends Reporter:
 
     private val reporters = new ConcurrentHashMap[String, StoreReporter]()
 
@@ -91,47 +91,43 @@ private[sbt] object SbtParser:
       val reporter = getReporter(sourcePath)
       reporter.report(dia)
 
-    override def hasErrors: Boolean = {
+    override def hasErrors: Boolean =
       var result = false
-      reporters.forEachValue(100, r => if (r.hasErrors) result = true)
+      reporters.forEachValue(100, r => if r.hasErrors then result = true)
       result
-    }
 
     def createReporter(uniqueFileName: String): StoreReporter =
       val r = new StoreReporter(null)
       reporters.put(uniqueFileName, r)
       r
 
-    def getOrCreateReporter(uniqueFileName: String): StoreReporter = {
+    def getOrCreateReporter(uniqueFileName: String): StoreReporter =
       val r = reporters.get(uniqueFileName)
-      if (r == null) createReporter(uniqueFileName)
+      if r == null then createReporter(uniqueFileName)
       else r
-    }
 
-    private def getReporter(fileName: String) = {
+    private def getReporter(fileName: String) =
       val reporter = reporters.get(fileName)
-      if (reporter == null) {
+      if reporter == null then
         scalacGlobalInitReporter.getOrElse(
           sys.error(s"sbt forgot to initialize `scalacGlobalInitReporter`.")
         )
-      } else reporter
-    }
+      else reporter
 
     def throwParserErrorsIfAny(reporter: StoreReporter, fileName: String)(using
         context: Context
     ): Unit =
-      if reporter.hasErrors then {
+      if reporter.hasErrors then
         val seq = reporter.pendingMessages.map { info =>
           s"""[$fileName]:${info.pos.line}: ${info.msg}"""
         }
         val errorMessage = seq.mkString(System.lineSeparator)
         val error: String =
-          if (errorMessage.contains(XML_ERROR))
-            s"$errorMessage\n${SbtParser.XmlErrorMessage}"
+          if errorMessage.contains(XML_ERROR) then s"$errorMessage\n${SbtParser.XmlErrorMessage}"
           else errorMessage
         throw new MessageOnlyException(error)
-      } else ()
-  }
+      else ()
+  end UniqueParserReporter
 
   private[sbt] var scalacGlobalInitReporter: Option[ConsoleReporter] = None
 
@@ -251,7 +247,7 @@ private[sbt] case class SbtParser(
   private def splitExpressions(
       path: VirtualFileRef,
       lines: Seq[String]
-  ): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
+  ): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) =
     // import sbt.internal.parser.MissingBracketHandler.findMissingText
     val code = lines.toIndexedSeq.mkString(END_OF_LINE)
     val wrapCode = s"""object SyntheticModule {
@@ -301,7 +297,7 @@ private[sbt] case class SbtParser(
         (stmt, tree)
       }
     )
-  }
+  end splitExpressions
 
   private def importsToLineRanges(
       sourceFile: SourceFile,

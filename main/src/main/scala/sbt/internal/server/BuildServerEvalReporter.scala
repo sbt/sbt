@@ -31,8 +31,8 @@ class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Repo
     extends EvalReporter:
   private val problemsByFile = mutable.Map[Path, Vector[Diagnostic]]()
 
-  override def doReport(dia: ScalaDiagnostic)(using Context): Unit = {
-    if (dia.pos.exists) {
+  override def doReport(dia: ScalaDiagnostic)(using Context): Unit =
+    if dia.pos.exists then
       val filePath = Paths.get(dia.pos.source.file.path)
       val range = convertToRange(dia.pos)
       val bspSeverity = convertToBsp(dia.level)
@@ -47,10 +47,8 @@ class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Repo
       )
       exchange.notifyEvent("build/publishDiagnostics", params)
       delegate.doReport(dia)
-    }
-  }
 
-  override def finalReport(sourceName: String): Unit = {
+  override def finalReport(sourceName: String): Unit =
     val filePath = Paths.get(sourceName)
     val diagnostics = problemsByFile.getOrElse(filePath, Vector())
     val params = PublishDiagnosticsParams(
@@ -61,18 +59,15 @@ class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Repo
       reset = true
     )
     exchange.notifyEvent("build/publishDiagnostics", params)
-  }
 
-  private def convertToBsp(severity: Int): Option[Long] = {
-    val result = severity match {
+  private def convertToBsp(severity: Int): Option[Long] =
+    val result = severity match
       case dotty.tools.dotc.interfaces.Diagnostic.INFO    => DiagnosticSeverity.Information
       case dotty.tools.dotc.interfaces.Diagnostic.WARNING => DiagnosticSeverity.Warning
       case dotty.tools.dotc.interfaces.Diagnostic.ERROR   => DiagnosticSeverity.Error
-    }
     Some(result)
-  }
 
-  private def convertToRange(pos: SourcePosition): Range = {
+  private def convertToRange(pos: SourcePosition): Range =
     val startLine = pos.source.offsetToLine(pos.start)
     val startChar = pos.start - pos.source.lineToOffset(startLine)
     val endLine = pos.source.offsetToLine(pos.end)
@@ -81,5 +76,4 @@ class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Repo
       bsp.Position(startLine.toLong, startChar.toLong),
       bsp.Position(endLine.toLong, endChar.toLong)
     )
-  }
 end BuildServerEvalReporter

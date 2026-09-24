@@ -1,0 +1,11 @@
+# Regression for #9748: compileOrder has to take part in the compile cache key. Under
+# JavaThenScala javac runs before the Scala class exists and the build fails. Flipping to
+# Mixed has to recompile, not replay that failure from an entry filed under the same key.
+
+-> compile
+
+$ touch mixed.marker
+> reload
+
+> compile
+> checkClasses

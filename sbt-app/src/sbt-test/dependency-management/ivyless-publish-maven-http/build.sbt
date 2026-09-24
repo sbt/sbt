@@ -1,7 +1,7 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 ThisBuild / organization := "com.example"
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 
 val publishRepoBase = settingKey[File]("Base directory for Maven publish repo (HTTP server writes here)")
 ThisBuild / publishRepoBase := (ThisBuild / baseDirectory).value / "repo"
@@ -73,15 +73,25 @@ Global / checkMavenPublish := {
 
   assert(versionDir.exists && versionDir.isDirectory, s"Expected version dir $versionDir to exist")
 
-  val pomFile = versionDir / s"$artifactId-$ver.pom"
+  val fileVer = {
+    val Qualified = s"""$artifactId-(${ver.stripSuffix("-SNAPSHOT")}-\\d{8}\\.\\d{6}-\\d+)\\.pom""".r
+    versionDir.listFiles.map(_.getName).collectFirst { case Qualified(v) => v }
+      .getOrElse(sys.error(s"no timestamped pom in $versionDir"))
+  }
+
+  val pomFile = versionDir / s"$artifactId-$fileVer.pom"
   assert(pomFile.exists, s"Expected $pomFile to exist")
   assert(new File(pomFile.getPath + ".md5").exists, s"Expected pom md5 checksum")
   assert(new File(pomFile.getPath + ".sha1").exists, s"Expected pom sha1 checksum")
 
-  val jarFile = versionDir / s"$artifactId-$ver.jar"
+  val jarFile = versionDir / s"$artifactId-$fileVer.jar"
   assert(jarFile.exists, s"Expected $jarFile to exist")
   assert(new File(jarFile.getPath + ".md5").exists, s"Expected jar md5 checksum")
   assert(new File(jarFile.getPath + ".sha1").exists, s"Expected jar sha1 checksum")
+
+  val metadataFile = versionDir / "maven-metadata.xml"
+  assert(metadataFile.exists, s"Expected $metadataFile to exist")
+  assert(IO.read(metadataFile).contains(s"<value>$fileVer</value>"), s"metadata should list $fileVer")
 
   val pomContent = IO.read(pomFile)
   assert(pomContent.contains(s"<groupId>$groupId</groupId>"), s"POM should contain groupId")

@@ -15,7 +15,7 @@ import sbt.internal.util.RMap
  * except `started` and `finished`, which is called from the executing task's thread. All methods
  * should return quickly to avoid task execution overhead.
  */
-trait ExecuteProgress {
+trait ExecuteProgress:
   def initial(): Unit
 
   /**
@@ -63,13 +63,13 @@ trait ExecuteProgress {
 
   /** Notifies that either all tasks have finished or cancelled. */
   def stop(): Unit
-}
+end ExecuteProgress
 
 /**
  * This module is experimental and subject to binary and source incompatible changes at any time.
  */
-object ExecuteProgress {
-  def empty: ExecuteProgress = new ExecuteProgress {
+object ExecuteProgress:
+  def empty: ExecuteProgress = new ExecuteProgress:
     override def initial(): Unit = ()
     override def afterRegistered(
         task: TaskId[?],
@@ -83,36 +83,26 @@ object ExecuteProgress {
     override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit = ()
     override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = ()
     override def stop(): Unit = ()
-  }
 
-  def aggregate(reporters: Seq[ExecuteProgress]) = new ExecuteProgress {
-    override def initial(): Unit = {
+  def aggregate(reporters: Seq[ExecuteProgress]) = new ExecuteProgress:
+    override def initial(): Unit =
       reporters foreach { _.initial() }
-    }
     override def afterRegistered(
         task: TaskId[?],
         allDeps: Iterable[TaskId[?]],
         pendingDeps: Iterable[TaskId[?]]
-    ): Unit = {
+    ): Unit =
       reporters foreach { _.afterRegistered(task, allDeps, pendingDeps) }
-    }
-    override def afterReady(task: TaskId[?]): Unit = {
+    override def afterReady(task: TaskId[?]): Unit =
       reporters foreach { _.afterReady(task) }
-    }
-    override def beforeWork(task: TaskId[?]): Unit = {
+    override def beforeWork(task: TaskId[?]): Unit =
       reporters foreach { _.beforeWork(task) }
-    }
-    override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit = {
+    override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit =
       reporters foreach { _.afterWork(task, result) }
-    }
-    override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit = {
+    override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit =
       reporters foreach { _.afterCompleted(task, result) }
-    }
-    override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = {
+    override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
       reporters foreach { _.afterAllCompleted(results) }
-    }
-    override def stop(): Unit = {
+    override def stop(): Unit =
       reporters foreach { _.stop() }
-    }
-  }
-}
+end ExecuteProgress

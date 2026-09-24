@@ -17,24 +17,20 @@ import TypeString.*
  * structure of parameterized types. All other types are represented by a TypeString with an empty
  * `args`.
  */
-private[sbt] final class TypeString(val base: String, val args: List[TypeString]) {
+private[sbt] final class TypeString(val base: String, val args: List[TypeString]):
   override def toString =
-    if (base.startsWith(FunctionName))
+    if base.startsWith(FunctionName) then
       args.dropRight(1).mkString("(", ",", ")") + " => " + args.last
-    else if (base.startsWith(TupleName))
-      args.mkString("(", ",", ")")
-    else
-      cleanupTypeName(base) + (if (args.isEmpty) "" else args.mkString("[", ",", "]"))
-}
+    else if base.startsWith(TupleName) then args.mkString("(", ",", ")")
+    else cleanupTypeName(base) + (if args.isEmpty then "" else args.mkString("[", ",", "]"))
 
-private[sbt] object TypeString {
+private[sbt] object TypeString:
 
   /** Makes the string representation of a type as returned by Manifest.toString more readable. */
   def cleanup(typeString: String): String =
-    parse(typeString, typeStringParser) match {
+    parse(typeString, typeStringParser) match
       case Right(ts) => ts.toString
       case Left(_)   => typeString
-    }
 
   /**
    * Makes a fully qualified type name provided by Manifest.toString more readable. The argument
@@ -49,16 +45,13 @@ private[sbt] object TypeString {
    * conservative approximation.
    */
   def dropPrefix(base: String): String =
-    if (base.startsWith(SbtPrefix)) base.substring(SbtPrefix.length)
-    else if (base.startsWith(CollectionPrefix)) {
+    if base.startsWith(SbtPrefix) then base.substring(SbtPrefix.length)
+    else if base.startsWith(CollectionPrefix) then
       val simple = base.substring(CollectionPrefix.length)
-      if (ShortenCollection(simple)) simple else base
-    } else if (base.startsWith(ScalaPrefix))
-      base.substring(ScalaPrefix.length)
-    else if (base.startsWith(JavaPrefix))
-      base.substring(JavaPrefix.length)
-    else
-      TypeMap.getOrElse(base, base)
+      if ShortenCollection(simple) then simple else base
+    else if base.startsWith(ScalaPrefix) then base.substring(ScalaPrefix.length)
+    else if base.startsWith(JavaPrefix) then base.substring(JavaPrefix.length)
+    else TypeMap.getOrElse(base, base)
 
   final val CollectionPrefix = "scala.collection."
   final val FunctionName = "scala.Function"
@@ -80,13 +73,12 @@ private[sbt] object TypeString {
    * Manifest.toString. This is rudimentary and essentially only decomposes the string into names
    * and arguments for parameterized types.
    */
-  lazy val typeStringParser: Parser[TypeString] = {
+  lazy val typeStringParser: Parser[TypeString] =
     def isFullScalaIDChar(c: Char) = isScalaIDChar(c) || c == '.' || c == '$'
     lazy val fullScalaID =
       identifier(IDStart, charClass(isFullScalaIDChar, "Scala identifier character"))
     lazy val tpe: Parser[TypeString] =
-      for (id <- fullScalaID; args <- ('[' ~> rep1sep(tpe, ',') <~ ']').?)
-        yield new TypeString(id, args.toList.flatten)
+      for id <- fullScalaID; args <- ('[' ~> rep1sep(tpe, ',') <~ ']').?
+      yield new TypeString(id, args.toList.flatten)
     tpe
-  }
-}
+end TypeString

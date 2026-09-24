@@ -112,18 +112,16 @@ object RunUtil:
 
   private def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
     (f: () => Unit) =>
-      () => {
+      () =>
         val term = ITerminal.get
-        if (!canonical) {
+        if !canonical then
           term.enterRawMode()
-          if (echo) term.setEchoEnabled(echo)
-        } else if (!echo) term.setEchoEnabled(false)
+          if echo then term.setEchoEnabled(echo)
+        else if !echo then term.setEchoEnabled(false)
         try f()
-        finally {
-          if (!canonical) term.exitRawMode()
-          if (!echo) term.setEchoEnabled(true)
-        }
-      }
+        finally
+          if !canonical then term.exitRawMode()
+          if !echo then term.setEchoEnabled(true)
 
   private def getMainClass(value: Option[String]): String =
     value.getOrElse(sys.error("no main class detected"))
@@ -156,6 +154,7 @@ object RunUtil:
       nativeRunInfo = None,
       windowTitle = windowTitle,
     )
+  end mkRunInfo
 
   def defaultRunMainTask(
       products: Initialize[Task[Classpath]],
@@ -217,7 +216,9 @@ object RunUtil:
                 (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
         service.waitForTry(handle).get
         ()
+      end if
     }
+  end defaultRunMainTask
 
   def defaultRunTask(
       products: Initialize[Task[Classpath]],
@@ -277,7 +278,9 @@ object RunUtil:
                 (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
         service.waitForTry(handle).get
         ()
+      end if
     }
+  end defaultRunTask
 
   def bgRunMainTask(
       products: Initialize[Task[Classpath]],
@@ -330,6 +333,7 @@ object RunUtil:
               (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
       }
     }
+  end bgRunMainTask
 
   def bgRunTask(
       products: Initialize[Task[Classpath]],
@@ -381,4 +385,5 @@ object RunUtil:
               (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
       }
     }
+  end bgRunTask
 end RunUtil

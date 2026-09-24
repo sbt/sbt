@@ -10,20 +10,19 @@ package sbt
 package internal
 
 import sbt.Def.{ ScopedKey, Settings }
-import sbt.Keys.{ showSuccess, showTiming }
+import sbt.Keys.{ showSuccess, showTiming, testSummaryLogger }
 import sbt.ProjectExtra.*
 import sbt.ScopeAxis.{ Select, Zero }
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util.*
 import sbt.internal.client.NetworkClient
-import sbt.internal.worker.ClientJobParams
 import sbt.std.Transform.DummyTaskMap
-import sbt.util.{ Logger, Show }
+import sbt.util.{ ActionCache, Logger, Show }
 import scala.annotation.tailrec
 
 sealed trait Aggregation
-object Aggregation {
+object Aggregation:
   final case class ShowConfig(
       settingValues: Boolean,
       taskValues: Boolean,
@@ -52,22 +51,20 @@ object Aggregation {
   def printSettings(xs: Seq[KeyValue[?]], print: String => Unit)(using
       display: Show[ScopedKey[?]]
   ): Unit =
-    xs match {
+    xs match
       case Seq(KeyValue(_, x: Seq[?])) => print(x.mkString("* ", "\n* ", ""))
       case Seq(KeyValue(_, x))         => print(x.toString)
       case _                           =>
         xs foreach { kv =>
           print(display.show(kv.key))
-          kv.value match {
+          kv.value match
             case seq: Seq[?] if seq.nonEmpty =>
               seq.foreach(item => print("\t* " + item.toString))
             case seq: Seq[?] =>
               print("\t(empty)")
             case x =>
               print("\t" + x.toString)
-          }
         }
-    }
 
   type Values[T] = Seq[KeyValue[T]]
   type AnyKeys = Values[Any]
@@ -88,11 +85,8 @@ object Aggregation {
     import complete.*
     val log = state.log
     val extracted = Project.extract(state)
-    // omit success printing for client-side run
-    val (success, jobParams) = results match
-      case Result.Value(Seq(KeyValue(_, p: ClientJobParams))) => (true, true)
-      case Result.Value(_)                                    => (true, false)
-      case Result.Inc(_)                                      => (false, false)
+    val success = results.toEither.isRight
+    val jobParams = StandardMain.exchange.handedOffToClient
     val isPaused = currentChannel(state) match
       case Some(channel) => channel.isPaused
       case None          => false
@@ -126,12 +120,16 @@ object Aggregation {
     val config = extractedTaskConfig(extracted, structure, s)
     val start = System.currentTimeMillis
     Def.cacheEventLog.clear()
+    TestSummary.clear()
+    StandardMain.exchange.clearRunReporting()
     val (newS, result) = withStreams(structure, s): str =>
       val transform = nodeView(s, str, roots, extra)
       runTask(toRun, s, str, structure.index.triggers, config)(using transform)
+    ActionCache.agePendingScopes()
     val stop = System.currentTimeMillis
     val cacheSummary = Def.cacheEventLog.summary.toString()
     Complete(start, stop, result, cacheSummary, newS)
+  end timedRun
 
   def runTasks[A1](
       s: State,
@@ -140,16 +138,32 @@ object Aggregation {
       show: ShowConfig
   )(using display: Show[ScopedKey[?]]): State =
     val complete = timedRun[A1](s, ts, extra)
+    val testEntries = TestSummary.drain()
+    if testEntries.nonEmpty then
+      val extracted = Project.extract(complete.state)
+      val logger = (extracted.currentRef / testSummaryLogger)
+        .get(extracted.structure.data)
+        .getOrElse(TestResultLogger.Defaults.Summary())
+      val adhocMode = testEntries.flatMap(_.options).collectFirst {
+        case Tests.AdhocOption.Summary(mode) => mode
+      }
+      val effectiveLogger = (logger, adhocMode) match
+        case (s: TestResultLogger.Defaults.Summary, Some(mode)) => s.copy(mode = mode)
+        case _                                                  => logger
+      effectiveLogger.summary(
+        complete.state.log,
+        testEntries.map(e => (e.testOutput, e.taskName, e.cached))
+      )
     showRun(complete, show)
     complete.results match
       case Result.Inc(i) =>
-        val failures = sbt.internal.testing.TestRecap.collect(i)
         val afterHandle = complete.state.handleError(i)
-        if failures.nonEmpty then
-          sbt.internal.testing.TestRecap.formatTo(afterHandle.log, failures)
-          afterHandle.put(sbt.internal.testing.TestRecap.recapKey, failures)
+        if testEntries.nonEmpty then afterHandle.put(TestSummary.entriesKey, testEntries)
         else afterHandle
-      case Result.Value(_) => complete.state
+      case Result.Value(_) =>
+        if testEntries.nonEmpty then complete.state.put(TestSummary.entriesKey, testEntries)
+        else complete.state
+  end runTasks
 
   def printSuccess(
       start: Long,
@@ -172,6 +186,7 @@ object Aggregation {
         else if Terminal.get.isSuccessEnabled then log.error(msg)
       else if success then log.success("")
     else ()
+  end printSuccess
 
   def timing(startTime: Long, endTime: Long): String =
     NetworkClient.elapsedString(startTime, endTime)
@@ -180,18 +195,17 @@ object Aggregation {
       s: State,
       inputs: Values[InputTask[I]],
       show: ShowConfig
-  )(using display: Show[ScopedKey[?]]): Parser[() => State] = {
+  )(using display: Show[ScopedKey[?]]): Parser[() => State] =
     val parsers =
-      for (KeyValue(k, it) <- inputs)
-        yield it.parser(s).map(v => KeyValue(k, v))
+      for KeyValue(k, it) <- inputs
+      yield it.parser(s).map(v => KeyValue(k, v))
     Command.applyEffect(seq(parsers)) { roots =>
       runTasks(s, roots, DummyTaskMap(Nil), show)
     }
-  }
 
   def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[?]])(using
       display: Show[ScopedKey[?]]
-  ): Parser[() => State] = {
+  ): Parser[() => State] =
 
     // to make the call sites clearer
     def separate[L](in: Seq[KeyValue[?]])(
@@ -200,8 +214,8 @@ object Aggregation {
       Util.separate(in)(f)
 
     val kvs = keys.toList
-    if (kvs.isEmpty) failure("No such setting/task")
-    else {
+    if kvs.isEmpty then failure("No such setting/task")
+    else
       val (inputTasks, other) = separate[InputTask[?]](kvs) {
         case KeyValue(k, v: InputTask[?]) => Left(KeyValue(k, v))
         case kv                           => Right(kv)
@@ -217,30 +231,28 @@ object Aggregation {
       //  tasks, and input tasks in the same call.  The code below allows settings and tasks to be mixed, but not input tasks.
       // One problem with input tasks in `all` is that many input tasks consume all input and would need syntactic delimiters.
       // Once that is addressed, the tasks constructed by the input tasks would need to be combined with the explicit tasks.
-      if (inputTasks.nonEmpty) {
-        if (other.nonEmpty) {
+      if inputTasks.nonEmpty then
+        if other.nonEmpty then
           val inputStrings = inputTasks.map(_.key).mkString("Input task(s):\n\t", "\n\t", "\n")
           val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
           failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
-        } else
+        else
           applyDynamicTasks(
             s,
             inputTasks.map { case KeyValue(k, v: InputTask[a]) => KeyValue(k, castToAny(v)) },
             show
           )
-      } else {
+      else
         val base =
-          if (tasks.isEmpty) success(() => s)
-          else
-            applyTasks(s, maps(tasks)(x => success(castToAny(x))), show)
+          if tasks.isEmpty then success(() => s)
+          else applyTasks(s, maps(tasks)(x => success(castToAny(x))), show)
         base.map { res => () =>
           val newState = res()
-          if (show.settingValues && settings.nonEmpty) printSettings(settings, show.print)
+          if show.settingValues && settings.nonEmpty then printSettings(settings, show.print)
           newState
         }
-      }
-    }
-  }
+    end if
+  end evaluatingParser
 
   // this is a hack to avoid duplicating method implementations
   private def castToAny[F[_]]: [a] => F[a] => F[Any] = [a] => (fa: F[a]) => fa.asInstanceOf[F[Any]]
@@ -294,6 +306,7 @@ object Aggregation {
         // recursive because an aggregate project can be aggregated in another aggregate project
         recur(filteredAggKeys, acc ++ filteredAggKeys)
     recur(keys, keys)
+  end reverseAggregate
 
   def aggregate[A1, Proj](
       key: ScopedKey[A1],
@@ -319,4 +332,4 @@ object Aggregation {
     (Scope.fillTaskAxis(key.scope, key.key) / Keys.aggregate).get(data).getOrElse(true)
   private[sbt] val suppressShow =
     AttributeKey[Boolean]("suppress-aggregation-show", Int.MaxValue)
-}
+end Aggregation

@@ -3,6 +3,7 @@ import java.io.File
 @transient
 val myFileTask = taskKey[File]("task that returns File")
 val badFileTask = taskKey[File]("task without @transient that should fail to cache")
+@transient
 val checkFileTask = taskKey[Unit]("verifies file task returns correct value")
 
 myFileTask := {
