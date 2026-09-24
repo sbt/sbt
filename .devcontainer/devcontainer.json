@@ -9,10 +9,7 @@
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
-  "runArgs": [
-    "--cap-add=NET_ADMIN",
-    "--cap-add=NET_RAW"
-  ],
+  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -43,7 +40,10 @@
   "remoteUser": "node",
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume"
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=${localWorkspaceFolder}/../sbt-coursier,target=/repos/sbt-coursier,type=bind,consistency=delegated",
+    "source=${localWorkspaceFolder}/../zinc,target=/repos/zinc,type=bind,consistency=delegated",
+    "source=${localWorkspaceFolder}/../io,target=/repos/io,type=bind,consistency=delegated"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
