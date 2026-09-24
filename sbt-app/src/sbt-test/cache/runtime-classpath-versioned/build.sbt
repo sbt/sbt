@@ -70,6 +70,6 @@ lazy val root = (project in file("."))
       val deps = unit.plugins.pluginData.dependencyClasspath.map(_.data.id).filter(_.contains("-build_"))
       val defs = unit.plugins.pluginData.definitionClasspath.map(_.data.id).filter(_.contains("-build_"))
       assert(deps.isEmpty, s"dependencyClasspath should NOT contain the meta-build jar, got: $deps")
-      assert(defs.nonEmpty, "definitionClasspath should contain the meta-build jar")
+      assert(defs.nonEmpty, s"definitionClasspath should contain the meta-build jar, got: ${unit.plugins.pluginData.definitionClasspath.map(_.data.id)}")
     }
   )
