@@ -38,7 +38,11 @@ object LMCoursier:
   def defaultUserAgent(sbtVer: String): String =
     sys.props.get("sbt.http.agent").getOrElse {
       val cs = CoursierDependencyResolution.coursierUserAgent
-      s"$cs sbt/$sbtVer (+https://www.scala-sbt.org/)".trim
+      val sbtMajorMinor = CrossVersion
+        .partialVersion(sbtVer)
+        .map((major, minor) => s"$major.$minor")
+        .getOrElse(sbtVer)
+      s"$cs sbt/$sbtMajorMinor (+https://www.scala-sbt.org/)".trim
     }
 
   def defaultCacheLocation: File =

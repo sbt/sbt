@@ -569,6 +569,8 @@ object CoursierDependencyResolution:
             .toOption
             .flatten
         }
+        .flatMap(CrossVersion.partialVersion)
+        .map((major, minor) => s"$major.$minor")
         .getOrElse("2.1")
     s"Coursier/$version (+https://github.com/coursier)"
 
