@@ -1,4 +1,6 @@
-scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.8.4"
+
+lazy val root = (project in file("."))
 
 TaskKey[Unit]("willSucceed") := println("success")
 
@@ -16,7 +18,10 @@ TaskKey[Unit]("runThenFail") := Def.uncached {
   throw new Exception("failed")
 }
 
-// Exercise the forked interactive code path (connectInput + StdoutOutput).
-run / fork := true
-run / connectInput := true
-run / outputStrategy := Some(StdoutOutput)
+lazy val serverFork = project
+  .settings(
+    run / fork := true,
+    run / connectInput := true,
+    run / outputStrategy := Some(StdoutOutput),
+    run / clientSide := false,
+  )
