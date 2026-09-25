@@ -116,6 +116,8 @@ object SysProp:
 
   def workerMaxInstances: Int = int("sbt.worker_max_instances", 2)
 
+  def testPersistentWorker: Boolean = getOrFalse("sbt.test_persistent_worker")
+
   def analysisCacheMaxCount: Int = int("sbt.local_cache.analysis_count", 20)
 
   /**

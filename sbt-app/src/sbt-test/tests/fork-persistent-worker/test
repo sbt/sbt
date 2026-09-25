@@ -1,0 +1,11 @@
+> set testPersistentWorker := true
+> testFull
+> testFull
+> check
+> clearPids
+
+> set testPersistentWorker := false
+> testFull
+> testFull
+> checkDistinct
+> clearPids
