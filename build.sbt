@@ -435,7 +435,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies += scalaParsers,
+    libraryDependencies ++= Seq(scalaParsers, hedgehog % Test),
     mimaSettings,
   )
   .configure(addSbtIO)
