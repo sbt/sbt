@@ -18,7 +18,14 @@ import sbt.internal.util.Attributed
 import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.protocol.testing.TestResult
-import sbt.util.{ ActionCache, BuildWideCacheConfiguration, CacheLevelTag, Digest, Logger }
+import sbt.util.{
+  ActionCache,
+  BuildWideCacheConfiguration,
+  CacheLevelTag,
+  Digest,
+  DigestHasher,
+  Logger
+}
 import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
@@ -70,7 +77,16 @@ object IncrementalTest:
     val rds = Keys.resourceDigests.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
-    val testDigestExtra = extra ++ rds ++ opts
+    val scope = DigestHasher.hashUnsafe(Def.setting {
+      val project = Keys.thisProject.value
+      (
+        project.id,
+        fileConverter.value.toVirtualFile(project.base.toPath).id,
+        Keys.configuration.value.name,
+        Keys.platform.value,
+      )
+    }.value)
+    val testDigestExtra = scope +: (extra ++ rds ++ opts)
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
       stamper.transitiveStamp(name, testDigestExtra, s.log) match
