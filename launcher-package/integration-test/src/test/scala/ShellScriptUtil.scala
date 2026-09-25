@@ -173,6 +173,7 @@ trait ShellScriptUtil extends BasicTestSuite:
             envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
             envVars("JAVA_HOME") = javaHomeEnv
           else
+            envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
             envVars("PATH") = javaBinDir + File.pathSeparator + path
             envVars("JAVA_HOME") = javaHomeEnv
           val cmd =
