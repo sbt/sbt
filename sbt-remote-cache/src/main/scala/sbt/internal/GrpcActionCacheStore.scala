@@ -56,14 +56,13 @@ import xsbti.{ HashedVirtualFileRef, VirtualFile }
 object GrpcActionCacheStore:
   // chunk uploads to 1MB
   val chunkSizeBytes = 1024 * 1024
-  val remoteTimeoutInSec = 60
-  val remoteTimeout = (remoteTimeoutInSec + 2).second
 
   private case class CacheValue(
       rootCerts: Option[Path],
       clientCertChain: Option[Path],
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
+      requestTimeout: FiniteDuration,
       store: WeakReference[GrpcActionCacheStore],
   )
 
@@ -76,9 +75,18 @@ object GrpcActionCacheStore:
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
       disk: DiskActionCacheStore,
+      requestTimeout: FiniteDuration,
   ): GrpcActionCacheStore =
     def mkStore(): GrpcActionCacheStore =
-      val store = build(uri, rootCerts, clientCertChain, clientPrivateKey, remoteHeaders, disk)
+      val store = build(
+        uri,
+        rootCerts,
+        clientCertChain,
+        clientPrivateKey,
+        remoteHeaders,
+        disk,
+        requestTimeout,
+      )
       instances.put(
         uri,
         CacheValue(
@@ -86,14 +94,17 @@ object GrpcActionCacheStore:
           clientCertChain,
           clientPrivateKey,
           remoteHeaders,
+          requestTimeout,
           WeakReference(store)
         )
       )
       store
+    end mkStore
     instances.get(uri) match
       case Some(v)
           if v.rootCerts == rootCerts && v.clientCertChain == clientCertChain
-            && v.clientPrivateKey == clientPrivateKey && v.remoteHeaders == remoteHeaders =>
+            && v.clientPrivateKey == clientPrivateKey && v.remoteHeaders == remoteHeaders
+            && v.requestTimeout == requestTimeout =>
         v.store.get match
           case Some(existing) => existing
           case None           => mkStore()
@@ -107,6 +118,7 @@ object GrpcActionCacheStore:
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
       disk: DiskActionCacheStore,
+      requestTimeout: FiniteDuration,
   ): GrpcActionCacheStore =
     val b: ManagedChannelBuilder[?] = uri.getScheme() match
       case "grpc" =>
@@ -139,7 +151,7 @@ object GrpcActionCacheStore:
       case Some(x) if x.startsWith("/") => x.drop(1)
       case Some(x)                      => x
       case None                         => ""
-    new GrpcActionCacheStore(channel, instanceName, remoteHeaders, disk, uri)
+    new GrpcActionCacheStore(channel, instanceName, remoteHeaders, disk, uri, requestTimeout)
   end build
 
   class AuthCallCredentials(remoteHeaders: List[String]) extends CallCredentials:
@@ -185,6 +197,7 @@ class GrpcActionCacheStore private (
     remoteHeaders: List[String],
     disk: DiskActionCacheStore,
     cacheKey: URI,
+    requestTimeout: FiniteDuration,
 ) extends AbstractActionCacheStore
     with AutoCloseable:
   import GrpcActionCacheStore.*
@@ -205,11 +218,13 @@ class GrpcActionCacheStore private (
 
   // The deadline must be attached per call, not on the memoized stub above.
   // withDeadlineAfter computes an absolute deadline at the moment it is called, so a stub
-  // stored in a (session-lived) lazy val would expire remoteTimeoutInSec after first use and
+  // stored in a (session-lived) lazy val would expire requestTimeout after first use and
   // then reject every later call with DEADLINE_EXCEEDED. Deriving a fresh stub per RPC gives
   // each call its own relative timeout.
   private[internal] def byteStreamStubWithDeadline =
-    byteStreamStub.withDeadlineAfter(remoteTimeoutInSec, TimeUnit.SECONDS)
+    byteStreamStub.withDeadlineAfter(requestTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  private val awaitTimeout = requestTimeout + 2.seconds
 
   override def storeName: String = "remote"
 
@@ -286,7 +301,7 @@ class GrpcActionCacheStore private (
           e.printStackTrace()
           throw e
         ,
-        remoteTimeout
+        awaitTimeout
       )
       refs
         .zip(digests)
@@ -313,7 +328,7 @@ class GrpcActionCacheStore private (
               e.printStackTrace()
               throw e
             ,
-            remoteTimeout
+            awaitTimeout
           )
       catch case _: TimeoutException => Nil
 

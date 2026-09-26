@@ -128,6 +128,9 @@ object Keys {
   val remoteCacheTlsClientKey = settingKey[Option[File]]("Path to a TLS client key *.pem used with remoteCacheTlsClientCertificate")
   @transient
   val remoteCacheHeaders = settingKey[Seq[String]]("List of key=value headers to be sent to the remote cache.")
+  @transient
+  val remoteCacheRequestTimeout = settingKey[FiniteDuration]("Timeout for remote cache operations.")
+
   val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 
   // val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)

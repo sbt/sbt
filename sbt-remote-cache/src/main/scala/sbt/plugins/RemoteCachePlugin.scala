@@ -33,6 +33,7 @@ object RemoteCachePlugin extends AutoPlugin:
             clientPrivateKey = remoteCacheTlsClientKey.value.map(_.toPath),
             remoteHeaders = remoteCacheHeaders.value.toList,
             disk = disk,
+            requestTimeout = remoteCacheRequestTimeout.value,
           )
           orig ++ Seq(r)
         case _ => orig
