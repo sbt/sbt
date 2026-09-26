@@ -47,5 +47,6 @@ object RemoteCache:
     remoteCacheTlsClientCertificate := SysProp.remoteCacheTlsClientCertificate,
     remoteCacheTlsClientKey := SysProp.remoteCacheTlsClientKey,
     remoteCacheHeaders := SysProp.remoteCacheHeaders,
+    remoteCacheRequestTimeout := SysProp.remoteCacheRequestTimeout,
   )
 end RemoteCache
