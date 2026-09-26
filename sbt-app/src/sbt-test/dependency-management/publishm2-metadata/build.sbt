@@ -8,9 +8,13 @@ lazy val root = (project in file("."))
     version := "0.1.0-SNAPSHOT",
     name := "publishm2-metadata-test",
     checkMetadata := {
+      val m2Repo = sys.props
+        .get("maven.repo.local")
+        .map(new File(_))
+        .getOrElse(new File(System.getProperty("user.home"), ".m2/repository"))
       val m2Dir = new File(
-        System.getProperty("user.home"),
-        ".m2/repository/com/example/test/scripted/publishm2-metadata-test_2.13/0.1.0-SNAPSHOT"
+        m2Repo,
+        "com/example/test/scripted/publishm2-metadata-test_2.13/0.1.0-SNAPSHOT"
       )
       val metadataFile = new File(m2Dir, "maven-metadata-local.xml")
       assert(metadataFile.exists, s"maven-metadata-local.xml not found at $metadataFile")

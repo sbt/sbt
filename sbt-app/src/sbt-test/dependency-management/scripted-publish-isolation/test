@@ -1,0 +1,13 @@
+# A scripted test must not publish into the developer's own repositories.
+# See https://github.com/sbt/sbt/issues/1361.
+
+> checkPublishTargetIsIsolated
+> checkCoursierCacheIsShared
+> checkResolvable
+
+> publishLocal
+> checkPublishedHere
+
+> publishM2
+
+> checkUserRepositoriesUntouched
