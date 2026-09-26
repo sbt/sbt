@@ -1,0 +1,33 @@
+# sbt/sbt#1084: a global plugin that depends on a snapshot never sees a newer publication of it,
+# because the global plugin's dependencies are resolved once and then served from the update cache.
+# The snapshot is served over HTTP so that coursier caches it as it would a remote repository; a jar
+# republished to a local file repository is read in place and would not show the problem.
+
+> startRepoServer
+> marker/publish
+$ copy-file changes/plugins.sbt global/plugins/plugins.sbt
+> reload
+> eval assert(Marker.version == "one")
+
+# a republished snapshot is not picked up by a plain reload
+$ copy-file changes/Marker-two.scala marker/src/main/scala/Marker.scala
+> marker/publish
+> reload
+> eval assert(Marker.version == "one")
+
+# updateGlobalPlugins re-resolves the global plugin project and re-checks the snapshot
+> updateGlobalPlugins
+> eval assert(Marker.version == "two")
+
+# the request is not carried over, so a later plain reload does not resolve again
+$ copy-file changes/Marker-three.scala marker/src/main/scala/Marker.scala
+> marker/publish
+> reload
+> eval assert(Marker.version == "two")
+
+# The tests of one scripted run share a directory, and `global` is the part of it that is kept between
+# them, so delete what this test installed there.
+> stopRepoServer
+$ delete global/plugins global/repo global/repo-port global/coursier-cache
+$ absent global/plugins global/repo global/repo-port global/coursier-cache
+> reload

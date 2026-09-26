@@ -366,6 +366,7 @@ object BuiltinCommands:
       tasks,
       settingsCommand,
       loadProject,
+      updateGlobalPlugins,
       templateCommand,
       templateCommandAlias,
       projects,
@@ -911,9 +912,11 @@ object BuiltinCommands:
         case '\n' | '\r' => retry
         case 'r' | 'R'   => retry
         case 'q' | 'Q'   => s.exit(ok = false)
-        case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-        case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-        case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
+        case 'i' | 'I'   =>
+          s.log.warn(s"Ignoring load failure: $ignoreMsg.")
+          s.remove(Keys.forceGlobalPluginUpdate)
+        case 'l' | 'L' => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+        case c         => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
 
   def loadProjectCommands(arg: String): List[String] =
     StashOnFailure ::
@@ -927,6 +930,13 @@ object BuiltinCommands:
     Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)((s, arg) =>
       loadProjectCommands(arg) ::: s
     )
+
+  def updateGlobalPlugins: Command =
+    Command.command(UpdateGlobalPlugins, UpdateGlobalPluginsBrief, UpdateGlobalPluginsDetailed) {
+      s =>
+        sbt.coursierint.LMCoursier.clearResolutionCache()
+        loadProjectCommands("") ::: s.put(Keys.forceGlobalPluginUpdate, true)
+    }
 
   private def loadProjectParser: State => Parser[String] =
     _ => matched(Project.loadActionParser)
@@ -992,7 +1002,7 @@ object BuiltinCommands:
     val s3 = Project.setProject(
       session,
       structure,
-      s2,
+      s2.remove(Keys.forceGlobalPluginUpdate),
       st => setupGlobalFileTreeRepository(Clean.addCacheStoreFactoryFactory(st))
     )
     addSuperShellParams(
