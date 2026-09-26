@@ -11,10 +11,7 @@ lazy val core = (projectMatrix in file("core"))
   .configurePlatforms(_.settings(marks += "transform"))(wasm)
   .configurePlatforms(marks += "settings")(wasm)
   .jvmPlatform(Seq("2.13.18"), Seq(check := assert(marks.value == Nil, marks.value.toString)))
-  .customRow(
-    true,
-    Seq("2.13.18"),
-    Seq(wasm),
+  .addPlatforms(wasm)("2.13.18")(
     _.settings(
       platform := "wasm",
       marks += "wasm",
@@ -23,7 +20,7 @@ lazy val core = (projectMatrix in file("core"))
         assert(marks.value == marked, marks.value.toString)
         assert(platform.value == "wasm", platform.value)
       },
-    ),
+    )
   )
 
 lazy val root = (project in file("."))
