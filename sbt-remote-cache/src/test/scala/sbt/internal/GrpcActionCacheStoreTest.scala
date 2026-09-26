@@ -5,6 +5,7 @@ import java.net.URI
 import java.nio.file.Files
 import sbt.internal.inc.PlainVirtualFileConverter
 import sbt.util.DiskActionCacheStore
+import scala.concurrent.duration.*
 
 object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
   test("chunkBytes"):
@@ -23,7 +24,7 @@ object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
 
   // Regression test: the ByteStream deadline must be applied per RPC, not baked into the
   // memoized stub. A deadline on the (session-lived) stub is absolute and expires
-  // remoteTimeoutInSec after first use, after which every later blob transfer fails with
+  // requestTimeout after first use, after which every later blob transfer fails with
   // DEADLINE_EXCEEDED for the rest of the sbt server's life.
   test("byteStream deadline is per-call, not on the memoized stub"):
     val store = newStore()
@@ -62,5 +63,5 @@ object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
     val disk = DiskActionCacheStore(base, PlainVirtualFileConverter.converter)
     // A plaintext URI is enough to build the stubs; no connection is opened by reading
     // CallOptions, so no server is required.
-    GrpcActionCacheStore(new URI("grpc://localhost:1"), None, None, None, Nil, disk)
+    GrpcActionCacheStore(new URI("grpc://localhost:1"), None, None, None, Nil, disk, 60.seconds)
 end GrpcActionCacheStoreTest
