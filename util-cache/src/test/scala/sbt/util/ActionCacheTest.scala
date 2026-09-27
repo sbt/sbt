@@ -45,6 +45,38 @@ object ActionCacheTest extends BasicTestSuite:
     val chain = new RuntimeException("boom", new IllegalStateException("unrelated"))
     assert(ActionCache.findMissingFile(chain) == None)
 
+  final case class Locked(n: Int)
+
+  def lockedWriter(failures: Int): sjsonnew.HashWriter[Locked] =
+    var remaining = failures
+    new sjsonnew.HashWriter[Locked]:
+      override def write[J](obj: Locked, builder: sjsonnew.Builder[J]): Unit =
+        if remaining > 0 then
+          remaining -= 1
+          throw sjsonnew.SerializationException(
+            "error while writing the field sources",
+            IOException(
+              "The process cannot access the file because another process has locked a portion of the file"
+            )
+          )
+        builder.writeInt(obj.n)
+
+  test("A transiently locked input file is retried and the task is cached"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      given sjsonnew.HashWriter[Locked] = lockedWriter(1)
+      var called = 0
+      val action: Locked => InternalActionResult[Int] = l =>
+        called += 1
+        InternalActionResult(l.n, Nil)
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache(Locked(1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 1)
+        val v2 = ActionCache.cache(Locked(1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 1)
+        assert(called == 1)
+
   test("Distinct inputs that collide in the 32-bit murmur hash get distinct cache keys"):
     import sjsonnew.BasicJsonProtocol.given
     import sjsonnew.support.murmurhash.Hasher

@@ -22,6 +22,7 @@ import sbt.internal.util.{
 }
 import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.internal.io.Retry
 import sbt.io.IO.Implicits.zipContext
 import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
@@ -349,7 +350,7 @@ object ActionCache:
       )
     config.store.get(getRequest)
 
-  private[sbt] inline def mkInput[I: HashWriter](
+  private[sbt] def mkInput[I: HashWriter](
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
@@ -357,7 +358,7 @@ object ActionCache:
   ): Digest =
     // Hashing serializes every task input; surface a missing input file directly rather than as an
     // opaque serialization failure that buries it.
-    val inputDigest =
+    val inputDigest = Retry(
       try DigestHasher.hashUnsafe[I](key)
       catch
         case NonFatal(t) =>
@@ -365,6 +366,10 @@ object ActionCache:
             case Some(path) =>
               throw MessageOnlyException(s"file referenced by the build does not exist: $path")
             case None => throw t
+      ,
+      2,
+      classOf[MessageOnlyException]
+    )
     Digest.sha256Hash(
       (Vector(
         codeContentHash,
