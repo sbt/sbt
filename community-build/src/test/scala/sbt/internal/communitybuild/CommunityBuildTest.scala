@@ -16,6 +16,7 @@ given testRunner: CommunityBuildRunner with
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA:
+  @Test def chimney = projects.chimney.run()
   @Test def parboiled2 = projects.parboiled2.run()
   @Test def `sbt-compile-benchmark` = projects.`sbt-compile-benchmark`.run()
   @Test def scalaz = projects.scalaz.run()

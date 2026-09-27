@@ -159,6 +159,24 @@ object projects:
         .mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
 
+  private def all(tasks: String*): String =
+    tasks.mkString("all ", " ", "")
+
+  private val chimneyJvmProjects = List(
+    "chimney",
+    "chimneyCats",
+    "chimneyProtobufs",
+    "chimneyJavaCollections",
+    "chimneySandwichTests",
+  )
+
+  lazy val chimney = SbtCommunityProject(
+    project = "chimney",
+    testCmd = all(chimneyJvmProjects.map(p => s"$p/test")*),
+    testCompileCmd = all(chimneyJvmProjects.map(p => s"$p/Test/compile")*),
+    extraSbtArgs = List("-J-Xmx2g"),
+  )
+
   lazy val `sbt-compile-benchmark` = SbtCommunityProject(
     project = "sbt-compile-benchmark",
   )
@@ -181,6 +199,7 @@ object projects:
 end projects
 
 def allProjects = List(
+  projects.chimney,
   projects.parboiled2,
   projects.scalaz,
 )
