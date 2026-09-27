@@ -1,4 +1,5 @@
 
+@transient
 lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
