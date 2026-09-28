@@ -1444,9 +1444,11 @@ lazy val launcherPackageIntegrationTest =
 
 val prepareCommunityBuild = taskKey[Unit]("Publish local etc")
 lazy val `community-build` = (project in file("community-build"))
+  .configure(addSbtIO)
   .settings(
     scalaVersion := scala3,
     libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
+    Test / parallelExecution := false,
     prepareCommunityBuild := {
       val _ = (sbtRoot / publishLocalBinAll).value
       IO.write(baseDirectory.value / "target" / "sbt.version", version.value)

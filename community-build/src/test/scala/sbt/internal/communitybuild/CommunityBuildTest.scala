@@ -17,7 +17,11 @@ given testRunner: CommunityBuildRunner with
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA:
   @Test def chimney = projects.chimney.run()
+end CommunityBuildTestA
+
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTestB:
   @Test def parboiled2 = projects.parboiled2.run()
   @Test def `sbt-compile-benchmark` = projects.`sbt-compile-benchmark`.run()
   @Test def scalaz = projects.scalaz.run()
-end CommunityBuildTestA
+end CommunityBuildTestB

@@ -4,6 +4,7 @@ package communitybuild
 
 import java.nio.file.*
 import java.io.File
+import sbt.io.IO
 import java.nio.charset.StandardCharsets.UTF_8
 
 lazy val communitybuildDir: Path =
@@ -16,6 +17,17 @@ lazy val sbtVersion: String =
 lazy val bootDir: Path =
   val dir = communitybuildDir.resolve("target").resolve("boot")
   Files.createDirectories(dir)
+  dir
+
+lazy val remoteCachePluginDir: Path =
+  val dir = communitybuildDir.resolve("target").resolve("remote-cache-plugin")
+  Files.createDirectories(dir)
+  Files.writeString(
+    dir.resolve("plugins.sbt"),
+    """addRemoteCachePlugin
+      |libraryDependencySchemes += "org.scala-sbt" % "compiler-interface" % VersionScheme.Always
+      |""".stripMargin,
+  )
   dir
 
 lazy val sbtPluginFilePath: String =
@@ -41,6 +53,10 @@ def exec(
   val exitCode = process.waitFor()
   exitCode
 
+enum Scenario:
+  case Test
+  case Build
+
 sealed trait CommunityProject:
   def project: String
   def testCommand: String
@@ -50,6 +66,7 @@ sealed trait CommunityProject:
   def binaryName: String
   def runCommandsArgs: List[String] = Nil
   def environment: Map[String, String] = Map.empty
+  def scenarioType: Scenario
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
@@ -60,7 +77,7 @@ sealed trait CommunityProject:
       throw RuntimeException(
         s"Publish command is not specified for $project. Project details:\n$this"
       )
-    val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ publishCommand), environment)
+    val exitCode = execAndShutdown(runCommandsArgs :+ publishCommand)
     if exitCode != 0 then
       throw RuntimeException(
         s"Publish command exited with code $exitCode for project $project. Project details:\n$this"
@@ -70,15 +87,26 @@ sealed trait CommunityProject:
     log(s"Documenting $project")
     if docCommand eq null then
       throw RuntimeException(s"Doc command is not specified for $project. Project details:\n$this")
-    val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ docCommand), environment)
+    val exitCode = execAndShutdown(runCommandsArgs :+ docCommand)
     if exitCode != 0 then
       throw RuntimeException(
         s"Doc command exited with code $exitCode for project $project. Project details:\n$this"
       )
 
-  final def build(): Int = exec(projectDir, binaryName, buildCommands, environment)
+  def scenario(): Int = scenarioType match
+    case Scenario.Test  => test()
+    case Scenario.Build => build()
+
+  final def build(): Int = execAndShutdown(buildCommands)
 
   final def buildCommands = runCommandsArgs :+ testCompileCommand
+
+  final def test(): Int = execAndShutdown(List(testCommand))
+
+  private def execAndShutdown(arguments: List[String]): Int =
+    val exitCode = exec(projectDir, binaryName, arguments, environment)
+    exec(projectDir, binaryName, runCommandsArgs :+ "shutdown", environment)
+    exitCode
 
 end CommunityProject
 
@@ -93,6 +121,7 @@ final case class SbtCommunityProject(
     publishCmd: String = "publishLocal",
     docCmd: String = "doc",
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
+    scenarioType: Scenario = Scenario.Test,
     override val environment: Map[String, String] = Map.empty,
 ) extends CommunityProject:
   override val binaryName: String = "sbt"
@@ -126,15 +155,26 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _             => Nil
-    extraSbtArgs ++ sbtProps ++ List(
+    val remoteCacheProps = SbtCommunityProject.remoteCache.toList.flatMap(uri =>
+      List(
+        s"-Dsbt.global.plugins=$remoteCachePluginDir",
+        s"-Dsbt.remote_cache=$uri",
+      )
+    )
+    val diskCacheDir = IO.createTemporaryDirectory
+    extraSbtArgs ++ sbtProps ++ remoteCacheProps ++ List(
       s"-Dsbt.version=$sbtVersion",
       s"-Dsbt.boot=$bootDir",
+      s"-Dsbt.global.localcache=$diskCacheDir",
       "-Dsbt.supershell=false",
     )
 end SbtCommunityProject
 
 object SbtCommunityProject:
   def scalacOptions = Nil
+
+  /** Remote cache URI for the community projects, e.g. grpc://127.0.0.1:2024 */
+  def remoteCache: Option[String] = sys.env.get("COMMUNITY_BUILD_REMOTE_CACHE")
 
 object projects:
 
@@ -174,18 +214,21 @@ object projects:
     project = "chimney",
     testCmd = all(chimneyJvmProjects.map(p => s"$p/test")*),
     testCompileCmd = all(chimneyJvmProjects.map(p => s"$p/Test/compile")*),
-    extraSbtArgs = List("-J-Xmx2g"),
+    environment = Map("_JAVA_OPTIONS" -> "-Xmx2g"),
   )
 
   lazy val `sbt-compile-benchmark` = SbtCommunityProject(
     project = "sbt-compile-benchmark",
+    scenarioType = Scenario.Build,
   )
 
   lazy val scalaz = SbtCommunityProject(
     project = "scalaz",
+    environment = Map("_JAVA_OPTIONS" -> "-Xms1g -Xmx3g"),
     testCmd = "rootJVM/test",
     testCompileCmd = "rootJVM/Test/compile",
     docCmd = forceDoc("effectJVM"),
+    scenarioType = Scenario.Build,
   )
 
   lazy val parboiled2 = SbtCommunityProject(
@@ -194,6 +237,7 @@ object projects:
     testCompileCmd = "parboiledCoreJVM3/Test/compile; parboiledJVM3/Test/compile",
     publishCmd = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    scenarioType = Scenario.Build,
   )
 
 end projects
