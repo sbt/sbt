@@ -16,6 +16,7 @@ given testRunner: CommunityBuildRunner with
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA:
+  @Test def `chimney-sbt1` = projects.`chimney-sbt1`.run()
   @Test def chimney = projects.chimney.run()
 end CommunityBuildTestA
 

@@ -1449,7 +1449,7 @@ lazy val `community-build` = (project in file("community-build"))
     scalaVersion := scala3,
     libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
     Test / parallelExecution := false,
-    prepareCommunityBuild := {
+    prepareCommunityBuild := Def.uncached {
       val _ = (sbtRoot / publishLocalBinAll).value
       IO.write(baseDirectory.value / "target" / "sbt.version", version.value)
     },

@@ -7,7 +7,7 @@ import java.nio.file.{ Files, Paths, StandardOpenOption }
 final case class ParsedCacheSummary(
     success: Boolean,
     elapsedSeconds: Long,
-    hitRate: Double,
+    hitRate: Option[Double],
     remoteCacheHits: Int,
     diskCacheHits: Int,
     onsiteTasks: Int,
@@ -44,24 +44,40 @@ object ParsedTestSummary:
     case _ => None
 end ParsedTestSummary
 
-/** Collects cache summaries, attaching the preceding test summary to each. */
+/**
+ * Collects cache summaries, attaching the preceding test summary to each.
+ * Summaries without a cache hit rate (sbt 1.x) are used only when there are none with it,
+ * since sbt 2.x also prints a plain total after each cache summary.
+ */
 final class CacheSummaryCollector:
   private var pendingTests: Option[ParsedTestSummary] = None
-  private val summaries = List.newBuilder[ParsedCacheSummary]
+  private val withCache = List.newBuilder[ParsedCacheSummary]
+  private val withoutCache = List.newBuilder[ParsedCacheSummary]
 
   def add(line: String): Unit =
     ParsedTestSummary.parse(line) match
       case Some(tests) => pendingTests = Some(tests)
-      case None =>
+      case None        =>
         ParsedCacheSummary
           .parse(line)
           .foreach(summary =>
-            summaries += summary.copy(tests = pendingTests)
+            val target = if summary.hitRate.isDefined then withCache else withoutCache
+            target += summary.copy(tests = pendingTests)
             pendingTests = None
           )
 
-  def result(): List[ParsedCacheSummary] = summaries.result()
+  def result(): List[ParsedCacheSummary] =
+    val cached = withCache.result()
+    if cached.nonEmpty then cached else withoutCache.result()
 end CacheSummaryCollector
+
+/** Describes one sbt invocation of a community project. */
+final case class RunInfo(
+    project: String,
+    run: String,
+    sbtVersion: String,
+    wallClockSeconds: Double,
+)
 
 object ParsedCacheSummary:
   private val Elapsed = """elapsed time: (\d+) s""".r.unanchored
@@ -72,17 +88,16 @@ object ParsedCacheSummary:
   private val Errors = """(\d+) errors?\b""".r.unanchored
 
   def parse(line: String): Option[ParsedCacheSummary] =
-    for
-      elapsed <- first(Elapsed, line)
-      hitRate <- first(HitRate, line)
-    yield ParsedCacheSummary(
-      success = !line.contains("[error]"),
-      elapsedSeconds = elapsed.toLong,
-      hitRate = hitRate.toInt / 100.0,
-      remoteCacheHits = count(RemoteHits, line),
-      diskCacheHits = count(DiskHits, line),
-      onsiteTasks = count(Onsite, line),
-      errors = count(Errors, line),
+    first(Elapsed, line).map(elapsed =>
+      ParsedCacheSummary(
+        success = !line.contains("[error]"),
+        elapsedSeconds = elapsed.toLong,
+        hitRate = first(HitRate, line).map(_.toInt / 100.0),
+        remoteCacheHits = count(RemoteHits, line),
+        diskCacheHits = count(DiskHits, line),
+        onsiteTasks = count(Onsite, line),
+        errors = count(Errors, line),
+      )
     )
 
   private def first(regex: scala.util.matching.Regex, line: String): Option[String] =
@@ -92,27 +107,28 @@ object ParsedCacheSummary:
     first(regex, line).fold(0)(_.toInt)
 
   private[communitybuild] val tableHeader =
-    """|| Project | Status | Elapsed | Cache | Remote hits | Disk hits | Onsite tasks | Errors | Tests | Cached tests |
-      ||---|---|---|---|---|---|---|---|---|---|
+    """|| Project | Run | sbt | Status | Wall clock | Elapsed | Cache | Remote hits | Disk hits | Onsite tasks | Errors | Tests | Cached tests |
+      ||---|---|---|---|---|---|---|---|---|---|---|---|---|
       |""".stripMargin
 
-  def markdownRow(project: String, summary: ParsedCacheSummary): String =
+  def markdownRow(info: RunInfo, summary: ParsedCacheSummary): String =
     import summary.*
     val status = if success then "success" else "error"
-    val percent = f"${hitRate * 100}%.0f%%"
+    val wallClock = f"${info.wallClockSeconds}%.1fs"
+    val percent = hitRate.fold("")(rate => f"${rate * 100}%.0f%%")
     val testCount = tests.fold("")(_.total.toString)
     val cachedTests = tests.fold("")(_.cached.toString)
-    s"| `$project` | $status | ${elapsedSeconds}s | $percent | $remoteCacheHits | $diskCacheHits | $onsiteTasks | $errors | $testCount | $cachedTests |\n"
+    s"| `${info.project}` | ${info.run} | ${info.sbtVersion} | $status | $wallClock | ${elapsedSeconds}s | $percent | $remoteCacheHits | $diskCacheHits | $onsiteTasks | $errors | $testCount | $cachedTests |\n"
 
-  def report(project: String, summaries: Seq[ParsedCacheSummary]): Unit =
-    summaries.foreach(s => log(s"[$project] $s"))
+  def report(info: RunInfo, summaries: Seq[ParsedCacheSummary]): Unit =
+    summaries.foreach(s => log(s"[${info.project}] ${info.run}: $s"))
     sys.env
       .get("GITHUB_STEP_SUMMARY")
       .filter(_ => summaries.nonEmpty)
       .foreach(p =>
         val path = Paths.get(p)
         val hasHeader = Files.exists(path) && Files.readString(path).contains(tableHeader)
-        val rows = summaries.map(markdownRow(project, _)).mkString
+        val rows = summaries.map(markdownRow(info, _)).mkString
         Files.writeString(
           path,
           (if hasHeader then "" else tableHeader) + rows,
