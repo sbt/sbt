@@ -51,6 +51,7 @@ set sbt_args_allow_empty=
 set sbt_args_sbt_dir=
 set sbt_args_sbt_version=
 set sbt_args_mem=
+set sbt_args_java_opts=
 set sbt_args_client=-1
 set sbt_args_jvm_client=
 set sbt_args_no_server=
@@ -598,6 +599,32 @@ if "%g:~0,2%" == "-X" (
   goto args_loop
 )
 
+rem -J-X passes -X to the java runtime. The -J form is kept as well, so that
+rem the native client can pass it on to the sbt server it starts.
+rem See the -D handling above for why this is flat rather than nested blocks.
+if not "%g:~0,2%" == "-J" goto args_loop_after_J
+set "g_opt=%g:~2%"
+if "%g_opt%" == "" goto args_loop
+set "g_key="
+for /F "tokens=1 delims==" %%a in ("%g%") do set "g_key=%%a"
+if not "%g%" == "%g_key%" goto args_loop_J_add
+if "%~1" == "" goto args_loop_J_add
+rem like -D and -XX above, since '=' gets parsed away
+if "%g_opt:~0,2%" == "-D" goto args_loop_J_join
+if "%g_opt:~0,5%" == "-XX:+" goto args_loop_J_add
+if "%g_opt:~0,5%" == "-XX:-" goto args_loop_J_add
+if "%g_opt:~0,3%" == "-XX" goto args_loop_J_join
+goto args_loop_J_add
+:args_loop_J_join
+set "g_opt=%g_opt%=%~1"
+shift
+:args_loop_J_add
+call :dlog [args_loop] -J argument %g_opt%
+call :addJava "%g_opt%"
+set sbt_args_java_opts=!sbt_args_java_opts! "-J%g_opt%"
+goto args_loop
+:args_loop_after_J
+
 rem See the -D handling above for why this is flat rather than nested blocks.
 if not defined sbt_new goto args_loop_after_dashdash
 if not "%g:~0,2%" == "--" goto args_loop_after_dashdash
@@ -837,6 +864,8 @@ if defined sbt_args_verbose (
   set SBT_ARGS=-v !SBT_ARGS!
 )
 
+if defined sbt_args_java_opts set SBT_ARGS=!sbt_args_java_opts! !SBT_ARGS!
+
 for %%I in ("!SBT_BIN_DIR!sbt.bat") do set "SBT_SCRIPT=%%~sI"
 set SBT_ARGS=--sbt-script=!SBT_SCRIPT! %SBT_ARGS%
 
@@ -975,10 +1004,15 @@ exit /B 0
   set _has_memory_args=
 
   if defined _JAVA_OPTS for %%g in (%_JAVA_OPTS%) do (
-    set "p=%%g"
+    set "p=%%~g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
     if "!p:~0,4!" == "-Xss" set _has_memory_args=1
+    if "!p:~0,32!" == "-XX:+UseCGroupMemoryLimitForHeap" set _has_memory_args=1
+    if "!p:~0,10!" == "-XX:MaxRAM" set _has_memory_args=1
+    if "!p:~0,24!" == "-XX:InitialRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MaxRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MinRAMPercentage" set _has_memory_args=1
   )
 
   if defined JAVA_TOOL_OPTIONS for %%g in (%JAVA_TOOL_OPTIONS%) do (
@@ -986,6 +1020,11 @@ exit /B 0
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
     if "!p:~0,4!" == "-Xss" set _has_memory_args=1
+    if "!p:~0,32!" == "-XX:+UseCGroupMemoryLimitForHeap" set _has_memory_args=1
+    if "!p:~0,10!" == "-XX:MaxRAM" set _has_memory_args=1
+    if "!p:~0,24!" == "-XX:InitialRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MaxRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MinRAMPercentage" set _has_memory_args=1
   )
 
   if defined JDK_JAVA_OPTIONS for %%g in (%JDK_JAVA_OPTIONS%) do (
@@ -993,6 +1032,11 @@ exit /B 0
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
     if "!p:~0,4!" == "-Xss" set _has_memory_args=1
+    if "!p:~0,32!" == "-XX:+UseCGroupMemoryLimitForHeap" set _has_memory_args=1
+    if "!p:~0,10!" == "-XX:MaxRAM" set _has_memory_args=1
+    if "!p:~0,24!" == "-XX:InitialRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MaxRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MinRAMPercentage" set _has_memory_args=1
   )
 
   if defined _SBT_OPTS for %%g in (%_SBT_OPTS%) do (
@@ -1000,6 +1044,11 @@ exit /B 0
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
     if "!p:~0,4!" == "-Xss" set _has_memory_args=1
+    if "!p:~0,32!" == "-XX:+UseCGroupMemoryLimitForHeap" set _has_memory_args=1
+    if "!p:~0,10!" == "-XX:MaxRAM" set _has_memory_args=1
+    if "!p:~0,24!" == "-XX:InitialRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MaxRAMPercentage" set _has_memory_args=1
+    if "!p:~0,20!" == "-XX:MinRAMPercentage" set _has_memory_args=1
   )
 
   if not defined _has_memory_args (
@@ -1204,8 +1253,8 @@ echo   -debug-inc ^| --debug-inc
 echo                       enable extra debugging for the incremental compiler
 echo   --experimental_execution_log=true^|^<path^>
 echo                       enable experimental execution log
-rem echo   -J-X                pass option -X directly to the java runtime
-rem echo                       ^(-J is stripped^)
+echo   -J-X                pass option -X directly to the java runtime
+echo                       ^(-J is stripped^)
 rem echo   -S-X                add -X to sbt's scalacOptions ^(-S is stripped^)
 echo.
 echo In the case of duplicated or conflicting options, the order above

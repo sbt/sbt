@@ -119,10 +119,39 @@ object NetworkClientParseArgsTest extends BasicTestSuite:
     assert(!result.sbtArguments.exists(_.contains("color")))
     assert(result.commandArguments.contains("compile"))
 
-  test("-J-Xss4m is dropped"):
-    val result = parse("-J-Xss4m", "compile")
-    assert(!result.sbtArguments.contains("-J-Xss4m"))
-    assert(result.commandArguments.contains("compile"))
+  test("-J-Xmx2G is forwarded to the forked server script, not to sbt"):
+    val result = parse("-J-Xmx2G", "compile")
+    val cmd = NetworkClient.serverCommand(result)
+    assert(!result.sbtArguments.contains("-J-Xmx2G"))
+    assert(result.commandArguments == Seq("compile"))
+    assert(cmd.contains("-J-Xmx2G"), cmd.toString)
+    assert(cmd.indexOf("-J-Xmx2G") < cmd.indexOf("--server"), cmd.toString)
+
+  test("-J after a command is forwarded to the forked server script"):
+    val result = parse("compile", "-J-Xmx2G")
+    val cmd = NetworkClient.serverCommand(result)
+    assert(result.commandArguments == Seq("compile"))
+    assert(cmd.contains("-J-Xmx2G"), cmd.toString)
+
+  test("-J inside a quoted command stays part of the command"):
+    val result = parse("run -J-foo")
+    val cmd = NetworkClient.serverCommand(result)
+    assert(result.commandArguments == Seq("run", "-J-foo"))
+    assert(!cmd.contains("-J-foo"), cmd.toString)
+    assert(!cmd.contains("-foo"), cmd.toString)
+
+  test("a bare -J is dropped"):
+    val result = parse("-J", "compile")
+    assert(result.launcherValueArgs.isEmpty)
+    assert(!result.sbtArguments.contains("-J"))
+    assert(result.commandArguments == Seq("compile"))
+
+  test("-J heap option reaches the forked server JVM when using a launcher jar"):
+    val result = parse("--sbt-launch-jar", "/tmp/sbt-launch.jar", "-J-Xmx2G", "compile")
+    val cmd = NetworkClient.serverCommand(result)
+    assert(cmd.contains("-Xmx2G"), cmd.toString)
+    assert(cmd.indexOf("-Xmx2G") < cmd.indexOf("-jar"), cmd.toString)
+    assert(!cmd.contains("-J-Xmx2G"), cmd.toString)
 
   // -- Flags that should be preserved --
 
