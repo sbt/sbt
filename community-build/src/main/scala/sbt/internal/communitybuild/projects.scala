@@ -6,6 +6,8 @@ import java.nio.file.*
 import java.io.File
 import sbt.io.IO
 import java.nio.charset.StandardCharsets.UTF_8
+import scala.io.Source
+import scala.util.Using
 
 lazy val communitybuildDir: Path =
   Paths.get(sys.props("user.dir")).resolve("community-build")
@@ -42,20 +44,27 @@ def exec(
     projectDir: Path,
     binary: String,
     arguments: Seq[String],
-    environment: Map[String, String]
+    environment: Map[String, String],
+    onLine: String => Unit = println,
 ): Int =
   import scala.jdk.CollectionConverters.*
   val command = binary +: arguments
   log(command.mkString(" "))
-  val builder = new ProcessBuilder(command*).directory(projectDir.toFile).inheritIO()
+  val builder = new ProcessBuilder(command*)
+    .directory(projectDir.toFile)
+    .redirectInput(ProcessBuilder.Redirect.INHERIT)
+    .redirectErrorStream(true)
   builder.environment.putAll(environment.asJava)
   val process = builder.start()
-  val exitCode = process.waitFor()
-  exitCode
+  Using.resource(Source.fromInputStream(process.getInputStream, UTF_8.name))(
+    _.getLines().foreach(onLine)
+  )
+  process.waitFor()
 
 enum Scenario:
   case Test
   case Build
+  case TestTest(minHitRate: Double, minTestHitRate: Double = 1.0)
 
 sealed trait CommunityProject:
   def project: String
@@ -66,6 +75,7 @@ sealed trait CommunityProject:
   def binaryName: String
   def runCommandsArgs: List[String] = Nil
   def environment: Map[String, String] = Map.empty
+  def diskCacheDir: Option[File] = None
   def scenarioType: Scenario
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -77,7 +87,7 @@ sealed trait CommunityProject:
       throw RuntimeException(
         s"Publish command is not specified for $project. Project details:\n$this"
       )
-    val exitCode = execAndShutdown(runCommandsArgs :+ publishCommand)
+    val (exitCode, _) = execAndShutdown(runCommandsArgs :+ publishCommand)
     if exitCode != 0 then
       throw RuntimeException(
         s"Publish command exited with code $exitCode for project $project. Project details:\n$this"
@@ -87,26 +97,64 @@ sealed trait CommunityProject:
     log(s"Documenting $project")
     if docCommand eq null then
       throw RuntimeException(s"Doc command is not specified for $project. Project details:\n$this")
-    val exitCode = execAndShutdown(runCommandsArgs :+ docCommand)
+    val (exitCode, _) = execAndShutdown(runCommandsArgs :+ docCommand)
     if exitCode != 0 then
       throw RuntimeException(
         s"Doc command exited with code $exitCode for project $project. Project details:\n$this"
       )
 
   def scenario(): Int = scenarioType match
-    case Scenario.Test  => test()
-    case Scenario.Build => build()
+    case Scenario.Test                                 => test()
+    case Scenario.Build                                => build()
+    case Scenario.TestTest(minHitRate, minTestHitRate) => testTest(minHitRate, minTestHitRate)
 
-  final def build(): Int = execAndShutdown(buildCommands)
+  final def build(): Int = execAndShutdown(buildCommands)._1
 
   final def buildCommands = runCommandsArgs :+ testCompileCommand
 
-  final def test(): Int = execAndShutdown(List(testCommand))
+  final def test(): Int = execAndShutdown(runCommandsArgs :+ testCommand)._1
 
-  private def execAndShutdown(arguments: List[String]): Int =
-    val exitCode = exec(projectDir, binaryName, arguments, environment)
+  /** Runs the tests twice, and asserts the second run is served from the cache. */
+  final def testTest(minHitRate: Double, minTestHitRate: Double): Int =
+    val (firstExitCode, _) = execAndShutdown(runCommandsArgs :+ testCommand)
+    if firstExitCode != 0 then firstExitCode
+    else
+      diskCacheDir.foreach(wipeDirectory)
+      val (exitCode, summaries) = execAndShutdown(runCommandsArgs :+ testCommand)
+      assert(summaries.nonEmpty, s"no cache summary found in the second test run of $project")
+      val belowThreshold = summaries.filter(_.hitRate < minHitRate)
+      assert(
+        belowThreshold.isEmpty,
+        s"cache hit rate of the second test run of $project is below $minHitRate: $belowThreshold"
+      )
+      val tests = summaries.flatMap(_.tests)
+      assert(tests.nonEmpty, s"no test summary found in the second test run of $project")
+      val testsBelowThreshold = tests.filter(_.testHitRate < minTestHitRate)
+      assert(
+        testsBelowThreshold.isEmpty,
+        s"test hit rate of the second test run of $project is below $minTestHitRate: $testsBelowThreshold"
+      )
+      exitCode
+
+  private def wipeDirectory(dir: File): Unit =
+    log(s"Wiping disk cache $dir")
+    IO.delete(IO.listFiles(dir))
+
+  private def execAndShutdown(arguments: List[String]): (Int, List[ParsedCacheSummary]) =
+    val summaries = CacheSummaryCollector()
+    val exitCode = exec(
+      projectDir,
+      binaryName,
+      arguments,
+      environment,
+      line =>
+        println(line)
+        summaries.add(line)
+    )
     exec(projectDir, binaryName, runCommandsArgs :+ "shutdown", environment)
-    exitCode
+    val result = summaries.result()
+    ParsedCacheSummary.report(project, result)
+    (exitCode, result)
 
 end CommunityProject
 
@@ -150,6 +198,10 @@ final case class SbtCommunityProject(
       val cmd = if docCmd.startsWith(";") then docCmd else s";$docCmd"
       s"$baseCommand set every useScaladoc := true; set every doc/logLevel := Level.Warn $cmd "
 
+  private val localCacheDir: File = IO.createTemporaryDirectory
+
+  override def diskCacheDir: Option[File] = Some(localCacheDir)
+
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
@@ -161,11 +213,10 @@ final case class SbtCommunityProject(
         s"-Dsbt.remote_cache=$uri",
       )
     )
-    val diskCacheDir = IO.createTemporaryDirectory
     extraSbtArgs ++ sbtProps ++ remoteCacheProps ++ List(
       s"-Dsbt.version=$sbtVersion",
       s"-Dsbt.boot=$bootDir",
-      s"-Dsbt.global.localcache=$diskCacheDir",
+      s"-Dsbt.global.localcache=$localCacheDir",
       "-Dsbt.supershell=false",
     )
 end SbtCommunityProject
@@ -215,6 +266,7 @@ object projects:
     testCmd = all(chimneyJvmProjects.map(p => s"$p/test")*),
     testCompileCmd = all(chimneyJvmProjects.map(p => s"$p/Test/compile")*),
     environment = Map("_JAVA_OPTIONS" -> "-Xmx2g"),
+    scenarioType = Scenario.TestTest(minHitRate = 0.9),
   )
 
   lazy val `sbt-compile-benchmark` = SbtCommunityProject(
