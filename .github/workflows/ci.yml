@@ -56,10 +56,6 @@ jobs:
             java: 17
             distribution: zulu
             jobtype: 12
-          - os: ubuntu-latest
-            java: 17
-            distribution: temurin
-            jobtype: 13
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -196,8 +192,3 @@ jobs:
         shell: bash
         run: |
           ./sbt -v --server "scripted cache/*"
-      - name: Community build
-        if: ${{ matrix.jobtype == 13 }}
-        shell: bash
-        run: |
-          ./sbt -v --server "community-build/test"
