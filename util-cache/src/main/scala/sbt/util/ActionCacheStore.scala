@@ -1,6 +1,7 @@
 package sbt.util
 
 import java.io.{ ByteArrayInputStream, IOException }
+import java.nio.file.attribute.PosixFilePermission
 import java.nio.ByteBuffer
 import java.nio.file.{
   Files,
@@ -15,6 +16,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 import scala.util.Using
 import scala.util.control.NonFatal
 import sbt.internal.io.Retry
@@ -247,6 +249,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.copyFile(blob.toFile(), casFile.toFile(), preserveLastModified = true)
+      sealBlob(casFile)
       casFile
 
   /** Move blob directly to CAS. Internal use only. */
@@ -255,6 +258,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.move(blob.toFile(), casFile.toFile())
+      sealBlob(casFile)
       casFile
 
   def putBlob(input: InputStream, digest: Digest): Path =
@@ -262,6 +266,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.transfer(input, casFile.toFile())
+      sealBlob(casFile)
       casFile
 
   def putBlob(input: ByteBuffer, digest: Digest): Path =
@@ -272,11 +277,27 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
       val bytes = new Array[Byte](input.remaining())
       input.get(bytes)
       IO.transfer(new ByteArrayInputStream(bytes), casFile.toFile())
+      sealBlob(casFile)
       casFile
 
   private def isCompleteBlob(casFile: Path, digest: Digest): Boolean =
-    try Files.exists(casFile) && Digest.sameDigest(casFile, digest)
+    try
+      if Files.exists(casFile) && Digest.sameDigest(casFile, digest) then
+        sealBlob(casFile)
+        true
+      else false
     catch case _: NoSuchFileException => false
+
+  /**
+   * Makes a CAS file read-only so that writing through a symlink fails instead of corrupting it.
+   * POSIX only, since the read-only attribute on Windows would also block replace and delete.
+   */
+  private def sealBlob(p: Path): Unit =
+    try
+      val perms = Files.getPosixFilePermissions(p).asScala.toSet
+      val sealedPerms = perms -- DiskActionCacheStore.writePermissions
+      if sealedPerms != perms then Files.setPosixFilePermissions(p, sealedPerms.asJava)
+    catch case _: UnsupportedOperationException | _: IOException => ()
 
   private def requireWithinBase(base: Path, target: Path, ref: HashedVirtualFileRef): Path =
     val normalizedBase = base.toAbsolutePath.normalize()
@@ -442,4 +463,12 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         else None
       // Digest(r) can throw NoSuchFileException
       catch case _: NoSuchFileException => None
+end DiskActionCacheStore
+
+object DiskActionCacheStore:
+  private val writePermissions: Set[PosixFilePermission] = Set(
+    PosixFilePermission.OWNER_WRITE,
+    PosixFilePermission.GROUP_WRITE,
+    PosixFilePermission.OTHERS_WRITE,
+  )
 end DiskActionCacheStore
