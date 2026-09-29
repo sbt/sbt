@@ -681,6 +681,7 @@ object Compiler:
     if Files.isSymbolicLink(earlyJar) then
       val tmp = earlyJar.resolveSibling(earlyJar.getFileName.toString + ".tmp")
       Files.copy(earlyJar.toRealPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+      tmp.toFile.setWritable(true)
       Files.move(tmp, earlyJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
       ci
     else if !Files.exists(earlyJar) && hasCompilations(ci.previousResult.analysis.toScala) then

@@ -2,9 +2,11 @@ package sbt.util
 
 import java.io.{ ByteArrayInputStream, IOException, InputStream }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
+import java.nio.file.{ AccessDeniedException, Files, NoSuchFileException, Path, Paths }
+import java.nio.file.attribute.{ PosixFileAttributeView, PosixFilePermission }
 import java.util.Optional
 import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUnit }
+import scala.jdk.CollectionConverters.*
 
 import sbt.internal.util.CacheEventLog
 import sbt.internal.util.StringVirtualFile1
@@ -131,6 +133,79 @@ object ActionCacheTest extends BasicTestSuite:
 
       assert(!Files.exists(casFile))
       assert(Files.list(cache.casBase).toArray.isEmpty)
+
+  test("Writing to a synced output leaves the CAS blob intact"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        IO.write(out.toFile(), "bar")
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(Files.readString(out, StandardCharsets.UTF_8) == "bar")
+        val out2 = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        IO.append(out2.toFile(), "+baz")
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(Files.readString(out2, StandardCharsets.UTF_8) == "foo+baz")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  private def supportsPosix(p: Path): Boolean =
+    Files.getFileAttributeView(p, classOf[PosixFileAttributeView]) != null
+
+  private def hasWritePermission(p: Path): Boolean =
+    Files
+      .getPosixFilePermissions(p)
+      .asScala
+      .exists(
+        Set(
+          PosixFilePermission.OWNER_WRITE,
+          PosixFilePermission.GROUP_WRITE,
+          PosixFilePermission.OTHERS_WRITE,
+        )
+      )
+
+  test("Disk cache stores blobs without write permissions"):
+    withDiskCache: cache =>
+      val ref = cache.putBlobs(StringVirtualFile1("a.txt", "hello") :: Nil).head
+      val casFile = cache.toCasFile(Digest(ref))
+      assert(Files.readString(casFile, StandardCharsets.UTF_8) == "hello")
+      if supportsPosix(casFile) then assert(!hasWritePermission(casFile))
+
+  test("Disk cache removes write permissions from a blob it verifies"):
+    withDiskCache: cache =>
+      val blob = StringVirtualFile1("a.txt", "hello")
+      val ref: HashedVirtualFileRef = blob
+      val casFile = cache.toCasFile(Digest(blob))
+      Files.writeString(casFile, "hello", StandardCharsets.UTF_8)
+      assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+      if supportsPosix(casFile) then assert(!hasWritePermission(casFile))
+
+  test("Disk cache replaces a truncated blob without write permissions"):
+    withDiskCache: cache =>
+      val blob = StringVirtualFile1("a.txt", "hello")
+      val ref: HashedVirtualFileRef = blob
+      val casFile = cache.toCasFile(Digest(blob))
+      Files.writeString(casFile, "he", StandardCharsets.UTF_8)
+      casFile.toFile().setWritable(false)
+      cache.putBlobs(blob :: Nil)
+      assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+      assert(Files.readString(casFile, StandardCharsets.UTF_8) == "hello")
+
+  test("Writing through a synced symlink fails instead of corrupting the CAS blob"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        if Files.isSymbolicLink(out) && supportsPosix(casFile) then
+          assert(!hasWritePermission(casFile))
+          if !Files.isWritable(casFile) then
+            intercept[AccessDeniedException](Files.writeString(out, "bar", StandardCharsets.UTF_8))
+        else assert(Files.isWritable(out))
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
 
   def testHoldBlob(cache: ActionCacheStore): Unit =
     IO.withTemporaryDirectory: tempDir =>
