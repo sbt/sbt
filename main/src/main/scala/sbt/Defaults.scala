@@ -14,7 +14,6 @@ import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.Configuration as CConfiguration
-import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition, parsed }
 import sbt.Keys.*
 import sbt.OptionSyntax.*
@@ -116,6 +115,7 @@ import xsbti.compile.{
 
 object Defaults extends BuildCommon with DefExtra:
   final val CacheDirectoryName = "cache"
+  private final val OWNER_DACL = 1
 
   def configSrcSub(key: SettingKey[File]): Initialize[File] =
     Def.setting {
@@ -400,7 +400,7 @@ object Defaults extends BuildCommon with DefExtra:
         else Set()
       },
       serverHandlers :== Nil,
-      windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
+      ((windowsServerSecurityLevel := OWNER_DACL): @nowarn("cat=deprecation")),
       serverUseJni := SysProp.serverUseJni,
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||

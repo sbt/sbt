@@ -9,9 +9,11 @@
 package sbt
 package protocol
 
-import java.io.File
+import java.io.{ File, IOException }
+import java.lang.reflect.{ Constructor, InvocationTargetException }
 import java.net.{ InetAddress, Socket, StandardProtocolFamily, URI, UnixDomainSocketAddress }
 import java.nio.channels.SocketChannel
+import java.nio.file.{ Path, Paths }
 import scala.util.control.NonFatal
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter }
@@ -19,7 +21,6 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.internal.protocol.codec.{ PortFileFormats, TokenFileFormats }
 import sbt.internal.util.Util.isWindows
-import org.scalasbt.ipcsocket.*
 
 import scala.util.{ Failure, Success, Try }
 
@@ -63,9 +64,10 @@ object ClientSocket:
 
   private def connect(uri: URI, useJNI: Boolean): Socket =
     uri.getScheme match
-      case "local" => localSocket(uri.getSchemeSpecificPart, useJNI)
-      case "tcp"   => new Socket(InetAddress.getByName(uri.getHost), uri.getPort)
-      case _       => sys.error(s"Unsupported uri: $uri")
+      case "local" if !uri.isOpaque => unixSocket(localPath(uri))
+      case "local"                  => localSocket(uri.getSchemeSpecificPart, useJNI)
+      case "tcp"                    => new Socket(InetAddress.getByName(uri.getHost), uri.getPort)
+      case _                        => sys.error(s"Unsupported uri: $uri")
 
   /** Whether a server still accepts connections on `uri`, as written in its connection file. */
   private[sbt] def reachable(uri: String, useJNI: Boolean): Boolean =
@@ -74,11 +76,46 @@ object ClientSocket:
       true
     catch case NonFatal(_) => false
   def localSocket(name: String, useJNI: Boolean): Socket =
-    if isWindows then new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
-    else new UnixDomainSocket(name, useJNI)
+    if isWindows then namedPipeSocket(name, useJNI)
+    else unixSocket(Paths.get(name))
 
-  def bootSocket(path: String): Socket =
+  /**
+   * ipcsocket's named pipe client, which sbtn for Windows bundles to reach sbt servers before
+   * 2.1.0; the JVM artifacts do not depend on ipcsocket.
+   */
+  private[sbt] lazy val namedPipeConstructor: Option[Constructor[? <: Socket]] =
+    try
+      Some(
+        Class
+          .forName("org.scalasbt.ipcsocket.Win32NamedPipeSocket")
+          .asSubclass(classOf[Socket])
+          .getConstructor(classOf[String], java.lang.Boolean.TYPE)
+      )
+    catch case _: ReflectiveOperationException | _: LinkageError => None
+
+  private def namedPipeSocket(name: String, useJNI: Boolean): Socket =
+    namedPipeConstructor match
+      case Some(c) =>
+        try c.newInstance(s"\\\\.\\pipe\\$name", Boolean.box(useJNI))
+        catch case e: InvocationTargetException => throw e.getCause
+      case None =>
+        throw new IOException(s"named pipe $name is only reachable from sbtn for Windows")
+
+  def bootSocket(path: String): Socket = unixSocket(Paths.get(path))
+
+  /**
+   * The socket file that a hierarchical `local:` URI names, such as `local:///path/to/sock` or
+   * `local:///C:/path/to/sock`; an opaque `local:name` names a Windows named pipe instead.
+   */
+  private[sbt] def localPath(uri: URI): Path =
+    Paths.get(new URI("file", null, uri.getPath, null))
+
+  private[sbt] def unixSocket(path: Path): Socket =
     val ch = SocketChannel.open(StandardProtocolFamily.UNIX)
-    ch.connect(UnixDomainSocketAddress.of(path))
+    try ch.connect(UnixDomainSocketAddress.of(path))
+    catch
+      case e: Throwable =>
+        ch.close()
+        throw e
     DuplexChannels.newSocket(ch)
 end ClientSocket

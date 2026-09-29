@@ -196,7 +196,6 @@ private[sbt] final class CommandExchange:
       s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
-    lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
     lazy val useJni = s.get(serverUseJni).getOrElse(false)
     lazy val enableBsp = s.get(bspEnabled).getOrElse(true)
     lazy val portfile = s.baseDir / "project" / "target" / "active.json"
@@ -234,7 +233,6 @@ private[sbt] final class CommandExchange:
         socketfile,
         pipeName,
         s.configuration,
-        win32Level,
         useJni,
         enableBsp,
       )

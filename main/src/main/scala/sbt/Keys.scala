@@ -113,6 +113,10 @@ object Keys {
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
   val serverIdleTimeout = SettingKey(BasicKeys.serverIdleTimeout)
+  @deprecated(
+    "windowsServerSecurityLevel has no effect; the sbt server listens on a Unix domain socket on every platform, guarded by the permissions of its directory",
+    "2.1.0"
+  )
   val windowsServerSecurityLevel = SettingKey(BasicKeys.windowsServerSecurityLevel)
   val serverUseJni = SettingKey(BasicKeys.serverUseJni)
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
