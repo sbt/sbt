@@ -151,10 +151,7 @@ private[sbt] object xMain:
     // sbt runs fine without a boot socket (see the UnsatisfiedLinkError case below), so a
     // creation failure only means "another sbt is booting" if something answers on it.
     def liveServerDetected: Boolean =
-      BootServerSocketProbe.liveServerDetected(
-        BootServerSocket.socketLocation(base, hash),
-        SysProp.serverUseJni,
-      )
+      BootServerSocketProbe.liveServerDetected(BootServerSocket.socketLocation(base, hash))
     try Some(new BootServerSocket(configuration, hash)) -> None
     catch
       // No live server and nothing the user can do about a socket failure, so proceed

@@ -621,7 +621,7 @@ lazy val protocolProj = (project in file("protocol"))
   .settings(
     testedBaseSettings,
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value, ipcSocket),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value),
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
@@ -895,6 +895,7 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies ++= scalatest,
+    libraryDependencies ++= (if isWin then Seq(ipcSocket) else Nil),
     Compile / mainClass := Some("sbt.client.Client"),
     nativeImageReady := { () =>
       ()
