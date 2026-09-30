@@ -90,7 +90,7 @@ object NetworkChannelSpec extends BasicTestSuite:
   private def liveThreads: Set[Thread] = Thread.getAllStackTraces.keySet.asScala.toSet
 
   private val channelName = "interrupt-test"
-  
+
   private def isChannelThread(thread: Thread): Boolean =
     thread.getName.startsWith("sbt-networkchannel-") ||
       thread.getName.startsWith(s"sbt-$channelName-")
