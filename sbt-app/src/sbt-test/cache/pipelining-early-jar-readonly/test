@@ -1,0 +1,12 @@
+> compile
+
+# restore core's early jar from the disk cache, then leave it as a read-only regular file
+$ delete target/out
+> compile
+> core/makeEarlyJarReadOnly
+
+# an incremental round in core must still be able to update the early jar
+$ copy-file changes/Added.scala core/Added.scala
+$ copy-file changes/UseAdded.scala app/UseAdded.scala
+> compile
+> app/checkEarlyJar
