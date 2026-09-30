@@ -3465,11 +3465,18 @@ object Classpaths:
         val pr =
           if includePluginResolvers.value then pluginResolvers
           else Vector.empty
+        // Resolve from the publishLocal target as well, so that relocating it (as scripted does)
+        // still lets a build see what it just published. Not added when the build's resolvers are
+        // overridden, since the point of that mode is that only the forced repositories are used.
+        val localRepo = localIvyRepository.value
+        val localPublish =
+          if localRepo == defaultIvyHome(ivyPaths.value) / "local" then Vector.empty
+          else Vector(Resolver.file("local-publish", localRepo)(using Resolver.ivyStylePatterns))
         bootResolvers.value match
           case Some(repos) if overrideBuildResolvers.value => proj +: repos
           case _                                           =>
             val base = if sbtPlugin.value then sbtResolvers.value ++ rs ++ pr else rs ++ pr
-            (proj +: base).distinct
+            (proj +: (localPublish ++ base)).distinct
       }).value),
     csrSameVersions ++= {
       partialVersion(scalaVersion.value) match
@@ -3507,6 +3514,14 @@ object Classpaths:
       baseDirectory.value.toString,
       bootIvyHome(appConfiguration.value).map(_.toString)
     ),
+    localIvyRepository := {
+      val ip = ivyPaths.value
+      val fallback = defaultIvyHome(ip) / "local"
+      // A build that points ivyPaths somewhere of its own has already chosen where to publish,
+      // so it wins over the ambient property.
+      if ip.ivyHome != bootIvyHome(appConfiguration.value).map(_.toString) then fallback
+      else SysProp.localIvyRepository.getOrElse(fallback)
+    },
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
       val ac = appConfiguration.value
@@ -3724,10 +3739,8 @@ object Classpaths:
     ivySbt := Def.uncached((): Any),
     ivyModule := Def.uncached((): Any),
     publisher := Def.uncached {
-      val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
-        new File(sys.props("user.home")) / ".ivy2"
-      }
-      val localResolver = Resolver.file("local", ivyHome / "local")(using Resolver.ivyStylePatterns)
+      val localResolver =
+        Resolver.file("local", localIvyRepository.value)(using Resolver.ivyStylePatterns)
       // publishLocal/publishM2/publish target these by name (see publishConfig's resolverName
       // default and publishM2Configuration below).
       val knownResolvers = localResolver +: otherResolvers.value
@@ -4851,6 +4864,9 @@ object Classpaths:
         if replaceWith.isEmpty then arts else replaceWith
       else arts
     }
+
+  private[sbt] def defaultIvyHome(paths: IvyPaths): File =
+    paths.ivyHome.map(new File(_)).getOrElse(new File(sys.props("user.home")) / ".ivy2")
 
   // try/catch for supporting earlier launchers
   def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
