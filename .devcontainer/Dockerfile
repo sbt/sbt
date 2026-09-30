@@ -63,6 +63,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
   sudo dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
   rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
 
+ARG BAZEL_REMOTE_VERSION=2.6.2
+RUN ARCH=$(dpkg --print-architecture) && \
+  sudo wget -O /usr/local/bin/bazel-remote "https://github.com/buchgr/bazel-remote/releases/download/v${BAZEL_REMOTE_VERSION}/bazel-remote-${BAZEL_REMOTE_VERSION}-linux-${ARCH}" && \
+  sudo chmod +x /usr/local/bin/bazel-remote
+
 # Set up non-root user
 USER $USERNAME
 
@@ -90,9 +95,9 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 # Copy and set up firewall script
-COPY init-firewall.sh /usr/local/bin/
+COPY init-firewall.sh start-bazel-remote.sh /usr/local/bin/
 USER root
-RUN chmod +x /usr/local/bin/init-firewall.sh && \
+RUN chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/start-bazel-remote.sh && \
   echo "$USERNAME ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node-firewall && \
   chmod 0440 /etc/sudoers.d/node-firewall
 USER $USERNAME

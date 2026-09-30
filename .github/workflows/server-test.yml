@@ -7,19 +7,33 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  server-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            java: 17
+            distribution: temurin
+            jobtype: 1
+          - os: ubuntu-latest
+            java: 17
+            distribution: temurin
+            jobtype: 2
+    runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: Setup JDK
         uses: actions/setup-java@v6
         with:
-          distribution: "zulu"
-          java-version: "17"
+          distribution: "${{ matrix.distribution }}"
+          java-version: "${{ matrix.java }}"
           cache: sbt
       - uses: sbt/setup-sbt@v1
       - name: Set bazel-remote version
@@ -58,13 +72,22 @@ jobs:
           cat /tmp/bazel-remote.log
           exit 1
       - name: Remote cache scripted test
+        if: ${{ matrix.jobtype == 1 }}
         shell: bash
         run: |
           sbt -v --client "doc; publishLocal"
           sbt -v --client "scripted remote-cache/*"
       - name: Server test
+        if: ${{ matrix.jobtype == 1 }}
         shell: bash
         run: sbt -v --client "serverTestProj/test"
+      - name: Community build
+        if: ${{ matrix.jobtype == 2 }}
+        shell: bash
+        env:
+          COMMUNITY_BUILD_REMOTE_CACHE: grpc://127.0.0.1:2024
+        run: |
+          sbt -v --client "community-build/test"
       - name: Stop bazel-remote
         if: always()
         run: |

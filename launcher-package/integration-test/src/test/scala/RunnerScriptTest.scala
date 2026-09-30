@@ -51,6 +51,19 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     // substring rather than exact line equality.
     assert(out.exists(_.contains("-Dsbt.supershell=false")))
 
+  testOutput("sbt -J options with a value")(
+    "-J-Dsbt.test.jopt=yes",
+    "-J-XX:MaxInlineLevel=20",
+    "-J-XX:+UseG1GC",
+    "compile",
+    "-v"
+  ): (out: List[String]) =>
+    assert(out.contains[String]("-Dsbt.test.jopt=yes"))
+    assert(out.contains[String]("-XX:MaxInlineLevel=20"))
+    assert(out.contains[String]("-XX:+UseG1GC"))
+    assert(out.contains[String]("compile"))
+    assert(!out.exists(_.contains("-J-")))
+
   testOutput("sbt --sbt-version")("--sbt-version", "1.3.13", "-v"): (out: List[String]) =>
     // Note: the -v preview quotes this (see #9660), so match by substring.
     assert(out.exists(_.contains("-Dsbt.version=1.3.13")))

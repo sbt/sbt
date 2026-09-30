@@ -34,7 +34,6 @@ import Keys.{
   serverConnectionType,
   fullServerHandlers,
   logLevel,
-  windowsServerSecurityLevel,
 }
 import Project.LoadAction
 import Scope.{ Global, ThisScope }
@@ -391,12 +390,10 @@ trait ProjectExtra extends Scoped.Syntax:
         s.definedCommands,
         projectCommand
       )
-      val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
       val useJni = get(serverUseJni).getOrElse(false)
       val newAttrs =
         s.attributes
           .put(historyPath.key, history)
-          .put(windowsServerSecurityLevel.key, winSecurityLevel)
           .put(serverUseJni.key, useJni)
           .setCond(bspEnabled.key, enabledBsp)
           .setCond(autoStartServer.key, startSvr)

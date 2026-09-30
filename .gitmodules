@@ -10,3 +10,6 @@
 [submodule "community-build/community-projects/sbt-compile-benchmark"]
 	path = community-build/community-projects/sbt-compile-benchmark
 	url = https://github.com/sbt-2-builds/sbt-compile-benchmark.git
+[submodule "community-build/community-projects/chimney"]
+	path = community-build/community-projects/chimney
+	url = https://github.com/sbt-2-builds/chimney.git

@@ -8,29 +8,36 @@
 
 package sbt.protocol
 
+import java.net.{ StandardProtocolFamily, UnixDomainSocketAddress }
+import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
-import org.scalasbt.ipcsocket.{ UnixDomainServerSocket, UnixDomainSocket }
+import scala.util.Using
+import sbt.io.IO
 import verify.BasicTestSuite
 
 object ServerSessionImplSpec extends BasicTestSuite:
   private val isWin = System.getProperty("os.name").toLowerCase.contains("win")
   test("close delivers EOF to the peer while the read thread is parked"):
-    // named pipes have different close semantics; the swallowed-close mechanism is unix-specific
     if isWin then ()
     else
-      val path = Files.createTempDirectory("session-eof").resolve("sock")
-      val server = UnixDomainServerSocket(path.toString, false)
-      val peerResult = new LinkedBlockingQueue[Integer]
-      val accepted = new Thread(() =>
-        val conn = server.accept()
-        peerResult.put(conn.getInputStream.read())
-      )
-      accepted.setDaemon(true)
-      accepted.start()
-      val session = new ServerSessionImpl(UnixDomainSocket(path.toString, false))
-      // let the session's read thread park in its native read
-      Thread.sleep(500)
-      session.close()
-      assert(peerResult.poll(10, TimeUnit.SECONDS) == -1)
+      val dir = Files.createTempDirectory("session-eof")
+      val path = dir.resolve("sock")
+      try
+        Using.resource(ServerSocketChannel.open(StandardProtocolFamily.UNIX)): server =>
+          server.bind(UnixDomainSocketAddress.of(path))
+          val peerResult = new LinkedBlockingQueue[Integer]
+          val accepted = new Thread(() =>
+            val conn = DuplexChannels.newSocket(server.accept())
+            peerResult.put(conn.getInputStream.read())
+          )
+          accepted.setDaemon(true)
+          accepted.start()
+          val client = ClientSocket.unixSocket(path)
+          val session = new ServerSessionImpl(client)
+          Thread.sleep(500)
+          session.close()
+          assert(peerResult.poll(10, TimeUnit.SECONDS) == -1)
+          assert(client.isClosed)
+      finally IO.delete(dir.toFile)
 end ServerSessionImplSpec

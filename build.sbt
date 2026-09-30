@@ -621,7 +621,7 @@ lazy val protocolProj = (project in file("protocol"))
   .settings(
     testedBaseSettings,
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value, ipcSocket),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value),
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
@@ -895,6 +895,7 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies ++= scalatest,
+    libraryDependencies ++= (if isWin then Seq(ipcSocket) else Nil),
     Compile / mainClass := Some("sbt.client.Client"),
     nativeImageReady := { () =>
       ()
@@ -1444,10 +1445,12 @@ lazy val launcherPackageIntegrationTest =
 
 val prepareCommunityBuild = taskKey[Unit]("Publish local etc")
 lazy val `community-build` = (project in file("community-build"))
+  .configure(addSbtIO)
   .settings(
     scalaVersion := scala3,
     libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
-    prepareCommunityBuild := {
+    Test / parallelExecution := false,
+    prepareCommunityBuild := Def.uncached {
       val _ = (sbtRoot / publishLocalBinAll).value
       IO.write(baseDirectory.value / "target" / "sbt.version", version.value)
     },

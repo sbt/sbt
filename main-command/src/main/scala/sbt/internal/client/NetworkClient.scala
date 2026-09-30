@@ -1437,7 +1437,9 @@ object NetworkClient:
       case Some(lj) =>
         val java =
           Option(Properties.javaHome).map(javaHome => s"$javaHome/bin/java").getOrElse("java")
-        List(java) ++ arguments.sbtArguments.filterNot(emptyBuildFlags.contains) ++
+        val javaOptions = arguments.launcherValueArgs.collect:
+          case s"-J$option" => option
+        List(java) ++ javaOptions ++ arguments.sbtArguments.filterNot(emptyBuildFlags.contains) ++
           List("-jar", lj, DashDashDetachStdio, DashDashServer)
       case _ =>
         List(arguments.sbtScript) ++ arguments.launcherValueArgs ++ arguments.sbtArguments ++
@@ -1665,7 +1667,9 @@ object NetworkClient:
     var i = 0
     while i < sanitized.length do
       sanitized(i) match
-        case a if completionArguments.nonEmpty                        => completionArguments += a
+        case a if completionArguments.nonEmpty => completionArguments += a
+        case a if a.startsWith("-J") && (commandArgs.isEmpty || !splitFromPrev(i)) =>
+          if a.length > 2 then launcherValueArgs += a
         case a if commandArgs.nonEmpty && emptyBuildFlags.contains(a) =>
           sbtArguments += a
         case a if commandArgs.nonEmpty                                     => commandArgs += a
@@ -1709,7 +1713,6 @@ object NetworkClient:
             launcherValueArgs += full.substring(eq + 1)
         case a if launcherNoValueFlags.contains(a)                => ()
         case a if launcherEqPrefixes.exists(p => a.startsWith(p)) => ()
-        case a if a.startsWith("-J")                              => ()
         case a if !a.startsWith("-")                              => commandArgs += a
         case a @ SysProp(key, value)                              =>
           System.setProperty(key, value)
