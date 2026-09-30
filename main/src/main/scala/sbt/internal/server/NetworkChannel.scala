@@ -395,9 +395,7 @@ final class NetworkChannel(
   writeThread.setDaemon(true)
 
   def publishBytes(event: Array[Byte], delimit: Boolean): Unit =
-    try pendingWrites.put(event -> delimit)
-    catch
-      case _: InterruptedException =>
+    Util.ignoreResult(pendingWrites.add(event -> delimit))
 
   protected def onSettingQuery(execId: Option[String], req: SettingQuery) =
     if initialized then
@@ -662,25 +660,25 @@ final class NetworkChannel(
     override def close(): Unit =
       forceFlush()
     override def write(b: Int): Unit = outputBuffer.synchronized {
-      outputBuffer.put(b.toByte)
+      Util.ignoreResult(outputBuffer.add(b.toByte))
     }
     override def flush(): Unit = flusher.flush()
     override def write(b: Array[Byte]): Unit = outputBuffer.synchronized {
-      b.foreach(outputBuffer.put)
+      b.foreach(outputBuffer.add)
     }
     override def write(b: Array[Byte], off: Int, len: Int): Unit =
       write(java.util.Arrays.copyOfRange(b, off, off + len))
   private lazy val errorStream: OutputStream = new OutputStream:
     private val buffer = new LinkedBlockingQueue[Byte]
     override def write(b: Int): Unit = buffer.synchronized {
-      buffer.put(b.toByte)
+      Util.ignoreResult(buffer.add(b.toByte))
     }
     override def flush(): Unit =
       val list = new java.util.ArrayList[Byte]
       buffer.synchronized(buffer.drainTo(list))
       if !list.isEmpty then jsonRpcNotify(Serialization.systemErr, list.asScala.toSeq)
     override def write(b: Array[Byte]): Unit = buffer.synchronized {
-      b.foreach(buffer.put)
+      b.foreach(buffer.add)
     }
     override def write(b: Array[Byte], off: Int, len: Int): Unit =
       write(java.util.Arrays.copyOfRange(b, off, off + len))
