@@ -139,7 +139,7 @@ jobs:
         shell: bash
         run: |
           ./sbt -v "scripted actions/* apiinfo/* cache/* compiler-project/* ivy-deps-management/* reporter/* tests/* classloader-cache/* package/*"
-          # ./sbt -v "scripted watch/*"
+          ./sbt -v "scripted watch/*"
       - name: Build and test (3)
         if: ${{ matrix.jobtype == 3 }}
         shell: bash

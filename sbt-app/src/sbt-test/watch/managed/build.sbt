@@ -3,9 +3,10 @@ import java.nio.file.Files
 import scala.concurrent.duration._
 
 Compile / sourceGenerators += Def.task {
-  baseDirectory.value / "sources" / "Write.scala" :: Nil
+  Seq(baseDirectory.value / "sources" / "Write.scala")
 }.taskValue
 
+@transient
 val runTest = taskKey[Unit]("run the test")
 runTest := Def.taskDyn {
   val args = s" ${baseDirectory.value}"
