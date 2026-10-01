@@ -12,8 +12,12 @@ import Utils.JDK17
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.1.0-SNAPSHOT"
-  nightlyVersion.getOrElse(v)
+  nightlyVersion.getOrElse((ThisBuild / version).value)
+}
+ThisBuild / dynverSeparator := {
+  // CrossVersionUtil.sbtApiVersion does not support sbt-dynver "+" separator
+  // https://github.com/sbt/sbt/blob/4705874544ba0dda60/lm-core/src/main/scala/sbt/internal/librarymanagement/cross/CrossVersionUtil.scala#L39-L52
+  "-"
 }
 // update sbt.sh at root
 ThisBuild / Utils.sbtnVersion := "2.1.0-M2"
