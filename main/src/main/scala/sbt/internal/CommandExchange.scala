@@ -171,9 +171,7 @@ private[sbt] final class CommandExchange:
     def isFromChannel(e: Exec): Boolean = e.source.exists(_.channelName == c.name)
     commandQueue.removeIf { e => isFromChannel(e) && e.commandLine != Shutdown }
     currentExec.foreach { e => if isFromChannel(e) then doCancel(e, force = false) }
-    try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
-    catch
-      case _: InterruptedException =>
+    Util.ignoreResult(commandQueue.add(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None)))
     // Notify other servers to drop if idle when a real client disconnects
     if wasInitialized && !isShuttingDown then notifyOtherServers()
 

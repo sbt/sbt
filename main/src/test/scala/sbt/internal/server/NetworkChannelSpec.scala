@@ -11,7 +11,8 @@ package sbt.internal.server
 import java.io.{ File, OutputStream }
 import java.net.{ InetAddress, ServerSocket, Socket }
 import sbt.{ State, StandardMain }
-import sbt.internal.util.{ AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Util }
+import sbt.internal.util.{ AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Terminal, Util }
+import sbt.internal.util.Terminal.TerminalImpl
 import sbt.protocol.Serialization
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
@@ -51,6 +52,30 @@ object NetworkChannelSpec extends BasicTestSuite:
   test("an interrupted thread can publish bytes to the client and stays interrupted"):
     withAttachedClient: channel =>
       val outcome = whileInterrupted(channel.publishBytes("bytes".getBytes, delimit = true))
+      assertSucceededAndStillInterrupted(outcome)
+
+  private val terminalRequests: Seq[(String, Terminal => Unit)] = Seq(
+    "reads the terminal width" -> (t => Util.ignoreResult(t.getWidth)),
+    "reads the terminal size" -> {
+      case t: TerminalImpl => Util.ignoreResult(t.getSizeImpl)
+      case t               => sys.error(s"unexpected terminal: $t")
+    },
+    "reads the terminal attributes" -> (t => Util.ignoreResult(t.getAttributes)),
+    "sets the terminal attributes" -> (_.setAttributes(Map.empty)),
+    "sets the terminal size" -> (_.setSize(80, 24)),
+    "enters raw mode" -> (_.enterRawMode()),
+    "sets echo" -> (_.setEchoEnabled(false)),
+  )
+
+  terminalRequests.foreach: (label, request) =>
+    test(s"an interrupted thread that $label stays interrupted"):
+      withAttachedClient: channel =>
+        val outcome = whileInterrupted(request(channel.terminal))
+        assertSucceededAndStillInterrupted(outcome)
+
+  test("removing a channel from an interrupted thread keeps the interrupt flag"):
+    withAttachedClient: channel =>
+      val outcome = whileInterrupted(StandardMain.exchange.removeChannel(channel))
       assertSucceededAndStillInterrupted(outcome)
 
   private type Outcome = (thrown: Option[Exception], stillInterrupted: Boolean)
