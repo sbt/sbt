@@ -85,7 +85,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable:
     val previousSources = sources.getAndSet(newSources)
     if previousSources != newSources then
       fileTreeRepository.foreach(r => newSources.foreach(g => r.register(g).foreach(_.close())))
-      previousStamps.set(getStamps(force = true))
+    previousStamps.set(getStamps(force = true))
   end reset
   private def needCheck(state: State, cmd: String): Boolean =
     val allCmds = state.remainingCommands
