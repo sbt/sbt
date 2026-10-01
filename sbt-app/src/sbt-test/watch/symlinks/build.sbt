@@ -1,6 +1,7 @@
 import java.nio.file.{ Files, Paths }
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
+@transient
 val createSymlinks = taskKey[Unit]("create symlinks to source files and directories")
 createSymlinks := {
   val base = baseDirectory.value.toPath

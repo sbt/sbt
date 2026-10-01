@@ -1,5 +1,7 @@
 val checkCount = inputKey[Unit]("check that compile has run a specified number of times")
+@transient
 val failingTask = taskKey[Unit]("should always fail")
+@transient
 val resetCount = taskKey[Unit]("reset compile count")
 
 checkCount := {

@@ -13,7 +13,9 @@ import sbt.nio.Keys._
 object Build {
   val setStringValue = inputKey[Unit]("set a global string to a value")
   val checkStringValue = inputKey[Unit]("check the value of a global")
+  @transient
   val checkTriggers = taskKey[Unit]("Check that the triggers are correctly aggregated.")
+  @transient
   val checkGlobs = taskKey[Unit](
     "Check that the globs are correctly aggregated and that the globs are the union of the inputs and the triggers"
   )
@@ -70,7 +72,7 @@ object Build {
     .dependsOn(bar)
 
   lazy val bar = project.settings(
-    fileInputs in setStringValue += baseDirectory.value.toGlob / "foo.txt",
+    setStringValue / fileInputs += baseDirectory.value.toGlob / "foo.txt",
     setStringValue / watchTriggers += baseDirectory.value.toGlob / "bar.txt",
     // This trigger should transitively propagate to foo / compile and foo / Test / compile
     Compile / unmanagedResources / watchTriggers += baseDirectory.value.toGlob / "bar.txt",

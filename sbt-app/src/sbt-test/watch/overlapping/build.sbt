@@ -1,8 +1,10 @@
 import java.nio.file.Files
+import sbt.internal.FileChangesMacro.inputFiles
 import java.nio.file.attribute.FileTime
 
 import scala.concurrent.duration._
 
+@transient
 val foo = taskKey[Unit]("foo.txt")
 foo / watchForceTriggerOnAnyChange := true
 foo / fileInputs := baseDirectory.value.toGlob / "files" / "foo.txt" :: Nil

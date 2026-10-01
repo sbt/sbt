@@ -9,9 +9,10 @@
 package sbt
 package scriptedtest
 
+import sbt.internal.util.Terminal
 import xsbt.IPC
 
-import scala.sys.process.{ BasicIO, Process }
+import scala.sys.process.{ BasicIO, Process, ProcessBuilder }
 
 private[sbt] sealed trait RemoteSbtCreatorProp
 private[sbt] object RemoteSbtCreatorProp:
@@ -21,6 +22,17 @@ private[sbt] object RemoteSbtCreatorProp:
 
 abstract class RemoteSbtCreator private[sbt]:
   def newRemote(server: IPC.Server): Process
+
+private[sbt] object RemoteSbtCreator:
+
+  /**
+   * Builds the remote sbt process without the sbtn terminal properties, so a scripted sbt
+   * does not mistake itself for a server booted by a thin client and skip the console channel.
+   */
+  private[sbt] def remoteProcess(cmd: Seq[String], directory: File): ProcessBuilder =
+    val builder = new java.lang.ProcessBuilder(cmd*).directory(directory)
+    builder.environment().remove(Terminal.TERMINAL_PROPS)
+    Process(builder)
 
 final class LauncherBasedRemoteSbtCreator(
     directory: File,
@@ -44,7 +56,7 @@ final class LauncherBasedRemoteSbtCreator(
     val cmd =
       javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-jar" :: launcherJar :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
-    val p = Process(cmd, directory).run(io)
+    val p = RemoteSbtCreator.remoteProcess(cmd, directory).run(io)
     val thread = new Thread():
       override def run(): Unit =
         p.exitValue(); server.close()
@@ -80,7 +92,7 @@ final class RunFromSourceBasedRemoteSbtCreator(
     val cmd =
       javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-cp" :: cpString :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
-    val p = Process(cmd, directory) run (io)
+    val p = RemoteSbtCreator.remoteProcess(cmd, directory).run(io)
     val thread = new Thread():
       override def run() =
         p.exitValue(); server.close()
