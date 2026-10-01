@@ -13,10 +13,14 @@ lazy val core = project
     TaskKey[Unit]("makeEarlyJarReadOnly") := Def.uncached {
       val jar = fileConverter.value.toPath((Compile / earlyOutput).value)
       assert(Files.exists(jar), s"early jar $jar is missing")
-      val tmp = jar.resolveSibling(jar.getFileName.toString + ".tmp")
-      Files.copy(jar.toRealPath(), tmp, StandardCopyOption.COPY_ATTRIBUTES)
-      tmp.toFile.setWritable(false)
-      Files.move(tmp, jar, StandardCopyOption.REPLACE_EXISTING)
+      if Files.isSymbolicLink(jar) then
+        val tmp = jar.resolveSibling(jar.getFileName.toString + ".tmp")
+        Files.copy(jar.toRealPath(), tmp, StandardCopyOption.COPY_ATTRIBUTES)
+        tmp.toFile.setWritable(false)
+        Files.move(tmp, jar, StandardCopyOption.REPLACE_EXISTING)
+      // Windows cannot replace a jar that is held open, so a restored copy is flagged in place.
+      else jar.toFile.setWritable(false)
+      assert(!Files.isWritable(jar), s"early jar $jar should be read-only")
     },
   )
 
