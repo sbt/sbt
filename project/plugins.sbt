@@ -14,3 +14,5 @@ addSbtPlugin("org.scalameta" % "sbt-native-image" % "0.5.0")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.7")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7")
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
+
+libraryDependencies += "org.virtuslab" %% "sloth-core" % "0.1.0-M2"
