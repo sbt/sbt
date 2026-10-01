@@ -11,7 +11,7 @@ import java.nio.file.{
   Paths,
   StandardCopyOption
 }
-import java.nio.file.attribute.{ BasicFileAttributes, FileTime }
+import java.nio.file.attribute.{ BasicFileAttributes, FileTime, PosixFilePermission }
 import java.util.concurrent.atomic.AtomicBoolean
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
@@ -19,6 +19,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import scala.collection.mutable
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.parallel.CollectionConverters.*
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 import sbt.internal.io.Retry
 import sbt.io.IO
@@ -272,6 +273,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.move(blob.toFile(), casFile.toFile())
+      sealBlob(casFile)
       verifiedBlob(casFile, digest)
 
   /**
@@ -308,6 +310,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     val tempFile = casBase.resolve(s"${java.util.UUID.randomUUID()}.part")
     try
       write(tempFile)
+      sealBlob(tempFile)
       IO.move(tempFile.toFile(), casFile.toFile())
       if verified then markComplete(casFile, digest)
       casFile
@@ -326,10 +329,22 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         val stamp = BlobStamp(digest, attrs.lastModifiedTime, attrs.fileKey)
         if stamp == completeBlobStamps.getIfPresent(casFile) then true
         else if Digest.sameDigest(casFile, digest) then
+          sealBlob(casFile)
           completeBlobStamps.put(casFile, stamp)
           true
         else false
     catch case _: IOException => false
+
+  /**
+   * Makes a CAS file read-only so that writing through a symlink fails instead of corrupting it.
+   * POSIX only, since the read-only attribute on Windows would also block replace and delete.
+   */
+  private def sealBlob(p: Path): Unit =
+    try
+      val perms = Files.getPosixFilePermissions(p).asScala.toSet
+      val sealedPerms = perms -- DiskActionCacheStore.writePermissions
+      if sealedPerms != perms then Files.setPosixFilePermissions(p, sealedPerms.asJava)
+    catch case _: UnsupportedOperationException | _: IOException => ()
 
   private def markComplete(casFile: Path, digest: Digest): Unit =
     try
@@ -405,6 +420,8 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         StandardCopyOption.COPY_ATTRIBUTES,
         StandardCopyOption.REPLACE_EXISTING,
       )
+      outPath.toFile().setWritable(true)
+      outPath
     // See https://github.com/sbt/sbt/issues/7656
     // On Windows, the program has be running under the Administrator privileges or the
     // user enable Developer Mode on Windows 10+ to create symbolic links.
@@ -533,6 +550,11 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
 end DiskActionCacheStore
 
 object DiskActionCacheStore:
+  private val writePermissions: Set[PosixFilePermission] = Set(
+    PosixFilePermission.OWNER_WRITE,
+    PosixFilePermission.GROUP_WRITE,
+    PosixFilePermission.OTHERS_WRITE,
+  )
   private val blobTaskSupport: ForkJoinTaskSupport =
     ForkJoinTaskSupport(
       java.util.concurrent.ForkJoinPool(

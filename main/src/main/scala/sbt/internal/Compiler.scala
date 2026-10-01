@@ -672,7 +672,8 @@ object Compiler:
    *
    * An action-cache hit restores the early jar as a symlink into the CAS. Zinc rewrites the jar in
    * place when it merges a round's pickles, which would corrupt the cached blob, so Zinc gets a
-   * real copy. When there is a previous analysis but no early jar (a cache populated before the
+   * real copy. A read-only early jar, such as a copy of a CAS blob left by an earlier sbt, is made
+   * writable. When there is a previous analysis but no early jar (a cache populated before the
    * jar was an output, `exportPipelining` switched on for an existing build, a deleted `early`
    * directory), an incremental round would create the jar from its own pickles alone, so the
    * subproject is recompiled from scratch instead.
@@ -681,7 +682,11 @@ object Compiler:
     if Files.isSymbolicLink(earlyJar) then
       val tmp = earlyJar.resolveSibling(earlyJar.getFileName.toString + ".tmp")
       Files.copy(earlyJar.toRealPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+      tmp.toFile.setWritable(true)
       Files.move(tmp, earlyJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      ci
+    else if Files.exists(earlyJar) && !Files.isWritable(earlyJar) then
+      earlyJar.toFile.setWritable(true)
       ci
     else if !Files.exists(earlyJar) && hasCompilations(ci.previousResult.analysis.toScala) then
       log.debug(s"early output $earlyJar is missing, recompiling from scratch")
