@@ -732,8 +732,7 @@ class NetworkClient(
             }
             if socket.isEmpty && readThreadAlive.get then
               try Thread.sleep(10)
-              catch
-                case _: InterruptedException =>
+              catch case _: InterruptedException => readThreadAlive.set(false)
           end while
         catch case e: IOException => e.printStackTrace(System.err)
     val connectDeadline = connectTimeout.fromNow

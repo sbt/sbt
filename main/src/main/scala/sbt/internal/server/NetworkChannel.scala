@@ -12,7 +12,7 @@ package server
 
 import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
-import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
+import java.util.concurrent.{ BlockingQueue, ConcurrentHashMap, LinkedBlockingQueue }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
@@ -723,8 +723,17 @@ final class NetworkChannel(
       try
         blockedThreads.synchronized(blockedThreads.add(t))
         f
-      catch case _: InterruptedException => default
+      catch
+        case _: InterruptedException =>
+          if !closed.get then t.interrupt()
+          default
       finally Util.ignoreResult(blockedThreads.synchronized(blockedThreads.remove(t)))
+    private def awaitResponse[A](queue: BlockingQueue[A]): Option[A] =
+      try Some(queue.take)
+      catch
+        case _: InterruptedException =>
+          Thread.currentThread.interrupt()
+          None
     def getProperty[T](f: TerminalPropertiesResponse => T, default: T): Option[T] =
       if closed.get || !isAttached then None
       else
@@ -809,8 +818,7 @@ final class NetworkChannel(
           term.name,
           jsonRpcRequest[TerminalAttributesQuery]
         )
-        try
-          val a = queue.take
+        awaitResponse(queue).fold(Map.empty[String, String]): a =>
           Map(
             "iflag" -> a.iflag,
             "oflag" -> a.oflag,
@@ -818,7 +826,6 @@ final class NetworkChannel(
             "lflag" -> a.lflag,
             "cchars" -> a.cchars
           )
-        catch case _: InterruptedException => Map.empty
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
       if !closed.get then
         val attrs = TerminalSetAttributesCommand(
@@ -833,16 +840,12 @@ final class NetworkChannel(
           jsonRpcRequest[TerminalSetAttributesCommand],
           attrs
         )
-        try queue.take
-        catch
-          case _: InterruptedException =>
+        Util.ignoreResult(awaitResponse(queue))
     override private[sbt] def getSizeImpl: (Int, Int) =
       if !closed.get then
         val queue =
           VirtualTerminal.getTerminalSize(term.name, jsonRpcRequest[TerminalGetSizeQuery])
-        val res =
-          try queue.take
-          catch case _: InterruptedException => TerminalGetSizeResponse(1, 1)
+        val res = awaitResponse(queue).getOrElse(TerminalGetSizeResponse(1, 1))
         (res.width, res.height)
       else (1, 1)
     override def setSize(width: Int, height: Int): Unit =
@@ -850,9 +853,7 @@ final class NetworkChannel(
         val size = TerminalSetSizeCommand(width, height)
         val queue =
           VirtualTerminal.setTerminalSize(term.name, jsonRpcRequest[TerminalSetSizeCommand], size)
-        try queue.take
-        catch
-          case _: InterruptedException =>
+        Util.ignoreResult(awaitResponse(queue))
     private def setRawMode(toggle: Boolean): Unit =
       if !closed.get || false then
         val raw = TerminalSetRawModeCommand(toggle)
@@ -861,9 +862,7 @@ final class NetworkChannel(
           jsonRpcRequest[TerminalSetRawModeCommand],
           raw
         )
-        try queue.take
-        catch
-          case _: InterruptedException =>
+        Util.ignoreResult(awaitResponse(queue))
     override private[sbt] def enterRawMode(): Unit = setRawMode(true)
     override private[sbt] def exitRawMode(): Unit = setRawMode(false)
     override def setEchoEnabled(toggle: Boolean): Unit =
@@ -871,8 +870,7 @@ final class NetworkChannel(
         val echo = TerminalSetEchoCommand(toggle)
         val queue =
           VirtualTerminal.setTerminalEcho(term.name, jsonRpcRequest[TerminalSetEchoCommand], echo)
-        try queue.take
-        catch case _: InterruptedException => ()
+        Util.ignoreResult(awaitResponse(queue))
 
     override def flush(): Unit = doFlush()
     override def toString: String = s"NetworkTerminal(${term.name})"
