@@ -1355,7 +1355,6 @@ lazy val lmCoursierDependencies = Def.settings(
     coursier,
     "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-    graalNativeImage % Provided,
   ),
   libraryDependencies ++= Dependencies.scalatest,
   libraryDependencies += scalaVerify % Test,
