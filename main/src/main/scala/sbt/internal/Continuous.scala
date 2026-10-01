@@ -577,7 +577,10 @@ private[sbt] object Continuous:
         def getEvent: Option[(Watch.Event, Watch.Action)] =
           val events =
             try antiEntropyMonitor.poll(Duration.Inf)
-            catch case _: InterruptedException => interrupted.set(true); Nil
+            catch
+              case _: InterruptedException =>
+                interrupted.set(true)
+                Nil
           val actions = events.flatMap(onEvent(count, _))
           if actions.exists(_._2 != Watch.Ignore) then
             val builder = new StringBuilder
@@ -593,6 +596,7 @@ private[sbt] object Continuous:
             if min._2 == Watch.Trigger then onTrigger(count, min._1)
             if min._2 == Watch.ShowOptions then None else Some(min)
           else None
+        end getEvent
 
         @tailrec def impl(): Option[(Watch.Event, Watch.Action)] = getEvent match
           case None =>
