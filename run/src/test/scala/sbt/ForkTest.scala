@@ -52,7 +52,10 @@ object ForkTest extends Properties("Fork"):
             val config = ForkOptions().withOutputStrategy(LoggedOutput(log))
             val exitCode =
               try Fork.java(config, args)
-              catch case e: Exception => e.printStackTrace; 1
+              catch
+                case e: Exception =>
+                  e.printStackTrace()
+                  1
             val expectedCode = if optionName.isEmpty then 1 else 0
             s"temporary directory: ${dir.getAbsolutePath}" |:
               s"required classpath: ${requiredEntries.mkString("\n\t", "\n\t", "")}" |:
@@ -76,7 +79,10 @@ object ForkTest extends Properties("Fork"):
       .withCanUseArgumentsFile(true)
     val exitCode =
       try Fork.java(config, args)
-      catch case e: Exception => e.printStackTrace(); 1
+      catch
+        case e: Exception =>
+          e.printStackTrace()
+          1
     val output = baos.toString("UTF-8").trim
     s"exitCode: $exitCode" |:
       s"output: '$output', expected: '$jsonArg'" |:
