@@ -1382,7 +1382,31 @@ lazy val lmCoursierShaded = project
       case x =>
         val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
         oldStrategy(x)
-    }
+    },
+    assembly := {
+      val oldJarHashedFile = assembly.value
+      val converter = fileConverter.value
+      val log = streams.value.log
+      scribe.Logger.root
+        .clearHandlers()
+        .withHandler(
+          minimumLevel = Some(scribe.Level.Warn),
+        )
+        .replace()
+      IO.withTemporaryFile("", ".jar") { newJar =>
+        val oldJarPath = converter.toPath(oldJarHashedFile)
+        val result = sloth.jar.JarProcessor.process(
+          oldJarPath,
+          newJar.toPath
+        )
+        log.info(s"[${name.value}] sloth totalClasses = ${result.totalClasses}")
+        log.info(s"[${name.value}] sloth patchedClasses = ${result.patchedClasses}")
+        assert(result.errors.isEmpty, result)
+        assert(result.failedClasses == 0, result)
+        IO.move(newJar, oldJarPath.toFile)
+        converter.toVirtualFile(oldJarPath)
+      }
+    },
   )
   .dependsOn(lmCore % "provided")
 
