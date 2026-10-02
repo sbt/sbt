@@ -25,7 +25,7 @@ declare use_sbtn=
 declare use_jvm_client=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="2.1.0-M1"
+declare sbtn_version="2.1.0-6eac8efa"
 declare use_colors=1
 declare is_this_dir_sbt=""
 declare hide_jdk_warnings=1
@@ -926,6 +926,12 @@ runClient() {
 original_args=("$@")
 
 sbt_file_opts=()
+
+if [[ -f "$JAVACMD" ]]; then
+  java_cmd="$JAVACMD"
+elif [[ -n "$JAVA_HOME" && -f "$JAVA_HOME/bin/java" ]]; then
+  java_cmd="$JAVA_HOME/bin/java"
+fi
 
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then

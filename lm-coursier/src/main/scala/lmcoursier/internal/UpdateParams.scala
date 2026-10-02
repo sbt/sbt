@@ -43,7 +43,7 @@ final case class UpdateParams(
         None
 
     val artifact0 =
-      if (missingOk) artifact.withOptional(true)
+      if missingOk then artifact.copy(optional = true)
       else artifact
 
     fromBootJars.orElse(artifacts.get(artifact0))

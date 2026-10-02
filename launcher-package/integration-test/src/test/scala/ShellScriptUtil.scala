@@ -186,6 +186,7 @@ trait ShellScriptUtil extends BasicTestSuite {
           if (isWindows)
             envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
           else
+            envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
             envVars("PATH") = javaBinDir + File.pathSeparator + path
 
           val cmd = LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath) ++ args

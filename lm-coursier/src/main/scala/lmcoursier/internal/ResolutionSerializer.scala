@@ -164,7 +164,7 @@ object ResolutionSerializer {
       }.toMap
 
     (Resolution()
-      .withRootDependencies(rootDeps)
+      .copy(rootDependencies = rootDeps)
       .withDependencies(dependencies)
       .withForceVersions(forceVersions ++ params.params.forceVersion)
       .withProjectCache(projectCache): @nowarn)

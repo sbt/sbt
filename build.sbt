@@ -16,7 +16,7 @@ ThisBuild / version := {
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.1.0-M1"
+ThisBuild / Utils.sbtnVersion := "2.1.0-6eac8efa"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / Utils.version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
@@ -435,7 +435,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies += scalaParsers,
+    libraryDependencies ++= Seq(scalaParsers, hedgehog % Test),
     mimaSettings,
   )
   .configure(addSbtIO)
@@ -1353,7 +1353,6 @@ lazy val lmCoursierDefinitions = project
 lazy val lmCoursierDependencies = Def.settings(
   libraryDependencies ++= Seq(
     coursier,
-    coursierSbtMavenRepo,
     "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
   ),
@@ -1362,6 +1361,15 @@ lazy val lmCoursierDependencies = Def.settings(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
   ),
+  // lmCoursierShaded merges every dependency into one assembly with a single surviving
+  // MANIFEST.MF, so coursier's own Implementation-Version doesn't survive there to be read back
+  // at runtime. Stash coursierVersion in a resource under our own package instead, which assembly
+  // merges in unchanged.
+  Compile / resourceGenerators += Def.task {
+    val file = (Compile / resourceManaged).value / "lmcoursier" / "coursier.properties"
+    IO.write(file, s"version=$coursierVersion\n")
+    Seq(file)
+  }.taskValue,
 )
 
 lazy val lmCoursier = project
@@ -1374,6 +1382,9 @@ lazy val lmCoursier = project
     lmCoursierDependencies,
     contrabandSettings,
     Compile / sourceGenerators += Utils.dataclassGen(lmCoursierDefinitions).taskValue,
+    // Coursier's own sources use a "dataclass" macro annotation that isn't published anywhere
+    // downstream can resolve, which makes dottydoc fail while trying to re-elaborate them.
+    Compile / doc / sources := Nil,
   )
   .dependsOn(
     // We depend on lmIvy rather than just lmCore to handle the ModuleDescriptor
@@ -1390,6 +1401,7 @@ lazy val lmCoursierShaded = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (lmCoursier / Compile / sources).value,
+    Compile / doc / sources := Nil,
     lmCoursierDependencies,
     autoScalaLibrary := false,
     bspEnabled := false,

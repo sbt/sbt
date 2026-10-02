@@ -56,7 +56,8 @@ private[internal] object SbtUpdateReport {
         )
         .withExtraAttributes(dependency.module.attributes ++ extraProperties)
         .withExclusions(
-          dependency.minimizedExclusions.toVector
+          dependency.minimizedExclusions
+            .toVector()
             .map { (org, name) =>
               sbt.librarymanagement
                 .InclExclRule()
@@ -176,8 +177,8 @@ private[internal] object SbtUpdateReport {
     val depArtifacts1 = fullArtifactsOpt match {
       case Some(map) =>
         deps.map { (d, p, a) =>
-          val d0 = d.withAttributes(d.attributes.withClassifier(p.classifier))
-          val a0 = if (missingOk) a.withOptional(true) else a
+          val d0 = d.withAttributes(d.attributes.copy(classifier = p.classifier))
+          val a0 = if missingOk then a.copy(optional = true) else a
           val f = map.get((d0, Right(p), a0)).flatten
           (d, p, a0, f) // not d0
         }
@@ -200,8 +201,7 @@ private[internal] object SbtUpdateReport {
           depArtifacts0.flatMap { (dep, pub, a, f) =>
             val sigPub = pub
               // not too sure about those
-              .withExt(Extension(pub.ext.value))
-              .withType(Type(pub.`type`.value))
+              .copy(ext = Extension(pub.ext.value), `type` = Type(pub.`type`.value))
             Seq((dep, pub, a, f)) ++
               a.extra.get("sig").toSeq.map((dep, sigPub, _, None))
           }
@@ -233,7 +233,7 @@ private[internal] object SbtUpdateReport {
     def clean(dep: Dependency): Dependency =
       dep
         .withConfiguration(Configuration.empty)
-        .withMinimizedExclusions(MinimizedExclusions.zero)
+        .copy(minimizedExclusions = MinimizedExclusions.zero)
         .withOptional(false)
         .clearOverrides
 
@@ -260,14 +260,11 @@ private[internal] object SbtUpdateReport {
      */
     def assemble(project: Project): Project = {
       @tailrec
-      def licenseInfo(project: Project): Seq[Info.License] = {
-        if (project.info.licenseInfo.nonEmpty || project.parent.isEmpty)
-          project.info.licenseInfo
-        else
-          licenseInfo(lookupProject(project.parent.get).get)
-      }
-      project.withInfo(
-        project.info.withLicenseInfo(licenseInfo(project))
+      def licenseInfo(project: Project): Seq[Info.License] =
+        if project.info.licenseInfo.nonEmpty || project.parent.isEmpty then project.info.licenseInfo
+        else licenseInfo(lookupProject(project.parent.get).get)
+      project.copy(
+        info = project.info.copy(licenseInfo = licenseInfo(project))
       )
     }
 
@@ -391,7 +388,7 @@ private[internal] object SbtUpdateReport {
       }
 
       def conflicts: Seq[coursier.graph.Conflict] =
-        try coursier.graph.Conflict(subRes)
+        try coursier.graph.Conflict(subRes).distinct
         catch case e: Throwable if missingOk => Nil
       val evicted = for {
         c <- conflicts

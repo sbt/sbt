@@ -12,7 +12,7 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  val ioVersion = nightlyVersion.getOrElse("1.13.2")
+  val ioVersion = nightlyVersion.getOrElse("1.13.4")
   val zincVersion = nightlyVersion.getOrElse("2.0.4")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -121,20 +121,16 @@ object Dependencies {
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
-  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.4"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.6"
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.25-M26"
+  val coursierVersion = "2.1.26"
 
   val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
     .cross(CrossVersion.for3Use2_13)
     .exclude("org.codehaus.plexus", "plexus-archiver")
     .exclude("org.codehaus.plexus", "plexus-container-default")
-
-  val coursierSbtMavenRepo =
-    ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
-      .cross(CrossVersion.for3Use2_13)
 
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.

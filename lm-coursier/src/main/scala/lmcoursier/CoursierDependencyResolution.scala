@@ -267,13 +267,16 @@ class CoursierDependencyResolution(
 
     val cache0 = coursier.cache
       .FileCache()
-      .withLocation(cache)
-      .withCachePolicies(cachePolicies)
-      .withTtl(ttl)
-      .withChecksums(checksums)
-      .withCredentials(conf.credentials.map(ToCoursier.credentials))
-      .withFollowHttpToHttpsRedirections(conf.followHttpToHttpsRedirections.getOrElse(true))
-      .withLocalArtifactsShouldBeCached(conf.localArtifactsShouldBeCached)
+      .copy(
+        location = cache,
+        cachePolicies = cachePolicies,
+        ttl = ttl,
+        checksums = checksums,
+        credentials = conf.credentials.map(ToCoursier.credentials),
+        followHttpToHttpsRedirections = conf.followHttpToHttpsRedirections.getOrElse(true),
+        localArtifactsShouldBeCached = conf.localArtifactsShouldBeCached,
+        userAgent = conf.userAgent
+      )
 
     val excludeDependencies = conf.excludeDependencies.map { (strOrg, strName) =>
       (coursier.Organization(strOrg), coursier.ModuleName(strName))
@@ -297,19 +300,19 @@ class CoursierDependencyResolution(
       parallel = conf.parallelDownloads,
       params = coursier.params
         .ResolutionParams()
-        .withMaxIterations(conf.maxIterations)
-        .withProfiles(conf.mavenProfiles.toSet)
-        .withForceVersion0(
-          conf.forceVersions
+        .copy(
+          maxIterations = conf.maxIterations,
+          profiles = conf.mavenProfiles.toSet,
+          forceVersion0 = conf.forceVersions
             .map: (k, v) =>
               (ToCoursier.module(k), ToCoursier.versionConstraint(v))
-            .toMap
-        )
-        .withScalaOrganizationOverride(soOpt)
-        .withReconciliation0(conf.reconciliation.map: (k, v) =>
-          ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v))
-        .withExclusions(excludeDependencies)
-        .withRules(ToCoursier.sameVersions(conf.sameVersions)),
+            .toMap,
+          scalaOrganizationOverride = soOpt,
+          reconciliation0 = conf.reconciliation.map: (k, v) =>
+            ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v),
+          exclusions = excludeDependencies,
+          rules = ToCoursier.sameVersions(conf.sameVersions)
+        ),
       strictOpt = conf.strict.map(ToCoursier.strict),
       missingOk = conf.missingOk,
       retry = conf.retry.getOrElse(ResolutionParams.defaultRetry),
@@ -579,7 +582,33 @@ class CoursierDependencyResolution(
   }
 }
 
-object CoursierDependencyResolution {
+object CoursierDependencyResolution:
+  // Built at runtime, not as a single literal: lmCoursierShaded's relocation rewrites any string
+  // constant shaped like a "coursier."-prefixed path, which would otherwise silently turn this
+  // into "lmcoursier.internal.shaded.coursier.http.agent" and break the override.
+  private val userAgentPropertyKey: String = Seq("coursier", "http", "agent").mkString(".")
+
+  lazy val coursierUserAgent: String =
+    sys.props.get(userAgentPropertyKey).getOrElse(coursierUserAgent0)
+  // Reads the version from a resource rather than the jar manifest, which lmCoursierShaded's assembly merge clobbers.
+  private def coursierUserAgent0: String =
+    val version =
+      Option(getClass.getResourceAsStream("/lmcoursier/coursier.properties"))
+        .flatMap { in =>
+          scala.util
+            .Using(in) { in0 =>
+              val props = new java.util.Properties
+              props.load(in0)
+              Option(props.getProperty("version"))
+            }
+            .toOption
+            .flatten
+        }
+        .flatMap(CrossVersion.partialVersion)
+        .map((major, minor) => s"$major.$minor")
+        .getOrElse("2.1")
+    s"Coursier/$version (+https://github.com/coursier)"
+
   def apply(configuration: CoursierConfiguration): DependencyResolution =
     DependencyResolution(new CoursierDependencyResolution(configuration))
 
@@ -600,4 +629,4 @@ object CoursierDependencyResolution {
 
   private[lmcoursier] def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String =
     lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(fileUrl, cacheDir)
-}
+end CoursierDependencyResolution
