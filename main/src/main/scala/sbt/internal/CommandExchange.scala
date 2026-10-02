@@ -172,14 +172,10 @@ private[sbt] final class CommandExchange {
     channelBufferLock.synchronized {
       Util.ignoreResult(channelBuffer -= c)
     }
-    commandQueue.removeIf { e =>
-      e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
-    }
-    currentExec.withFilter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
-    }
-    try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
-    catch { case _: InterruptedException => }
+    def isFromChannel(e: Exec): Boolean = e.source.exists(_.channelName == c.name)
+    commandQueue.removeIf { e => isFromChannel(e) && e.commandLine != Shutdown }
+    currentExec.foreach { e => if isFromChannel(e) then doCancel(e, force = false) }
+    Util.ignoreResult(commandQueue.add(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None)))
     // Notify other servers to drop if idle when a real client disconnects
     if (wasInitialized && !shuttingDown.get) notifyOtherServers()
   }
@@ -496,15 +492,16 @@ private[sbt] final class CommandExchange {
     commandQueue.add(exit)
     ()
   }
-  private def cancel(e: Exec): Unit = {
-    if (e.commandLine.startsWith("console")) {
+
+  private def cancel(e: Exec): Unit =
+    if e.commandLine.startsWith("console") then
       val terminal = Terminal.get
       terminal.write(13, 13, 13, 4)
       terminal.printStream.println("\nconsole session killed by remote sbt client")
-    } else {
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = true))
-    }
-  }
+    else doCancel(e, force = true)
+
+  private def doCancel(e: Exec, force: Boolean): Unit =
+    Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = force))
 
   /** Handle a dropIfIdle notification from another server. */
   private[sbt] def handleDropIfIdle(): Unit = {
