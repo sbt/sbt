@@ -25,8 +25,9 @@ import scala.sys.process.{ BasicIO, Process, ProcessIO }
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ Await, Promise }
+import scala.concurrent.{ Await, Future, Promise }
 import scala.concurrent.duration.*
+import scala.util.Try
 import scala.util.control.NonFatal
 
 object WorkerExchange:
@@ -104,10 +105,12 @@ object WorkerExchange:
       IO.classLocationPath(classOf[Gson]).toFile,
     )
     val inputRef = Promise[OutputStream]()
+    val responsesRead = Promise[Unit]()
     def runAccepter(out: OutputStream, in: InputStream): Unit =
       inputRef.success(out)
       val scanner = Scanner(in, "UTF-8")
       while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
+      responsesRead.trySuccess(())
     val (connArgs, closer) = connectionType match
       case WorkerConnection.Tcp =>
         val serverSocket = Retry(ServerSocket(0, 1, loopback))
@@ -153,20 +156,23 @@ object WorkerExchange:
     val onStdoutLine: String => Unit = connectionType match
       case WorkerConnection.Stdio => notifyListeners
       case _                      => (line) => scala.Console.out.println(line)
+    def readStdout(stdout: InputStream): Unit =
+      BasicIO.processFully(onStdoutLine)(stdout)
+      if connectionType == WorkerConnection.Stdio then responsesRead.trySuccess(())
     val processIo = ProcessIO(
       in = (input) =>
         (connectionType match
           case WorkerConnection.Stdio => inputRef.success(input)
           case _                      => ()
         ),
-      out = BasicIO.processFully(onStdoutLine),
+      out = readStdout,
       err = BasicIO.processFully((line) => scala.Console.err.println(line)),
     )
     val forkWithIo = fo.withOutputStrategy(OutputStrategy.CustomInputOutput(processIo))
     val p = Fork.java.fork(forkWithIo, options)
     val forkTimeout = fo.connectionTimeout.getOrElse(30.seconds)
     val input = Await.result(inputRef.future, forkTimeout)
-    WorkerProxy(input, p, options, closer)
+    WorkerProxy(input, p, options, closer, responsesRead.future)
   end startWorker
 
   /** Generates a fresh path suitable for binding a `WorkerConnection.Ipc` socket. */
@@ -262,6 +268,7 @@ class WorkerProxy(
     val process: Process,
     val options: Seq[String],
     closer: Option[AutoCloseable],
+    responsesRead: Future[Unit],
 ) extends AutoCloseable:
   lazy val inputStream = PrintStream(input)
   def close(): Unit =
@@ -278,9 +285,19 @@ class WorkerProxy(
 
   val watch = Thread(() =>
     while process.isAlive() do Thread.sleep(100)
+    Try(Await.ready(responsesRead, WorkerProxy.responseDrainTimeout))
     WorkerExchange.listeners.foreach(_.notifyExit(process))
   )
   watch.start()
+end WorkerProxy
+
+object WorkerProxy:
+  /**
+   * How long to keep reading a worker's responses after it exits, before reporting the exit.
+   * The reader reaches end of stream as soon as it has consumed everything the worker wrote;
+   * the bound only matters for a worker that died before connecting.
+   */
+  private val responseDrainTimeout = 10.seconds
 end WorkerProxy
 
 abstract class WorkerResponseListener extends Function1[String, Unit]:
