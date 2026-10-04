@@ -197,7 +197,7 @@ object SysProp:
   def secondaryIdleTimeoutSec: Long = long("sbt.server.secondaryIdleTimeout", 600L)
 
   private def file(value: String): File = new File(value)
-  private def home: File = file(sys.props("user.home"))
+  private def home: File = sbt.io.Path.userHome
 
   /**
    * Default directory for global sbt config (plugins, settings). Respects XDG Base Directory

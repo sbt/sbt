@@ -3724,9 +3724,7 @@ object Classpaths:
     ivySbt := Def.uncached((): Any),
     ivyModule := Def.uncached((): Any),
     publisher := Def.uncached {
-      val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
-        new File(sys.props("user.home")) / ".ivy2"
-      }
+      val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse(LMSysProp.defaultIvyHome)
       val localResolver = Resolver.file("local", ivyHome / "local")(using Resolver.ivyStylePatterns)
       // publishLocal/publishM2/publish target these by name (see publishConfig's resolverName
       // default and publishM2Configuration below).
@@ -4020,7 +4018,7 @@ object Classpaths:
                 val log = s.log
                 val out = ivyPaths.value.ivyHome
                   .map(new File(_))
-                  .getOrElse(new File(System.getProperty("user.home"), ".ivy2"))
+                  .getOrElse(LMSysProp.defaultIvyHome)
                 val uwConfig = (update / unresolvedWarningConfiguration).value
                 withExcludes(out, mod.classifiers, lock(app)) { excludes =>
                   // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
