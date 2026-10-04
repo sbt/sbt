@@ -2435,10 +2435,19 @@ object Defaults extends BuildCommon with DefExtra:
       val ping = (TaskZero / earlyOutputPing).value
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
-      val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val analysisFile = compileAnalysisFile.value.toPath()
+      val store = analysisStore(analysisFile, c)
       val earlyAnalysisFile = (earlyCompileAnalysisFile.value: @nowarn("msg=transient")).toPath()
       // Present iff exportPipelining: the jar scalac's -Ypickle-write pickles end up in.
       val earlyJar = ci.options.earlyOutput.toScala.flatMap(_.getSingleOutputAsPath.toScala)
+      // Restored outputs are links into the CAS; once the CAS is gone they must not be reused.
+      Compiler.dropDanglingOutputs(
+        ci.options.classesDirectory,
+        analysisFile,
+        earlyJar,
+        earlyJar.map(_ => earlyAnalysisFile),
+        s.log,
+      )
       val ci1 = earlyJar.fold(ci)(Compiler.prepareEarlyOutput(ci, _, s.log))
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
       val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))

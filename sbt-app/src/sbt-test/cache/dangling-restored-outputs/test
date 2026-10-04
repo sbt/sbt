@@ -1,0 +1,67 @@
+# A compile from scratch leaves real class files; the early output and a few other outputs are
+# linked into the disk cache. Delete the cache and change a core source: the analysis is gone
+# too, so the compile starts from scratch and must not write through the links
+> compile
+$ delete diskcache
+$ copy-file changes/Base.scala core/Base.scala
+> compile
+> core/checkProducts
+
+# the same state, but only the early output's blob is gone: the analysis is valid, and the
+# missing early output must make the compile start from scratch rather than merge one round's
+# pickles into a new jar
+> core/breakEarlyOutput
+$ copy-file changes/Another.scala core/Another.scala
+> compile
+> core/checkProducts
+
+# a cache hit restores every output as a link. Delete the blobs behind two class files only and
+# change another source: Zinc must recompile the two sources whose products are gone and leave
+# the other links alone
+$ delete target/out
+> compile
+> core/breakClassLinks
+$ copy-file changes/Base2.scala core/Base.scala
+> compile
+> core/checkProducts
+
+# restored links again, with the early output's blob gone as well: the compile starts from
+# scratch and must not write through the surviving links (the blobs are read-only)
+$ delete target/out
+> compile
+> core/breakEarlyOutput
+> core/breakClassLinks
+$ copy-file changes/Other.scala core/Other.scala
+> compile
+> core/checkProducts
+
+# restored links, the whole cache gone, a source removed: no class file may survive through its
+# dangling link or in the jar, and app must still compile against core's early output
+$ delete target/out
+> compile
+$ delete diskcache
+$ delete core/Other.scala
+> compile
+> core/checkProducts
+
+# the same without pipelining: no early output, only the analysis and the class directory
+> set ThisBuild / usePipelining := false
+> compile
+$ delete target/out
+> compile
+$ delete diskcache
+$ delete core/Another.scala
+> compile
+> core/checkProducts
+
+# restored links with only the analysis blob gone, as a shared cache leaves them once another
+# checkout has recreated the class files' blobs but not the analysis: the restored products
+# are unowned, and a removed source must not keep its class file in the jar
+$ copy-file changes/Another.scala core/Another.scala
+> compile
+$ delete target/out
+> compile
+> core/breakAnalysis
+$ delete core/Another.scala
+> compile
+> core/checkProducts
