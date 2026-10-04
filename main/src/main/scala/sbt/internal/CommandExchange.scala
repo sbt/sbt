@@ -211,6 +211,7 @@ private[sbt] final class CommandExchange:
           mkAskUser(name),
         )
       subscribe(channel)
+      channel.start()
       AtomicCloseable.release(socket) // i took over
     if server.isEmpty && firstInstance.get then
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
