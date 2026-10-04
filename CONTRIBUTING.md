@@ -189,16 +189,20 @@ consoleProject doesn't work. REPL doesn't even start.
 I made some progress into consoleProject.
 At least Scala 3.7 repl session will now start.
 
-Generated-by: Claude Sonnet 4.5
+Generated-by: Claude Opus 4.5
 ```
 
 1. (Optional) Subject should start with `[2.x]` for develop branch, and `[1.x]` for sbt 1.x
 2. Subject should start with `fix` (bug fix), `feat` (new feature), `refactor`, `test`, `ci`, or `deps`
 3. Subject should use imperative mood, for example Fix foo, Add bar.
-4. Body should include Problem section, which summarizes the current understanding of the issue.
-5. Body should include Solution section, which summarizes your approach to fixing the issue.
-6. Do not at-mention people in the commit message.
-7. Include "Generated-by" tag for Gen-AI tools.
+4. For a fix, the subject should describe the problem that was fixed, not how it was fixed,
+   for example "Fix task output lost by the thin client", not "Subscribe the channel before reading".
+5. Body should include Problem section, which summarizes the current understanding of the issue.
+6. Body should include Solution section, which summarizes your approach to fixing the issue.
+7. Keep the body short, a few lines per section. Details belong in the PR description.
+8. Write the body in plain prose, without Markdown code spans (backticks).
+9. Do not at-mention people in the commit message.
+10. Include "Generated-by" tag for Gen-AI tools.
 
 ### Instruction to build sbtn
 
