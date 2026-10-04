@@ -118,7 +118,7 @@ private[librarymanagement] abstract class CrossVersionFunctions:
     parser(cross)(fullVersion, binaryVersion).map: (prefix, version, suffix) =>
       crossName(_, prefix + version + suffix)
 
-  private[sbt] def parser(
+  def parser(
       cross: CrossVersion,
   ): (String, String) => Option[(String, String, String)] =
     cross match
