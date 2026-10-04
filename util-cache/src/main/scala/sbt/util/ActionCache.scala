@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.{ File, PrintWriter }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ NoSuchFileException, Path, Paths }
+import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.util.{
   ActionCacheEvent,
@@ -267,17 +267,23 @@ object ActionCache:
       case Right(result) =>
         try
           val isFailure = result.exitCode.contains(failureExitCode)
-          result.contents.headOption match
-            case Some(head) =>
-              store.syncBlobs(result.outputFiles, config.outputDirectory)
-              val str = String(head.array(), StandardCharsets.UTF_8)
-              parseCachedValue(str, result, isFailure).getOrElse(Left(None))
-            case _ =>
-              val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-              if paths.isEmpty then Left(None)
-              else
-                val str = IO.read(paths.head.toFile())
+          // syncBlobs skips an output whose blob is gone from the store. Such a hit cannot be
+          // served: the outputs it would not sync are whatever the output directory held before.
+          val missing = result.outputFiles.size - store.findBlobs(result.outputFiles).size
+          if missing > 0 then
+            config.logger.debug(s"Ignoring cache hit with $missing blobs missing, will recompute")
+            Left(None)
+          else
+            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            result.contents.headOption match
+              case Some(head) =>
+                val str = String(head.array(), StandardCharsets.UTF_8)
                 parseCachedValue(str, result, isFailure).getOrElse(Left(None))
+              case _ =>
+                if paths.isEmpty then Left(None)
+                else
+                  val str = IO.read(paths.head.toFile())
+                  parseCachedValue(str, result, isFailure).getOrElse(Left(None))
         catch
           case NonFatal(e) =>
             config.logger.debug(
@@ -419,10 +425,19 @@ object ActionCache:
   ): VirtualFile =
     import sbt.internal.util.codec.ManifestCodec.given
     val dirPath = conv.toPath(dir)
+    // A restored output is a link into the CAS. Once its blob is gone the link dangles and can
+    // neither be hashed nor packaged, so it is deleted: the task that reruns writes a fresh file
+    // where one is still needed. The views disagree on the attributes of a dangling link, so the
+    // check asks the filesystem; deleteIfExists tolerates another packager of the same directory
+    // having removed the link first.
     val allPaths = FileTreeView.default
       .list(dirPath.toGlob / ** / "*")
-      .withFilter(!_._2.isDirectory)
-      .map(_._1)
+      .flatMap: (p, attrs) =>
+        if attrs.isDirectory then None
+        else if !attrs.isRegularFile && !Files.exists(p) then
+          Files.deleteIfExists(p)
+          None
+        else Some(p)
       .sortBy(_.toString())
     // create a manifest of files and their hashes here
     def makeManifest(manifestFile: Path): Unit =

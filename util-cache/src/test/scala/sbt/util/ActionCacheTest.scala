@@ -2,9 +2,10 @@ package sbt.util
 
 import java.io.{ ByteArrayInputStream, IOException, InputStream }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ AccessDeniedException, Files, NoSuchFileException, Path, Paths }
+import java.nio.file.{ AccessDeniedException, Files, LinkOption, NoSuchFileException, Path, Paths }
 import java.nio.file.attribute.{ PosixFileAttributeView, PosixFilePermission }
 import java.util.Optional
+import java.util.zip.ZipFile
 import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUnit }
 import scala.jdk.CollectionConverters.*
 
@@ -206,6 +207,65 @@ object ActionCacheTest extends BasicTestSuite:
         else assert(Files.isWritable(out))
         assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
         assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  test("A cache hit whose blob is gone from the CAS is a miss"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        var called = 0
+        val blob = StringVirtualFile1(s"$tempDir/a.txt", "2")
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(blob))
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val out = tempDir / "a.txt"
+        Files.delete(cache.toCasFile(Digest(blob)))
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "the task did not rerun although its output blob is gone")
+        assert(out.exists() && IO.read(out) == "2")
+
+  // Probative where the store links: on APFS it copies, and a copy replaced the dangling link
+  // before this change too.
+  test("Disk cache syncs a blob over a dangling link"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val out = (tempDir / "a.txt").toPath()
+        if trySymlink(out, (tempDir / "gone").toPath()) then
+          val synced = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+          assert(synced == out)
+          assert(Files.readString(out, StandardCharsets.UTF_8) == "foo")
+          assertMaterialized(cache, out)
+
+  test("packageDirectory drops a dangling link instead of failing"):
+    IO.withTemporaryDirectory: tempDir =>
+      val outputDirectory = tempDir.toPath()
+      val dir = tempDir / "gen-dir"
+      IO.write(dir / "a.txt", "contents A")
+      val dangling = (dir / "b.txt").toPath()
+      if trySymlink(dangling, (tempDir / "gone").toPath()) then
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        assert(!Files.exists(dangling, LinkOption.NOFOLLOW_LINKS), "the dangling link survived")
+        val zip = new ZipFile(binaryFileConverter.toPath(zipVf).toFile)
+        val entries =
+          try zip.entries.asScala.map(_.getName).filterNot(_.endsWith("/")).toSet
+          finally zip.close()
+        assert(entries == Set("gen-dir/a.txt", ActionCache.manifestFileName), s"entries = $entries")
+
+  /** Links `link` to `target`; false where the platform refuses symbolic links. */
+  def trySymlink(link: Path, target: Path): Boolean =
+    try
+      Files.createSymbolicLink(link, target)
+      true
+    catch case _: IOException | _: UnsupportedOperationException => false
 
   def testHoldBlob(cache: ActionCacheStore): Unit =
     IO.withTemporaryDirectory: tempDir =>

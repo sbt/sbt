@@ -427,7 +427,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     // user enable Developer Mode on Windows 10+ to create symbolic links.
     def linkOrCopy(outPath: Path): Path =
       Retry:
-        if Files.exists(outPath) then IO.delete(outPath.toFile())
+        // A link whose blob is gone fails Files.exists but still blocks createSymbolicLink.
+        if Files.isSymbolicLink(outPath) then Files.deleteIfExists(outPath)
+        else if Files.exists(outPath) then IO.delete(outPath.toFile())
         if symlinkSupported.get() && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
           catch
