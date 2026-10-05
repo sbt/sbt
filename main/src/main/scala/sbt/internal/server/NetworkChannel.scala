@@ -965,8 +965,10 @@ final class NetworkChannel(
   private[sbt] def isAttached: Boolean = attached.get
   private[sbt] def isInitialized: Boolean = initialized
 
-  thread.start()
-  writeThread.start()
+  private[sbt] def start(): Unit =
+    thread.start()
+    writeThread.start()
+
 }
 
 object NetworkChannel {

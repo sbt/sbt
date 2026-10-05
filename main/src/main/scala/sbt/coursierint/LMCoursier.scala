@@ -61,7 +61,7 @@ object LMCoursier {
         sys.env
           .get("LOCALAPPDATA")
           .map(absoluteFile)
-          .getOrElse(absoluteFile(sys.props("user.home")) / "AppData" / "Local")
+          .getOrElse(sbt.io.Path.userHome.getAbsoluteFile / "AppData" / "Local")
       base / "Coursier" / "Cache" / "v1"
     }
     sys.props

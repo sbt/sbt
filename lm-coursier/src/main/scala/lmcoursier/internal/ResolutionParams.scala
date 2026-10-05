@@ -8,6 +8,7 @@ import coursier.core.*
 import coursier.params.rule.Strict
 import lmcoursier.FallbackDependency
 import lmcoursier.definitions.ToCoursier
+import sbt.internal.librarymanagement.LMSysProp
 import coursier.util.Task
 
 import scala.collection.mutable
@@ -114,7 +115,7 @@ object ResolutionParams {
     val ivyHome = sys.props
       .get("ivy.home")
       .orElse(ivyHomeOpt.map(_.getAbsoluteFile.toURI.getPath))
-      .getOrElse(new File(sys.props("user.home")).toURI.getPath + ".ivy2")
+      .getOrElse(LMSysProp.defaultIvyHome.getAbsoluteFile.toURI.getPath)
 
     val sbtIvyHome = sys.props.getOrElse(
       "sbt.ivy.home",

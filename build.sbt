@@ -620,6 +620,7 @@ lazy val actionsProj = (project in file("main-actions"))
       // an internal (sbt.internal) type not meant for external consumption.
       exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.valueOf"),
       exclude[DirectMissingMethodProblem]("sbt.internal.WorkerConnection.values"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
     ),
   )
   .dependsOn(lmCore)

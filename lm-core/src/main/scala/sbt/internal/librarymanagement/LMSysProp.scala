@@ -9,10 +9,11 @@ package sbt
 package internal
 package librarymanagement
 
+import java.io.File
 import java.util.Locale
 import scala.util.control.NonFatal
 
-object LMSysProp {
+object LMSysProp:
   def booleanOpt(name: String): Option[Boolean] =
     sys.props.get(name).flatMap { x =>
       x.toLowerCase(Locale.ENGLISH) match {
@@ -63,4 +64,12 @@ object LMSysProp {
   lazy val maxPublishAttempts: Int =
     java.lang.Integer.getInteger("sbt.repository.publish.attempts", 3)
 
-}
+  /**
+   * Ivy home directory: `sbt.ivy.home`, then `ivy.home`, else `user.home/.ivy2`.
+   */
+  lazy val defaultIvyHome: File =
+    def prop(name: String): Option[String] = sys.props.get(name).map(_.trim).filter(_.nonEmpty)
+    prop("sbt.ivy.home").orElse(prop("ivy.home")) match
+      case Some(home) => File(home)
+      case None       => File(sbt.io.Path.userHome, ".ivy2")
+end LMSysProp

@@ -13,7 +13,10 @@ import java.net.{ InetAddress, ServerSocket, Socket }
 import sbt.{ State, StandardMain }
 import sbt.internal.util.{ AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Terminal, Util }
 import sbt.internal.util.Terminal.TerminalImpl
+import sbt.internal.protocol.JsonRpcRequestMessage
 import sbt.protocol.Serialization
+import sjsonnew.support.scalajson.unsafe.Parser
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 import verify.BasicTestSuite
@@ -78,6 +81,31 @@ object NetworkChannelSpec extends BasicTestSuite:
       val outcome = whileInterrupted(StandardMain.exchange.removeChannel(channel))
       assertSucceededAndStillInterrupted(outcome)
 
+  test("an attach sent before the channel is subscribed still attaches the client"):
+    withServerState:
+      withChannelThreadsJoined:
+        withLoopbackConnection: (client, connection) =>
+          client.getOutputStream.write(attachRequest)
+          client.getOutputStream.flush()
+          Using.resource(newChannel(connection, Seq(VirtualTerminal.handler))): channel =>
+            Thread.sleep(acceptThreadDelay.toMillis)
+            StandardMain.exchange.subscribe(channel)
+            channel.start()
+            assert(eventually(channel.isAttached), "the attach request was dropped")
+
+  private val acceptThreadDelay = 200.millis
+
+  private def attachRequest: Array[Byte] =
+    val params = Parser.parseUnsafe("""{"interactive": false}""")
+    Serialization.serializeRequestMessage(
+      JsonRpcRequestMessage("2.0", "attach-id", Serialization.attach, Some(params))
+    )
+
+  private def eventually(condition: => Boolean): Boolean =
+    val deadline = 5.seconds.fromNow
+    while !condition && deadline.hasTimeLeft() do Thread.sleep(10)
+    condition
+
   private type Outcome = (thrown: Option[Exception], stillInterrupted: Boolean)
 
   private given Using.Releasable[NetworkChannel] = _.shutdown(false)
@@ -104,7 +132,7 @@ object NetworkChannelSpec extends BasicTestSuite:
   private def withAttachedClient[A](test: NetworkChannel => A): A =
     withServerState:
       withChannelThreadsJoined:
-        withLoopbackConnection: connection =>
+        withLoopbackConnection: (_, connection) =>
           Using.resource(attachedChannel(connection))(test)
 
   private def withChannelThreadsJoined[A](f: => A): A =
@@ -120,26 +148,30 @@ object NetworkChannelSpec extends BasicTestSuite:
     thread.getName.startsWith("sbt-networkchannel-") ||
       thread.getName.startsWith(s"sbt-$channelName-")
 
-  private def attachedChannel(connection: Socket): NetworkChannel =
-    val channel = new NetworkChannel(
+  private def newChannel(connection: Socket, handlers: Seq[ServerHandler]): NetworkChannel =
+    new NetworkChannel(
       name = channelName,
       connection = connection,
       auth = Set.empty,
       instance = null,
-      handlers = Nil,
+      handlers = handlers,
       mkUIThreadImpl = (_, _) => null,
     )
+
+  private def attachedChannel(connection: Socket): NetworkChannel =
+    val channel = newChannel(connection, Nil)
+    channel.start()
     val attachRequestId = "attached-id"
     channel.setInteractive(attachRequestId, value = false)
     channel
 
-  private def withLoopbackConnection[A](f: Socket => A): A =
+  private def withLoopbackConnection[A](f: (Socket, Socket) => A): A =
     val loopback = InetAddress.getLoopbackAddress
     val anyFreePort = 0
     val backlog = 1
     Using.resource(new ServerSocket(anyFreePort, backlog, loopback)): server =>
-      Using.resource(new Socket(loopback, server.getLocalPort)): _ =>
-        Using.resource(server.accept())(f)
+      Using.resource(new Socket(loopback, server.getLocalPort)): client =>
+        Using.resource(server.accept())(f(client, _))
 
   private def withServerState[A](f: => A): A =
     val previous = StandardMain.exchange.withState(Option(_))
