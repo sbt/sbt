@@ -5,5 +5,5 @@
 > compile
 > compile
 > checkNoHits
-$ absent diskcache
+$ absent no-disk-cache
 $ absent target/bootcache

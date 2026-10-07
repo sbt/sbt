@@ -346,7 +346,8 @@ private[sbt] object Load:
     def mapSpecial(to: ScopedKey[?]): [a] => ScopedKey[a] => ScopedKey[a] =
       [a] =>
         (key: ScopedKey[a]) =>
-          if key.key == streams.key then
+          if key.key == streams.key || (key.key == cacheStores.key && to.key != cacheStores.key)
+          then
             ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
           else key
     def setDefining[T] =

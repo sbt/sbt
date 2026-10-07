@@ -5,7 +5,7 @@ val pure1 = taskKey[Unit]("")
 val map1 = taskKey[String]("")
 val checkNoHits = taskKey[Unit]("")
 
-Global / localCacheDirectory := baseDirectory.value / "diskcache"
+Global / localCacheDirectory := baseDirectory.value / "no-disk-cache"
 
 cacheStores := Nil
 
