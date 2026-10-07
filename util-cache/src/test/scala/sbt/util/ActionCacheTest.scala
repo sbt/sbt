@@ -390,6 +390,21 @@ object ActionCacheTest extends BasicTestSuite:
       // check that the action has been invoked only once
       assert(called == 1)
 
+  test("An empty store list runs the action every time"):
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+      called += 1
+      InternalActionResult(a + b, Nil)
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(AggregateActionCacheStore.empty, tempDir)
+      val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v1 == 2 && v2 == 2)
+      assert(called == 2)
+      val summary = config.cacheEventLog.summary.toString
+      assert(summary == "cache 0%, 2 onsite tasks", summary)
+
   test("Disk cache can hold action value with blob"):
     withDiskCache(testActionCacheWithBlob)
 

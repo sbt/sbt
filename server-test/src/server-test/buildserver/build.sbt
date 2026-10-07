@@ -1,7 +1,7 @@
 ThisBuild / scalaVersion := "2.13.11"
 
 Global / serverLog / logLevel := Level.Debug
-Global / cacheStores := Seq.empty
+Global / localCacheDirectory := (ThisBuild / baseDirectory).value / "target" / "bootcache"
 
 lazy val runAndTest = project.in(file("run-and-test"))
   .settings(

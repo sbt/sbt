@@ -1,4 +1,4 @@
-Global / cacheStores := Seq.empty
+Global / localCacheDirectory := (ThisBuild / baseDirectory).value / "target" / "bootcache"
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 scalaVersion := "2.12.21"

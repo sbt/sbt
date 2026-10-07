@@ -296,7 +296,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       state.get(BasicKeys.fileConverter).getOrElse(sys.error("outputDirectory has not been set"))
     val cacheStore = state
       .get(BasicKeys.cacheStores)
-      .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
+      .map(AggregateActionCacheStore(_))
       .getOrElse(
         DiskActionCacheStore(state.baseDir.toPath.resolve("target/bootcache"), fileConverter)
       )
