@@ -668,9 +668,9 @@ object Compiler:
     options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
 
   /**
-   * Deletes restored outputs whose CAS blob is gone (sbt/sbt#9849): dangling links in the class
-   * directory, every link there when the analysis itself dangles, and a dangling early jar or
-   * early analysis. Regular files are never touched. See `cache/dangling-restored-outputs`.
+   * Deletes restored outputs whose CAS blob is gone (sbt/sbt#9849): a dangling analysis together
+   * with every link in the class directory, and a dangling early jar or early analysis. Zinc deals
+   * with dangling products itself when it has an analysis. See `cache/dangling-restored-outputs`.
    */
   private[sbt] def dropDanglingOutputs(
       classesDir: Path,
@@ -683,7 +683,7 @@ object Compiler:
     if analysisDangles then
       log.debug(s"analysis $analysisFile is a dangling link, dropping the restored class files")
       Files.deleteIfExists(analysisFile)
-    dropClassDirLinks(classesDir, onlyDangling = !analysisDangles, log)
+      dropClassDirLinks(classesDir, log)
     (earlyJar.toList ++ earlyAnalysisFile).filter(dangles).foreach { p =>
       log.debug(s"early output $p is a dangling link, deleting it")
       Files.deleteIfExists(p)
@@ -692,12 +692,11 @@ object Compiler:
   private def dangles(p: Path): Boolean = Files.isSymbolicLink(p) && !Files.exists(p)
 
   /** Deletes the class directory's links, restored products that Zinc cannot write through. */
-  private def dropClassDirLinks(classesDir: Path, onlyDangling: Boolean, log: Logger): Unit =
+  private def dropClassDirLinks(classesDir: Path, log: Logger): Unit =
     if Files.isDirectory(classesDir) then
-      val drop: Path => Boolean = if onlyDangling then dangles else Files.isSymbolicLink(_)
       // the walk starts with the directory itself, which may be a link of the user's making
       val links = Using.resource(Files.walk(classesDir)): paths =>
-        paths.iterator.asScala.filter(p => p != classesDir && drop(p)).toList
+        paths.iterator.asScala.filter(p => p != classesDir && Files.isSymbolicLink(p)).toList
       links.foreach(Files.deleteIfExists)
       if links.nonEmpty then
         log.debug(s"dropped ${links.size} restored class files under $classesDir")
@@ -727,7 +726,7 @@ object Compiler:
       log.debug(s"early output $earlyJar is missing, recompiling from scratch")
       // Without a previous analysis Zinc moves no product aside, and scalac cannot write through
       // a restored link into the read-only CAS.
-      dropClassDirLinks(ci.options.classesDirectory, onlyDangling = false, log)
+      dropClassDirLinks(ci.options.classesDirectory, log)
       ci.withPreviousResult(PreviousResult.of(Optional.empty(), Optional.empty()))
     else ci
 
