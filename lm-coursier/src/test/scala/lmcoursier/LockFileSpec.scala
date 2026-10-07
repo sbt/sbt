@@ -152,4 +152,66 @@ class LockFileSpec extends AnyFunSuite:
       assert(result == httpUrl)
     }
   }
+
+  test("cacheFileToOriginalUrl drops the credentials user name from the host") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val cached = new File(
+        cacheDir,
+        "https/alice%40repo.example.com/maven/com/example/lib_3/1.0.0/lib_3-1.0.0.jar"
+      )
+      val result =
+        CoursierDependencyResolution.cacheFileToOriginalUrl(cached.toURI.toString, cacheDir)
+      assert(result == "https://repo.example.com/maven/com/example/lib_3/1.0.0/lib_3-1.0.0.jar")
+    }
+  }
+
+  test("cacheFileToOriginalUrl decodes characters escaped by the Coursier cache") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val cached = new File(
+        cacheDir,
+        "https/repo.example.com/maven/com/example/lib_3/1.0.0%2B1/lib_3-1.0.0%2B1.jar"
+      )
+      val result =
+        CoursierDependencyResolution.cacheFileToOriginalUrl(cached.toURI.toString, cacheDir)
+      assert(result == "https://repo.example.com/maven/com/example/lib_3/1.0.0+1/lib_3-1.0.0+1.jar")
+    }
+  }
+
+  test("cacheFileToOriginalUrl supports a cache directory containing spaces") {
+    IO.withTemporaryDirectory { tmp =>
+      val cacheDir = new File(tmp, "Application Support/Coursier")
+      val cached =
+        new File(cacheDir, "https/repo1.maven.org/maven2/org/example/lib/1.0/lib-1.0.jar")
+      val result =
+        CoursierDependencyResolution.cacheFileToOriginalUrl(cached.toURI.toString, cacheDir)
+      assert(result == "https://repo1.maven.org/maven2/org/example/lib/1.0/lib-1.0.jar")
+    }
+  }
+
+  test("cacheFileToOriginalUrl preserves percent-escapes of the original URL") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val cached = new File(cacheDir, "https/repo.example.com/maven/a%2520b/x.jar")
+      val result =
+        CoursierDependencyResolution.cacheFileToOriginalUrl(cached.toURI.toString, cacheDir)
+      assert(result == "https://repo.example.com/maven/a%20b/x.jar")
+    }
+  }
+
+  test("cacheFileToOriginalUrl keeps the port of the host") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val cached = new File(cacheDir, "https/alice%40repo.example.com%3A8443/maven/x.jar")
+      val result =
+        CoursierDependencyResolution.cacheFileToOriginalUrl(cached.toURI.toString, cacheDir)
+      assert(result == "https://repo.example.com:8443/maven/x.jar")
+    }
+  }
+
+  test("cacheFileToOriginalUrl falls back to the placeholder when the host cannot be parsed") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val cached = new File(cacheDir, "https/bad_host/maven/lib.jar")
+      val result =
+        CoursierDependencyResolution.cacheFileToOriginalUrl(cached.toURI.toString, cacheDir)
+      assert(!CacheUrlConversion.isPortableUrl(result))
+    }
+  }
 end LockFileSpec
