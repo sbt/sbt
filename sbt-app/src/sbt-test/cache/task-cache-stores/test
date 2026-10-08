@@ -1,9 +1,11 @@
 > compile
+$ absent target/out/jvm/scala-3.9.0/taskcachestores/classes.sbtdir.zip
 $ sleep 2000
 > delClasses
 > markTime
 > compile
 > checkClassesRecompiled
+$ absent target/out/jvm/scala-3.9.0/taskcachestores/classes.sbtdir.zip
 
 > packageSrc
 $ sleep 2000

@@ -549,8 +549,7 @@ trait Cont:
                       ActionCache.registerOutput(
                         ActionCache.packageDirectory(
                           dir = ${ output.term.asExprOf[VirtualFileRef] },
-                          conv = $cacheConfigExpr.fileConverter,
-                          outputDirectory = $cacheConfigExpr.outputDirectory,
+                          config = $cacheConfigExpr,
                         ),
                         $outputAccRef,
                       )
