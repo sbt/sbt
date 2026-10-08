@@ -239,6 +239,10 @@ final class ScriptedTests(
             try Files.deleteIfExists(p)
             catch
               case _: IOException =>
+                try
+                  p.toFile.setWritable(true)
+                  Files.deleteIfExists(p)
+                catch case _: IOException => ()
     val tempTestPath = tempTestDir.getCanonicalFile.toPath
 
     def runBatchTests =

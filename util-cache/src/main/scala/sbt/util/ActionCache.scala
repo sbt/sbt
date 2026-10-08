@@ -157,7 +157,10 @@ object ActionCache:
                 val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
                 !outputPath.startsWith(normalizedOutputDir)
           )
-        if uncacheableOutputs.nonEmpty then
+        if hasNoStore(store) then
+          cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+          result
+        else if uncacheableOutputs.nonEmpty then
           cacheEventLog.append(ActionCacheEvent.Error)
           logger.error(
             s"Cannot cache task because its output files are outside the output directory: \n" +
@@ -224,6 +227,11 @@ object ActionCache:
       case Left(_) => organicTask
   end cache
 
+  private def hasNoStore(store: ActionCacheStore): Boolean =
+    store match
+      case a: AggregateActionCacheStore => a.stores.isEmpty
+      case _                            => false
+
   /**
    * Retrieves the cached value or failure with a single cache lookup.
    * Returns Right(value) for cached success, Left(Some(failure)) for cached failure,
@@ -235,7 +243,7 @@ object ActionCache:
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
   ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
-    if markScopePending(taskName) then Left(None)
+    if markScopePending(taskName) || hasNoStore(config.store) then Left(None)
     else getWithFailure0(inputDigest, tags, config)
 
   private def getWithFailure0[O: JsonFormat](

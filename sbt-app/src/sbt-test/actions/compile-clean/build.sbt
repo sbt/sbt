@@ -1,6 +1,6 @@
 import sbt.nio.file.Glob
 
-Global / cacheStores := Seq.empty
+Global / localCacheDirectory := (ThisBuild / baseDirectory).value / "target" / "bootcache"
 name := "compile-clean"
 scalaVersion := "2.12.21"
 Compile / cleanKeepGlobs +=

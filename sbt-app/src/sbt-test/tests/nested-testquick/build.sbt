@@ -1,4 +1,4 @@
-Global / cacheStores := Seq.empty
+Global / localCacheDirectory := (ThisBuild / baseDirectory).value / "target" / "bootcache"
 
 ThisBuild / scalaVersion := "2.12.21"
 

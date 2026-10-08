@@ -1058,6 +1058,7 @@ object Defaults extends BuildCommon with DefExtra:
       compile := Def.uncached(compileTask.value),
       compileScalaBackend := Def.uncached(compileScalaBackendTask.value),
       compileJava := Def.uncached(compileJavaTask.value),
+      compileJava / cacheStores := (compile / cacheStores).value,
       compileSplit := {
         // conditional task
         if incOptions.value.pipelining then Def.uncached(compileJava.value)
@@ -1245,6 +1246,9 @@ object Defaults extends BuildCommon with DefExtra:
     testTaskOptions(testSelected),
     testTaskOptions(testQuick),
     testDefaults,
+    testQuick / cacheStores := (test / cacheStores).value,
+    testOnly / cacheStores := (test / cacheStores).value,
+    testSelected / cacheStores := (testOnly / cacheStores).value,
     baseDirectory := {
       if testPersistentWorker.value then (ThisBuild / baseDirectory).value
       else baseDirectory.value
@@ -2377,6 +2381,7 @@ object Defaults extends BuildCommon with DefExtra:
 
   def compileIncrementalTaskSettings = inTask(compileIncremental)(
     Seq(
+      cacheStores := (compile / cacheStores).value,
       TaskZero / compileIncremental := Def.uncached {
         val bspTask = (compile / bspCompileTask).value
         val result = cachedCompileIncrementalTask.result.value

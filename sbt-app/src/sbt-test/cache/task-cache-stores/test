@@ -1,0 +1,13 @@
+> compile
+$ sleep 2000
+> delClasses
+> markTime
+> compile
+> checkClassesRecompiled
+
+> packageSrc
+$ sleep 2000
+> delSrcJar
+> markTime
+> packageSrc
+> checkSrcJarRestored
