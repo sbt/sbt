@@ -774,6 +774,7 @@ lazy val mainProj = (project in file("main"))
         sjsonNewScalaJson.value,
         sjsonNewCore.value,
         launcherInterface,
+        slf4jNop,
         caffeine,
         scala3Library,
         scalaCollectionCompat,
