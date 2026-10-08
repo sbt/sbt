@@ -113,7 +113,7 @@ object ActionCache:
   ): O =
     import config.*
 
-    val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion)
+    lazy val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion)
 
     def cacheFailure(e: CompileFailed): Nothing =
       // Cache the failure so subsequent builds don't re-run failed compilation
@@ -135,7 +135,7 @@ object ActionCache:
         try action(key): @unchecked
         catch
           case e: CompileFailed =>
-            if CachedCompileFailure.hasSufficientInfo(e) then cacheFailure(e)
+            if CachedCompileFailure.hasSufficientInfo(e) && !hasNoStore(store) then cacheFailure(e)
             else
               cacheEventLog.append(ActionCacheEvent.OnsiteTask)
               throw e
@@ -146,9 +146,9 @@ object ActionCache:
             )
             throw e
       try
-        val json = Converter.toJsonUnsafe(result)
+        lazy val json = Converter.toJsonUnsafe(result)
         val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
-        val uncacheableOutputs =
+        lazy val uncacheableOutputs =
           outputs.filter(f =>
             f match
               case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
@@ -239,7 +239,7 @@ object ActionCache:
    */
   private def getWithFailure[O: JsonFormat](
       taskName: String,
-      inputDigest: Digest,
+      inputDigest: => Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
   ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
@@ -421,6 +421,18 @@ object ActionCache:
   ): VirtualFile =
     outputs += vf
     vf
+
+  /**
+   * Packages `dir` into a zip next to it, so the directory can be stored as a single blob.
+   * Without a cache store there is nothing to store, so `dir` itself is returned unpackaged,
+   * and a zip left by an earlier run is deleted since it no longer describes `dir`.
+   */
+  def packageDirectory(dir: VirtualFileRef, config: BuildWideCacheConfiguration): VirtualFile =
+    if hasNoStore(config.store) then
+      val dirPath = config.fileConverter.toPath(dir)
+      Files.deleteIfExists(dirZipPath(dirPath))
+      config.fileConverter.toVirtualFile(dirPath)
+    else packageDirectory(dir, config.fileConverter, config.outputDirectory)
 
   /** The zip `packageDirectory` writes for `dirPath`, as a sibling of the directory itself. */
   def dirZipPath(dirPath: Path): Path =

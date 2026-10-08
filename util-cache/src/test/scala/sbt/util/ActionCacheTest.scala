@@ -405,6 +405,28 @@ object ActionCacheTest extends BasicTestSuite:
       val summary = config.cacheEventLog.summary.toString
       assert(summary == "cache 0%, 2 onsite tasks", summary)
 
+  test("An empty store list does not hash the action input"):
+    import sjsonnew.BasicJsonProtocol.*
+    given sjsonnew.HashWriter[Locked] = lockedWriter(Int.MaxValue)
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(AggregateActionCacheStore.empty, tempDir)
+      val v = ActionCache.cache(Locked(1), Digest.zero, Digest.zero, tags, config)(l =>
+        InternalActionResult(l.n, Nil)
+      )
+      assert(v == 1)
+
+  test("An empty store list leaves a directory unpackaged and drops a stale zip"):
+    IO.withTemporaryDirectory: tempDir =>
+      val config =
+        getCacheConfig(AggregateActionCacheStore.empty, tempDir, converter = binaryFileConverter)
+      val dir = tempDir / "classes"
+      IO.write(dir / "A.class", "A")
+      val zip = ActionCache.dirZipPath(dir.toPath)
+      IO.write(zip.toFile, "stale")
+      val vf = ActionCache.packageDirectory(binaryFileConverter.toVirtualFile(dir.toPath), config)
+      assert(binaryFileConverter.toPath(vf) == dir.toPath)
+      assert(!Files.exists(zip), s"$zip survived")
+
   test("Disk cache can hold action value with blob"):
     withDiskCache(testActionCacheWithBlob)
 
