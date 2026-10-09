@@ -189,6 +189,8 @@ end InMemoryActionCacheStore
 
 case class DiskActionCacheStore(base: Path, converter: FileConverter)
     extends AbstractActionCacheStore:
+  import DiskActionCacheStore.copyOnRestore
+
   lazy val casBase: Path =
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)
@@ -430,7 +432,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         // A link whose blob is gone fails Files.exists but still blocks createSymbolicLink.
         if Files.isSymbolicLink(outPath) then Files.deleteIfExists(outPath)
         else if Files.exists(outPath) then IO.delete(outPath.toFile())
-        if symlinkSupported.get() && Files.exists(casFile) then
+        if symlinkSupported.get() && !copyOnRestore(outPath) && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
           catch
             case e: FileSystemException =>
@@ -467,7 +469,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         try
           if Digest.sameDigest(p, d) then
             val result =
-              if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
+              if copyOnRestore(p) then if Files.isSymbolicLink(p) then linkOrCopy(p) else p
+              else if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p)
+              else p
             afterFileUpToDate(ref, result, outputDirectory)
             result
           else
@@ -479,6 +483,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
           // but in practice, NoSuchFileException is thrown often
           case _: NoSuchFileException =>
             writeFileAndNotify(p)
+    end match
   end syncFile
 
   /**
@@ -528,8 +533,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         def tempPath = tempDir.toPath.resolve(shortPath)
         currentItem match
           case p if !Files.exists(p)        => doSync(ref, tempPath)
-          case p if Digest.sameDigest(p, d) => ()
-          case p                            =>
+          case p if Digest.sameDigest(p, d) =>
+            if Files.isSymbolicLink(p) && copyOnRestore(p) then doSync(ref, tempPath)
+          case p =>
             IO.delete(p.toFile())
             doSync(ref, tempPath)
     // sync deleted files
@@ -552,6 +558,14 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
 end DiskActionCacheStore
 
 object DiskActionCacheStore:
+  /**
+   * Whether a restored output must be a writable copy rather than a link into the read-only CAS.
+   * SemanticDB writers, the semanticdb-scalac plugin and Scala 3's -Xsemanticdb, overwrite their
+   * previous output in place, and Zinc does not move it aside since it is not a class file.
+   */
+  private[sbt] def copyOnRestore(path: Path): Boolean =
+    path.getFileName.toString.endsWith(".semanticdb")
+
   private val writePermissions: Set[PosixFilePermission] = Set(
     PosixFilePermission.OWNER_WRITE,
     PosixFilePermission.GROUP_WRITE,
