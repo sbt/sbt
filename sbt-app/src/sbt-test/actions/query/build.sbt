@@ -3,7 +3,7 @@ scalaVersion := "3.3.3"
 lazy val someTask = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
-  .aggregate(foo, bar, baz)
+  .aggregate(foo, bar, baz, qux)
   .settings(
     name := "root",
   )
@@ -13,6 +13,10 @@ lazy val bar = project
 lazy val baz = project
   .settings(
     scalaVersion := "2.12.21",
+  )
+lazy val qux = project
+  .settings(
+    platform := "sjs1",
   )
 
 someTask := Def.uncached {

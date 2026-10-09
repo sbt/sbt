@@ -2,8 +2,8 @@ package sbt
 package internal
 
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.Keys.scalaBinaryVersion
 import DefaultParsers.*
+import sbt.librarymanagement.Platform
 import scala.util.matching.Regex
 import sbt.internal.util.AttributeKey
 
@@ -19,31 +19,38 @@ private[sbt] case class ProjectQuery(
       val projectMatches =
         if projectName == wildcard then true
         else pattern.matches(p.project)
-      val scalaMatches =
-        params.get(Keys.scalaBinaryVersion.key) match
-          case Some(expected) =>
-            val actualSbv =
-              structure.data.get(Def.ScopedKey(Scope.ThisScope.rescope(p), scalaBinaryVersion.key))
-            actualSbv match
-              case Some(sbv) => sbv == expected
-              case None      => true
-          case None => true
-      projectMatches && scalaMatches
+      projectMatches && params.forall: (key, expected) =>
+        structure.data.get(Def.ScopedKey(Scope.ThisScope.rescope(p), key)) match
+          case Some(actual) => actual == expected
+          case None         => true
 end ProjectQuery
 
 object ProjectQuery:
   private val wildcard = "..."
+
+  private[sbt] val queryKeys: Seq[(AttributeKey[?], Set[String])] =
+    Seq(
+      Keys.scalaBinaryVersion.key -> Set("3", "2.13", "2.12"),
+      Keys.platform.key -> Set(Platform.jvm, Platform.sjs1, Platform.native0_5),
+    )
 
   // make sure @ doesn't match on this one
   def projectName: Parser[String] =
     charClass(c => c.isLetter || c.isDigit || c == '_' || c == '.').+.string
       .examples(wildcard)
 
+  private def paramValue: Parser[String] =
+    charClass(c => c.isLetterOrDigit || c == '_' || c == '.' || c == '-').+.string
+
+  private def param: Parser[(AttributeKey[?], String)] =
+    queryKeys
+      .map: (key, examples) =>
+        token("@" + key.label + "=") ~>
+          token(paramValue.examples(examples)).map(v => (key: AttributeKey[?], v))
+      .reduce(_ | _)
+
   def parser: Parser[ProjectQuery] =
-    (projectName ~
-      token("@scalaBinaryVersion=" ~> StringBasic.map((scalaBinaryVersion.key, _)))
-        .examples("@scalaBinaryVersion=3")
-        .?)
+    (projectName ~ param.*)
       .map { (proj, params) =>
         ProjectQuery(proj, params.toMap)
       }
