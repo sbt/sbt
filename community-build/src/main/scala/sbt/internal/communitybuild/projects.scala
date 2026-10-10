@@ -209,6 +209,7 @@ sealed trait CommunityProject:
 
   private def withReverted[A](commit: String)(f: => A): A =
     log(s"Reverting $commit in $project")
+    fetchIfMissing(commit)
     try
       val exitCode = exec(projectDir, "git", List("revert", "--no-commit", commit), Map.empty)
       if exitCode != 0 then throw RuntimeException(s"failed to revert $commit in $project")
@@ -217,6 +218,14 @@ sealed trait CommunityProject:
       exec(projectDir, "git", List("update-index", "-q", "--refresh"), Map.empty)
       val exitCode = exec(projectDir, "git", List("revert", "--abort"), Map.empty)
       if exitCode != 0 then log(s"failed to restore $project after reverting $commit")
+
+  /** Fetches the commit and its parent, which a shallow checkout of the submodule lacks. */
+  private def fetchIfMissing(commit: String): Unit =
+    val hasParent = exec(projectDir, "git", List("cat-file", "-e", s"$commit~1"), Map.empty) == 0
+    if !hasParent then
+      val exitCode =
+        exec(projectDir, "git", List("fetch", "--depth=2", "origin", commit), Map.empty)
+      if exitCode != 0 then throw RuntimeException(s"failed to fetch $commit in $project")
 
   private def warmup(baseArgs: List[String], command: Option[String]): Unit =
     command.foreach(cmd => execAndShutdown(baseArgs :+ cmd, "warm-up", baseArgs))
@@ -417,12 +426,28 @@ object projects:
     scenarioType = Scenario.Build,
   )
 
+  private val sttpJvmProjects = List("core", "cats", "fs2")
+
+  lazy val sttp = SbtCommunityProject(
+    project = "sttp",
+    environment = Map("_JAVA_OPTIONS" -> "-Xms1g -Xmx3g"),
+    testCmd = all(sttpJvmProjects.map(p => s"$p/test")*),
+    testCompileCmd = "compileScoped 3 JVM",
+    warmupCmd = Some(all(sttpJvmProjects.map(p => s"$p/update")*)),
+    scenarioType = Scenario.TestTest(
+      minHitRate = 0.9,
+      revertCommit = Some("7e7c005a97db9c4e563216613a987b5eac555252"),
+      minRevertHitRate = 0.6,
+    ),
+  )
+
 end projects
 
 def allProjects = List(
   projects.chimney,
   projects.parboiled2,
   projects.scalaz,
+  projects.sttp,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

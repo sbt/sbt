@@ -13,3 +13,6 @@
 [submodule "community-build/community-projects/chimney"]
 	path = community-build/community-projects/chimney
 	url = https://github.com/sbt-2-builds/chimney.git
+[submodule "community-build/community-projects/sttp"]
+	path = community-build/community-projects/sttp
+	url = https://github.com/sbt-2-builds/sttp.git
