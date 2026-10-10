@@ -125,7 +125,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.1.0-M1",
+    "2.1.0-M3",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
@@ -785,10 +785,6 @@ lazy val mainProj = (project in file("main"))
     SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // mima mistakenly checks inside private ProjectMatrixDef
-      exclude[Problem]("sbt.ProjectMatrix*ProjectMatrixDef*"),
-      // unresolved is private[sbt], and mima sees only the trait's static forwarder
-      exclude[DirectMissingMethodProblem]("sbt.ProjectMatrix.unresolved"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
@@ -1232,8 +1228,6 @@ lazy val lmCore = (project in file("lm-core"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      // append is private[sbt], and mima sees only the static forwarder on the class
-      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.CrossVersion.append"),
     ),
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
