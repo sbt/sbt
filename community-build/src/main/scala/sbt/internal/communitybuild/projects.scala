@@ -88,7 +88,12 @@ def exec(
 enum Scenario:
   case Test
   case Build
-  case TestTest(minHitRate: Double, minTestHitRate: Double = 1.0)
+  case TestTest(
+      minHitRate: Double,
+      minTestHitRate: Double = 1.0,
+      revertCommit: Option[String] = None,
+      minRevertHitRate: Double = 0.0,
+  )
   case TestSbt1
 
 sealed trait CommunityProject:
@@ -133,10 +138,14 @@ sealed trait CommunityProject:
       )
 
   def scenario(): Int = scenarioType match
-    case Scenario.Test                                 => test()
-    case Scenario.Build                                => build()
-    case Scenario.TestTest(minHitRate, minTestHitRate) => testTest(minHitRate, minTestHitRate)
-    case Scenario.TestSbt1                             => testSbt1()
+    case Scenario.Test                                                                 => test()
+    case Scenario.Build                                                                => build()
+    case Scenario.TestTest(minHitRate, minTestHitRate, revertCommit, minRevertHitRate) =>
+      val exitCode = testTest(minHitRate, minTestHitRate)
+      revertCommit match
+        case Some(commit) if exitCode == 0 => testReverted(commit, minRevertHitRate)
+        case _                             => exitCode
+    case Scenario.TestSbt1 => testSbt1()
 
   final def build(): Int = execAndShutdown(buildCommands, "build")._1
 
@@ -176,6 +185,38 @@ sealed trait CommunityProject:
       )
       exitCode
   end testTest
+
+  /**
+   * Reverts the given commit in the working tree, and runs the tests against
+   * the cache populated from the HEAD commit.
+   */
+  final def testReverted(commit: String, minHitRate: Double): Int =
+    withReverted(commit):
+      diskCacheDir.foreach(wipeDirectory)
+      val (exitCode, summaries) =
+        execAndShutdown(
+          runCommandsArgs :+ testCommand,
+          s"test (3rd, ${commit.take(8)} reverted, disk cache wiped)"
+        )
+      assert(summaries.nonEmpty, s"no cache summary found in the reverted test run of $project")
+      val belowThreshold = summaries.filter(_.hitRate.forall(_ < minHitRate))
+      assert(
+        belowThreshold.isEmpty,
+        s"cache hit rate of the reverted test run of $project is below $minHitRate: $belowThreshold"
+      )
+      exitCode
+  end testReverted
+
+  private def withReverted[A](commit: String)(f: => A): A =
+    log(s"Reverting $commit in $project")
+    try
+      val exitCode = exec(projectDir, "git", List("revert", "--no-commit", commit), Map.empty)
+      if exitCode != 0 then throw RuntimeException(s"failed to revert $commit in $project")
+      f
+    finally
+      exec(projectDir, "git", List("update-index", "-q", "--refresh"), Map.empty)
+      val exitCode = exec(projectDir, "git", List("revert", "--abort"), Map.empty)
+      if exitCode != 0 then log(s"failed to restore $project after reverting $commit")
 
   private def warmup(baseArgs: List[String], command: Option[String]): Unit =
     command.foreach(cmd => execAndShutdown(baseArgs :+ cmd, "warm-up", baseArgs))
