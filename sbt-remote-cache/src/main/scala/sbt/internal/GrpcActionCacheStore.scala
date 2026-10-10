@@ -14,7 +14,6 @@ import build.bazel.remote.execution.v2.{
   DigestFunction,
   FindMissingBlobsRequest,
   GetActionResultRequest as XGetActionResultRequest,
-  OutputFile,
   UpdateActionResultRequest as XUpdateActionResultRequest,
 }
 import com.eed3si9n.remoteapis.shaded.com.google.bytestream.{ ByteStreamGrpc, ByteStreamProto }
@@ -155,13 +154,10 @@ object GrpcActionCacheStore:
   end build
 
   class AuthCallCredentials(remoteHeaders: List[String]) extends CallCredentials:
-    val pairs = remoteHeaders.map: h =>
-      // Split on the first '=' only. Splitting on every '=' would drop trailing
-      // padding from values such as Basic auth credentials ("Basic dXNlcjpwdw==")
-      // and reject values that legitimately contain '='.
-      h.split("=", 2).toList match
-        case List(k, v) => Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER) -> v
-        case _          => sys.error("remote header must contain '='")
+    val pairs = BazelRemote
+      .parseHeaders(remoteHeaders)
+      .map: (k, v) =>
+        Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER) -> v
     override def applyRequestMetadata(
         requestInfo: CallCredentials.RequestInfo,
         executor: java.util.concurrent.Executor,
@@ -474,39 +470,14 @@ class GrpcActionCacheStore private (
       refs: Seq[HashedVirtualFileRef],
       exitCode: Option[Int]
   ): XActionResult =
-    val b = XActionResult.newBuilder()
-    exitCode.foreach: e =>
-      b.setExitCode(e)
-    refs.foreach: ref =>
-      val out = toOutputFile(ref)
-      b.addOutputFiles(out)
-    b.build()
-
-  // per spec, Clients SHOULD NOT populate [contents] when uploading to the cache.
-  private def toOutputFile(ref: HashedVirtualFileRef): OutputFile =
-    val b = OutputFile.newBuilder()
-    b.setPath(ref.id)
-    b.setDigest(toXDigest(Digest(ref)))
-    b.build()
+    BazelRemote.toXActionResult(refs, exitCode)
 
   def toActionResult(ar: XActionResult): ActionResult =
-    val outs = ar.getOutputFilesList.asScala.toVector.map: out =>
-      val d = toDigest(out.getDigest())
-      HashedVirtualFileRef.of(out.getPath(), d.contentHashStr, d.sizeBytes)
-    ActionResult(outs, storeName, ar.getExitCode())
+    BazelRemote.toActionResult(ar, storeName)
 
-  def toXDigest(d: Digest): XDigest =
-    val str = d.contentHashStr.split("-")(1)
-    val sizeBytes = d.sizeBytes
-    val b = XDigest.newBuilder()
-    b.setHash(str)
-    b.setSizeBytes(sizeBytes)
-    b.build()
+  def toXDigest(d: Digest): XDigest = BazelRemote.toXDigest(d)
 
-  def toDigest(d: XDigest): Digest =
-    val hash = d.getHash()
-    val sizeBytes = d.getSizeBytes()
-    Digest(s"sha256-$hash/$sizeBytes")
+  def toDigest(d: XDigest): Digest = BazelRemote.toDigest(d)
 
   private def toByteString(blob: VirtualFile): ByteString =
     val out = ByteString.newOutput()
