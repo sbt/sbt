@@ -10,6 +10,7 @@ import scala.jdk.CollectionConverters.*
 
 import sbt.internal.util.CacheEventLog
 import sbt.internal.util.StringVirtualFile1
+import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
@@ -147,6 +148,27 @@ object ActionCacheTest extends BasicTestSuite:
         else assert(Files.isWritable(out))
         assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
         assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  test("Disk cache restores a SemanticDB file as a writable copy, replacing a link"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/A.scala.semanticdb", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = (tempDir / "A.scala.semanticdb").toPath()
+        Util.ignoreResult(trySymlink(out, casFile))
+        val synced = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        assert(synced == out)
+        assert(!Files.isSymbolicLink(out), s"$out was linked into the CAS")
+        Files.writeString(out, "bar", StandardCharsets.UTF_8)
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  def trySymlink(link: Path, target: Path): Boolean =
+    try
+      Files.createSymbolicLink(link, target)
+      true
+    catch case _: IOException | _: UnsupportedOperationException => false
 
   def testHoldBlob(cache: ActionCacheStore): Unit =
     IO.withTemporaryDirectory: tempDir =>
