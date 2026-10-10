@@ -1002,7 +1002,7 @@ object Defaults extends BuildCommon with DefExtra:
             sourcesVF.value,
             scalacOptions.value.toVector,
             javacOptions.value.toVector,
-            c.toVirtualFile(inputs.options.classesDirectory),
+            classesDirectoryRef(inputs.options, c),
             c.toVirtualFile(inputs.setup.cacheFile.toPath),
             extraIncOptions.value.toVector,
             scalaVersion.value,
@@ -2429,6 +2429,12 @@ object Defaults extends BuildCommon with DefExtra:
       case Select(ref: ProjectRef) => ref.project
       case _                       => "root"
 
+  /** Reuses the id `compileOptions` gave the class directory; its listing predates the compile. */
+  private def classesDirectoryRef(options: CompileOptions, c: FileConverter): VirtualFileRef =
+    val dir = options.classesDirectory
+    val vf = options.classpath.find(c.toPath(_) == dir).getOrElse(c.toVirtualFile(dir))
+    VirtualFileRef.of(vf.id)
+
   private val cachedCompileIncrementalTask = Def
     .cachedTask {
       val s = streams.value
@@ -2457,7 +2463,7 @@ object Defaults extends BuildCommon with DefExtra:
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
       val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))
       val dir = ci.options.classesDirectory
-      val vfDir = c.toVirtualFile(dir)
+      val vfDir = classesDirectoryRef(ci.options, c)
       val dirZip = ActionCache.dirZipPath(dir)
       // Zinc leaves the class directory alone when it invalidates nothing, so the zip the previous
       // run left behind still describes it and re-packing only reproduces a blob the store has.
@@ -2523,7 +2529,7 @@ object Defaults extends BuildCommon with DefExtra:
         .compileAllJava(in, log)
       store.set(AnalysisContents.create(result.analysis(), result.setup()))
       Def.declareOutput(c.toVirtualFile(in.setup.cacheFile.toPath))
-      Def.declareOutputDirectory(c.toVirtualFile(in.options.classesDirectory))
+      Def.declareOutputDirectory(classesDirectoryRef(in.options, c))
       result.hasModified
     }
     .tag(Tags.Compile, Tags.CPU)
@@ -2653,7 +2659,7 @@ object Defaults extends BuildCommon with DefExtra:
           sourcesVF.value,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
-          c.toVirtualFile(inputs.options.classesDirectory),
+          classesDirectoryRef(inputs.options, c),
           c.toVirtualFile(inputs.setup.cacheFile.toPath),
           incrementalOptions,
           scalaVersion.value,
