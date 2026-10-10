@@ -208,6 +208,21 @@ object ActionCacheTest extends BasicTestSuite:
         assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
         assert(cache.findBlobs(ref :: Nil) == Seq(ref))
 
+  test("Disk cache restores a SemanticDB file as a writable copy, replacing a link"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/A.scala.semanticdb", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = (tempDir / "A.scala.semanticdb").toPath()
+        Util.ignoreResult(trySymlink(out, casFile))
+        val synced = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        assert(synced == out)
+        assert(!Files.isSymbolicLink(out), s"$out was linked into the CAS")
+        Files.writeString(out, "bar", StandardCharsets.UTF_8)
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
   test("A cache hit whose blob is gone from the CAS is a miss"):
     withDiskCache: cache =>
       import sjsonnew.BasicJsonProtocol.*
