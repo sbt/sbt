@@ -119,9 +119,7 @@ object Dependencies:
   val dataclassScalafixVersion = "0.3.0"
   val coursierVersion = "2.1.26"
 
-  val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
-    .exclude("org.codehaus.plexus" % "plexus-archiver")
-    .exclude("org.codehaus.plexus" % "plexus-container-default")
+  val coursier = "io.get-coursier" %% "coursier" % coursierVersion
 
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.
