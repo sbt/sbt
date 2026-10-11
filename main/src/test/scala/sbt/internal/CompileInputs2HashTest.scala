@@ -22,6 +22,7 @@ object CompileInputs2HashTest extends Properties:
   override def tests: List[Test] = List(
     example("compileOrder changes the hash", compileOrderChangesHash),
     example("pipelining changes the hash", pipeliningChangesHash),
+    example("relativeOutputPath changes the hash", relativeOutputPathChangesHash),
     example("identical inputs hash the same", identicalInputsHashTheSame),
   )
 
@@ -30,7 +31,7 @@ object CompileInputs2HashTest extends Properties:
     sources = Vector(HashedVirtualFileRef.of("${BASE}/src/main/scala/A.scala", "sha256-def", 2L)),
     scalacOptions = Vector("-deprecation"),
     javacOptions = Vector.empty,
-    outputPath = VirtualFileRef.of("${BASE}/target/classes"),
+    relativeOutputPath = "jvm/scala-2.13.18/a",
     cachePath = VirtualFileRef.of("${BASE}/target/inc_compile.zip"),
     incrementalOptions = Vector.empty,
     scalaVersion = "2.13.18",
@@ -47,6 +48,11 @@ object CompileInputs2HashTest extends Properties:
     val off = DigestHasher.hashUnsafe(base)
     val on = DigestHasher.hashUnsafe(base.copy(pipelining = true))
     Result.assert(off != on)
+
+  private def relativeOutputPathChangesHash: Result =
+    val main = DigestHasher.hashUnsafe(base)
+    val test = DigestHasher.hashUnsafe(base.copy(relativeOutputPath = "jvm/scala-2.13.18/atest-"))
+    Result.assert(main != test)
 
   private def identicalInputsHashTheSame: Result =
     DigestHasher.hashUnsafe(base) ==== DigestHasher.hashUnsafe(base)
