@@ -388,6 +388,6 @@ private[sbt] final class Execute(
   def added(d: TaskId[?]) = state.contains(d)
   def complete = state.values.forall(_ == Done)
 
-  def pre(f: => Unit) = if checkPreAndPostConditions then f
-  def post(f: => Unit) = if checkPreAndPostConditions then f
+  inline def pre(inline f: => Unit): Unit = if checkPreAndPostConditions then f
+  inline def post(inline f: => Unit): Unit = if checkPreAndPostConditions then f
 end Execute
