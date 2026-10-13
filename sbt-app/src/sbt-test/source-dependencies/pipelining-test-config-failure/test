@@ -1,0 +1,5 @@
+> compile
+# a's Test source generator fails, so a's Test never compiles,
+# and b's Test must not wait forever on a's Test early output
+-> Test/compile
+-> b/Test/compile
