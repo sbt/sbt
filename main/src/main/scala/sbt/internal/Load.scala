@@ -785,7 +785,7 @@ private[sbt] object Load:
       val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
         d.value.extraProjects map { _.setProjectOrigin(ProjectOrigin.ExtraProject) }
       }
-      val converter = config.converter
+      val converter = plugs.pluginData.converter
 
       ContextUtil.appendScalacOptions(plugs.pluginData.scalacOptions)
 
@@ -1497,7 +1497,7 @@ private[sbt] object Load:
     val definitionClasspath = pluginData.definitionClasspath
     val dependencyClasspath = pluginData.dependencyClasspath
     val pluginLoader: ClassLoader =
-      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath, config.converter)
+      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath, pluginData.converter)
     val fullDependencyClasspath: Def.Classpath =
       buildPluginClasspath(config, pluginData.dependencyClasspath)
     val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
