@@ -25,7 +25,6 @@ import Keys.*
 import Configurations.{ Compile, Runtime }
 import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
 import sbt.SlashSyntax0.*
-import sbt.librarymanagement.LibraryManagementCodec.given
 
 object GlobalPlugin:
   // constructs a sequence of settings that may be appended to a project's settings to
@@ -35,12 +34,12 @@ object GlobalPlugin:
     val gpWithJar = gp.exportedJarUris.headOption
       .fold(gp.projectID)(uri => gp.projectID.from(uri.toString))
     Seq[Setting[?]](
-      projectDependencies ++= gpWithJar +: gp.dependencies,
+      projectDependencies ++= Def.uncached(gpWithJar +: gp.dependencies),
       resolvers := {
         val rs = resolvers.value
         (rs ++ gp.resolvers).distinct
       },
-      globalPluginUpdate := gp.updateReport,
+      globalPluginUpdate := Def.uncached(gp.updateReport),
       injectInternalClasspath(Runtime, gp.internalClasspath),
       injectInternalClasspath(Compile, gp.internalClasspath)
     )
