@@ -1302,7 +1302,10 @@ private[sbt] object ContinuousCommands:
           val commands = cs.commands.mkString("; ")
           val count = cs.count
           val action = cs.terminationAction.getOrElse(Watch.CancelWatch)
-          val st = cs.callbacks.onTermination(action, commands, count, newState)
+          val terminationState = newState.copy(
+            currentCommand = newState.currentCommand.map(_.withSource(CommandSource(channel)))
+          )
+          val st = cs.callbacks.onTermination(action, commands, count, terminationState)
           if error then st.fail else st
         case _ => if error then state.fail else state
   private[sbt] val stopWatchCommand = watchCommand(stopWatch)(exitWatchShared(false))
