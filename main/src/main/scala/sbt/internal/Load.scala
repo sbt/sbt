@@ -1494,7 +1494,7 @@ private[sbt] object Load:
     val definitionClasspath = pluginData.definitionClasspath
     val dependencyClasspath = pluginData.dependencyClasspath
     val pluginLoader: ClassLoader =
-      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath)
+      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath, config.converter)
     val fullDependencyClasspath: Def.Classpath =
       buildPluginClasspath(config, pluginData.dependencyClasspath)
     val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
@@ -1524,15 +1524,16 @@ private[sbt] object Load:
    * @param config The configuration for the whole sbt build.
    * @param dependencyClasspath The dependency classpath (sbt dependencies).
    * @param definitionClasspath The definition classpath for build definitions.
+   * @param converter The converter that encoded both classpaths.
    * @return A classloader ready to class load plugins.
    */
   def pluginDefinitionLoader(
       config: LoadBuildConfiguration,
       dependencyClasspath: Def.Classpath,
-      definitionClasspath: Def.Classpath
+      definitionClasspath: Def.Classpath,
+      converter: FileConverter,
   ): ClassLoader =
     val manager = config.pluginManagement
-    val converter = config.converter
     val parentLoader: ClassLoader =
       if dependencyClasspath.isEmpty then manager.initialLoader
       else
