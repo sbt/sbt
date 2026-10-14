@@ -1398,7 +1398,12 @@ private[sbt] object ContinuousCommands {
           val commands = cs.commands.mkString("; ")
           val count = cs.count
           val action = cs.terminationAction.getOrElse(Watch.CancelWatch)
-          val st = cs.callbacks.onTermination(action, commands, count, newState)
+          // Fast-track cancellation and disconnect cleanup enqueue commands without a source.
+          // Termination callbacks still need to know which channel owned the watch.
+          val terminationState = newState.copy(
+            currentCommand = newState.currentCommand.map(_.withSource(CommandSource(channel)))
+          )
+          val st = cs.callbacks.onTermination(action, commands, count, terminationState)
           if (error) st.fail else st
         case _ => if (error) state.fail else state
       }
