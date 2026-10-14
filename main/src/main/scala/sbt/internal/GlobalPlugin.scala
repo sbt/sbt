@@ -12,6 +12,7 @@ package internal
 import java.io.File
 import java.net.URI
 import sbt.io.IO
+import xsbti.FileConverter
 import sbt.librarymanagement.{
   Configuration,
   Configurations,
@@ -88,7 +89,7 @@ object GlobalPlugin:
         (Runtime / fullClasspath).value,
         (prods ++ intcp).distinct,
         exportedJarUris
-      )(updateReport.value)
+      )(updateReport.value, converter)
     }
     val resolvedTaskInit = taskInit.mapReferenced(Project.replaceThis(p))
     val task = resolvedTaskInit.evaluate(data)
@@ -126,7 +127,7 @@ final case class GlobalPluginData(
     fullClasspath: Classpath,
     internalClasspath: Classpath,
     exportedJarUris: Vector[URI],
-)(val updateReport: UpdateReport)
+)(val updateReport: UpdateReport, val converter: FileConverter)
 final case class GlobalPlugin(
     data: GlobalPluginData,
     structure: BuildStructure,

@@ -14,6 +14,7 @@ import hedgehog.runner.*
 import java.io.File
 import java.net.URI
 import scala.util.Try
+import _root_.sbt.internal.inc.MappedFileConverter
 import _root_.sbt.librarymanagement.{ ModuleID, UpdateReport, UpdateStats }
 
 object GlobalPluginTest extends Properties:
@@ -30,6 +31,6 @@ object GlobalPluginTest extends Properties:
       Nil,
       Nil,
       Vector(URI("file://server/share/a.jar"))
-    )(report)
+    )(report, MappedFileConverter.empty)
     Result.assert(Try(GlobalPlugin.inject(data)).isSuccess)
 end GlobalPluginTest
