@@ -153,6 +153,7 @@ trait Terminal extends AutoCloseable:
   private[sbt] def setSize(width: Int, height: Int): Unit
 
   private[sbt] def name: String
+  private[sbt] def isClosed: Boolean = false
   private[sbt] final def withRawInput[T](f: => T): T =
     enterRawMode()
     try
@@ -464,6 +465,9 @@ object Terminal:
       else
         Terminal.set(Terminal.SimpleTerminal)
         activeTerminal.get
+    private def output: Terminal =
+      // Avoid ClosedChannelException after a client disconnects
+      if t.isClosed then console else t
     override private[sbt] def progressState: ProgressState = t.progressState
     override private[sbt] def enterRawMode(): Unit = t.enterRawMode()
     override private[sbt] def exitRawMode(): Unit = t.exitRawMode()
@@ -472,8 +476,8 @@ object Terminal:
     override def getLineHeightAndWidth(line: String): (Int, Int) = t.getLineHeightAndWidth(line)
     override def lineCount(line: String): Int = t.lineCount(line)
     override def inputStream: InputStream = t.inputStream
-    override def outputStream: OutputStream = t.outputStream
-    override def errorStream: OutputStream = t.errorStream
+    override def outputStream: OutputStream = output.outputStream
+    override def errorStream: OutputStream = output.errorStream
     override def isAnsiSupported: Boolean = t.isAnsiSupported
     override def isColorEnabled: Boolean = t.isColorEnabled
     override def isEchoEnabled: Boolean = t.isEchoEnabled
@@ -490,8 +494,8 @@ object Terminal:
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
       t.setAttributes(attributes)
     override private[sbt] def setSize(width: Int, height: Int): Unit = t.setSize(width, height)
-    override def printStream: PrintStream = t.printStream
-    override def withPrintStream[T](f: PrintStream => T): T = t.withPrintStream(f)
+    override def printStream: PrintStream = output.printStream
+    override def withPrintStream[T](f: PrintStream => T): T = output.withPrintStream(f)
     override private[sbt] def withRawOutput[R](f: => R): R = t.withRawOutput(f)
     override def restore(): Unit = t.restore()
     override def close(): Unit = {}
@@ -739,7 +743,7 @@ object Terminal:
           case stream => stream.available() + activeTerminal.get().inputStream.available()
   end proxyInputStream
   private object proxyOutputStream extends OutputStream:
-    private def os: OutputStream = activeTerminal.get().outputStream
+    private def os: OutputStream = ProxyTerminal.outputStream
     def write(byte: Int): Unit =
       os.write(byte)
       os.flush()
@@ -752,7 +756,7 @@ object Terminal:
   private val proxyPrintStream = new LinePrintStream(proxyOutputStream):
     override def toString: String = s"proxyPrintStream($proxyOutputStream)"
   private object proxyErrorOutputStream extends OutputStream:
-    private def os: OutputStream = activeTerminal.get().errorStream
+    private def os: OutputStream = ProxyTerminal.errorStream
     def write(byte: Int): Unit = os.write(byte)
     override def write(bytes: Array[Byte]): Unit = write(bytes, 0, bytes.length)
     override def write(bytes: Array[Byte], offset: Int, len: Int): Unit =
@@ -950,7 +954,8 @@ object Terminal:
     override def getWidth: Int = getSize._1
     override def getHeight: Int = getSize._2
     private val rawMode = new AtomicBoolean(false)
-    def throwIfClosed[R](f: => R): R = if isStopped.get then throw new ClosedChannelException else f
+    override private[sbt] def isClosed: Boolean = isStopped.get
+    def throwIfClosed[R](f: => R): R = if isClosed then throw new ClosedChannelException else f
     override def getLastLine: Option[String] = progressState.currentLine
     override def getLines: Seq[String] = progressState.getLines
 
