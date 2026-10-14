@@ -3,33 +3,33 @@ $ copy-file changes/resolvers.sbt project/check.sbt
 > reload
 
 $ copy-file changes/project-dependencies.sbt project/check.sbt
--> reload
+> reload
 
 $ copy-file changes/compile-classpath.sbt project/check.sbt
--> reload
+> reload
 
 $ copy-file changes/runtime-classpath.sbt project/check.sbt
--> reload
+> reload
 
 # Set each setting in the meta-build too, and check that the meta-build keeps both values.
 $ copy-file changes/own-resolvers.sbt project/check.sbt
--> reload
+> reload
 
 $ mkdir project/own-classes
 $ copy-file changes/own-classpath.sbt project/check.sbt
--> reload
+> reload
 
 # Check the global plugin's update report, and replace it in the meta-build.
 $ copy-file changes/global-plugin-update.sbt project/check.sbt
 > reload
 
 $ copy-file changes/own-global-plugin-update.sbt project/check.sbt
-> reload
+-> reload
 
 # Set the update report in an auto plugin of the global plugin, and check that the meta-build gets the injected one.
 $ copy-file changes/DefaultUpdate.scala global/plugins/DefaultUpdate.scala
 $ copy-file changes/default-update.sbt project/check.sbt
--> reload
+> reload
 $ delete global/plugins/DefaultUpdate.scala
 
 # The tests of one scripted run share `global`, so delete the global plugin.

@@ -1,6 +1,6 @@
 # Export the global plugin as a classes directory, and load the build.
 $ copy-file changes/classes.sbt global/plugins/classes.sbt
-> reload
+-> reload
 
 # The tests of one scripted run share `global`, so delete the global plugin.
 $ delete global/plugins
