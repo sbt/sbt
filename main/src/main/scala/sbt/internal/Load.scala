@@ -189,7 +189,7 @@ private[sbt] object Load:
       files: Seq[VirtualFile],
       config: LoadBuildConfiguration,
   ): ClassLoader => Seq[Setting[?]] =
-    val converter = config.converter
+    val converter = config.globalPluginConverter
     val eval = mkEval(
       classpath = data(config.globalPluginClasspath).map(converter.toPath),
       base = base,
@@ -1395,7 +1395,6 @@ private[sbt] object Load:
         sbtPlugin :== true,
         isMetaBuild :== true,
         pluginData := Def.uncached {
-          val gpClasspath = globalPluginClasspath(config.globalPlugin)
           val prod = (Configurations.Runtime / exportedProducts).value
           val prodVersioned = (Configurations.Runtime / exportedProductsVersioned).value
           val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
@@ -1408,6 +1407,11 @@ private[sbt] object Load:
           val managedSrcs = (Configurations.Compile / managedSources).value
           val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
           val converter = fileConverter.value
+          val gpClasspath = GlobalPlugin.reencode(
+            globalPluginClasspath(config.globalPlugin),
+            config.globalPluginConverter,
+            converter
+          )
           PluginData(
             (removeEntries(cp, prod ++ prodVersioned) ++ gpClasspath).distinct,
             prod,
@@ -1472,7 +1476,7 @@ private[sbt] object Load:
     loadPluginDefinition(
       dir,
       config,
-      PluginData(config.globalPluginClasspath, config.converter)
+      PluginData(config.globalPluginClasspath, config.globalPluginConverter)
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1659,6 +1663,8 @@ final case class LoadBuildConfiguration(
   lazy val globalPluginClasspath: Def.Classpath =
     Load.buildPluginClasspath(this, Load.globalPluginClasspath(globalPlugin))
 
+  lazy val globalPluginConverter: FileConverter = globalPlugin.fold(converter)(_.converter)
+
   lazy val detectedGlobalPlugins: DetectedPlugins =
     val pluginData = globalPlugin match
       case Some(info) =>
@@ -1675,7 +1681,7 @@ final case class LoadBuildConfiguration(
           Nil,
           Nil,
           None,
-          converter,
+          info.converter,
           Nil
         )
       case None => PluginData(globalPluginClasspath, converter)

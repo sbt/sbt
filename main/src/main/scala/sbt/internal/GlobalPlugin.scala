@@ -76,7 +76,8 @@ object GlobalPlugin:
     val (structure, state) = build(base, s, config)
     val (newS, data) = extract(state, structure)
     Project.runUnloadHooks(newS) // discard state
-    GlobalPlugin(data, structure, inject(data), base)
+    val converter = fileConverter.get(structure.data).get
+    GlobalPlugin(data, structure, inject(data), base, converter)
 
   def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) =
     import structure.{ data, root, rootProject }
@@ -140,5 +141,6 @@ final case class GlobalPlugin(
     data: GlobalPluginData,
     structure: BuildStructure,
     inject: Seq[Setting[?]],
-    base: File
+    base: File,
+    converter: FileConverter,
 )
