@@ -43,15 +43,17 @@ object GlobalPlugin:
         (rs ++ gp.resolvers).distinct
       },
       globalPluginUpdate := Def.uncached(gp.updateReport),
-      injectInternalClasspath(Runtime, gp.internalClasspath),
-      injectInternalClasspath(Compile, gp.internalClasspath)
+      injectInternalClasspath(Runtime, gp.internalClasspath, gp.converter),
+      injectInternalClasspath(Compile, gp.internalClasspath, gp.converter)
     )
   private def injectInternalClasspath(
       config: Configuration,
       cp: Def.Classpath,
+      converter: FileConverter,
   ): Setting[?] =
-    (config / internalDependencyClasspath) ~= { prev =>
-      (prev ++ cp).distinct
+    (config / internalDependencyClasspath) := Def.uncached {
+      val prev = (config / internalDependencyClasspath).value
+      (prev ++ reencode(cp, converter, fileConverter.value)).distinct
     }
 
   /** Converts a classpath `cp` encoded with `src` to be read with `dst`. */
