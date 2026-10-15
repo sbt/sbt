@@ -12,7 +12,7 @@ package internal
 import java.io.File
 import java.net.URI
 import sbt.io.IO
-import xsbti.FileConverter
+import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
 import sbt.librarymanagement.{
   Configuration,
   Configurations,
@@ -53,6 +53,21 @@ object GlobalPlugin:
     (config / internalDependencyClasspath) ~= { prev =>
       (prev ++ cp).distinct
     }
+
+  /** Converts a classpath `cp` encoded with `src` to be read with `dst`. */
+  private[sbt] def reencode(
+      cp: Def.Classpath,
+      src: FileConverter,
+      dst: FileConverter
+  ): Def.Classpath =
+    def move[R >: VirtualFile <: VirtualFileRef](ref: R): R =
+      val path = src.toPath(ref)
+      if dst.toPath(VirtualFileRef.of(ref.id)) == path then ref else dst.toVirtualFile(path)
+    cp.map: entry =>
+      val moved = entry.map(move)
+      moved.get(Keys.analysis) match
+        case Some(id) => moved.put(Keys.analysis, move(VirtualFileRef.of(id)).id)
+        case None     => moved
 
   def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
     val newInject =
