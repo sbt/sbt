@@ -421,7 +421,4 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def isNew(d: F[_]) = !added(d)
   def added(d: F[_]) = state contains d
   def complete = state.values.forall(_ == Done)
-
-  def pre(f: => Unit) = if (checkPreAndPostConditions) f
-  def post(f: => Unit) = if (checkPreAndPostConditions) f
 }
