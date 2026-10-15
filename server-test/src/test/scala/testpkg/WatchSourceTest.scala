@@ -68,11 +68,14 @@ object WatchSourceTest extends AbstractServerTest {
     assert(awaitFile(stopped) == owner, "The termination callback lost the watch's source")
   }
 
-  private def checkDisconnection(): Unit = {
+  private def checkDisconnection(mode: String = ""): Unit = {
     val started = testPath.resolve("watch-started")
     val stopped = testPath.resolve("watch-stopped")
     Files.deleteIfExists(started)
     Files.deleteIfExists(stopped)
+    Files.deleteIfExists(testPath.resolve("watch-followup"))
+    Files.deleteIfExists(testPath.resolve("watch-reboot"))
+    Files.write(testPath.resolve("watch-mode"), mode.getBytes(UTF_8))
     val (socket, token) = ClientSocket.socket(testPath.resolve("project/target/active.json").toFile)
     def send(message: String): Unit = {
       val bytes = message.getBytes(UTF_8)
@@ -92,6 +95,15 @@ object WatchSourceTest extends AbstractServerTest {
       assert(owner.startsWith("network-"), s"Unexpected watch owner $owner")
       socket.close()
       assert(awaitFile(stopped) == owner, "Disconnect cleanup lost the watch's source")
+      mode match {
+        case "rewatch" =>
+          assert(awaitFile(testPath.resolve("watch-followup")) == "missing")
+        case "reboot" =>
+          assert(awaitFile(testPath.resolve("watch-reboot")) == "followup")
+        case "reboot-framed" =>
+          assert(awaitFile(testPath.resolve("watch-reboot")) == "startServer\nfollowup\nshell")
+        case _ =>
+      }
     } finally socket.close()
   }
 
@@ -100,5 +112,14 @@ object WatchSourceTest extends AbstractServerTest {
   }
   test("retain the watch owner when a client disconnects") { _ =>
     checkDisconnection()
+  }
+  test("run a watch queued by disconnect cleanup without its old source") { _ =>
+    checkDisconnection("rewatch")
+  }
+  test("reboot from disconnect cleanup without a network result frame") { _ =>
+    checkDisconnection("reboot")
+  }
+  test("preserve network reboot handling when a result frame is present") { _ =>
+    checkDisconnection("reboot-framed")
   }
 }
