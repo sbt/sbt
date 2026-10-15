@@ -1,0 +1,4 @@
+> startServer
+> checkCompile
+> checkTest
+> checkCompile

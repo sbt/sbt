@@ -594,7 +594,6 @@ private[sbt] object Cont:
     "compileIncSetup",
     "compileInputs",
     "classDirectory",
-    "configuration",
     "definedTests",
     "earlyOutputPing",
     "fileConverter",

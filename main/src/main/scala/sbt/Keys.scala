@@ -88,7 +88,6 @@ object Keys {
   val thisProjectRef = settingKey[ProjectRef]("Provides a fully-resolved reference to the current project for the referencing scope.").withRank(CSetting)
   val configurationStr = StringAttributeKey("configuration")
 
-  @transient
   val configuration = settingKey[Configuration]("Provides the current configuration of the referencing scope.").withRank(CSetting)
   val commands = settingKey[Seq[Command]]("Defines commands to be registered when this project or build is the current selected one.").withRank(CSetting)
   val initialize = settingKey[Unit]("A convenience setting for performing side-effects during initialization.").withRank(BSetting)
