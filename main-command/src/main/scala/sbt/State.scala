@@ -347,7 +347,9 @@ object State:
       val remaining: List[String] = s.remainingCommands.map(_.commandLine)
       val fullRemaining = s.source match
         case Some(s) if s.channelName.startsWith("network") =>
-          StartServer :: remaining.dropWhile(!_.startsWith(ReportResult)).tail ::: "shell" :: Nil
+          remaining.dropWhile(!_.startsWith(ReportResult)) match
+            case _ :: rest => StartServer :: rest ::: "shell" :: Nil
+            case Nil       => remaining
         case _ => remaining
       val arguments = State.addPluginSbtFileArguments(s) ::: fullRemaining
       if currentOnly then throw new RebootCurrent(arguments)
