@@ -244,6 +244,53 @@ object ActionCacheTest extends BasicTestSuite:
 
   // Probative where the store links: on APFS it copies, and a copy replaced the dangling link
   // before this change too.
+  test("An aggregate store asks a later store only for the blobs an earlier one lacks"):
+    withDiskCache: first =>
+      withDiskCache: second =>
+        IO.withTemporaryDirectory: tempDir =>
+          val a = StringVirtualFile1(s"$tempDir/a.txt", "a")
+          val b = StringVirtualFile1(s"$tempDir/b.txt", "b")
+          first.putBlobs(a :: Nil)
+          val refs = second.putBlobs(a :: b :: Nil)
+          val asked = scala.collection.mutable.ListBuffer.empty[Seq[String]]
+          val recording = new ActionCacheStore:
+            override def storeName: String = "recording"
+            override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+              second.put(request)
+            override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+              second.get(request)
+            override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+              second.putBlobs(blobs)
+            override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path) =
+              asked += refs.map(_.id)
+              second.syncBlobs(refs, outputDirectory)
+            override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+              asked += refs.map(_.id)
+              second.findBlobs(refs)
+          val aggregate = AggregateActionCacheStore(Seq(first, recording))
+          val paths = aggregate.syncBlobs(refs, tempDir.toPath())
+          assert(paths == Seq((tempDir / "a.txt").toPath(), (tempDir / "b.txt").toPath()))
+          assert(IO.read(tempDir / "a.txt") == "a" && IO.read(tempDir / "b.txt") == "b")
+          assert(asked.toList == List(Seq(b.id)), s"asked = $asked")
+          asked.clear()
+          assert(aggregate.findBlobs(refs) == refs)
+          assert(asked.toList == List(Seq(b.id)), s"asked = $asked")
+
+  test("An aggregate store returns what it synced when no store has every blob"):
+    withDiskCache: first =>
+      withDiskCache: second =>
+        IO.withTemporaryDirectory: tempDir =>
+          val a = StringVirtualFile1(s"$tempDir/a.txt", "a")
+          val b = StringVirtualFile1(s"$tempDir/b.txt", "b")
+          val c = StringVirtualFile1(s"$tempDir/c.txt", "c")
+          first.putBlobs(a :: Nil)
+          second.putBlobs(c :: Nil)
+          val refs = Seq[HashedVirtualFileRef](a, b, c)
+          val aggregate = AggregateActionCacheStore(Seq(first, second))
+          val paths = aggregate.syncBlobs(refs, tempDir.toPath())
+          assert(paths == Seq((tempDir / "a.txt").toPath(), (tempDir / "c.txt").toPath()))
+          assert(aggregate.findBlobs(refs) == Seq[HashedVirtualFileRef](a, c))
+
   test("Disk cache syncs a blob over a dangling link"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: tempDir =>

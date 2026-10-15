@@ -95,12 +95,6 @@ end AbstractActionCacheStore
  */
 case class AggregateActionCacheStore(stores: Seq[ActionCacheStore])
     extends AbstractActionCacheStore:
-  extension [A1](xs: Seq[A1])
-    // unlike collectFirst this accepts A1 => Seq[A2]
-    inline def collectFirst2[A2](f: A1 => Seq[A2], size: Int): Seq[A2] =
-      xs.foldLeft(Seq.empty[A2]): (res, x) =>
-        if res.size == size then res else f(x)
-
   override def storeName: String = "aggregate"
 
   override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
@@ -122,11 +116,30 @@ case class AggregateActionCacheStore(stores: Seq[ActionCacheStore])
       val xs = store.putBlobs(blobs)
       if res.isEmpty then xs else res
 
+  /**
+   * Syncs each blob from the first store that has it, asking a store only for the blobs the
+   * stores before it did not sync, and returns the paths in the order of `refs`.
+   */
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    stores.collectFirst2(_.syncBlobs(refs, outputDirectory), refs.size)
+    val synced = stores.foldLeft(Map.empty[(String, String), Path]): (synced, store) =>
+      val remaining = refs.filterNot(r => synced.contains(blobKey(r)))
+      if remaining.isEmpty then synced
+      else
+        val paths = store.syncBlobs(remaining, outputDirectory)
+        // A store syncs the blobs it has, in order. On a partial sync, find out which those were.
+        val from = if paths.size == remaining.size then remaining else store.findBlobs(remaining)
+        if from.size == paths.size then synced ++ from.map(blobKey).zip(paths) else synced
+    refs.flatMap(r => synced.get(blobKey(r)))
 
+  /** Asks each store only for the blobs the stores before it did not find. */
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
-    stores.collectFirst2(_.findBlobs(refs), refs.size)
+    val found = stores.foldLeft(Set.empty[(String, String)]): (found, store) =>
+      val remaining = refs.filterNot(r => found.contains(blobKey(r)))
+      if remaining.isEmpty then found else found ++ store.findBlobs(remaining).map(blobKey)
+    refs.filter(r => found.contains(blobKey(r)))
+
+  private def blobKey(ref: HashedVirtualFileRef): (String, String) =
+    (ref.id(), ref.contentHashStr())
 end AggregateActionCacheStore
 
 object AggregateActionCacheStore:
