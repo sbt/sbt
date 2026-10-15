@@ -1391,7 +1391,7 @@ private[sbt] object ContinuousCommands {
               c.terminal.setPrompt(Prompt.Pending)
               c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
             }
-          val newState = afterWatchState.get(watchStates) match {
+          val s1 = afterWatchState.get(watchStates) match {
             case None    => afterWatchState
             case Some(w) => afterWatchState.put(watchStates, w - channel)
           }
@@ -1400,10 +1400,10 @@ private[sbt] object ContinuousCommands {
           val action = cs.terminationAction.getOrElse(Watch.CancelWatch)
           // Fast-track cancellation and disconnect cleanup enqueue commands without a source.
           // Termination callbacks still need to know which channel owned the watch.
-          val terminationState = newState.copy(
-            currentCommand = newState.currentCommand.map(_.withSource(CommandSource(channel)))
+          val s2 = s1.copy(
+            currentCommand = s1.currentCommand.map(_.withSource(CommandSource(channel)))
           )
-          val st = cs.callbacks.onTermination(action, commands, count, terminationState)
+          val st = cs.callbacks.onTermination(action, commands, count, s2)
           if (error) st.fail else st
         case _ => if (error) state.fail else state
       }
