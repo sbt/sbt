@@ -1,0 +1,10 @@
+# Read the update report once, before the global plugin depends on junit.
+$ copy-file changes/read-update.sbt project/check.sbt
+> reload
+
+$ copy-file changes/junit.sbt global/plugins/junit.sbt
+$ copy-file changes/with-junit.sbt project/check.sbt
+-> reload
+
+# The tests of one scripted run share `global`, so delete the global plugin.
+$ delete global/plugins

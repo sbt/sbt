@@ -1,0 +1,15 @@
+# Check each setting while the meta-build loads.
+$ copy-file changes/resolvers.sbt project/check.sbt
+> reload
+
+$ copy-file changes/project-dependencies.sbt project/check.sbt
+-> reload
+
+$ copy-file changes/compile-classpath.sbt project/check.sbt
+-> reload
+
+$ copy-file changes/runtime-classpath.sbt project/check.sbt
+-> reload
+
+# The tests of one scripted run share `global`, so delete the global plugin.
+$ delete global/plugins
