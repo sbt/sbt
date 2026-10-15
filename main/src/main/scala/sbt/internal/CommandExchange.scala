@@ -165,8 +165,9 @@ private[sbt] final class CommandExchange {
     currentExec.withFilter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
       Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
     }
-    try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
-    catch { case _: InterruptedException => }
+    Util.ignoreResult(
+      commandQueue.add(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", CommandSource(c.name)))
+    )
   }
 
   private[this] def mkAskUser(
@@ -482,7 +483,7 @@ private[sbt] final class CommandExchange {
                   case c: NetworkChannel if !c.isInteractive => exit(mt)
                   case _                                     =>
                 }
-                commandQueue.add(Exec(t, None, None))
+                commandQueue.add(Exec(t, CommandSource(mt.channel.name)))
               case `TerminateAction` => exit(mt)
               case `Shutdown` =>
                 val console = Terminal.console
