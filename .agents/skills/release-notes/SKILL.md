@@ -29,8 +29,8 @@ Each in-progress release has a directory `notes/<version>/` containing:
 
 - `meta.md` — a running log of checkpoints reached, one line per update: `- Updated to up <src-branch-sha> (<src-branch>) / <prev-branch-sha> (<prev-branch>)`.
 - `<version>-<sha8>-all.md` — exactly ONE checkpoint snapshot file at any time, in raw GitHub-auto-generated-release-notes style, covering every PR merged into `<src-branch>` from the start of the release up through commit `<sha8>` (first 8 hex chars) — i.e. it's cumulative from the very start of `<version>`, not just since the last checkpoint. Rolling the checkpoint forward renames this one file to the new `<sha8>` and appends the new commit range's entries to it; it never leaves an old-sha copy behind. If more than one `<version>-*-all.md` file is ever found (e.g. left over from before this rule existed, or from a manual process), merge them into one before doing anything else — see step 3.
-- `<version>-draft.md` — the hand-curated, cumulative draft for the whole release. It opens with hand-written prose highlight sections (e.g. "Test summary", "Ivyless publishing") that are NOT auto-updated by this skill, followed by catch-all sections (`## 🚀 Other updates`, `## 🐛 Bug fixes`, `## ⚡ Performance improvements`, `## Behind the scenes`) that ARE auto-updated by this skill — but only with PRs that are fresh to `<src-branch>`/`<version>` and have not already been backported to `<prev-branch>` (backported fixes ship to users via `<prev-branch>` already, so they don't need separate `<version>` release-note billing).
-- `backported-to-<prev-branch>.md` — every PR from `<src-branch>` that has already shipped on `<prev-branch>`, so it can be cross-checked/excluded from the fresh-in-`<version>` story. Grouped the same way, each entry suffixed `(released in <prev-branch version>)`.
+- `<version>-draft.md` — the hand-curated, cumulative draft for the whole release. It opens with hand-written prose highlight sections (e.g. "Test summary", "Ivyless publishing") that are NOT auto-updated by this skill, followed by catch-all sections (`## 🚀 Other updates`, `## 🐛 Bug fixes`, `## ⚡ Performance improvements`, `## Behind the scenes`) that ARE auto-updated by this skill. A PR is left out of the draft only when its backport has already been **released** from `<prev-branch>` (users already got it in a `<prev-branch>` release, so it doesn't need separate `<version>` billing). A backport that is merged to `<prev-branch>` but not yet in a tagged release stays in the draft.
+- `backported-to-<prev-branch>.md` — every PR from `<src-branch>` that has landed on `<prev-branch>`. Grouped the same way, each entry suffixed either `(released in <prev-branch version>)` or, when it is merged after the latest `sbt <version>` tag commit on `<prev-branch>`, `(merged to <prev-branch>, pending release)`. Only the released ones are excluded from the draft.
 
 ## Section Categorization
 
@@ -47,7 +47,7 @@ Entry format:
 
 - In `-all.md` checkpoint files: `- <commit subject, "[2.x] " prefix stripped, "(#N)" suffix kept as-is> by @<author> in https://github.com/sbt/sbt/pull/<N>`
 - In `<version>-draft.md`: same but drop the trailing `(#N)` (the link already identifies the PR) and wrap code identifiers (setting/task/class names) in backticks for readability.
-- In `backported-to-<prev-branch>.md`: same style as the draft, plus a trailing `(released in <prev-branch version>)`.
+- In `backported-to-<prev-branch>.md`: same style as the draft, plus a trailing `(released in <prev-branch version>)` or `(merged to <prev-branch>, pending release)`.
 
 ## Steps
 
@@ -89,7 +89,7 @@ Entry format:
    **Full Changelog**: https://github.com/sbt/sbt/compare/<old-full-sha>...<new-full-sha>
    ```
 
-8. **Check `<prev-branch>` backport status** for each new PR. A backport is NOT reliably identifiable by PR number appearing in the `<prev-branch>` commit subject alone — some backports carry a different subject (e.g. a batch "Backports" PR, or a manually retitled one). Check, in order:
+8. **Check `<prev-branch>` backport status** for each new PR, and re-check the older ones too: list everything on `<prev-branch>` since the previous run's `<prev-branch>` sha in `meta.md` (`git log <old-prev-sha>..upstream/<prev-branch>`), because a PR recorded as fresh in an earlier run can be backported later. Find the latest release tag commit with `git log upstream/<prev-branch> --format='%h %s' | grep -E ' sbt [0-9.]+$' | head -1`; a backport is released only if it is an ancestor of that commit. A backport is NOT reliably identifiable by PR number appearing in the `<prev-branch>` commit subject alone — some backports carry a different subject (e.g. a batch "Backports" PR, or a manually retitled one). Check, in order:
    ```bash
    git fetch upstream <prev-branch> --quiet
    git log upstream/<prev-branch> --grep="#<N>" -i --oneline
@@ -101,9 +101,9 @@ Entry format:
    ```
    Bodies typically read "This is a `<prev-branch>` backport of https://github.com/sbt/sbt/pull/<N>" (a batch PR lists several such lines). Titles can also match with an added `bport:`/`[<prev-branch>]` prefix when no body link exists — treat a clear title match as sufficient corroboration.
 
-9. **Update `backported-to-<prev-branch>.md`** by appending an entry, in the matching section, for each new PR found backported — `(released in <version>)`, where `<version>` is the nearest following `sbt <version>` tag commit on `upstream/<prev-branch>` (`git log upstream/<prev-branch> --oneline --grep="^sbt "`).
+9. **Update `backported-to-<prev-branch>.md`** by appending an entry, in the matching section, for each PR found backported — `(released in <version>)`, where `<version>` is the nearest following `sbt <version>` tag commit on `upstream/<prev-branch>`, or `(merged to <prev-branch>, pending release)` when no tag commit follows it yet. When a new tag commit appears, rewrite the pending entries it covers to `(released in <version>)`.
 
-10. **Update `<version>-draft.md`** by appending an entry, in the matching catch-all section, for each new PR that is NOT backported to `<prev-branch>` — these are the ones freshly available in `<version>` and not already shipped to `<prev-branch>` users. Do not touch the hand-written prose highlight sections at the top of the file.
+10. **Update `<version>-draft.md`** by appending an entry, in the matching catch-all section, for each new PR whose backport has NOT been released from `<prev-branch>` — that is, PRs never backported and PRs whose backport is still pending release. Remove an entry from the draft only when its backport becomes released (step 9 flips it from pending). Skip the release-notes bookkeeping PRs themselves. Do not touch the hand-written prose highlight sections at the top of the file, and leave an entry where it is if the user has folded it into one of them.
 
 11. **Update `meta.md`** by appending a new line: `- Updated to up <newsha8> (<src-branch>) / <prev-branch-sha8> (<prev-branch>)`, using `git log upstream/<prev-branch> -1 --format=%h` for the `<prev-branch>` side.
 

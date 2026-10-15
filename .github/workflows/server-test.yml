@@ -87,7 +87,7 @@ jobs:
         env:
           COMMUNITY_BUILD_REMOTE_CACHE: grpc://127.0.0.1:2024
         run: |
-          sbt -v --client "community-build/test"
+          sbt -v --client "community-build/testFull"
       - name: Stop bazel-remote
         if: always()
         run: |

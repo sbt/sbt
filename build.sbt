@@ -1479,6 +1479,7 @@ lazy val `community-build` = (project in file("community-build"))
     Compile / run := (Compile / run).dependsOn(prepareCommunityBuild).evaluated,
     Test / testOnly := (Test / testOnly).dependsOn(prepareCommunityBuild).evaluated,
     Test / testQuick := (Test / testQuick).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testFull := (Test / testFull).dependsOn(prepareCommunityBuild).value,
     publish / skip := true,
     publishLocalBin / skip := true,
   )

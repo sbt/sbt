@@ -19,6 +19,7 @@
 - Add runner support for execution log by @eed3si9n in https://github.com/sbt/sbt/pull/9237 (released in 2.0.0)
 - Allow opt-out of transient warning by @eed3si9n in https://github.com/sbt/sbt/pull/9437 (released in 2.0.4)
 - Add a resolvedScalacOptions task that resolves cache placeholders by @azdrojowa123 in https://github.com/sbt/sbt/pull/9610 (released in 2.0.7)
+- Custom user agent by @eed3si9n in https://github.com/sbt/sbt/pull/9786 (merged to 2.0.x, pending release)
 
 ## 🐛 Bug fixes
 
@@ -130,6 +131,19 @@
 - fix: Fixes unhermetic `semanticdbTargetRoot` in the compile cache key by @christianharrington in https://github.com/sbt/sbt/pull/9711 (merged to 2.0.x, pending release)
 - fix: Fixes pipelined build of subprojects with macros by @stasimus in https://github.com/sbt/sbt/pull/9719 (merged to 2.0.x, pending release)
 - fix: Fixes sbt runner script not starting on openSUSE by @alexasl in https://github.com/sbt/sbt/pull/9753 (merged to 2.0.x, pending release)
+- fix: Fixes sbt server getting stuck when a client fails by @kitbellew in https://github.com/sbt/sbt/pull/9691 (merged to 2.0.x, pending release)
+- fix: Update to Gigahorse 0.9.6 for pre-authentication by @eed3si9n in https://github.com/sbt/sbt/pull/9775 (partially merged to 2.0.x, pending release)
+- fix: Restore the pipelining early output on an action-cache hit by @PhoenixmitX in https://github.com/sbt/sbt/pull/9793 (merged to 2.0.x, pending release)
+- fix: Read scripted pause from standard input by @anatoliykmetyuk in https://github.com/sbt/sbt/pull/9824 (merged to 2.0.x, pending release)
+- fix: Honor `JAVA_HOME` in the Unix launcher by @anatoliykmetyuk in https://github.com/sbt/sbt/pull/9825 (merged to 2.0.x, pending release)
+- fix: Fixes `.m2/settings.xml` overriding `sbtResolvers` by @eed3si9n in https://github.com/sbt/sbt/pull/9828 (merged to 2.0.x, pending release)
+- fix: Fixes CAS corruption by removing write permission from CAS by @eed3si9n in https://github.com/sbt/sbt/pull/9847 (merged to 2.0.x, pending release)
+- fix: Keep the interrupt flag when writing to the thin client by @pierscin in https://github.com/sbt/sbt/pull/9848 (merged to 2.0.x, pending release)
+- fix: Keep the interrupt flag in more thin-client paths by @eed3si9n in https://github.com/sbt/sbt/pull/9855 (merged to 2.0.x, pending release)
+- fix: Read all forked test output before reporting the fork's exit by @eugkhp in https://github.com/sbt/sbt/pull/9860 (merged to 2.0.x, pending release)
+- fix: Use `Path.userHome` by @eed3si9n in https://github.com/sbt/sbt/pull/9866 (merged to 2.0.x, pending release)
+- fix: Fixes task output lost by the thin client under CPU load by @eed3si9n in https://github.com/sbt/sbt/pull/9868 (merged to 2.0.x, pending release)
+- fix: Fixes `AccessDeniedException` writing SemanticDB by @eed3si9n in https://github.com/sbt/sbt/pull/9878 (merged to 2.0.x, pending release)
 
 ## ⚡ Performance improvements
 
@@ -176,3 +190,7 @@
 - Update sbtn to 2.0.0-8753a981 by @eed3si9n in https://github.com/sbt/sbt/pull/9630 (released in 2.0.7)
 - Update IO to 1.13.2 by @eed3si9n in https://github.com/sbt/sbt/pull/9731 (merged to 2.0.x, pending release)
 - Update sbtn to 2.1.0-M1 by @eed3si9n in https://github.com/sbt/sbt/pull/9755 (merged to 2.0.x, pending release)
+- deps: Coursier 2.1.25 by @eed3si9n in https://github.com/sbt/sbt/pull/9784 (merged to 2.0.x, pending release)
+- Update user-agent to major.minor by @eed3si9n in https://github.com/sbt/sbt/pull/9818 (merged to 2.0.x, pending release)
+- deps: Update Coursier to 2.1.26 by @eed3si9n in https://github.com/sbt/sbt/pull/9852 (merged to 2.0.x, pending release)
+- deps: sbtn 2.1.0-6eac8efa by @eed3si9n in https://github.com/sbt/sbt/pull/9861 (merged to 2.0.x, pending release)
