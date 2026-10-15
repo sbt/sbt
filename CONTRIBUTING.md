@@ -126,7 +126,7 @@ sbt uses two branches for development:
 Use the **default** branch set on GitHub for bug fixes. For backports, use the latest stable branch.
 
 - Development branch: `develop`
-- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.12.x` during 1.12.x series)
+- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.13.x` during 1.13.x series)
 
 The `develop` branch represents sbt 2.x, the next major sbt series.
 The `stable` branch represents the current stable sbt 1.x release. Once sbt 2.x is released mostly bug fixes are back-ported to the stable branch.
