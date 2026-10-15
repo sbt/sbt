@@ -103,7 +103,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
 
   def processAll()(implicit strategy: Strategy): Unit = {
     @tailrec def next(): Unit = {
-      pre {
+      if (checkPreAndPostConditions) {
         assert(reverse.nonEmpty, "Nothing to process.")
         if (!state.values.exists(_ == Running)) {
           snapshotCycleCheck()
@@ -127,7 +127,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     }
     next()
 
-    post {
+    if (checkPreAndPostConditions) {
       assert(reverse.isEmpty, "Did not process everything.")
       assert(complete, "Not all state was Done.")
     }
@@ -136,7 +136,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
 
   def call[A](node: F[A], target: F[A])(implicit strategy: Strategy): Unit = {
     if (config.checkCycles) cycleCheck(node, target)
-    pre {
+    if (checkPreAndPostConditions) {
       assert(running(node))
       readyInv(node)
     }
@@ -149,7 +149,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
         addCaller(node, target)
     }
 
-    post {
+    if (checkPreAndPostConditions) {
       if (done(target))
         assert(done(node))
       else {
@@ -161,7 +161,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
 
   def retire[A](node: F[A], result: Result[A])(implicit strategy: Strategy): Unit = {
-    pre {
+    if (checkPreAndPostConditions) {
       assert(running(node) | calling(node))
       readyInv(node)
     }
@@ -179,7 +179,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
       addChecked(t)
     }
 
-    post {
+    if (checkPreAndPostConditions) {
       assert(done(node))
       assert(results(node) == result)
       readyInv(node)
@@ -211,7 +211,9 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def addChecked[A](node: F[A])(implicit strategy: Strategy): Unit = {
     if (!added(node)) addNew(node)
 
-    post { addedInv(node) }
+    if (checkPreAndPostConditions) {
+      addedInv(node)
+    }
   }
 
   /**
@@ -220,7 +222,9 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * The node's dependencies will be added (transitively) if they are not already registered.
    */
   def addNew[A](node: F[A])(implicit strategy: Strategy): Unit = {
-    pre { newPre(node) }
+    if (checkPreAndPostConditions) {
+      newPre(node)
+    }
 
     val v = register(node)
     val deps = dependencies(v) ++ runBefore(node)
@@ -242,7 +246,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
       }
     }
 
-    post {
+    if (checkPreAndPostConditions) {
       addedInv(node)
       assert(running(node) ^ pending(node))
       if (running(node)) runningInv(node)
@@ -252,7 +256,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
 
   /** Called when a pending 'node' becomes runnable.  All of its dependencies must be done.  This schedules the node's computation with 'strategy'.*/
   def ready[A](node: F[A])(implicit strategy: Strategy): Unit = {
-    pre {
+    if (checkPreAndPostConditions) {
       assert(pending(node))
       readyInv(node)
       assert(reverse contains node)
@@ -262,7 +266,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     progress.afterReady(node)
     submit(node)
 
-    post {
+    if (checkPreAndPostConditions) {
       readyInv(node)
       assert(reverse contains node)
       assert(running(node))
@@ -417,7 +421,4 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def isNew(d: F[_]) = !added(d)
   def added(d: F[_]) = state contains d
   def complete = state.values.forall(_ == Done)
-
-  def pre(f: => Unit) = if (checkPreAndPostConditions) f
-  def post(f: => Unit) = if (checkPreAndPostConditions) f
 }

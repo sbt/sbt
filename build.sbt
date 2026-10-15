@@ -580,6 +580,8 @@ lazy val taskProj = (project in file("tasks"))
       exclude[IncompatibleSignatureProblem]("sbt.Execute.*"),
       exclude[IncompatibleSignatureProblem]("sbt.Execute#CyclicException.*"),
       exclude[IncompatibleSignatureProblem]("sbt.NodeView.*"),
+      exclude[DirectMissingMethodProblem]("sbt.Execute.pre"),
+      exclude[DirectMissingMethodProblem]("sbt.Execute.post"),
     )
   )
 
@@ -591,6 +593,9 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
     testedBaseSettings,
     name := "Task System",
     testExclusive,
+    // exercise the pre/post-condition checks in sbt.Execute
+    Test / fork := true,
+    Test / javaOptions += "-Dsbt.execute.extrachecks=true",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // unused private[sbt]
