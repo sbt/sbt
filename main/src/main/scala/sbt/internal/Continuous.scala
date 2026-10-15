@@ -1306,7 +1306,18 @@ private[sbt] object ContinuousCommands:
             currentCommand = s1.currentCommand.map(_.withSource(CommandSource(channel)))
           )
           val st = cs.callbacks.onTermination(action, commands, count, s2)
-          if error then st.fail else st
+          val restored = st.copy(currentCommand = s1.currentCommand)
+          val s3 =
+            if StandardMain.exchange.channelForName(channel).isDefined then restored
+            else
+              def clearSource(exec: Exec): Exec =
+                if exec.source.exists(_.channelName == channel) then exec.withSource(None) else exec
+              restored.copy(
+                currentCommand = restored.currentCommand.map(clearSource),
+                remainingCommands = restored.remainingCommands.map(clearSource),
+                onFailure = restored.onFailure.map(clearSource)
+              )
+          if error then s3.fail else s3
         case _ => if error then state.fail else state
   private[sbt] val stopWatchCommand = watchCommand(stopWatch)(exitWatchShared(false))
   private[sbt] val failWatchCommand = watchCommand(failWatch)(exitWatchShared(true))

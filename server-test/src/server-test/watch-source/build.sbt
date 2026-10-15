@@ -8,6 +8,8 @@
 
 @transient
 lazy val marker = taskKey[Unit]("Record the channel that starts a watch")
+@transient
+lazy val followup = taskKey[Unit]("Record the channel of a watch queued by cleanup")
 
 marker := {
   IO.write(
@@ -16,9 +18,38 @@ marker := {
   )
 }
 
+followup := {
+  IO.write(
+    baseDirectory.value / "watch-followup",
+    state.value.source.map(_.channelName).getOrElse("missing")
+  )
+}
+
+followup / watchOnIteration := { (_, _, _) =>
+  sbt.nio.Watch.CancelWatch
+}
+
 watchOnTermination := {
   val base = baseDirectory.value
-  (_, _, _, state) =>
-    IO.write(base / "watch-stopped", state.source.map(_.channelName).getOrElse("missing"))
-    state
+  (_, command, _, state) =>
+    if command != "marker" then state
+    else
+      val modeFile = base / "watch-mode"
+      val mode = if modeFile.exists then IO.read(modeFile) else ""
+      IO.delete(modeFile)
+      IO.write(base / "watch-stopped", state.source.map(_.channelName).getOrElse("missing"))
+      mode match
+        case "rewatch"                  => "~followup" :: state
+        case "reboot" | "reboot-framed" =>
+          val remaining = List(Exec("followup", None))
+          val commands = if mode == "reboot-framed" then
+            Exec("ignored", state.source) ::
+              Exec("sbtReportResult 123", state.source) :: remaining
+          else remaining
+          try state.copy(exitHooks = Set.empty, remainingCommands = commands).reboot(false)
+          catch
+            case reload: xsbti.FullReload =>
+              IO.write(base / "watch-reboot", reload.arguments().mkString("\n"))
+              state
+        case _ => state
 }
