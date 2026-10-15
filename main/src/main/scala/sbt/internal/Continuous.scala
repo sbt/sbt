@@ -1296,16 +1296,16 @@ private[sbt] object ContinuousCommands:
               c.terminal.setPrompt(Prompt.Pending)
               c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
             }
-          val newState = afterWatchState.get(watchStates) match
+          val s1 = afterWatchState.get(watchStates) match
             case None    => afterWatchState
             case Some(w) => afterWatchState.put(watchStates, w - channel)
           val commands = cs.commands.mkString("; ")
           val count = cs.count
           val action = cs.terminationAction.getOrElse(Watch.CancelWatch)
-          val terminationState = newState.copy(
-            currentCommand = newState.currentCommand.map(_.withSource(CommandSource(channel)))
+          val s2 = s1.copy(
+            currentCommand = s1.currentCommand.map(_.withSource(CommandSource(channel)))
           )
-          val st = cs.callbacks.onTermination(action, commands, count, terminationState)
+          val st = cs.callbacks.onTermination(action, commands, count, s2)
           if error then st.fail else st
         case _ => if error then state.fail else state
   private[sbt] val stopWatchCommand = watchCommand(stopWatch)(exitWatchShared(false))
