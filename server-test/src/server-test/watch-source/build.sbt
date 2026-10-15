@@ -7,7 +7,7 @@
  */
 
 val marker = taskKey[Unit]("Record the channel that starts a watch")
-val followup = taskKey[Unit]("Record the channel of a watch queued by cleanup")
+val followup = taskKey[Unit]("Record the source of a command queued by cleanup")
 
 marker := {
   IO.write(
@@ -19,12 +19,8 @@ marker := {
 followup := {
   IO.write(
     baseDirectory.value / "watch-followup",
-    state.value.source.map(_.channelName).getOrElse("missing")
+    state.value.source.map(_.channelName).getOrElse("none")
   )
-}
-
-followup / watchOnIteration := { (_, _, _) =>
-  sbt.nio.Watch.CancelWatch
 }
 
 watchOnTermination := {
@@ -37,7 +33,7 @@ watchOnTermination := {
       IO.delete(modeFile)
       IO.write(base / "watch-stopped", state.source.map(_.channelName).getOrElse("missing"))
       mode match {
-        case "rewatch" => "~followup" :: state
+        case "queue" => "followup" :: state
         case "reboot" | "reboot-framed" =>
           val remaining = List(Exec("followup", None))
           val commands = if (mode == "reboot-framed") {

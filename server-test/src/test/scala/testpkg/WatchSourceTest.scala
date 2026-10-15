@@ -96,8 +96,8 @@ object WatchSourceTest extends AbstractServerTest {
       socket.close()
       assert(awaitFile(stopped) == owner, "Disconnect cleanup lost the watch's source")
       mode match {
-        case "rewatch" =>
-          assert(awaitFile(testPath.resolve("watch-followup")) == "missing")
+        case "queue" =>
+          assert(awaitFile(testPath.resolve("watch-followup")) == "none")
         case "reboot" =>
           assert(awaitFile(testPath.resolve("watch-reboot")) == "followup")
         case "reboot-framed" =>
@@ -113,8 +113,8 @@ object WatchSourceTest extends AbstractServerTest {
   test("retain the watch owner when a client disconnects") { _ =>
     checkDisconnection()
   }
-  test("run a watch queued by disconnect cleanup without its old source") { _ =>
-    checkDisconnection("rewatch")
+  test("run a command queued by disconnect cleanup without its old source") { _ =>
+    checkDisconnection("queue")
   }
   test("reboot from disconnect cleanup without a network result frame") { _ =>
     checkDisconnection("reboot")
