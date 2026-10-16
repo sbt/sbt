@@ -58,39 +58,53 @@ object ConsoleOut {
    * The ConsoleOut returned by this method assumes that the only newlines are from println calls
    * and not in the String arguments.
    */
-  def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = new ConsoleOut {
+  def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = SystemOutOverwrite(f)
+
+  /**
+   * Writes to the System.out captured at construction, which in the server is the proxy to the
+   * active terminal. Output is dropped if that terminal has been closed by a disconnected client.
+   */
+  private final class SystemOutOverwrite(f: (String, String) => Boolean) extends ConsoleOut:
     val lockObject: PrintStream = System.out
     private var last: Option[String] = None
     private val current = new java.lang.StringBuffer
-    def print(s: String): Unit = synchronized { current.append(s); () }
-    def println(s: String): Unit = synchronized { current.append(s); println() }
-    def println(): Unit = synchronized {
+    def print(s: String): Unit = synchronized:
+      current.append(s)
+      ()
+    def println(s: String): Unit = synchronized:
+      current.append(s)
+      println()
+    def println(): Unit = emit(lockObject.println)
+    def flush(): Unit = emit(lockObject.print)
+    private inline def emit(inline write: String => Unit): Unit = synchronized:
       val s = current.toString
-      if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
-        lockObject.print(OverwriteLine)
-      lockObject.println(s)
-      last = Some(s)
-      current.setLength(0)
-    }
-    def flush(): Unit = synchronized {
-      val s = current.toString
-      if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
-        lockObject.print(OverwriteLine)
-      lockObject.print(s)
-      last = Some(s)
-      current.setLength(0)
-    }
+      try
+        if Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)) then
+          lockObject.print(OverwriteLine)
+        write(s)
+        last = Some(s)
+      catch case _: ClosedChannelException => ()
+      finally current.setLength(0)
     override def toString: String = s"SystemOutOverwrite@${System.identityHashCode(this)}"
-  }
+  end SystemOutOverwrite
 
-  def terminalOut: ConsoleOut = new ConsoleOut {
+  def terminalOut: ConsoleOut = TerminalOut()
+
+  /**
+   * Writes to the active terminal. Output is dropped if that terminal has been closed by a
+   * disconnected client.
+   */
+  private final class TerminalOut extends ConsoleOut:
     override val lockObject: AnyRef = System.out
-    override def print(s: String): Unit = Terminal.get.printStream.print(s)
-    override def println(s: String): Unit = Terminal.get.printStream.println(s)
-    override def println(): Unit = Terminal.get.printStream.println()
-    override def flush(): Unit = Terminal.get.printStream.flush()
+    override def print(s: String): Unit = emit(_.print(s))
+    override def println(s: String): Unit = emit(_.println(s))
+    override def println(): Unit = emit(_.println())
+    override def flush(): Unit = emit(_.flush())
+    private inline def emit(inline write: PrintStream => Unit): Unit =
+      try write(Terminal.get.printStream)
+      catch case _: ClosedChannelException => ()
     override def toString: String = s"TerminalOut"
-  }
+  end TerminalOut
 
   /**
    * Same as terminalOut but it catches and ignores the ClosedChannelException
