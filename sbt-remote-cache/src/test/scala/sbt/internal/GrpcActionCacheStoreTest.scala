@@ -1,6 +1,9 @@
 package sbt
 package internal
 
+import build.bazel.remote.execution.v2.{ BatchReadBlobsResponse, Digest as XDigest }
+import com.eed3si9n.remoteapis.shaded.com.google.rpc.Status as RpcStatus
+import java.io.IOException
 import java.net.URI
 import java.nio.file.Files
 import sbt.internal.inc.PlainVirtualFileConverter
@@ -56,6 +59,21 @@ object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
     // No '=' at all remains an error.
     intercept[RuntimeException]:
       GrpcActionCacheStore.AuthCallCredentials(List("bogus")).pairs
+
+  test("A batch read with a failed blob fails instead of returning no paths"):
+    def response(hash: String, code: Int) =
+      BatchReadBlobsResponse.Response
+        .newBuilder()
+        .setDigest(XDigest.newBuilder().setHash(hash).setSizeBytes(1))
+        .setStatus(RpcStatus.newBuilder().setCode(code))
+        .build()
+    GrpcActionCacheStore.requireAllRead(List(response("a", 0), response("b", 0)))
+    val message =
+      try
+        GrpcActionCacheStore.requireAllRead(List(response("a", 0), response("b", 5)))
+        "no exception"
+      catch case e: IOException => e.getMessage
+    assert(message.contains("failed to read 1 of 2 blobs: b (code 5"), message)
 
   private def newStore(): GrpcActionCacheStore =
     val base = Files.createTempDirectory("grpc-action-cache-test")
