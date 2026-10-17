@@ -1,0 +1,14 @@
+# Move the output directory, delete the old one, and load the build.
+$ copy-file changes/out.sbt project/out.sbt
+$ delete target/out
+> reload
+
+# Load the build again, so the plugin classes come from the cache.
+> reload
+
+# Compile the project definition against the global plugin classes.
+$ copy-file changes/B.scala project/B.scala
+> reload
+
+# The tests of one scripted run share `global`, so delete the global plugin.
+$ delete global/plugins
