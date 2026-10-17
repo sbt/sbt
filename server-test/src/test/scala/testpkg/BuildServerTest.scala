@@ -9,10 +9,12 @@ package testpkg
 
 import sbt.internal.bsp.*
 import sbt.internal.bsp.codec.JsonProtocol.given
-import sbt.internal.langserver.{ ErrorCodes, LogMessageParams }
+import sbt.internal.langserver.{ ErrorCodes, LogMessageParams, SbtExecParams }
 import sbt.internal.langserver.codec.JsonProtocol.given
 import sbt.internal.protocol.JsonRpcNotificationMessage
 import sbt.IO
+import sbt.protocol.{ Attach, ExecStatusEvent, Serialization, ServerSession }
+import sbt.protocol.codec.JsonProtocol.given
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
@@ -34,6 +36,23 @@ class BuildServerTest extends AbstractServerTest:
     val res = svr.session.waitForResultInResponseMsg[InitializeBuildResult](10.seconds, id).get
     assert(res.capabilities.resourcesProvider.contains(true))
     assert(res.capabilities.outputPathsProvider.contains(true))
+  }
+
+  test("build/initialize: after a thin client exits (#9850)") {
+    val client = ServerSession.connect(new File(svr.baseDirectory, "project/target/active.json"))
+    client.sendJsonRpcAwaitResult[String](Serialization.attach, Attach(interactive = false)).get
+    client.sendJsonRpcAwaitResult[ExecStatusEvent]("sbt/exec", SbtExecParams("name")).get
+    client.close()
+    val id = initializeRequest(Some(MetalsMetadata("4.17.4", Vector.empty)))
+    svr.session.waitForResultInResponseMsg[InitializeBuildResult](10.seconds, id).get
+  }
+
+  test("build/initialize: a failing handler responds with an error and keeps the channel") {
+    val id = sendRequest("build/initialize")
+    val response = svr.session.waitForResponseMsg(10.seconds, id).get
+    assert(response.error.exists(_.code == ErrorCodes.InternalError))
+    val retryId = initializeRequest()
+    svr.session.waitForResultInResponseMsg[InitializeBuildResult](10.seconds, retryId).get
   }
 
   test("workspace/buildTargets") {
@@ -853,14 +872,14 @@ class BuildServerTest extends AbstractServerTest:
   }
    */
 
-  private def initializeRequest(): String =
+  private def initializeRequest(metals: Option[MetalsMetadata] = None): String =
     val params = InitializeBuildParams(
       "test client",
       "1.0.0",
       "2.1.0-M1",
       new URI("file://root/"),
       BuildClientCapabilities(Vector("scala")),
-      None
+      metals.map(Converter.toJson(_).get)
     )
     sendRequest("build/initialize", params)
 
