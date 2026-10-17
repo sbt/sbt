@@ -575,7 +575,7 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
   .configure(addSbtIO, addSbtCompilerInterface)
 
 lazy val remoteCacheProj = (project in file("sbt-remote-cache"))
-  .dependsOn(sbtProj)
+  .dependsOn(sbtProj % Provided)
   .settings(
     sbtPlugin := true,
     baseSettings,
