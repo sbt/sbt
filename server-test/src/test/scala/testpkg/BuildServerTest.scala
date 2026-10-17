@@ -47,6 +47,14 @@ class BuildServerTest extends AbstractServerTest:
     svr.session.waitForResultInResponseMsg[InitializeBuildResult](10.seconds, id).get
   }
 
+  test("build/initialize: a failing handler responds with an error and keeps the channel") {
+    val id = sendRequest("build/initialize")
+    val response = svr.session.waitForResponseMsg(10.seconds, id).get
+    assert(response.error.exists(_.code == ErrorCodes.InternalError))
+    val retryId = initializeRequest()
+    svr.session.waitForResultInResponseMsg[InitializeBuildResult](10.seconds, retryId).get
+  }
+
   test("workspace/buildTargets") {
     val id = sendRequest("workspace/buildTargets")
     val result =

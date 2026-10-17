@@ -207,6 +207,9 @@ final class NetworkChannel(
   private val thread = new Thread(s"sbt-networkchannel-${connection.getPort}"):
     private val ct = "Content-Type: "
     private val x1 = "application/sbt-x1"
+    private val onHeader: String => Unit = line =>
+      if line.startsWith(ct) && line.contains(x1) then
+        logMessage("error", s"server protocol $x1 is no longer supported")
     override def run(): Unit =
       try
         connection.setSoTimeout(5000)
@@ -214,17 +217,23 @@ final class NetworkChannel(
         val in = connection.getInputStream
         // keep going unless the socket has closed
         while running.get do
-          try
-            val onHeader: String => Unit = line =>
-              if line.startsWith(ct) && line.contains(x1) then
-                logMessage("error", s"server protocol $x1 is no longer supported")
-            val content = JsonRpcReader.read(in, running, Some(onHeader))
-            if content.nonEmpty then handleBody(content)
-          catch
-            case _: SocketTimeoutException                => // its ok
-            case _: IOException | _: InterruptedException => running.set(false)
-          // while
+          val content = readBody(in)
+          if content.nonEmpty then handleBody(content)
+      catch case _: InterruptedException => ()
       finally shutdown(false)
+
+    /** Only failures reading from the socket stop the channel. */
+    private def readBody(in: InputStream): Seq[Byte] =
+      try JsonRpcReader.read(in, running, Some(onHeader))
+      catch
+        case _: SocketTimeoutException                => Nil
+        case _: IOException | _: InterruptedException =>
+          running.set(false)
+          Nil
+
+    private def handlerFailed(method: String, e: Throwable): Unit =
+      log.error(s"error while handling $method: $e")
+      log.trace(e)
 
     private lazy val intents =
       handlers.toVector map { h =>
@@ -264,8 +273,12 @@ final class NetworkChannel(
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
                 respondError(code, message, Some(req.id))
+              case NonFatal(e) =>
+                handlerFailed(req.method, e)
+                respondError(ErrorCodes.InternalError, e.toString, Some(req.id))
         case Right(res: JsonRpcResponseMessage) =>
-          onResponseMessage(res)
+          try onResponseMessage(res)
+          catch case NonFatal(e) => handlerFailed(s"response to ${res.id}", e)
         case Right(ntf: JsonRpcNotificationMessage) =>
           if !isAuthenticated then log.debug(s"ignoring '${ntf.method}' before authentication")
           else
@@ -273,6 +286,9 @@ final class NetworkChannel(
             catch
               case LangServerError(code, message) =>
                 logMessage("error", s"error $code while handling notification: $message")
+              case NonFatal(e) =>
+                handlerFailed(ntf.method, e)
+                logMessage("error", s"error while handling notification ${ntf.method}: $e")
         case Right(msg) =>
           log.debug(s"unhandled message: $msg")
         case Left(errorDesc) =>
