@@ -33,9 +33,16 @@ Global / serverHandlers += ServerHandler({ callback =>
         appendExec(Exec("fooCustomFail", Some(r.id), Some(CommandSource(callback.name))))
         jsonRpcRespond("concurrent response", Some(r.id))
         ()
+      case r if r.method == "foo/ioException" =>
+        throw new java.io.IOException("handler failed")
     },
-    onResponse = PartialFunction.empty,
+    onResponse = {
+      case r if r.id == "ioExceptionResponse" =>
+        throw new java.io.IOException("handler failed")
+    },
     onNotification = {
+      case r if r.method == "foo/ioExceptionNotification" =>
+        throw new java.io.IOException("handler failed")
       case r if r.method == "foo/customNotification" =>
         jsonRpcRespond("notification result", None)
         ()

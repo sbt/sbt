@@ -71,6 +71,37 @@ class ResponseTest extends AbstractServerTest:
     neverReceiveResponseWithId(500.milliseconds, id)
   }
 
+  test("an IOException from a request handler is an error response") {
+    val id = svr.session.nextId()
+    svr.session.sendJsonRpc(id, "foo/ioException", "{}").get
+    val response = svr.session.waitForResponseMsg(10.seconds, id).get
+    assert(
+      response.error.exists(err => err.code == -32603 && err.message.contains("handler failed"))
+    )
+    assertChannelAlive()
+  }
+
+  test("an IOException from a notification handler keeps the channel open") {
+    svr.session.sendJsonRpcNotification("foo/ioExceptionNotification", "{}").get
+    svr.session
+      .waitForNotificationMsg(10.seconds) { n =>
+        n.method == "build/logMessage" &&
+        n.params.exists(p => CompactPrinter(p).contains("handler failed"))
+      }
+      .get
+    assertChannelAlive()
+  }
+
+  test("an IOException from a response handler keeps the channel open") {
+    svr.session.sendJsonRpcResponse("ioExceptionResponse", "{}").get
+    assertChannelAlive()
+  }
+
+  private def assertChannelAlive(): Unit =
+    val id = svr.session.nextId()
+    svr.session.sendJsonRpc(id, "foo/export", "{}").get
+    assert(svr.session.waitForResponseMsg(10.seconds, id).get.result.nonEmpty)
+
   test("response to a notification should not be sent") {
     val id = svr.session.nextId()
     svr.session.sendJsonRpc(id, "foo/customNotification", "{}").get

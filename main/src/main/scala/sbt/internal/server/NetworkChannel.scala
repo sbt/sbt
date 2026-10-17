@@ -264,8 +264,12 @@ final class NetworkChannel(
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
                 respondError(code, message, Some(req.id))
+              case NonFatal(e) =>
+                logHandlerError(s"'${req.method}'", e)
+                respondError(ErrorCodes.InternalError, errorMessage(e), Some(req.id))
         case Right(res: JsonRpcResponseMessage) =>
-          onResponseMessage(res)
+          try onResponseMessage(res)
+          catch case NonFatal(e) => logHandlerError(s"response ${res.id}", e)
         case Right(ntf: JsonRpcNotificationMessage) =>
           if !isAuthenticated then log.debug(s"ignoring '${ntf.method}' before authentication")
           else
@@ -273,6 +277,9 @@ final class NetworkChannel(
             catch
               case LangServerError(code, message) =>
                 logMessage("error", s"error $code while handling notification: $message")
+              case NonFatal(e) =>
+                logHandlerError(s"'${ntf.method}'", e)
+                logMessage("error", s"error while handling '${ntf.method}': ${errorMessage(e)}")
         case Right(msg) =>
           log.debug(s"unhandled message: $msg")
         case Left(errorDesc) =>
@@ -280,6 +287,13 @@ final class NetworkChannel(
             s"got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
           log.error(msg)
           logMessage("error", msg)
+
+    private def logHandlerError(what: String, e: Throwable): Unit =
+      log.error(s"error while handling $what: $e")
+      log.trace(e)
+
+    private def errorMessage(e: Throwable): String =
+      Option(e.getMessage).getOrElse(e.getClass.getName)
 
   private[sbt] def isLanguageServerProtocol: Boolean = true
 
