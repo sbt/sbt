@@ -11,6 +11,7 @@ package internal
 
 import java.io.File
 import java.net.URI
+import sbt.io.IO
 import sbt.librarymanagement.{
   Configuration,
   Configurations,
@@ -30,10 +31,12 @@ object GlobalPlugin:
   //  statically add the global plugin as a classpath dependency.
   //  static here meaning that the relevant tasks for the global plugin have already been evaluated
   def inject(gp: GlobalPluginData): Seq[Setting[?]] =
-    val gpWithJar = gp.exportedJarUris.headOption
-      .fold(gp.projectID)(uri => gp.projectID.from(uri.toString))
+    // A classes directory reaches the meta-build only through its internal classpath.
+    val gpDepsWithJar = gp.exportedJarUris.headOption match
+      case Some(uri) if IO.toFile(uri).isFile => gp.projectID.from(uri) +: gp.dependencies
+      case _                                  => gp.dependencies
     Seq[Setting[?]](
-      projectDependencies ++= Def.uncached(gpWithJar +: gp.dependencies),
+      projectDependencies ++= Def.uncached(gpDepsWithJar),
       resolvers := {
         val rs = resolvers.value
         (rs ++ gp.resolvers).distinct
