@@ -44,6 +44,12 @@ object ModuleIdTest extends verify.BasicTestSuite:
     )
   }
 
+  test("from with a URI") {
+    val uri = new java.net.URI("file:/a/b.jar")
+    val m = ModuleID("com.acme", "foo", "1").from(uri)
+    assert(m.explicitArtifacts.map(_.url) == Vector(Some(uri)))
+  }
+
   def expectedJson =
     """{"organization":"com.acme","name":"foo","revision":"1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}"""
 end ModuleIdTest
