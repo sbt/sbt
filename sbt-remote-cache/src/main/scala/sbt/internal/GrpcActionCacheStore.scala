@@ -30,7 +30,7 @@ import com.eed3si9n.remoteapis.shaded.io.grpc.{
 }
 import com.eed3si9n.remoteapis.shaded.io.grpc.stub.StreamObserver
 import ByteStreamProto.{ ReadRequest, WriteRequest }
-import java.io.{ BufferedOutputStream, FileOutputStream, InputStream, OutputStream }
+import java.io.{ BufferedOutputStream, FileOutputStream, IOException, InputStream, OutputStream }
 import java.net.URI
 import java.nio.file.Path
 import java.util.UUID
@@ -163,6 +163,19 @@ object GrpcActionCacheStore:
         catch case NonFatal(e) => applier.fail(Status.UNAUTHENTICATED.withCause(e))
   end AuthCallCredentials
 
+  /**
+   * Fails a batch read in which any blob failed, like a failed download. Returning no paths
+   * instead let a cache hit be served without its outputs (sbt/sbt#9827).
+   */
+  private[sbt] def requireAllRead(responses: Seq[BatchReadBlobsResponse.Response]): Unit =
+    val failed = responses.filter(_.getStatus().getCode() != 0)
+    if failed.nonEmpty then
+      val details = failed.map: r =>
+        s"${r.getDigest().getHash()} (code ${r.getStatus().getCode()}: ${r.getStatus().getMessage()})"
+      throw IOException(
+        s"failed to read ${failed.size} of ${responses.size} blobs: ${details.mkString(", ")}"
+      )
+
   def chunkBytes(sizeBytes: Long): List[Long] =
     if sizeBytes <= 0 then Nil
     else
@@ -267,17 +280,15 @@ class GrpcActionCacheStore private (
     else if totalBytes <= chunkSizeBytes then
       val result = batchReadBlobs(refs)
       val blobs = result.getResponsesList().asScala.toList
-      val allOk = blobs.forall(_.getStatus().getCode() == 0)
-      if allOk then
-        // do not assume the responses to come in order
-        val lookupResponse: Map[Digest, BatchReadBlobsResponse.Response] =
-          Map(blobs.map(res => toDigest(res.getDigest) -> res)*)
-        refs.map: r =>
-          val digest = Digest(r)
-          val blob = lookupResponse(digest)
-          val casFile = disk.putBlob(blob.getData().newInput(), digest)
-          disk.syncFile(r, casFile, outputDirectory)
-      else Nil
+      requireAllRead(blobs)
+      // do not assume the responses to come in order
+      val lookupResponse: Map[Digest, BatchReadBlobsResponse.Response] =
+        Map(blobs.map(res => toDigest(res.getDigest) -> res)*)
+      refs.map: r =>
+        val digest = Digest(r)
+        val blob = lookupResponse(digest)
+        val casFile = disk.putBlob(blob.getData().newInput(), digest)
+        disk.syncFile(r, casFile, outputDirectory)
     else
       val paths = Await.result(
         downloadBlobs(digests, outputDirectory).recover: e =>

@@ -164,6 +164,66 @@ object ActionCacheTest extends BasicTestSuite:
         assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
         assert(cache.findBlobs(ref :: Nil) == Seq(ref))
 
+  test("A cache hit whose blob is gone from the CAS is a miss"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        var called = 0
+        val blob = StringVirtualFile1(s"$tempDir/a.txt", "2")
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(blob))
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val out = tempDir / "a.txt"
+        Files.delete(cache.toCasFile(Digest(blob)))
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "the task did not rerun although its output blob is gone")
+        assert(out.exists() && IO.read(out) == "2")
+
+  test("A cache hit whose blobs a store finds but fails to sync is a miss"):
+    withDiskCache: disk =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        // Like the remote store, whose batch read fails when one blob cannot be read.
+        var failNextSync = false
+        val store = new ActionCacheStore:
+          override def storeName: String = "fails-to-sync"
+          override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+            disk.put(request)
+          override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+            disk.get(request)
+          override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+            disk.putBlobs(blobs)
+          override def syncBlobs(
+              refs: Seq[HashedVirtualFileRef],
+              outputDirectory: Path
+          ): Seq[Path] =
+            if failNextSync then
+              failNextSync = false
+              throw IOException("failed to read 1 of 2 blobs")
+            else disk.syncBlobs(refs, outputDirectory)
+          override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+            disk.findBlobs(refs)
+        var called = 0
+        val blob = StringVirtualFile1(s"$tempDir/a.txt", "2")
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(blob))
+        val config = getCacheConfig(store, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val out = tempDir / "a.txt"
+        IO.delete(out)
+        failNextSync = true
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "the task did not rerun although its output was not synced")
+        assert(out.exists() && IO.read(out) == "2")
+
+  /** Links `link` to `target`; false where the platform refuses symbolic links. */
   def trySymlink(link: Path, target: Path): Boolean =
     try
       Files.createSymbolicLink(link, target)
@@ -810,6 +870,11 @@ object ActionCacheTest extends BasicTestSuite:
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()
     f(cache)
+
+  def assertMaterialized(cache: DiskActionCacheStore, p: Path): Unit =
+    if Util.isApfs(cache.casBase) then
+      assert(!Files.isSymbolicLink(p), s"$p was symlinked instead of copied")
+    else assert(Files.isSymbolicLink(p), s"$p was not symlinked into the CAS")
 
   def withDiskCache(f: DiskActionCacheStore => Unit): Unit =
     IO.withTemporaryDirectory(

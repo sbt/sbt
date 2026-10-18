@@ -1,0 +1,10 @@
+> compile
+
+$ copy-file changes/A.scala a/A.scala
+# nothing downstream runs, so a's failure is in the action cache once this returns
+-> a/compile
+
+# a's failure is replayed from the action cache, so b never compiles,
+# and compiling c or b on its own must not wait forever on early output
+-> c/compile
+-> b/compile
