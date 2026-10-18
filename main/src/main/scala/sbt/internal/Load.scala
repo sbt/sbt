@@ -442,7 +442,8 @@ private[sbt] object Load:
               yield ((ref / ConfigKey(c.name) / configuration) :== c)
             val builtin: Seq[Setting[?]] =
               (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
-            val settings = builtin ++ project.settings ++ injectSettings.project
+            val settings = // definitive injected settings are in project.settings already
+              builtin ++ project.settings ++ injectSettings.project.filterNot(_.definitive)
             // map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
             val transformed = transformSettings(projectScope(ref), uri, rootProject, settings)
             transformed.partition { s =>
@@ -1218,7 +1219,8 @@ private[sbt] object Load:
       val auto = AddSettings.allDefaults
       // 3. Use AddSettings instance to order all Setting[_]s appropriately
       // Settings are ordered as:
-      // AutoPlugin settings, common settings, machine-wide settings + project.settings(...)
+      // AutoPlugin settings, definitive injected settings, common settings, machine-wide settings
+      // + project.settings(...)
       def allAutoPluginSettings: Seq[Setting[?]] =
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
@@ -1249,7 +1251,8 @@ private[sbt] object Load:
       end allProjectSettings
 
       // Finally, a project we can use in buildStructure.
-      p.copy(settings = allAutoPluginSettings ++ commonSettings ++ allProjectSettings)
+      val injected = machineWideUserSettings.project.filter(_.definitive)
+      p.copy(settings = allAutoPluginSettings ++ injected ++ commonSettings ++ allProjectSettings)
         .setCommonSettings(commonSettings)
         .setAutoPlugins(projectPlugins)
         .prefixConfigs(autoConfigs*)

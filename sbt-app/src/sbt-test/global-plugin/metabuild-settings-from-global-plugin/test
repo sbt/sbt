@@ -24,7 +24,7 @@ $ copy-file changes/global-plugin-update.sbt project/check.sbt
 > reload
 
 $ copy-file changes/own-global-plugin-update.sbt project/check.sbt
--> reload
+> reload
 
 # Set the update report in an auto plugin of the global plugin, and check that the meta-build gets the injected one.
 $ copy-file changes/DefaultUpdate.scala global/plugins/DefaultUpdate.scala
