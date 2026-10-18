@@ -1,6 +1,7 @@
 lazy val check = taskKey[Unit]("")
 
 def scala212 = "2.12.21"
+def scala213 = "2.13.16"
 scalaVersion := scala212
 val o = "com.example"
 organization := o
@@ -23,11 +24,18 @@ lazy val bar = project
   )
 
 lazy val baz = project
+lazy val corge = project
+  .settings(scalaVersion := scala213)
+lazy val grault = project
+grault / scalaVersion := scala213
 
 check := {
   assert((foo / scalaVersion).value == scala212)
   assert((bar / scalaVersion).value == scala212)
   assert((baz / scalaVersion).value == scala212)
+  // Test that a subproject can override the common scalaVersion
+  assert((corge / scalaVersion).value == scala213, s"(corge / scalaVersion).value: ${(corge / scalaVersion).value}")
+  assert((grault / scalaVersion).value == scala213, s"(grault / scalaVersion).value: ${(grault / scalaVersion).value}")
 
   assert((foo / organization).value == o)
   // Test that bar can override common setting in settings(...)

@@ -1,0 +1,6 @@
+# Compile the project definition against the global plugin classes.
+$ copy-file changes/B.scala project/B.scala
+-> reload
+
+# The tests of one scripted run share `global`, so delete the global plugin.
+$ delete global/plugins
