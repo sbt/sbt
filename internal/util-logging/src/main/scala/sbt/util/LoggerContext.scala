@@ -10,9 +10,10 @@ package sbt.util
 
 import sbt.internal.util.*
 
+import java.util.{ Collections, IdentityHashMap }
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
-// import scala.jdk.CollectionConverters.*
+import scala.jdk.CollectionConverters.*
 
 /**
  * Provides a context for generating loggers during task evaluation. The logger context can be
@@ -36,6 +37,13 @@ sealed trait LoggerContext extends AutoCloseable:
   ): Unit
   def appenders(loggerName: String): Seq[Appender]
   def remove(name: String): Unit
+
+  /**
+   * Removes the logger and detaches its appenders without closing them, because other loggers may
+   * share them. Appenders whose close does something are closed once when this context closes.
+   */
+  private[sbt] def release(name: String): Unit = remove(name)
+end LoggerContext
 object LoggerContext:
   private[sbt] lazy val globalContext: LoggerContext = new LoggerContext.LoggerContextImpl
 
@@ -61,9 +69,14 @@ object LoggerContext:
         val previous = consoleAppenders.getAndUpdate(_.filterNot { (a, _) => a eq toRemove })
         previous.foreach { (a, _) => if a eq toRemove then a.close() }
       def appenders: Seq[Appender] = consoleAppenders.get.map(_._1)
+      def detach(): Seq[Appender] = consoleAppenders.getAndSet(Vector.empty).map(_._1)
     end Log
     private val loggers = new ConcurrentHashMap[String, Log]
     private val closed = new AtomicBoolean(false)
+    private val released = identitySet()
+    private val closedAppenders = identitySet()
+    private def identitySet() =
+      Collections.newSetFromMap(new IdentityHashMap[Appender, java.lang.Boolean])
     override def logger(
         name: String,
         channelName: Option[String],
@@ -99,10 +112,33 @@ object LoggerContext:
       loggers.remove(name) match
         case null =>
         case l    => l.clearAppenders()
+    override private[sbt] def release(name: String): Unit =
+      loggers.remove(name) match
+        case null =>
+        case l    =>
+          val closeLater = l.detach().filterNot(LoggerContext.closesTrivially)
+          if closeLater.nonEmpty then
+            val closeNow = released.synchronized:
+              if closed.get then closeLater.filter(a => closedAppenders.add(a))
+              else
+                closeLater.foreach(released.add)
+                Nil
+            closeNow.foreach(_.close())
     def close(): Unit =
-      closed.set(true)
-      loggers.forEach((_, l) => l.clearAppenders())
-      loggers.clear()
+      val toClose = released.synchronized:
+        closed.set(true)
+        loggers.forEach((_, l) => l.detach().foreach(released.add))
+        loggers.clear()
+        val all = released.asScala.toVector
+        released.clear()
+        all.filterNot(LoggerContext.closesTrivially).foreach(closedAppenders.add)
+        all
+      toClose.foreach(_.close())
   end LoggerContextImpl
+  private val trivialClose = new ClassValue[java.lang.Boolean]:
+    override def computeValue(c: Class[?]): java.lang.Boolean =
+      val owner = c.getMethod("close").getDeclaringClass
+      owner == classOf[ConsoleAppender] || owner == classOf[BufferedAppender]
+  private def closesTrivially(a: Appender): Boolean = trivialClose.get(a.getClass)
   private[sbt] def apply() = new LoggerContextImpl
 end LoggerContext
