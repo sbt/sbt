@@ -326,7 +326,7 @@ private[sbt] final class CommandExchange:
       watch: AtomicCloseable[AutoCloseable]
   )(setUp: nio.Observable[A] => Unit): Boolean =
     watch.close()
-    // a repository that a failed load left closed throws instead of returning a Left
+    // a closed repository throws instead of returning a Left
     Try(repo.register(sbt.nio.file.Glob(portfile))).flatMap(_.toTry) match
       case Success(o) => setUp(o); watch.set(o); true
       case Failure(e) =>

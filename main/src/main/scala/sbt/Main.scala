@@ -986,22 +986,50 @@ object BuiltinCommands:
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
-    val s3 = Project.setProject(
-      session,
-      structure,
-      s2,
-      st => setupGlobalFileTreeRepository(Clean.addCacheStoreFactoryFactory(st))
-    )
-    addSuperShellParams(
-      CheckBuildSources.init(
-        LintUnused.lintScalaVersion(LintUnused.lintUnusedFunc(s3))
+    replaceOnSuccess(
+      s2.get(sbt.nio.Keys.globalFileTreeRepository),
+      FileTreeRepository.default,
+      e =>
+        s2.log.trace(e)
+        s2.log.warn(s"Failed to close the previous file tree repository: $e")
+    ): repository =>
+      val s3 = Project.setProject(
+        session,
+        structure,
+        s2,
+        st =>
+          Clean
+            .addCacheStoreFactoryFactory(st)
+            .put(sbt.nio.Keys.globalFileTreeRepository, repository)
       )
-    )
+      addSuperShellParams(
+        CheckBuildSources.init(
+          LintUnused.lintScalaVersion(LintUnused.lintUnusedFunc(s3))
+        )
+      )
   end doLoadProject
 
-  private val setupGlobalFileTreeRepository: State => State = state =>
-    state.get(sbt.nio.Keys.globalFileTreeRepository).foreach(_.close())
-    state.put(sbt.nio.Keys.globalFileTreeRepository, FileTreeRepository.default)
+  /**
+   * Installs a replacement for a resource that the current state still owns. A failed install
+   * restores the current state, so the previous resource is closed only after `install` succeeds;
+   * otherwise the replacement is closed. A non-fatal failure to close the previous resource is
+   * reported and keeps the installed result, because the previous resource may already be unusable.
+   */
+  private[sbt] def replaceOnSuccess[R <: AutoCloseable, A](
+      previous: Option[AutoCloseable],
+      replacement: R,
+      reportCloseFailure: Throwable => Unit
+  )(install: R => A): A =
+    val installed =
+      try install(replacement)
+      catch
+        case t: Throwable =>
+          try replacement.close()
+          catch case NonFatal(e) => t.addSuppressed(e)
+          throw t
+    try previous.foreach(_.close())
+    catch case NonFatal(e) => reportCloseFailure(e)
+    installed
   private val addSuperShellParams: State => State = (s: State) =>
     val extracted = Project.extract(s)
     import scala.concurrent.duration.*
