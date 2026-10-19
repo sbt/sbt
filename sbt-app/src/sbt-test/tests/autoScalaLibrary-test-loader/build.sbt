@@ -1,5 +1,6 @@
-ThisBuild / scalaVersion := "2.12.21"
+ThisBuild / scalaVersion := "3.9.0"
 
 Test / autoScalaLibrary := false
-libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value % Test
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test
+libraryDependencies += "org.scala-lang" %% "scala3-library" % scalaVersion.value % Test
+libraryDependencies += "com.eed3si9n.verify" %% "verify" % "1.0.0" % Test
+testFrameworks += new TestFramework("verify.runner.Framework")
