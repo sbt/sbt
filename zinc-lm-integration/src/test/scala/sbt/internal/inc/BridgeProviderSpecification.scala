@@ -16,19 +16,15 @@ import sbt.io.syntax.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import xsbti.compile.CompilerBridgeProvider
-import org.scalatest.*
-import org.scalatest.matchers.should.Matchers
 import lmcoursier.*
+import verify.BasicTestSuite
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
  *
  * This is a very good example on how to instantiate the compiler bridge provider.
  */
-abstract class BridgeProviderSpecification
-    extends flatspec.FixtureAnyFlatSpec
-    with fixture.TestDataFixture
-    with Matchers:
+trait BridgeProviderSpecification extends BasicTestSuite:
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
@@ -54,16 +50,13 @@ abstract class BridgeProviderSpecification
       targetDir: File,
       log: Logger,
       scalaVersion: String,
-  )(using td: TestData): File =
-    val zincVersion = td.configMap.get("sbt.zinc.version") match
-      case Some(v: String) => v
-      case _               => throw new IllegalStateException("No zinc version specified")
+  ): File =
     val bridge0 = ZincLmUtil.getDefaultBridgeSourceModule(ScalaArtifacts.Organization, scalaVersion)
     // redefine the compiler bridge version
     // using the version of zinc used during testing
     // this way when building with zinc as a source dependency
     // these specs don't go looking for some SHA-suffixed compiler bridge
-    val bridge1 = bridge0.withRevision(zincVersion)
+    val bridge1 = bridge0.withRevision(ZincTestInfo.zincVersion)
     val provider = getZincProvider(bridge1, targetDir, log)
     val scalaInstance = provider.fetchScalaInstance(scalaVersion, log)
     val bridge = provider.fetchCompiledBridge(scalaInstance, log)
