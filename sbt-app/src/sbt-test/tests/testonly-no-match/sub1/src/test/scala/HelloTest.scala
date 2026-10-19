@@ -1,9 +1,7 @@
 package example
 
-import org.scalatest.flatspec.AnyFlatSpec
-
-class HelloTest extends AnyFlatSpec {
-  "Hello" should "say hello" in {
-    assert("hello" == "hello")
+class HelloTest extends munit.FunSuite {
+  test("Hello should say hello") {
+    assertEquals("hello", "hello")
   }
 }
