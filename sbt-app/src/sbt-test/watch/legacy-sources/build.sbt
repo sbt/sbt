@@ -12,7 +12,7 @@ def checkStringValueImpl: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   assert(IO.read(file(stringFile)) == string)
 }
 
-watchSources in setStringValue += new sbt.internal.io.Source(baseDirectory.value, "foo.txt", NothingFilter, false)
+setStringValue / watchSources += new sbt.internal.io.Source(baseDirectory.value, "foo.txt", NothingFilter, false)
 
 setStringValue := setStringValueImpl.evaluated
 
