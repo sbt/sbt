@@ -14,10 +14,10 @@ import java.lang.ProcessBuilder
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.TimeUnit
-import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
+import verify.BasicTestSuite
 
-class InstallSbtnSpec extends AnyFlatSpec:
+object InstallSbtnSpec extends BasicTestSuite:
   private def withTemp[R](ext: String)(f: Path => R): R =
     val tmp = Files.createTempFile("sbt-1.4.1-", ext)
     try f(tmp)
@@ -31,8 +31,8 @@ class InstallSbtnSpec extends AnyFlatSpec:
     def printStream: PrintStream = new PrintStream((_ => {}): OutputStream)
     def setMode(canonical: Boolean, echo: Boolean): Unit = {}
 
-  // This test has issues in ci but runs ok locally on all platforms
-  "InstallSbtn" should "extract native sbtn" ignore
+  test("InstallSbtn should extract native sbtn"):
+    ignore("This test has issues in ci but runs ok locally on all platforms")
     withTemp(".zip") { tmp =>
       withTemp(".exe") { sbtn =>
         InstallSbtn.extractSbtn(term, "1.9.0", tmp, sbtn)
