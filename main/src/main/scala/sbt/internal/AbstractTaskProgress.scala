@@ -103,6 +103,20 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
   }
 
   private[this] val taskNameCache = new ConcurrentHashMap[Task[_], String]
+  protected def clearTask(task: Task[_]): Unit = {
+    anonOwners.remove(task)
+    calledBy.remove(task)
+    taskNameCache.remove(task)
+    ()
+  }
+
+  protected def clearTasks(): Unit = {
+    anonOwners.clear()
+    calledBy.clear()
+    taskNameCache.clear()
+    timings.clear()
+  }
+
   protected def taskName(t: Task[_]): String = taskNameCache.get(t) match {
     case null =>
       val name = taskName0(t)

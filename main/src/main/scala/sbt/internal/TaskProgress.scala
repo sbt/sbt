@@ -10,13 +10,25 @@ package sbt
 package internal
 
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
-import java.util.concurrent.{ RejectedExecutionException, TimeUnit }
+import java.util.concurrent.{
+  CancellationException,
+  ExecutionException,
+  Future,
+  RejectedExecutionException,
+  TimeUnit
+}
 
 import sbt.internal.util._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeoutException }
+import java.util.concurrent.{
+  ConcurrentHashMap,
+  LinkedBlockingQueue,
+  ScheduledThreadPoolExecutor,
+  ThreadPoolExecutor,
+  TimeoutException
+}
 import sbt.util.Logger
 
 /**
@@ -33,9 +45,15 @@ private[sbt] class TaskProgress(
   private[this] val reportLoop = new AtomicReference[AutoCloseable]
   private[this] val active = new ConcurrentHashMap[Task[_], AutoCloseable]
   private[this] val nextReport = new AtomicReference(Deadline.now)
-  private[this] val scheduler =
-    Executors.newSingleThreadScheduledExecutor(r => new Thread(r, "sbt-progress-report-scheduler"))
-  private[this] val pending = new java.util.Vector[java.util.concurrent.Future[_]]
+  private[this] val reportPending = new AtomicBoolean(false)
+  private[this] val scheduler = {
+    val service = new ScheduledThreadPoolExecutor(
+      1,
+      r => new Thread(r, "sbt-progress-report-scheduler")
+    )
+    service.setRemoveOnCancelPolicy(true)
+    service
+  }
   private[this] val closed = new AtomicBoolean(false)
   private def schedule[R](duration: FiniteDuration, recurring: Boolean)(f: => R): AutoCloseable =
     if (!closed.get) {
@@ -52,8 +70,10 @@ private[sbt] class TaskProgress(
           if (recurring)
             scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
           else scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
-        pending.add(future)
-        () => Util.ignoreResult(future.cancel(true))
+        () => {
+          cancelled.set(true)
+          Util.ignoreResult(future.cancel(true))
+        }
       } catch {
         case e: RejectedExecutionException =>
           logger.trace(e)
@@ -63,32 +83,44 @@ private[sbt] class TaskProgress(
       logger.debug("tried to call schedule on closed TaskProgress")
       () => ()
     }
-  private[this] val executor =
-    Executors.newSingleThreadExecutor(r => new Thread(r, "sbt-task-progress-report-thread"))
+  private[this] val executor = new ThreadPoolExecutor(
+    1,
+    1,
+    0L,
+    TimeUnit.MILLISECONDS,
+    new LinkedBlockingQueue[Runnable],
+    r => new Thread(r, "sbt-task-progress-report-thread")
+  )
   override def close(): Unit = if (closed.compareAndSet(false, true)) {
     Option(reportLoop.getAndSet(null)).foreach(_.close())
-    pending.forEach(f => Util.ignoreResult(f.cancel(true)))
-    pending.clear()
+    active.values().forEach(_.close())
     scheduler.shutdownNow()
-    executor.shutdownNow()
+    executor.shutdownNow().asScala.foreach {
+      case f: Future[_] => Util.ignoreResult(f.cancel(false))
+      case _            =>
+    }
     if (!executor.awaitTermination(30, TimeUnit.SECONDS) ||
         !scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
       scala.Console.err.println("timed out closing the executor of supershell")
       throw new TimeoutException
     }
+    active.clear()
+    clearTasks()
   }
 
   override protected def clearTimings: Boolean = true
   override def initial(): Unit = ()
 
-  private[this] def doReport(): Unit = {
-    val runnable: Runnable = () => {
-      if (nextReport.get.isOverdue) {
-        report()
-      }
+  private[this] def doReport(): Unit =
+    if (!closed.get && nextReport.get.isOverdue && reportPending.compareAndSet(false, true)) {
+      try {
+        executor.execute(() => {
+          try {
+            if (!closed.get && nextReport.get.isOverdue) report()
+          } finally reportPending.set(false)
+        })
+      } catch { case _: RejectedExecutionException => reportPending.set(false) }
     }
-    Util.ignoreResult(pending.add(executor.submit(runnable)))
-  }
   override def beforeWork(task: Task[_]): Unit =
     if (!closed.get) {
       super.beforeWork(task)
@@ -110,13 +142,13 @@ private[sbt] class TaskProgress(
   override def afterReady(task: Task[_]): Unit =
     if (!closed.get) {
       try {
-        Util.ignoreResult(executor.submit((() => {
+        executor.execute(() => {
           if (skipReportTasks.contains(getShortName(task))) {
             lastTaskCount.set(-1) // force a report for remote clients
             report()
           } else
             Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
-        }): Runnable))
+        })
       } catch { case _: RejectedExecutionException => }
     } else {
       logger.debug(s"called afterReady for ${taskName(task)} after task progress was closed")
@@ -124,11 +156,18 @@ private[sbt] class TaskProgress(
   override def stop(): Unit = {}
 
   override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
-    active.remove(task) match {
-      case null =>
-      case a =>
-        a.close()
-        if (exceededThreshold(task, threshold)) report()
+    if (!closed.get) {
+      try {
+        executor.execute(() => {
+          active.remove(task) match {
+            case null =>
+            case a =>
+              a.close()
+              if (exceededThreshold(task, threshold)) report()
+          }
+          clearTask(task)
+        })
+      } catch { case _: RejectedExecutionException => }
     }
 
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
@@ -137,7 +176,20 @@ private[sbt] class TaskProgress(
       case l    => l.close()
     }
     // send an empty progress report to clear out the previous report
-    appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
+    if (!closed.get) {
+      try {
+        val cleanup: Runnable = () => {
+          results.keys.foreach(clearTask)
+          appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
+        }
+        Util.ignoreResult(executor.submit(cleanup).get())
+      } catch {
+        case _: InterruptedException       => Thread.currentThread().interrupt()
+        case _: CancellationException      =>
+        case e: ExecutionException         => throw e.getCause
+        case _: RejectedExecutionException =>
+      }
+    }
   }
   private[this] val skipReportTasks =
     Set(
