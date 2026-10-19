@@ -8,6 +8,8 @@
 
 package sbt.util
 
+import java.lang.ref.{ ReferenceQueue, WeakReference }
+import java.util.{ Collections, HashSet, IdentityHashMap }
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -36,6 +38,13 @@ sealed trait LoggerContext extends AutoCloseable {
   ): Unit
   def appenders(loggerName: String): Seq[Appender]
   def remove(name: String): Unit
+
+  /**
+   * Removes the logger and detaches its appenders without closing them, because other loggers may
+   * share them. Appenders other than sbt's console and buffered appenders, and those that have a
+   * log4j bridge by then, are closed once when this context closes.
+   */
+  private[sbt] def release(name: String): Unit = remove(name)
 }
 object LoggerContext {
   private[this] val useLog4J = System.getProperty("sbt.log.uselog4j", "false") == "true"
@@ -140,9 +149,23 @@ object LoggerContext {
         consoleAppenders.set(Vector.empty)
       }
       def appenders: Seq[Appender] = consoleAppenders.get.map(_._1)
+      def detach(): Seq[Appender] = consoleAppenders.getAndSet(Vector.empty).map(_._1)
     }
     private[this] val loggers = new ConcurrentHashMap[String, Log]
     private[this] val closed = new AtomicBoolean(false)
+    private[this] val released = identitySet()
+    private[this] val closedAppenders = identitySet()
+    private[this] val bridgeable = new HashSet[WeakIdentity]
+    private[this] val collected = new ReferenceQueue[Appender]
+    private[this] def expunge(): Unit = {
+      var stale = collected.poll()
+      while (stale != null) {
+        bridgeable.remove(stale)
+        stale = collected.poll()
+      }
+    }
+    private[this] def identitySet() =
+      Collections.newSetFromMap(new IdentityHashMap[Appender, java.lang.Boolean])
     override def logger(
         name: String,
         channelName: Option[String],
@@ -185,12 +208,67 @@ object LoggerContext {
         case l    => l.clearAppenders()
       }
     }
+    override private[sbt] def release(name: String): Unit =
+      loggers.remove(name) match {
+        case null =>
+        case l =>
+          val detached = l.detach()
+          val closeNow = released.synchronized {
+            val (closeLater, unbridged) = detached.partition(!LoggerContext.closesTrivially(_))
+            if (closed.get) closeLater.filter(a => closedAppenders.add(a))
+            else {
+              closeLater.foreach(released.add)
+              expunge()
+              unbridged.foreach(a => bridgeable.add(new WeakIdentity(a, collected)))
+              Nil
+            }
+          }
+          closeNow.foreach(_.close())
+      }
     def close(): Unit = {
-      closed.set(true)
-      loggers.forEach((_, l) => l.clearAppenders())
-      loggers.clear()
+      val toClose = released.synchronized {
+        closed.set(true)
+        loggers.forEach((_, l) => l.detach().foreach(released.add))
+        loggers.clear()
+        bridgeable.asScala.toVector
+          .flatMap(r => Option(r.get))
+          .filterNot(LoggerContext.closesTrivially)
+          .foreach(released.add)
+        bridgeable.clear()
+        expunge()
+        val all = released.asScala.toVector
+        released.clear()
+        all.filterNot(LoggerContext.closesTrivially).foreach(closedAppenders.add)
+        all
+      }
+      toClose.foreach(_.close())
     }
   }
+  private final class WeakIdentity(appender: Appender, queue: ReferenceQueue[Appender])
+      extends WeakReference[Appender](appender, queue) {
+    private[this] val hash = System.identityHashCode(appender)
+    override def hashCode: Int = hash
+    override def equals(other: Any): Boolean = other match {
+      case that: WeakIdentity =>
+        (this eq that) || (get match {
+          case null => false
+          case a    => a eq that.get
+        })
+      case _ => false
+    }
+  }
+  private[this] val trivialClose = new ClassValue[java.lang.Boolean] {
+    override def computeValue(c: Class[_]): java.lang.Boolean = {
+      val owner = c.getMethod("close").getDeclaringClass
+      owner == classOf[ConsoleAppender] || owner == classOf[BufferedAppender]
+    }
+  }
+  private def closesTrivially(a: Appender): Boolean =
+    trivialClose.get(a.getClass) && (a match {
+      case c: ConsoleAppender  => !c.hasLog4J
+      case b: BufferedAppender => !b.hasLog4J
+      case _                   => true
+    })
   private[sbt] def apply(useLog4J: Boolean) =
     if (useLog4J) new Log4JLoggerContext(LogExchange.context) else new LoggerContextImpl
 }
