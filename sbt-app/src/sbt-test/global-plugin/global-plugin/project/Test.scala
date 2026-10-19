@@ -1,6 +1,4 @@
 import sbt.*
 
-object Test
-
-// object Test:
-//   assert(example.G.x == 3)
+object Test:
+  assert(example.G.x == 3)

@@ -126,7 +126,11 @@ private[librarymanagement] abstract class ModuleIDExtra:
    * It is not included in published metadata.
    */
   def from(url: String, allowInsecureProtocol: Boolean): ModuleID =
-    artifacts(Artifact(name, new URI(url), allowInsecureProtocol))
+    from(new URI(url), allowInsecureProtocol)
+
+  private[sbt] def from(uri: URI): ModuleID = from(uri, allowInsecureProtocol = false)
+  private[sbt] def from(uri: URI, allowInsecureProtocol: Boolean): ModuleID =
+    artifacts(Artifact(name, uri, allowInsecureProtocol))
 
   /** Adds a dependency on the artifact for this module with classifier `c`. */
   def classifier(c: String): ModuleID = artifacts(Artifact(name, c))
