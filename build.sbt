@@ -761,6 +761,7 @@ lazy val mainProj = (project in file("main"))
     collectionProj,
     zincLmIntegrationProj,
     utilLogging,
+    lmCore % "test->test",
   )
   .settings(
     testedBaseSettings,
