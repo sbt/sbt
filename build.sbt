@@ -714,8 +714,18 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
   .settings(
     name := "Zinc LM Integration",
     testedBaseSettings,
-    Test / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
+    Test / sourceGenerators += task {
+      val f = (Test / sourceManaged).value / "sbt" / "internal" / "inc" / "ZincTestInfo.scala"
+      IO.write(
+        f,
+        s"""|package sbt.internal.inc
+            |
+            |object ZincTestInfo:
+            |  val zincVersion: String = "$zincVersion"
+            |""".stripMargin
+      )
+      Seq(f)
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
     ),
@@ -751,6 +761,7 @@ lazy val mainProj = (project in file("main"))
     collectionProj,
     zincLmIntegrationProj,
     utilLogging,
+    lmCore % "test->test",
   )
   .settings(
     testedBaseSettings,

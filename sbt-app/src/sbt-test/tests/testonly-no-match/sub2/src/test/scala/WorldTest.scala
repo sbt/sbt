@@ -1,9 +1,7 @@
 package example
 
-import org.scalatest.flatspec.AnyFlatSpec
-
-class WorldTest extends AnyFlatSpec {
-  "World" should "say world" in {
-    assert("world" == "world")
+class WorldTest extends munit.FunSuite {
+  test("World should say world") {
+    assertEquals("world", "world")
   }
 }

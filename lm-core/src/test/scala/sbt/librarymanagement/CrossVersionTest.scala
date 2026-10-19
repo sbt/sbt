@@ -1,419 +1,241 @@
 package sbt.librarymanagement
 
-import sbt.internal.librarymanagement.UnitSpec
+import hedgehog.*
+import hedgehog.runner.*
 import CrossVersion.*
-import sbt.librarymanagement.syntax.*
+import _root_.sbt.librarymanagement.syntax.*
 import scala.annotation.nowarn
 
-class CrossVersionTest extends UnitSpec:
-  "sbtApiVersion" should "for xyz return None" in {
-    sbtApiVersion("xyz") shouldBe None
-  }
-  it should "for 0.12 return None" in {
-    sbtApiVersion("0.12") shouldBe None
-  }
-  it should "for 0.12.0-SNAPSHOT return None" in {
-    sbtApiVersion("0.12.0-SNAPSHOT") shouldBe None
-  }
-  it should "for 0.12.0-RC1 return Some((0, 12))" in {
-    sbtApiVersion("0.12.0-RC1") shouldBe Some((0, 12))
-  }
-  it should "for 0.12.0 return Some((0, 12))" in {
-    sbtApiVersion("0.12.0") shouldBe Some((0, 12))
-  }
-  it should "for 0.12.1-SNAPSHOT return Some((0, 12))" in {
-    sbtApiVersion("0.12.1-SNAPSHOT") shouldBe Some((0, 12))
-  }
-  it should "for 0.12.1-RC1 return Some((0, 12))" in {
-    sbtApiVersion("0.12.1-RC1") shouldBe Some((0, 12))
-  }
-  it should "for 0.12.1 return Some((0, 12))" in {
-    sbtApiVersion("0.12.1") shouldBe Some((0, 12))
-  }
-  it should "for 1.0.0-M6 return None" in {
-    sbtApiVersion("1.0.0-M6") shouldBe None
-  }
-  it should "for 1.0.0-RC1 return Some((1, 0))" in {
-    sbtApiVersion("1.0.0-RC1") shouldBe Some((1, 0))
-  }
-  it should "for 1.0.0 return Some((1, 0))" in {
-    sbtApiVersion("1.0.0") shouldBe Some((1, 0))
-  }
-  it should "for 1.0.2-M1 return Some((1, 0))" in {
-    sbtApiVersion("1.0.2-M1") shouldBe Some((1, 0))
-  }
-  it should "for 1.0.2-RC1 return Some((1, 0))" in {
-    sbtApiVersion("1.0.2-RC1") shouldBe Some((1, 0))
-  }
-  it should "for 1.0.2 return Some((1, 0))" in {
-    sbtApiVersion("1.0.2") shouldBe Some((1, 0))
-  }
-  it should "for 1.3.0 return Some((1, 0))" in {
-    sbtApiVersion("1.3.0") shouldBe Some((1, 0))
-  }
-  it should "for 1.10.0 return Some((1, 0))" in {
-    sbtApiVersion("1.10.0") shouldBe Some((1, 0))
-  }
-  it should "for 2.0.0 return Some((2, 0))" in {
-    sbtApiVersion("2.0.0") shouldBe Some((2, 0))
-  }
-  "partialVersion" should "return None for xyz" in {
-    assert(partialVersion("xyz") == None)
-  }
-  it should "return 2 for 2" in {
-    assert(partialVersion("2") == Some((2, 0)))
-  }
-  "isSbtApiCompatible" should "for 0.12.0-M1 return false" in {
-    isSbtApiCompatible("0.12.0-M1") shouldBe false
-  }
-  it should "for 0.12.0-RC1 return true" in {
-    isSbtApiCompatible("0.12.0-RC1") shouldBe true
-  }
-  it should "for 0.12.1-RC1 return true" in {
-    isSbtApiCompatible("0.12.1-RC1") shouldBe true
-  }
-  it should "for 1.0.0-M6 return false" in {
-    isSbtApiCompatible("1.0.0-M6") shouldBe false
-  }
-  it should "for 1.0.0-RC1 return true" in {
-    isSbtApiCompatible("1.0.0-RC1") shouldBe true
-  }
-  it should "for 1.0.0 return true" in {
-    isSbtApiCompatible("1.0.0") shouldBe true
-  }
-  it should "for 1.0.2-M1 return true" in {
-    isSbtApiCompatible("1.0.2-M1") shouldBe true
-  }
-  it should "for 1.0.2-RC1 return true" in {
-    isSbtApiCompatible("1.0.2-RC1") shouldBe true
-  }
-  it should "for 1.0.2 return true" in {
-    isSbtApiCompatible("1.0.2") shouldBe true
-  }
-  it should "for 1.3.0 return true" in {
-    isSbtApiCompatible("1.3.0") shouldBe true
-  }
-  it should "for 1.10.0 return true" in {
-    isSbtApiCompatible("1.10.0") shouldBe true
-  }
-  it should "for 2.0.0 return true" in {
-    isSbtApiCompatible("2.0.0") shouldBe true
-  }
+object CrossVersionTest extends Properties:
+  override def tests: List[Test] =
+    table("sbtApiVersion", sbtApiVersion)(
+      "xyz" -> None,
+      "0.12" -> None,
+      "0.12.0-SNAPSHOT" -> None,
+      "0.12.0-RC1" -> Some((0, 12)),
+      "0.12.0" -> Some((0, 12)),
+      "0.12.1-SNAPSHOT" -> Some((0, 12)),
+      "0.12.1-RC1" -> Some((0, 12)),
+      "0.12.1" -> Some((0, 12)),
+      "1.0.0-M6" -> None,
+      "1.0.0-RC1" -> Some((1, 0)),
+      "1.0.0" -> Some((1, 0)),
+      "1.0.2-M1" -> Some((1, 0)),
+      "1.0.2-RC1" -> Some((1, 0)),
+      "1.0.2" -> Some((1, 0)),
+      "1.3.0" -> Some((1, 0)),
+      "1.10.0" -> Some((1, 0)),
+      "2.0.0" -> Some((2, 0)),
+    ) ++
+      table("partialVersion", partialVersion)(
+        "xyz" -> None,
+        "2" -> Some((2, 0)),
+      ) ++
+      table("isSbtApiCompatible", isSbtApiCompatible)(
+        "0.12.0-M1" -> false,
+        "0.12.0-RC1" -> true,
+        "0.12.1-RC1" -> true,
+        "1.0.0-M6" -> false,
+        "1.0.0-RC1" -> true,
+        "1.0.0" -> true,
+        "1.0.2-M1" -> true,
+        "1.0.2-RC1" -> true,
+        "1.0.2" -> true,
+        "1.3.0" -> true,
+        "1.10.0" -> true,
+        "2.0.0" -> true,
+      ) ++
+      table("binarySbtVersion", binarySbtVersion)(
+        "0.11.3" -> "0.11.3",
+        "2.0.0" -> "2",
+        "2.0.0-M1" -> "2.0.0-M1",
+        "2.0.0-RC1" -> "2",
+        "2.0.0-RC9-bin-SNAPSHOT" -> "2",
+        "2" -> "2",
+        "2.1.0-M1" -> "2",
+        "2.1.0" -> "2",
+        "0.13.1" -> "0.13",
+        "1.0.0-M6" -> "1.0.0-M6",
+        "1.0.0-RC1" -> "1.0",
+        "1.0.0" -> "1.0",
+        "1.0.2-M1" -> "1.0",
+        "1.0.2-RC1" -> "1.0",
+        "1.0.2" -> "1.0",
+        "1.3.0" -> "1.0",
+        "1.3.0-SNAPSHOT" -> "1.0",
+        "1.3.0-A1-B1.1" -> "1.0",
+        "1.10.0" -> "1.0",
+      ) ++
+      table("scalaApiVersion", scalaApiVersion)(
+        "xyz" -> None,
+        "2.10" -> None,
+        "2.10.0-SNAPSHOT" -> None,
+        "2.10.0-RC1" -> None,
+        "2.10.0" -> Some((2, 10)),
+        "2.10.0-1" -> Some((2, 10)),
+        "2.10.1-SNAPSHOT" -> Some((2, 10)),
+        "2.10.1-RC1" -> Some((2, 10)),
+        "2.10.1" -> Some((2, 10)),
+      ) ++
+      table("isScalaApiCompatible", isScalaApiCompatible)(
+        "2.10.0-M1" -> false,
+        "2.10.0-RC1" -> false,
+        "2.10.1-RC1" -> true,
+      ) ++
+      table("binaryScalaVersion", binaryScalaVersion)(
+        "2.9.2" -> "2.9.2",
+        "2.10.0-M1" -> "2.10.0-M1",
+        "2.10.0-RC1" -> "2.10.0-RC1",
+        "2.10.0" -> "2.10",
+        "2.10.1-M1" -> "2.10",
+        "2.10.1-RC1" -> "2.10",
+        "2.10.1" -> "2.10",
+        "2.20170314093845.0-87654321" -> "2.20170314093845",
+        "3.0.0-M2" -> "3.0.0-M2",
+        "3.0.0-M3-bin-SNAPSHOT" -> "3.0.0-M3",
+        "3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY" -> "3.0.0-M3",
+        "3.0.0-M3.5-bin-20201215-cbe50b3-NIGHTLY" -> "3.0.0-M3.5",
+        "3.0.0-RC1" -> "3.0.0-RC1",
+        "3.0.0" -> "3",
+        "3.1.0-M1" -> "3",
+        "3.1.0-RC1-bin-SNAPSHOT" -> "3",
+        "3.1.0-RC1" -> "3",
+        "3.1.0" -> "3",
+        "3.0.1-RC1" -> "3",
+        "3.0.1-M1" -> "3",
+        "3.0.1-RC1-bin-SNAPSHOT" -> "3",
+        "3.0.1-bin-SNAPSHOT" -> "3",
+        "3.0.1-SNAPSHOT" -> "3",
+        "4.0.0-M2" -> "4.0.0-M2",
+        "3-latest.candidate" -> "3",
+        "4-latest.candidate" -> "4",
+      ) ++
+      table("earlyScalaVersion", earlyScalaVersion)(
+        "2.9.2" -> "2.9",
+        "2.13.0-M1" -> "2.13",
+        "3.0.0-M1" -> "3",
+        "4.0.0-M1" -> "4",
+        "3-latest.candidate" -> "3",
+        "4-latest.candidate" -> "4",
+      ) ++
+      table("CrossVersion.patch", patchVersion)(
+        "2.11.8" -> Some("artefact_2.11.8"),
+        "2.11.8-M1" -> Some("artefact_2.11.8-M1"),
+        "2.11.8-RC1" -> Some("artefact_2.11.8-RC1"),
+        "2.11.8-bin-extra" -> Some("artefact_2.11.8"),
+        "2.11.8-M1-bin-extra" -> Some("artefact_2.11.8-M1"),
+        "2.11.8-RC1-bin-extra" -> Some("artefact_2.11.8-RC1"),
+        "2.11.8-X1.5-bin-extra" -> Some("artefact_2.11.8-X1.5"),
+      ) ++
+      table("isScalaBinaryCompatibleWith", isScalaBinaryCompatibleWith.tupled)(
+        ("2.10.4", "2.10.5") -> true,
+        ("2.10.6", "2.10.5") -> true,
+        ("2.11.0", "2.10.5") -> false,
+        ("3.0.0", "2.10.5") -> false,
+        ("3.0.0", "3.1.0") -> false,
+        ("3.1.0", "3.0.0") -> true,
+        ("3.1.0", "3.1.1") -> true,
+        ("3.1.1", "3.1.0") -> true,
+        ("2.10.0-M1", "2.10.5") -> false,
+        ("2.10.5", "2.10.0-M1") -> false,
+        ("2.10.0-M1", "2.10.0-M2") -> false,
+        ("2.10.0-M1", "2.11.0-M1") -> false,
+        ("3.1.0-M1", "3.0.0") -> true,
+        ("3.1.0-M1", "3.1.0") -> false,
+        ("3.1.0-M1", "3.1.0-M2") -> false,
+        ("3.1.0-M2", "3.1.0-M1") -> false,
+      ) ++
+      List(
+        example(
+          "CrossVersion.constant should add a constant to the version",
+          constantVersion("duck") ==== Some("artefact_duck")
+        ),
+        example("Disabled should have structural equality", testDisabledEquality),
+        example(
+          "CrossVersion.full should have structural equality",
+          CrossVersion.full ==== CrossVersion.full
+        ),
+        example(
+          "CrossVersion.binary should have structural equality",
+          CrossVersion.binary ==== CrossVersion.binary
+        ),
+        example(
+          "CrossVersion.constant should have structural equality",
+          CrossVersion.constant("duck") ==== CrossVersion.constant("duck")
+        ),
+        example(
+          "CrossVersion.for3Use2_13 should have structural equality",
+          Result.all(
+            List(
+              CrossVersion.for3Use2_13 ==== CrossVersion.for3Use2_13,
+              CrossVersion.for3Use2_13With("_sjs1", "") ==== CrossVersion
+                .for3Use2_13With("_sjs1", ""),
+            )
+          )
+        ),
+        example(
+          "CrossVersion.for3Use2_13 should use the cross version 2.13 instead of 3",
+          CrossVersion(CrossVersion.for3Use2_13, "3.0.0", "3").map(_("artefact")) ====
+            Some("artefact_2.13")
+        ),
+        example(
+          "CrossVersion.for3Use2_13 should use the cross version 2.13 instead of 3.0.0-M3",
+          CrossVersion(CrossVersion.for3Use2_13, "3.0.0-M3", "3.0.0-M3").map(_("artefact")) ====
+            Some("artefact_2.13")
+        ),
+        example(
+          "CrossVersion.for2_13Use3 should have structural equality",
+          Result.all(
+            List(
+              CrossVersion.for2_13Use3 ==== CrossVersion.for2_13Use3,
+              CrossVersion.for2_13Use3With("_sjs1", "") ==== CrossVersion
+                .for2_13Use3With("_sjs1", ""),
+            )
+          )
+        ),
+        example(
+          "CrossVersion.for2_13Use3 should use the cross version 3 instead of 2.13",
+          CrossVersion(CrossVersion.for2_13Use3, "2.13.4", "2.13").map(_("artefact")) ====
+            Some("artefact_3")
+        ),
+        example(
+          "CrossVersion(module, scalaModuleInfo) should name a JVM artifact with the cross suffix",
+          named("com.example" %% "foo" % "1.0", Some("jvm")) ==== Some("foo_2.13")
+        ),
+        example(
+          "CrossVersion(module, scalaModuleInfo) should put the platform suffix before the cross suffix",
+          named("com.example" %% "foo" % "1.0", Some("sjs1")) ==== Some("foo_sjs1_2.13")
+        ),
+        example(
+          "CrossVersion(module, scalaModuleInfo) should take the platform from the module over the project",
+          named(("com.example" %% "foo" % "1.0").platform("native0.5"), Some("sjs1")) ====
+            Some("foo_native0.5_2.13")
+        ),
+        example(
+          "CrossVersion(module, scalaModuleInfo) should add no platform suffix when there is no platform",
+          named("com.example" %% "foo" % "1.0", None) ==== Some("foo_2.13")
+        ),
+        example(
+          "CrossVersion(module, scalaModuleInfo) should name nothing when the module is not cross-versioned",
+          named(
+            ("com.example" % "foo" % "1.0").withCrossVersion(CrossVersion.disabled),
+            Some("sjs1")
+          ) ==== None
+        ),
+      )
 
-  "binarySbtVersion" should "for 0.11.3 return 0.11.3" in {
-    binarySbtVersion("0.11.3") shouldBe "0.11.3"
-  }
-  it should "for 2.0.0 return 2" in {
-    binarySbtVersion("2.0.0") shouldBe "2"
-  }
-  it should "for 2.0.0-M1 return 2.0.0-M1" in {
-    binarySbtVersion("2.0.0-M1") shouldBe "2.0.0-M1"
-  }
-  it should "for 2.0.0-RC1 return 2" in {
-    binarySbtVersion("2.0.0-RC1") shouldBe "2"
-  }
-  it should "for 2.0.0-RC9-bin-SNAPSHOT return 2" in {
-    binarySbtVersion("2.0.0-RC9-bin-SNAPSHOT") shouldBe "2"
-  }
-  it should "for 2 return 2" in {
-    binarySbtVersion("2") shouldBe "2"
-  }
-  it should "for 2.1.0-M1 return 2" in {
-    binarySbtVersion("2.1.0-M1") shouldBe "2"
-  }
-  it should "for 2.1.0 return 2" in {
-    binarySbtVersion("2.1.0") shouldBe "2"
-  }
-  it should "for 0.13.1 return 0.13" in {
-    binarySbtVersion("0.13.1") shouldBe "0.13"
-  }
-  it should "for 1.0.0-M6 return 1.0.0-M6" in {
-    binarySbtVersion("1.0.0-M6") shouldBe "1.0.0-M6"
-  }
-  it should "for 1.0.0-RC1 return 1.0" in {
-    binarySbtVersion("1.0.0-RC1") shouldBe "1.0"
-  }
-  it should "for 1.0.0 return 1.0" in {
-    binarySbtVersion("1.0.0") shouldBe "1.0"
-  }
-  it should "for 1.0.2-M1 return 1.0" in {
-    binarySbtVersion("1.0.2-M1") shouldBe "1.0"
-  }
-  it should "for 1.0.2-RC1 return 1.0" in {
-    binarySbtVersion("1.0.2-RC1") shouldBe "1.0"
-  }
-  it should "for 1.0.2 return 1.0" in {
-    binarySbtVersion("1.0.2") shouldBe "1.0"
-  }
-  it should "for 1.3.0 return 1.0" in {
-    binarySbtVersion("1.3.0") shouldBe "1.0"
-  }
-  it should "for 1.3.0-SNAPSHOT return 1.0" in {
-    binarySbtVersion("1.3.0-SNAPSHOT") shouldBe "1.0"
-  }
-  it should "for 1.3.0-A1-B1.1 return 1.0" in {
-    binarySbtVersion("1.3.0-A1-B1.1") shouldBe "1.0"
-  }
-  it should "for 1.10.0 return 1.0" in {
-    binarySbtVersion("1.10.0") shouldBe "1.0"
-  }
+  private def table[A, B](name: String, f: A => B)(cases: (A, B)*): List[Test] =
+    cases.toList.map: (input, expected) =>
+      example(s"$name for $input should return $expected", f(input) ==== expected)
 
-  "scalaApiVersion" should "for xyz return None" in {
-    scalaApiVersion("xyz") shouldBe None
-  }
-  it should "for 2.10 return None" in {
-    scalaApiVersion("2.10") shouldBe None
-  }
-  it should "for 2.10.0-SNAPSHOT return None" in {
-    scalaApiVersion("2.10.0-SNAPSHOT") shouldBe None
-  }
-  it should "for 2.10.0-RC1 return None" in {
-    scalaApiVersion("2.10.0-RC1") shouldBe None
-  }
-  it should "for 2.10.0 return Some((2, 10))" in {
-    scalaApiVersion("2.10.0") shouldBe Some((2, 10))
-  }
-  it should "for 2.10.0-1 return Some((2, 10))" in {
-    scalaApiVersion("2.10.0-1") shouldBe Some((2, 10))
-  }
-  it should "for 2.10.1-SNAPSHOT return Some((2, 10))" in {
-    scalaApiVersion("2.10.1-SNAPSHOT") shouldBe Some((2, 10))
-  }
-  it should "for 2.10.1-RC1 return Some((2, 10))" in {
-    scalaApiVersion("2.10.1-RC1") shouldBe Some((2, 10))
-  }
-  it should "for 2.10.1 return Some((2, 10))" in {
-    scalaApiVersion("2.10.1") shouldBe Some((2, 10))
-  }
+  @nowarn
+  private def testDisabledEquality: Result = Disabled() ==== Disabled()
 
-  "isScalaApiCompatible" should "for 2.10.0-M1 return false" in {
-    isScalaApiCompatible("2.10.0-M1") shouldBe false
-  }
-  it should "for 2.10.0-RC1 return false" in {
-    isScalaApiCompatible("2.10.0-RC1") shouldBe false
-  }
-  it should "for 2.10.1-RC1 return false" in {
-    isScalaApiCompatible("2.10.1-RC1") shouldBe true
-  }
+  private def patchVersion(fullVersion: String): Option[String] =
+    CrossVersion(CrossVersion.patch, fullVersion, "dummy").map(fn => fn("artefact"))
 
-  "binaryScalaVersion" should "for 2.9.2 return 2.9.2" in {
-    binaryScalaVersion("2.9.2") shouldBe "2.9.2"
-  }
-  it should "for 2.10.0-M1 return 2.10.0-M1" in {
-    binaryScalaVersion("2.10.0-M1") shouldBe "2.10.0-M1"
-  }
-  it should "for 2.10.0-RC1 return 2.10.0-RC1" in {
-    binaryScalaVersion("2.10.0-RC1") shouldBe "2.10.0-RC1"
-  }
-  it should "for 2.10.0 return 2.10" in {
-    binaryScalaVersion("2.10.0") shouldBe "2.10"
-  }
-  it should "for 2.10.1-M1 return 2.10" in {
-    binaryScalaVersion("2.10.1-M1") shouldBe "2.10"
-  }
-  it should "for 2.10.1-RC1 return 2.10" in {
-    binaryScalaVersion("2.10.1-RC1") shouldBe "2.10"
-  }
-  it should "for 2.10.1 return 2.10" in {
-    binaryScalaVersion("2.10.1") shouldBe "2.10"
-  }
-  it should "for 2.20170314093845.0-87654321 return 2.20170314093845" in {
-    binaryScalaVersion("2.20170314093845.0-87654321") shouldBe "2.20170314093845"
-  }
-  it should "for 3.0.0-M2 return 3.0.0-M2" in {
-    binaryScalaVersion("3.0.0-M2") shouldBe "3.0.0-M2"
-  }
-  it should "for 3.0.0-M3-bin-SNAPSHOT return 3.0.0-M3" in {
-    binaryScalaVersion("3.0.0-M3-bin-SNAPSHOT") shouldBe "3.0.0-M3"
-  }
-  it should "for 3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY return 3.0.0-M3" in {
-    binaryScalaVersion("3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY") shouldBe "3.0.0-M3"
-  }
-  it should "for 3.0.0-M3.5-bin-20201215-cbe50b3-NIGHTLY return 3.0.0-M3" in {
-    binaryScalaVersion("3.0.0-M3.5-bin-20201215-cbe50b3-NIGHTLY") shouldBe "3.0.0-M3.5"
-  }
-  it should "for 3.0.0-RC1 return 3.0.0-RC1" in {
-    binaryScalaVersion("3.0.0-RC1") shouldBe "3.0.0-RC1"
-  }
-  it should "for 3.0.0 return 3" in {
-    binaryScalaVersion("3.0.0") shouldBe "3"
-  }
-  it should "for 3.1.0-M1 return 3" in {
-    binaryScalaVersion("3.1.0-M1") shouldBe "3"
-  }
-  it should "for 3.1.0-RC1-bin-SNAPSHOT return 3" in {
-    binaryScalaVersion("3.1.0-RC1-bin-SNAPSHOT") shouldBe "3"
-  }
-  it should "for 3.1.0-RC1 return 3" in {
-    binaryScalaVersion("3.1.0-RC1") shouldBe "3"
-  }
-  it should "for 3.1.0 return 3" in {
-    binaryScalaVersion("3.1.0") shouldBe "3"
-  }
-  it should "for 3.0.1-RC1 return 3" in {
-    binaryScalaVersion("3.0.1-RC1") shouldBe "3"
-  }
-  it should "for 3.0.1-M1 return 3" in {
-    binaryScalaVersion("3.0.1-M1") shouldBe "3"
-  }
-  it should "for 3.0.1-RC1-bin-SNAPSHOT return 3" in {
-    binaryScalaVersion("3.0.1-RC1-bin-SNAPSHOT") shouldBe "3"
-  }
-  it should "for 3.0.1-bin-nonbootstrapped return 3" in {
-    binaryScalaVersion("3.0.1-bin-SNAPSHOT") shouldBe "3"
-  }
-  it should "for 3.0.1-SNAPSHOT return 3" in {
-    binaryScalaVersion("3.0.1-SNAPSHOT") shouldBe "3"
-  }
-  it should "for 4.0.0-M2 return 4.0.0-M2" in {
-    binaryScalaVersion("4.0.0-M2") shouldBe "4.0.0-M2"
-  }
-  // Dynamic Scala version patterns
-  it should "for 3-latest.candidate return 3" in {
-    binaryScalaVersion("3-latest.candidate") shouldBe "3"
-  }
-  it should "for 4-latest.candidate return 4" in {
-    binaryScalaVersion("4-latest.candidate") shouldBe "4"
-  }
-
-  "earlyScalaVersion" should "for 2.9.2 return 2.9" in {
-    assert(earlyScalaVersion("2.9.2") == "2.9")
-  }
-  it should "for 2.13.0-M1 return 2.13" in {
-    assert(earlyScalaVersion("2.13.0-M1") == "2.13")
-  }
-  it should "for 3.0.0-M1 return 3" in {
-    assert(earlyScalaVersion("3.0.0-M1") == "3")
-  }
-  it should "for 4.0.0-M1 return 4" in {
-    assert(earlyScalaVersion("4.0.0-M1") == "4")
-  }
-  // Dynamic Scala version patterns
-  it should "for 3-latest.candidate return 3" in {
-    assert(earlyScalaVersion("3-latest.candidate") == "3")
-  }
-  it should "for 4-latest.candidate return 4" in {
-    assert(earlyScalaVersion("4-latest.candidate") == "4")
-  }
-
-  private def patchVersion(fullVersion: String) =
-    CrossVersion(CrossVersion.patch, fullVersion, "dummy") map (fn => fn("artefact"))
-
-  "CrossVersion.patch" should "for 2.11.8 return 2.11.8" in {
-    patchVersion("2.11.8") shouldBe Some("artefact_2.11.8")
-  }
-  it should "for 2.11.8-M1 return 2.11.8-M1" in {
-    patchVersion("2.11.8-M1") shouldBe Some("artefact_2.11.8-M1")
-  }
-  it should "for 2.11.8-RC1 return 2.11.8-RC1" in {
-    patchVersion("2.11.8-RC1") shouldBe Some("artefact_2.11.8-RC1")
-  }
-  it should "for 2.11.8-bin-extra return 2.11.8" in {
-    patchVersion("2.11.8-bin-extra") shouldBe Some("artefact_2.11.8")
-  }
-  it should "for 2.11.8-M1-bin-extra return 2.11.8-M1" in {
-    patchVersion("2.11.8-M1-bin-extra") shouldBe Some("artefact_2.11.8-M1")
-  }
-  it should "for 2.11.8-RC1-bin-extra return 2.11.8-RC1" in {
-    patchVersion("2.11.8-RC1-bin-extra") shouldBe Some("artefact_2.11.8-RC1")
-  }
-  it should "for 2.11.8-X1.5-bin-extra return 2.11.8-X1.5" in {
-    patchVersion("2.11.8-X1.5-bin-extra") shouldBe Some("artefact_2.11.8-X1.5")
-  }
-
-  "isScalaBinaryCompatibleWith" should "for (2.10.4, 2.10.5) return true" in {
-    isScalaBinaryCompatibleWith("2.10.4", "2.10.5") shouldBe true
-  }
-  it should "for (2.10.6, 2.10.5) return true" in {
-    isScalaBinaryCompatibleWith("2.10.6", "2.10.5") shouldBe true
-  }
-  it should "for (2.11.0, 2.10.5) return false" in {
-    isScalaBinaryCompatibleWith("2.11.0", "2.10.5") shouldBe false
-  }
-  it should "for (3.0.0, 2.10.5) return false" in {
-    isScalaBinaryCompatibleWith("3.0.0", "2.10.5") shouldBe false
-  }
-  it should "for (3.0.0, 3.1.0) return false" in {
-    isScalaBinaryCompatibleWith("3.0.0", "3.1.0") shouldBe false
-  }
-  it should "for (3.1.0, 3.0.0) return true" in {
-    isScalaBinaryCompatibleWith("3.1.0", "3.0.0") shouldBe true
-  }
-  it should "for (3.1.0, 3.1.1) return true" in {
-    isScalaBinaryCompatibleWith("3.1.0", "3.1.1") shouldBe true
-  }
-  it should "for (3.1.1, 3.1.0) return true" in {
-    isScalaBinaryCompatibleWith("3.1.1", "3.1.0") shouldBe true
-  }
-  it should "for (2.10.0-M1, 2.10.5) return false" in {
-    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.5") shouldBe false
-  }
-  it should "for (2.10.5, 2.10.0-M1) return false" in {
-    isScalaBinaryCompatibleWith("2.10.5", "2.10.0-M1") shouldBe false
-  }
-  it should "for (2.10.0-M1, 2.10.0-M2) return false" in {
-    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.0-M2") shouldBe false
-  }
-  it should "for (2.10.0-M1, 2.11.0-M1) return false" in {
-    isScalaBinaryCompatibleWith("2.10.0-M1", "2.11.0-M1") shouldBe false
-  }
-  it should "for (3.1.0-M1, 3.0.0) return true" in {
-    isScalaBinaryCompatibleWith("3.1.0-M1", "3.0.0") shouldBe true
-  }
-  it should "for (3.1.0-M1, 3.1.0) return false" in {
-    isScalaBinaryCompatibleWith("3.1.0-M1", "3.1.0") shouldBe false
-  }
-  it should "for (3.1.0-M1, 3.1.0-M2) return false" in {
-    isScalaBinaryCompatibleWith("3.1.0-M1", "3.1.0-M2") shouldBe false
-  }
-  it should "for (3.1.0-M2, 3.1.0-M1) return false" in {
-    isScalaBinaryCompatibleWith("3.1.0-M2", "3.1.0-M1") shouldBe false
-  }
-
-  private def constantVersion(value: String) =
-    CrossVersion(CrossVersion.constant(value), "dummy1", "dummy2") map (fn => fn("artefact"))
-
-  "CrossVersion.constant" should "add a constant to the version" in {
-    constantVersion("duck") shouldBe Some("artefact_duck")
-  }
-
-  "Disabled" should "have structural equality" in {
-    Disabled() shouldBe Disabled()
-  }: @nowarn
-  "CrossVersion.full" should "have structural equality" in {
-    CrossVersion.full shouldBe CrossVersion.full
-  }
-  "CrossVersion.binary" should "have structural equality" in {
-    CrossVersion.binary shouldBe CrossVersion.binary
-  }
-  "CrossVersion.constant" should "have structural equality" in {
-    CrossVersion.constant("duck") shouldBe CrossVersion.constant("duck")
-  }
-
-  "CrossVersion.for3Use2_13" should "have structural equality" in {
-    CrossVersion.for3Use2_13 shouldBe CrossVersion.for3Use2_13
-    CrossVersion.for3Use2_13With("_sjs1", "") shouldBe CrossVersion.for3Use2_13With("_sjs1", "")
-  }
-  it should "use the cross version 2.13 instead of 3" in {
-    CrossVersion(CrossVersion.for3Use2_13, "3.0.0", "3").map(_("artefact")) shouldBe Some(
-      "artefact_2.13"
-    )
-  }
-  it should "use the cross version 2.13 instead of 3.0.0-M3" in {
-    CrossVersion(CrossVersion.for3Use2_13, "3.0.0-M3", "3.0.0-M3").map(_("artefact")) shouldBe Some(
-      "artefact_2.13"
-    )
-  }
-
-  "CrossVersion.for2_13Use3" should "have structural equality" in {
-    CrossVersion.for2_13Use3 shouldBe CrossVersion.for2_13Use3
-    CrossVersion.for2_13Use3With("_sjs1", "") shouldBe CrossVersion.for2_13Use3With("_sjs1", "")
-  }
-  it should "use the cross version 3 instead of 2.13" in {
-    CrossVersion(CrossVersion.for2_13Use3, "2.13.4", "2.13").map(_("artefact")) shouldBe Some(
-      "artefact_3"
-    )
-  }
+  private def constantVersion(value: String): Option[String] =
+    CrossVersion(CrossVersion.constant(value), "dummy1", "dummy2").map(fn => fn("artefact"))
 
   private def scalaInfo(platform: Option[String]) = ScalaModuleInfo(
     "2.13.15",
@@ -427,26 +249,6 @@ class CrossVersionTest extends UnitSpec:
     platform,
   )
 
-  private def named(module: ModuleID, platform: Option[String]) =
+  private def named(module: ModuleID, platform: Option[String]): Option[String] =
     CrossVersion(module, scalaInfo(platform)).map(_(module.name))
-
-  "CrossVersion(module, scalaModuleInfo)" should "name a JVM artifact with the cross suffix" in {
-    named("com.example" %% "foo" % "1.0", Some("jvm")) shouldBe Some("foo_2.13")
-  }
-  it should "put the platform suffix before the cross suffix" in {
-    named("com.example" %% "foo" % "1.0", Some("sjs1")) shouldBe Some("foo_sjs1_2.13")
-  }
-  it should "take the platform from the module over the project" in {
-    val m = ("com.example" %% "foo" % "1.0").platform("native0.5")
-    named(m, Some("sjs1")) shouldBe Some("foo_native0.5_2.13")
-  }
-  it should "add no platform suffix when there is no platform" in {
-    named("com.example" %% "foo" % "1.0", None) shouldBe Some("foo_2.13")
-  }
-  it should "name nothing when the module is not cross-versioned" in {
-    named(
-      ("com.example" % "foo" % "1.0").withCrossVersion(CrossVersion.disabled),
-      Some("sjs1")
-    ) shouldBe None
-  }
 end CrossVersionTest

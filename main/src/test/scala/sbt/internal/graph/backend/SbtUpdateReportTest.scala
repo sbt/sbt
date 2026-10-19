@@ -8,12 +8,102 @@
 
 package sbt.internal.graph.backend
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import sbt.internal.graph.GraphModuleId
-import sbt.librarymanagement.*
+import hedgehog.*
+import hedgehog.runner.*
+import _root_.sbt.internal.graph.{ GraphModuleId, ModuleGraph }
+import _root_.sbt.internal.librarymanagement.GenUpdateReport
+import _root_.sbt.librarymanagement.*
 
-class SbtUpdateReportTest extends AnyFlatSpec with Matchers:
+object SbtUpdateReportTest extends Properties:
+  override def tests: List[Test] = List(
+    example(
+      "fromConfigurationReport should handle relocated direct dependencies (#8400)",
+      testRelocatedDirect
+    ),
+    example(
+      "fromConfigurationReport should handle normal dependencies without relocation",
+      testNormal
+    ),
+    example(
+      "fromConfigurationReport should handle transitive relocated dependencies",
+      testTransitiveRelocated
+    ),
+    property(
+      "fromConfigurationReport has the root followed by every module in details as nodes",
+      propNodes
+    ),
+    property(
+      "fromConfigurationReport only draws edges between nodes of the graph",
+      propEdgesClosed
+    ),
+    property("fromConfigurationReport draws each edge once", propEdgesDistinct),
+    property(
+      "fromConfigurationReport draws an edge per caller, from the root when the caller is not a node",
+      propEdgesFromCallers
+    ),
+    property(
+      "fromConfigurationReport marks an evicted module with the version chosen in its group",
+      propEvictedByVersion
+    ),
+  )
+
+  def gid(m: ModuleID): GraphModuleId = GraphModuleId(m.organization, m.name, m.revision)
+
+  def genRoot: Gen[ModuleID] =
+    for
+      name <- Gen.element1("app", "core", "root")
+      version <- Gen.element1("0.1.0-SNAPSHOT", "1.0.0")
+    yield ModuleID("test", name, version)
+
+  def forAllGraphs(
+      f: (ConfigurationReport, ModuleID, ModuleGraph) => Result
+  ): Property =
+    for
+      cr <- GenUpdateReport.genConfigName
+        .flatMap(GenUpdateReport.genConfigurationReport)
+        .forAll
+      root <- genRoot.forAll
+    yield f(cr, root, SbtUpdateReport.fromConfigurationReport(cr, root))
+
+  def propNodes: Property =
+    forAllGraphs: (cr, root, graph) =>
+      graph.nodes
+        .map(_.id) ==== (gid(root) +: cr.details.flatMap(_.modules).map(r => gid(r.module)))
+
+  def propEdgesClosed: Property =
+    forAllGraphs: (_, _, graph) =>
+      val ids = graph.nodes.map(_.id).toSet
+      Result.all(
+        graph.edges.toList.map: (from, to) =>
+          Result.assert(ids(from) && ids(to)).log(s"dangling edge $from -> $to")
+      )
+
+  def propEdgesDistinct: Property =
+    forAllGraphs: (_, _, graph) =>
+      graph.edges.distinct ==== graph.edges
+
+  def propEdgesFromCallers: Property =
+    forAllGraphs: (cr, root, graph) =>
+      val ids = graph.nodes.map(_.id).toSet
+      val expected =
+        for
+          oar <- cr.details
+          mr <- oar.modules
+          c <- mr.callers
+        yield
+          val from = gid(c.caller)
+          (if ids(from) then from else gid(root), gid(mr.module))
+      graph.edges.toSet ==== expected.toSet
+
+  def propEvictedByVersion: Property =
+    forAllGraphs: (cr, _, graph) =>
+      Result.all(
+        cr.details.toList.flatMap: oar =>
+          val chosen = oar.modules.find(!_.evicted).map(_.module.revision)
+          oar.modules.toList.map: mr =>
+            graph.module(gid(mr.module)).flatMap(_.evictedByVersion) ====
+              Option.when(mr.evicted)(chosen).flatten
+      )
 
   def caller(org: String, name: String, version: String): Caller =
     Caller(
@@ -38,8 +128,7 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers:
       missingArtifacts = Vector.empty
     ).withCallers(callers)
 
-  // #8400
-  "fromConfigurationReport" should "handle relocated direct dependencies" in {
+  def testRelocatedDirect: Result =
     val root = ModuleID("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val relocatedReport = moduleReport(
       "at.yawk.lz4",
@@ -57,14 +146,18 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers:
 
     val graph = SbtUpdateReport.fromConfigurationReport(configReport, root)
 
-    graph.nodes.size shouldBe 2
     val rootId = GraphModuleId("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val relocatedId = GraphModuleId("at.yawk.lz4", "lz4-java", "1.8.1")
-    graph.edges should contain((rootId, relocatedId))
-    graph.dependencyMap(rootId).map(_.id) should contain(relocatedId)
-  }
+    Result.all(
+      List(
+        graph.nodes.size ==== 2,
+        Result.assert(graph.edges.contains((rootId, relocatedId))).log(s"edges: ${graph.edges}"),
+        Result.assert(graph.dependencyMap(rootId).map(_.id).contains(relocatedId)),
+      )
+    )
+  end testRelocatedDirect
 
-  it should "handle normal dependencies without relocation" in {
+  def testNormal: Result =
     val root = ModuleID("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val normalReport = moduleReport(
       "org.example",
@@ -82,13 +175,17 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers:
 
     val graph = SbtUpdateReport.fromConfigurationReport(configReport, root)
 
-    graph.nodes.size shouldBe 2
     val rootId = GraphModuleId("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val depId = GraphModuleId("org.example", "example-lib", "1.0.0")
-    graph.edges should contain((rootId, depId))
-  }
+    Result.all(
+      List(
+        graph.nodes.size ==== 2,
+        Result.assert(graph.edges.contains((rootId, depId))).log(s"edges: ${graph.edges}"),
+      )
+    )
+  end testNormal
 
-  it should "handle transitive relocated dependencies" in {
+  def testTransitiveRelocated: Result =
     val root = ModuleID("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val depA = moduleReport(
       "org.example",
@@ -112,11 +209,15 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers:
 
     val graph = SbtUpdateReport.fromConfigurationReport(configReport, root)
 
-    graph.nodes.size shouldBe 3
     val rootId = GraphModuleId("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val depAId = GraphModuleId("org.example", "dep-a", "1.0.0")
     val relocatedBId = GraphModuleId("new.group", "dep-b", "2.0.0")
-    graph.edges should contain((rootId, depAId))
-    graph.edges should contain((rootId, relocatedBId))
-  }
+    Result.all(
+      List(
+        graph.nodes.size ==== 3,
+        Result.assert(graph.edges.contains((rootId, depAId))).log(s"edges: ${graph.edges}"),
+        Result.assert(graph.edges.contains((rootId, relocatedBId))).log(s"edges: ${graph.edges}"),
+      )
+    )
+  end testTransitiveRelocated
 end SbtUpdateReportTest

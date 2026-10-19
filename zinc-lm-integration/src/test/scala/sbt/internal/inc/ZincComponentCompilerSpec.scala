@@ -11,7 +11,7 @@ package sbt.internal.inc
 import sbt.internal.util.ConsoleLogger
 import sbt.io.IO
 
-class ZincComponentCompilerSpec extends BridgeProviderSpecification:
+object ZincComponentCompilerSpec extends BridgeProviderSpecification:
   val scala2107 = "2.10.7"
   val scala21112 = "2.11.12"
   val scala21221 = "2.12.21"
@@ -19,19 +19,15 @@ class ZincComponentCompilerSpec extends BridgeProviderSpecification:
 
   val logger = ConsoleLogger()
 
-  it should "compile the bridge for Scala 2.10.7" in { case given FixtureParam =>
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala2107) should exist)
-  }
+  test("compile the bridge for Scala 2.10.7"):
+    IO.withTemporaryDirectory(t => assert(getCompilerBridge(t, logger, scala2107).exists))
 
-  it should "compile the bridge for Scala 2.11.12" in { case given FixtureParam =>
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala21112) should exist)
-  }
+  test("compile the bridge for Scala 2.11.12"):
+    IO.withTemporaryDirectory(t => assert(getCompilerBridge(t, logger, scala21112).exists))
 
-  it should "compile the bridge for Scala 2.12.21" in { case given FixtureParam =>
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala21221) should exist)
-  }
+  test("compile the bridge for Scala 2.12.21"):
+    IO.withTemporaryDirectory(t => assert(getCompilerBridge(t, logger, scala21221).exists))
 
-  it should "compile the bridge for Scala 2.13.11" in { case given FixtureParam =>
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala21311) should exist)
-  }
+  test("compile the bridge for Scala 2.13.11"):
+    IO.withTemporaryDirectory(t => assert(getCompilerBridge(t, logger, scala21311).exists))
 end ZincComponentCompilerSpec

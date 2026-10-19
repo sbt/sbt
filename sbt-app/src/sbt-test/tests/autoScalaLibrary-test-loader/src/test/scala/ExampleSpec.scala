@@ -1,8 +1,5 @@
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import verify.BasicTestSuite
 
-class ExampleSpec extends AnyFlatSpec with Matchers {
-  "test with autoScalaLibrary false" should "use project classpath only" in {
-    1 shouldBe 1
-  }
-}
+object ExampleSpec extends BasicTestSuite:
+  test("test with autoScalaLibrary false should use project classpath only"):
+    assert(1 == 1)
