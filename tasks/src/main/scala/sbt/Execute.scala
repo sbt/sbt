@@ -8,7 +8,9 @@
 
 package sbt
 
-import java.util.concurrent.ExecutionException
+import java.util.concurrent.{ ExecutionException, TimeUnit }
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.function.BooleanSupplier
 
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap }
@@ -39,6 +41,8 @@ private[sbt] object Execute:
   final val checkPreAndPostConditions =
     sys.props.get("sbt.execute.extrachecks").exists(java.lang.Boolean.parseBoolean)
 
+  private val workReportWaitMillis = 1000L
+
 sealed trait Completed:
   def process(): Unit
 
@@ -65,6 +69,9 @@ private[sbt] final class Execute(
   private val state = taskMap[State]
   private val viewCache = taskPMap[Node]
   private val results = taskPMap[Result]
+  private val reporting = new ReentrantReadWriteLock
+  @volatile private var aborted = false
+  private val stopsWorkReports: BooleanSupplier = () => aborted
 
   private val getResult: [A] => TaskId[A] => Result[A] = [A] =>
     (a: TaskId[A]) =>
@@ -87,13 +94,55 @@ private[sbt] final class Execute(
   def runKeep[A](root: TaskId[A])(using strategy: CompletionService): RMap[TaskId, Result] =
     assert(state.isEmpty, "Execute already running/ran.")
 
-    addNew(root)
-    processAll()
-    assert(results.contains(root), "No result for root node.")
-    val finalResults = triggers.onComplete(results)
+    val finalResults =
+      try
+        addNew(root)
+        processAll()
+        assert(results.contains(root), "No result for root node.")
+        triggers.onComplete(results)
+      catch
+        case e: Throwable =>
+          try abort()
+          catch
+            case failure: Throwable =>
+              if failure.isInstanceOf[InterruptedException] then Thread.currentThread.interrupt()
+              if failure ne e then e.addSuppressed(failure)
+          throw e
     progress.afterAllCompleted(finalResults)
     progress.stop()
     finalResults
+
+  private def abort(): Unit =
+    aborted = true
+    awaitWorkReports()
+    progress.afterAborted(state.keys.toVector)
+
+  /**
+   * Waits for `beforeWork` and `afterWork` calls that started before the abort. The wait is
+   * bounded, because such a call can block until its thread is interrupted, which an ordinary
+   * shutdown does only after the evaluation has ended. An interrupt doesn't end the wait early; it
+   * is restored afterwards.
+   */
+  private def awaitWorkReports(): Unit =
+    val lock = reporting.writeLock
+    val deadline = System.nanoTime + TimeUnit.MILLISECONDS.toNanos(workReportWaitMillis)
+    @tailrec def await(interrupted: Boolean): Boolean =
+      val remaining = deadline - System.nanoTime
+      val locked =
+        try Right(remaining > 0 && lock.tryLock(remaining, TimeUnit.NANOSECONDS))
+        catch case e: InterruptedException => Left(e)
+      locked match
+        case Right(acquired) =>
+          if acquired then lock.unlock()
+          interrupted
+        case Left(_) => await(interrupted = true)
+    if await(interrupted = false) then Thread.currentThread.interrupt()
+
+  private def reportWork(report: => Unit): Unit =
+    val lock = reporting.readLock
+    lock.lock()
+    try if !aborted then ExecuteProgress.reportingWork(stopsWorkReports)(report)
+    finally lock.unlock()
 
   def processAll()(using strategy: CompletionService): Unit =
     @tailrec def next(): Unit =
@@ -272,13 +321,13 @@ private[sbt] final class Execute(
   def work[A](node: TaskId[A], f: => Either[TaskId[A], A])(using
       strategy: CompletionService
   ): Completed =
-    progress.beforeWork(node)
+    reportWork(progress.beforeWork(node))
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if config.overwriteNode(i) then i.copy(node = Some(node)) else i
       case e             => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
     }
     val result = rewrap(rawResult)
-    progress.afterWork(node, result)
+    reportWork(progress.afterWork(node, result))
     completed {
       result match
         case Right(v)     => retire(node, v)
