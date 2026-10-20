@@ -243,6 +243,15 @@ object LoggerContext {
       }
       toClose.foreach(_.close())
     }
+    private[util] def releasedAppenders: Set[Appender] =
+      released.synchronized(released.asScala.toSet)
+    private[util] def closedAppenderSet: Set[Appender] =
+      released.synchronized(closedAppenders.asScala.toSet)
+    private[util] def bridgeableReferences: Vector[WeakReference[Appender]] =
+      released.synchronized(bridgeable.asScala.toVector)
+    private[util] def drainCollected(): Int =
+      released.synchronized(Iterator.continually(collected.poll()).takeWhile(_ != null).size)
+    private[util] def holdingReleaseLock[A](body: => A): A = released.synchronized(body)
   }
   private final class WeakIdentity(appender: Appender, queue: ReferenceQueue[Appender])
       extends WeakReference[Appender](appender, queue) {

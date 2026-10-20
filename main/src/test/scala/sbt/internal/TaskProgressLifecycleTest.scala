@@ -8,7 +8,7 @@
 
 package sbt.internal
 
-import java.util.concurrent.{ CancellationException, CountDownLatch, ThreadPoolExecutor, TimeUnit }
+import java.util.concurrent.{ CancellationException, CountDownLatch, TimeUnit }
 import java.util.concurrent.atomic.AtomicReference
 import hedgehog.Result
 import hedgehog.runner._
@@ -16,7 +16,6 @@ import sbt.{ Result => TaskResult, Task, Value }
 import sbt.internal.util.{ PMap, Util }
 import sbt.std.TaskExtra._
 import sbt.util.Logger
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 
 object TaskProgressLifecycleTest extends Properties {
@@ -51,34 +50,11 @@ object TaskProgressLifecycleTest extends Properties {
     try f(resource)
     finally resource.close()
 
-  private def fields(value: AnyRef): Iterator[(String, AnyRef)] =
-    Iterator
-      .iterate[Class[_]](value.getClass)(_.getSuperclass)
-      .takeWhile(_ != null)
-      .flatMap(_.getDeclaredFields)
-      .map { field =>
-        field.setAccessible(true)
-        field.getName.split("\\$").last -> field.get(value)
-      }
-
-  private def pool(progress: TaskProgress, name: String): ThreadPoolExecutor =
-    fields(progress).collectFirst { case (`name`, e: ThreadPoolExecutor) => e }.get
-
-  private def awaitCallbacks(progress: TaskProgress): Unit =
-    Util.ignoreResult(
-      pool(progress, "executor").submit((() => ()): Runnable).get(10, TimeUnit.SECONDS)
-    )
-
   private val metadata = Set("active", "anonOwners", "calledBy", "taskNameCache", "timings")
 
-  private def keys(progress: TaskProgress): Map[String, Set[Any]] = {
-    val maps = fields(progress).collect {
-      case (name, map: java.util.Map[_, _]) => name -> map.keySet.asScala.toSet[Any]
-    }.toMap
-    assert(
-      metadata.subsetOf(maps.keySet),
-      s"task progress maps not found: ${metadata -- maps.keySet}"
-    )
+  private def keys(progress: TaskProgress): Map[String, Set[Task[_]]] = {
+    val maps = progress.retainedTaskMetadata
+    assert(maps.keySet == metadata, s"unexpected task progress metadata: ${maps.keySet}")
     maps
   }
 
@@ -96,7 +72,7 @@ object TaskProgressLifecycleTest extends Properties {
     val results = PMap.empty[Task, TaskResult]
     tasks.foreach(t => results(t) = Value(()))
     progress.afterAllCompleted(results)
-    awaitCallbacks(progress)
+    progress.awaitIdle()
   }
 
   private def completedEvaluations: Result =
@@ -141,24 +117,23 @@ object TaskProgressLifecycleTest extends Properties {
       p.afterWork(t, Right(Value(())))
       p.afterCompleted(t, Value(()))
       release.countDown()
-      awaitCallbacks(p)
+      p.awaitIdle()
       Result.assert(retained(p).isEmpty).log(retained(p).toString)
     }
   }
 
   private def cancelledSchedules: Result =
     using(progress()) { p =>
-      val scheduled = pool(p, "scheduler").getQueue
       val sizes = (1 to 10).map { _ =>
         val t = task(())
         p.afterReady(t)
         p.beforeWork(t)
-        awaitCallbacks(p)
-        val running = scheduled.size
+        p.awaitIdle()
+        val running = p.scheduledReports
         p.afterWork(t, Right(Value(())))
         p.afterCompleted(t, Value(()))
         complete(p, t)
-        running -> scheduled.size
+        running -> p.scheduledReports
       }
       Result.assert(sizes.forall(_ == ((2, 0)))).log(sizes.toString)
     }
@@ -181,15 +156,14 @@ object TaskProgressLifecycleTest extends Properties {
       }
     }
     using(p) { p =>
-      val scheduler = pool(p, "scheduler")
       p.afterReady(blocker)
       assert(entered.await(10, TimeUnit.SECONDS))
-      val ticks = scheduler.getCompletedTaskCount + 100
+      val ticks = p.scheduledReportRuns + 100
       p.beforeWork(task(()))
       val deadline = 10.seconds.fromNow
-      while (scheduler.getCompletedTaskCount < ticks && deadline.hasTimeLeft()) Thread.sleep(10)
-      val ticked = scheduler.getCompletedTaskCount >= ticks
-      val queued = pool(p, "executor").getQueue.size
+      while (p.scheduledReportRuns < ticks && deadline.hasTimeLeft()) Thread.sleep(10)
+      val ticked = p.scheduledReportRuns >= ticks
+      val queued = p.queuedCallbacks
       release.countDown()
       Result.assert(ticked && queued == 1).log(s"ticked=$ticked queued=$queued")
     }
@@ -203,7 +177,7 @@ object TaskProgressLifecycleTest extends Properties {
       p.afterReady(outer)
       p.beforeWork(outer)
       finish(p, called)
-      awaitCallbacks(p)
+      p.awaitIdle()
       p.afterReady(owner)
       p.beforeWork(owner)
       p.afterWork(owner, Left(called))
@@ -211,7 +185,7 @@ object TaskProgressLifecycleTest extends Properties {
       complete(p, owner, called)
       val timed = p.activeTasks(System.nanoTime()).map(_._1)
       val displayed = keys(p)("active")
-      val inner = keys(p).values.flatten.filter(Set[Any](owner, called))
+      val inner = keys(p).values.flatten.filter(Set[Task[_]](owner, called))
       p.afterWork(outer, Right(Value(())))
       p.afterCompleted(outer, Value(()))
       complete(p, outer)
@@ -228,7 +202,7 @@ object TaskProgressLifecycleTest extends Properties {
       val owner = task(()).named("compile")
       val called = task(())
       finish(p, called)
-      awaitCallbacks(p)
+      p.awaitIdle()
       p.afterReady(owner)
       p.beforeWork(owner)
       p.afterWork(owner, Left(called))
@@ -279,7 +253,7 @@ object TaskProgressLifecycleTest extends Properties {
         } finally Util.ignoreResult(Thread.interrupted())
       assert(entered.await(10, TimeUnit.SECONDS))
       release.countDown()
-      awaitCallbacks(p)
+      p.awaitIdle()
       Result
         .assert(thrown.isEmpty && interrupted && retained(p).isEmpty)
         .log(s"thrown=$thrown interrupted=$interrupted retained=${retained(p)}")
@@ -288,15 +262,26 @@ object TaskProgressLifecycleTest extends Properties {
 
   private def interruptedReuse: Result = {
     val entered, release = new CountDownLatch(1)
-    using(progress()) { p =>
+    val observer = Thread.currentThread()
+    val blocker = task(())
+    val p = new TaskProgress(1.hour, 1.hour, Logger.Null) {
+      override protected def taskName(t: Task[_]): String = {
+        if ((t eq blocker) && (Thread.currentThread() ne observer)) {
+          entered.countDown()
+          release.await()
+        }
+        super.taskName(t)
+      }
+      override def close(): Unit = {
+        release.countDown()
+        super.close()
+      }
+    }
+    using(p) { p =>
       val t = task(())
       finish(p, t)
-      awaitCallbacks(p)
-      val blocker: Runnable = () => {
-        entered.countDown()
-        release.await()
-      }
-      Util.ignoreResult(pool(p, "executor").submit(blocker))
+      p.awaitIdle()
+      p.afterReady(blocker)
       assert(entered.await(10, TimeUnit.SECONDS))
       val results = PMap.empty[Task, TaskResult]
       results(t) = Value(())
@@ -306,11 +291,12 @@ object TaskProgressLifecycleTest extends Properties {
       p.afterReady(t)
       p.beforeWork(t)
       release.countDown()
-      awaitCallbacks(p)
+      p.awaitIdle()
       val timed = p.activeTasks(System.nanoTime()).map(_._1)
       p.afterWork(t, Right(Value(())))
       p.afterCompleted(t, Value(()))
-      complete(p, t)
+      p.afterCompleted(blocker, Value(()))
+      complete(p, t, blocker)
       Result
         .assert(timed == Vector(t) && retained(p).isEmpty)
         .log(s"timed=$timed retained=${retained(p)}")

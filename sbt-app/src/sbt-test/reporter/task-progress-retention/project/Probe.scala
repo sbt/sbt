@@ -1,6 +1,6 @@
 package sbt.taskprogressretention
 
-import java.util.concurrent.{ ConcurrentLinkedQueue, ExecutorService, TimeUnit }
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import sbt._
 import sbt.Keys._
@@ -16,7 +16,7 @@ object Probe {
       logger: String,
       appender: Appender,
       context: LoggerContext,
-      progress: AnyRef
+      progress: sbt.internal.TaskProgress
   )
 
   private val evaluations = 20
@@ -62,31 +62,12 @@ object Probe {
     cleared && context.appenders(name).isEmpty
   }
 
-  private def fields(progress: AnyRef): Map[String, AnyRef] =
-    Iterator
-      .iterate[Class[_]](progress.getClass)(_.getSuperclass)
-      .takeWhile(_ != null)
-      .flatMap(_.getDeclaredFields)
-      .map { field =>
-        field.setAccessible(true)
-        field.getName.split("\\$").last -> field.get(progress)
-      }
-      .toMap
+  private def awaitProgress(s: State): Unit = progressOf(s).awaitIdle()
 
-  private def awaitProgress(s: State): Unit =
-    fields(progressOf(s)).get("executor") match {
-      case Some(executor: ExecutorService) =>
-        executor.submit((() => ()): Runnable).get(10, TimeUnit.SECONDS)
-        ()
-      case other => sys.error(s"task progress executor not found: $other")
-    }
-
-  private def retained(progress: AnyRef): Map[String, Int] = {
-    val maps = fields(progress).collect {
-      case (name, map: java.util.Map[_, _]) if metadata(name) => name -> map.size
-    }
-    assert(maps.keySet == metadata, s"task progress fields not found: ${metadata -- maps.keySet}")
-    maps.filter(_._2 > 0)
+  private def retained(progress: sbt.internal.TaskProgress): Map[String, Int] = {
+    val maps = progress.retainedTaskMetadata
+    assert(maps.keySet == metadata, s"unexpected task progress metadata: ${maps.keySet}")
+    maps.collect { case (name, tasks) if tasks.nonEmpty => name -> tasks.size }
   }
 
   private def evaluateRepeatedly = Command.command("evaluateRepeatedly") { s =>

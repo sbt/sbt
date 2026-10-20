@@ -9,14 +9,12 @@
 package sbt.std
 
 import java.io.{ PrintWriter, StringWriter }
-import java.lang.ref.{ Reference, ReferenceQueue }
 import java.util.concurrent.atomic.AtomicInteger
 import hedgehog.Result
 import hedgehog.runner._
 import sbt.internal.util.{ Appender, BufferedAppender, ConsoleAppender, ConsoleOut, Util }
 import sbt.io.IO
-import sbt.util.{ Level, LoggerContext }
-import scala.collection.JavaConverters._
+import sbt.util.{ Level, LoggerContext, LoggerContextAccess }
 import scala.concurrent.duration._
 
 object StreamsTest extends Properties {
@@ -82,23 +80,8 @@ object StreamsTest extends Properties {
       f: (CloseableStreams[String], LoggerContext, java.io.File) => Result
   ): Result = withContext(shared)(f)
 
-  private def field[A](context: LoggerContext, name: String): A =
-    context.getClass.getDeclaredFields
-      .find(_.getName.split("\\$").last == name)
-      .map { field =>
-        field.setAccessible(true)
-        field.get(context).asInstanceOf[A]
-      }
-      .getOrElse(sys.error(s"$name not found"))
-
-  private def identitySet(context: LoggerContext, name: String): java.util.Set[_] =
-    field[java.util.Set[_]](context, name)
-
-  private def releasedSet(context: LoggerContext): java.util.Set[_] =
-    identitySet(context, "released")
-
   private def released(context: LoggerContext): Set[Any] =
-    releasedSet(context).asScala.toSet[Any]
+    LoggerContextAccess.released(context).toSet[Any]
 
   private def unregistered(context: LoggerContext, name: String, probe: Appender): Boolean = {
     val cleared = context.appenders(name).isEmpty
@@ -189,7 +172,7 @@ object StreamsTest extends Properties {
   ): (Boolean, A) = {
     val releasing = new Thread(() => release())
     releasing.setDaemon(true)
-    val (blocked, result) = releasedSet(context).synchronized {
+    val (blocked, result) = LoggerContextAccess.holdingReleaseLock(context) {
       releasing.start()
       val deadline = 10.seconds.fromNow
       def blocking = releasing.getState == Thread.State.BLOCKED
@@ -305,16 +288,13 @@ object StreamsTest extends Properties {
     val stream = streams("compile")
     stream.log.info("compile")
     stream.close()
-    val tracked = identitySet(context, "bridgeable").asScala.toList.collect {
-      case r: Reference[_] => r
-    }
+    val tracked = LoggerContextAccess.bridgeable(context)
     tracked.foreach { r =>
       r.clear()
       Util.ignoreResult(r.enqueue())
     }
     context.close()
-    val collected = field[ReferenceQueue[_]](context, "collected")
-    val left = Iterator.continually(collected.poll()).takeWhile(_ != null).size
+    val left = LoggerContextAccess.drainCollected(context)
     Result.assert(tracked.size == 1 && left == 0).log(s"tracked=${tracked.size} left=$left")
   }
 
@@ -343,7 +323,7 @@ object StreamsTest extends Properties {
       managed("open").log.info("open")
       released.close()
       context.close()
-      val kept = identitySet(context, "closedAppenders").asScala.toSet[Any]
+      val kept = LoggerContextAccess.closedAppenders(context).toSet[Any]
       Result
         .assert(kept == Set[Any](probe.appender) && probe.closes.get == 1)
         .log(s"kept=$kept $probe")
