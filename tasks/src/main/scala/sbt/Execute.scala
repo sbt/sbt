@@ -18,6 +18,7 @@ import sbt.internal.util.Util.nilSeq
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
+import scala.util.control.NonFatal
 import mutable.Map
 
 private[sbt] object Execute:
@@ -65,6 +66,7 @@ private[sbt] final class Execute(
   private val state = taskMap[State]
   private val viewCache = taskPMap[Node]
   private val results = taskPMap[Result]
+  @volatile private var aborted = false
 
   private val getResult: [A] => TaskId[A] => Result[A] = [A] =>
     (a: TaskId[A]) =>
@@ -87,13 +89,26 @@ private[sbt] final class Execute(
   def runKeep[A](root: TaskId[A])(using strategy: CompletionService): RMap[TaskId, Result] =
     assert(state.isEmpty, "Execute already running/ran.")
 
-    addNew(root)
-    processAll()
-    assert(results.contains(root), "No result for root node.")
-    val finalResults = triggers.onComplete(results)
+    val finalResults =
+      try
+        addNew(root)
+        processAll()
+        assert(results.contains(root), "No result for root node.")
+        triggers.onComplete(results)
+      catch
+        case e: Throwable =>
+          aborted = true
+          try progress.afterAborted(state.keys.toVector)
+          catch
+            case failure: InterruptedException =>
+              Thread.currentThread.interrupt()
+              if failure ne e then e.addSuppressed(failure)
+            case NonFatal(failure) => if failure ne e then e.addSuppressed(failure)
+          throw e
     progress.afterAllCompleted(finalResults)
     progress.stop()
     finalResults
+  end runKeep
 
   def processAll()(using strategy: CompletionService): Unit =
     @tailrec def next(): Unit =
@@ -272,13 +287,13 @@ private[sbt] final class Execute(
   def work[A](node: TaskId[A], f: => Either[TaskId[A], A])(using
       strategy: CompletionService
   ): Completed =
-    progress.beforeWork(node)
+    if !aborted then progress.beforeWork(node)
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if config.overwriteNode(i) then i.copy(node = Some(node)) else i
       case e             => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
     }
     val result = rewrap(rawResult)
-    progress.afterWork(node, result)
+    if !aborted then progress.afterWork(node, result)
     completed {
       result match
         case Right(v)     => retire(node, v)
