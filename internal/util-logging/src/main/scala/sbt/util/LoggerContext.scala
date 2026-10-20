@@ -134,6 +134,11 @@ object LoggerContext:
         all.filterNot(LoggerContext.closesTrivially).foreach(closedAppenders.add)
         all
       toClose.foreach(_.close())
+    private[util] def releasedAppenders: Set[Appender] =
+      released.synchronized(released.asScala.toSet)
+    private[util] def closedAppenderSet: Set[Appender] =
+      released.synchronized(closedAppenders.asScala.toSet)
+    private[util] def holdingReleaseLock[A](body: => A): A = released.synchronized(body)
   end LoggerContextImpl
   private val trivialClose = new ClassValue[java.lang.Boolean]:
     override def computeValue(c: Class[?]): java.lang.Boolean =

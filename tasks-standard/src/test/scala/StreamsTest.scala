@@ -14,9 +14,8 @@ import hedgehog.Result
 import hedgehog.runner.*
 import sbt.internal.util.{ Appender, ConsoleAppender, ConsoleOut, Util }
 import sbt.io.IO
-import sbt.util.{ Level, LoggerContext }
+import sbt.util.{ Level, LoggerContext, LoggerContextAccess }
 import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
 object StreamsTest extends Properties:
@@ -63,19 +62,8 @@ object StreamsTest extends Properties:
         Using.resource(Streams.closeable(streams(dir, context, shared))): managed =>
           f(managed, context, dir)
 
-  private def identitySet(context: LoggerContext, name: String): java.util.Set[?] =
-    context.getClass.getDeclaredFields
-      .find(_.getName.split("\\$").last == name)
-      .map: field =>
-        field.setAccessible(true)
-        field.get(context).asInstanceOf[java.util.Set[?]]
-      .getOrElse(sys.error(s"$name appenders not found"))
-
-  private def releasedSet(context: LoggerContext): java.util.Set[?] =
-    identitySet(context, "released")
-
   private def released(context: LoggerContext): Set[Any] =
-    releasedSet(context).asScala.toSet[Any]
+    LoggerContextAccess.released(context).toSet[Any]
 
   private def unregistered(context: LoggerContext, name: String, probe: Appender): Boolean =
     val cleared = context.appenders(name).isEmpty
@@ -162,7 +150,7 @@ object StreamsTest extends Properties:
           if otherOpen then managed("other").log.info("other")
           val releasing = new Thread(() => stream.close())
           releasing.setDaemon(true)
-          val blocked = releasedSet(context).synchronized:
+          val blocked = LoggerContextAccess.holdingReleaseLock(context):
             releasing.start()
             val deadline = 10.seconds.fromNow
             while releasing.getState != Thread.State.BLOCKED && deadline.hasTimeLeft() do
@@ -201,7 +189,7 @@ object StreamsTest extends Properties:
           managed("open").log.info("open")
           released.close()
           context.close()
-          val kept = identitySet(context, "closedAppenders").asScala.toSet[Any]
+          val kept = LoggerContextAccess.closedAppenders(context).toSet[Any]
           Result
             .assert(kept == Set[Any](probe.appender) && probe.closes.get == 1)
             .log(s"kept=$kept $probe")

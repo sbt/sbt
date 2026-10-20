@@ -107,6 +107,14 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     taskNameCache.clear()
     timings.clear()
 
+  private[sbt] def retainedTaskMetadata: Map[String, Set[TaskId[?]]] =
+    Map(
+      "anonOwners" -> anonOwners.keySet.asScala.toSet,
+      "calledBy" -> calledBy.keySet.asScala.toSet,
+      "taskNameCache" -> taskNameCache.keySet.asScala.toSet,
+      "timings" -> timings.keySet.asScala.toSet,
+    )
+
   protected def taskName(t: TaskId[?]): String = taskNameCache.get(t) match
     case null =>
       val name = taskName0(t)

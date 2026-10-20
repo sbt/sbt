@@ -109,6 +109,14 @@ private[sbt] class TaskProgress(
   override protected def clearTimings: Boolean = true
   override def initial(): Unit = ()
 
+  override private[sbt] def retainedTaskMetadata: Map[String, Set[TaskId[?]]] =
+    super.retainedTaskMetadata.updated("active", active.keySet.asScala.toSet)
+  private[sbt] def awaitIdle(): Unit =
+    Util.ignoreResult(executor.submit((() => ()): Runnable).get(10, TimeUnit.SECONDS))
+  private[sbt] def queuedCallbacks: Int = executor.getQueue.size
+  private[sbt] def scheduledReports: Int = scheduler.getQueue.size
+  private[sbt] def scheduledReportRuns: Long = scheduler.getCompletedTaskCount
+
   private def doReport(): Unit =
     if !closed.get && nextReport.get.isOverdue() && reportPending.compareAndSet(false, true) then
       try
