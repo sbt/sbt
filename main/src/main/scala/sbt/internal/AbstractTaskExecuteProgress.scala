@@ -95,6 +95,26 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     }
 
   private val taskNameCache = new ConcurrentHashMap[TaskId[?], String]
+  protected def clearTask(task: TaskId[?]): Unit =
+    anonOwners.remove(task)
+    calledBy.remove(task)
+    taskNameCache.remove(task)
+    ()
+
+  protected def clearTasks(): Unit =
+    anonOwners.clear()
+    calledBy.clear()
+    taskNameCache.clear()
+    timings.clear()
+
+  private[sbt] def retainedTaskMetadata: Map[String, Set[TaskId[?]]] =
+    Map(
+      "anonOwners" -> anonOwners.keySet.asScala.toSet,
+      "calledBy" -> calledBy.keySet.asScala.toSet,
+      "taskNameCache" -> taskNameCache.keySet.asScala.toSet,
+      "timings" -> timings.keySet.asScala.toSet,
+    )
+
   protected def taskName(t: TaskId[?]): String = taskNameCache.get(t) match
     case null =>
       val name = taskName0(t)
