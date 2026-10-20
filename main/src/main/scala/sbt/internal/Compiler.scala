@@ -10,12 +10,18 @@ package sbt
 package internal
 
 import java.io.{ File, PrintWriter }
-import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.nio.file.{ Files, InvalidPathException, Path, Paths, StandardCopyOption }
 import java.util.{ ArrayList, Optional }
 import sbt.BuildExtra.*
 import sbt.Keys.Classpath
 import sbt.internal.CommandStrings
-import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ScalaInstance, ZincLmUtil }
+import sbt.internal.inc.{
+  Analysis,
+  AnalyzingCompiler,
+  MappedFileConverter,
+  ScalaInstance,
+  ZincLmUtil
+}
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
 import sbt.internal.worker1.{ ConsoleInfo, WorkerMain }
@@ -666,6 +672,36 @@ object Compiler:
         case None           => value
 
     options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
+
+  /**
+   * Converts the output paths sbt passes scalac, the `-Ypickle-write` jar and the SemanticDB target
+   * root, to `${OUT}` ids, so that the compile cache key does not name one checkout. Every other
+   * option is kept as written, since a path in it may name an input whose content the key does
+   * not capture.
+   */
+  private[sbt] def virtualizeScalacOptions(
+      options: Seq[String],
+      rootPaths: Map[String, Path]
+  ): Seq[String] =
+    rootPaths.get("OUT") match
+      case None      => options
+      case Some(out) =>
+        val converter = MappedFileConverter(Map("OUT" -> out), allowMachinePath = true)
+        val targetRoot = "-P:semanticdb:targetroot:"
+        def toId(value: String): String =
+          try
+            val path = Paths.get(value)
+            if path.startsWith(out) then converter.toVirtualFile(path).id else value
+          catch case _: InvalidPathException => value
+        def loop(options: Seq[String]): Seq[String] =
+          options match
+            case (flag @ ("-Ypickle-write" | "-semanticdb-target")) +: value +: rest =>
+              flag +: toId(value) +: loop(rest)
+            case head +: rest if head.startsWith(targetRoot) =>
+              (targetRoot + toId(head.stripPrefix(targetRoot))) +: loop(rest)
+            case head +: rest => head +: loop(rest)
+            case _            => Seq.empty
+        loop(options)
 
   /**
    * Deletes restored outputs whose CAS blob is gone (sbt/sbt#9849): a dangling analysis together

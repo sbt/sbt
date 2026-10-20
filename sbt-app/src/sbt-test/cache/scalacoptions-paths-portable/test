@@ -1,0 +1,7 @@
+# A compile cache key names ${OUT} rather than the absolute path behind it, so moving the build's
+# output directory must leave the key alone. -Ypickle-write (pipelining) and -semanticdb-target
+# (semanticdbEnabled) carry absolute paths under ${OUT} in scalacOptions.
+> b/Test/compile
+> set Global / rootOutputDirectory := (baseDirectory.value / "out2").toPath
+> b/Test/compile
+> checkHit

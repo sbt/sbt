@@ -1000,7 +1000,7 @@ object Defaults extends BuildCommon with DefExtra:
           CompileInputs2(
             packedBackendOutput +: data(dependencyClasspath.value).toVector,
             sourcesVF.value,
-            scalacOptions.value.toVector,
+            Compiler.virtualizeScalacOptions(scalacOptions.value, rootPaths.value).toVector,
             javacOptions.value.toVector,
             outputPath.value + prefix(configuration.value.name),
             c.toVirtualFile(inputs.setup.cacheFile.toPath),
@@ -1122,7 +1122,7 @@ object Defaults extends BuildCommon with DefExtra:
           else Def.uncached(old)
         else Def.uncached(old)
       },
-      scalacOptions := {
+      scalacOptions := Def.uncached {
         val old = scalacOptions.value
         if sbtPlugin.value && VersionNumber(scalaVersion.value)
             .matchesSemVer(SemanticSelector("=2.12"))
@@ -2659,7 +2659,7 @@ object Defaults extends BuildCommon with DefExtra:
         CompileInputs2(
           data(cp0).toVector,
           sourcesVF.value,
-          scalacOptions.value.toVector,
+          Compiler.virtualizeScalacOptions(scalacOptions.value, rootPaths.value).toVector,
           javacOptions.value.toVector,
           outputPath.value + prefix(configuration.value.name),
           c.toVirtualFile(inputs.setup.cacheFile.toPath),
@@ -2874,7 +2874,7 @@ object Defaults extends BuildCommon with DefExtra:
   lazy val deprecationSettings: Seq[Setting[?]] =
     inConfig(Compile)(
       Seq(
-        scalacOptions := {
+        scalacOptions := Def.uncached {
           val old = scalacOptions.value
           val existing = old.toSet
           val d = "-deprecation"
