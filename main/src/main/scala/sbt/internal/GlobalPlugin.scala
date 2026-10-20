@@ -12,6 +12,7 @@ package internal
 import java.io.File
 import java.net.URI
 import sbt.io.IO
+import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
 import sbt.librarymanagement.{
   Configuration,
   Configurations,
@@ -42,16 +43,33 @@ object GlobalPlugin:
         (rs ++ gp.resolvers).distinct
       },
       globalPluginUpdate := Def.uncached(gp.updateReport),
-      injectInternalClasspath(Runtime, gp.internalClasspath),
-      injectInternalClasspath(Compile, gp.internalClasspath)
+      injectInternalClasspath(Runtime, gp.internalClasspath, gp.converter),
+      injectInternalClasspath(Compile, gp.internalClasspath, gp.converter)
     )
   private def injectInternalClasspath(
       config: Configuration,
       cp: Def.Classpath,
+      converter: FileConverter,
   ): Setting[?] =
-    (config / internalDependencyClasspath) ~= { prev =>
-      (prev ++ cp).distinct
+    (config / internalDependencyClasspath) := Def.uncached {
+      val prev = (config / internalDependencyClasspath).value
+      (prev ++ reencode(cp, converter, fileConverter.value)).distinct
     }
+
+  /** Converts a classpath `cp` encoded with `src` to be read with `dst`. */
+  private[sbt] def reencode(
+      cp: Def.Classpath,
+      src: FileConverter,
+      dst: FileConverter
+  ): Def.Classpath =
+    def move[R >: VirtualFile <: VirtualFileRef](ref: R): R =
+      val path = src.toPath(ref)
+      if dst.toPath(VirtualFileRef.of(ref.id)) == path then ref else dst.toVirtualFile(path)
+    cp.map: entry =>
+      val moved = entry.map(move)
+      moved.get(Keys.analysis) match
+        case Some(id) => moved.put(Keys.analysis, move(VirtualFileRef.of(id)).id)
+        case None     => moved
 
   def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
     val newInject =
@@ -88,7 +106,7 @@ object GlobalPlugin:
         (Runtime / fullClasspath).value,
         (prods ++ intcp).distinct,
         exportedJarUris
-      )(updateReport.value)
+      )(updateReport.value, converter)
     }
     val resolvedTaskInit = taskInit.mapReferenced(Project.replaceThis(p))
     val task = resolvedTaskInit.evaluate(data)
@@ -126,7 +144,7 @@ final case class GlobalPluginData(
     fullClasspath: Classpath,
     internalClasspath: Classpath,
     exportedJarUris: Vector[URI],
-)(val updateReport: UpdateReport)
+)(val updateReport: UpdateReport, val converter: FileConverter)
 final case class GlobalPlugin(
     data: GlobalPluginData,
     structure: BuildStructure,

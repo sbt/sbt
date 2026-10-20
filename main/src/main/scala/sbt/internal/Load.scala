@@ -189,7 +189,7 @@ private[sbt] object Load:
       files: Seq[VirtualFile],
       config: LoadBuildConfiguration,
   ): ClassLoader => Seq[Setting[?]] =
-    val converter = config.converter
+    val converter = config.globalPluginConverter
     val eval = mkEval(
       classpath = data(config.globalPluginClasspath).map(converter.toPath),
       base = base,
@@ -785,7 +785,7 @@ private[sbt] object Load:
       val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
         d.value.extraProjects map { _.setProjectOrigin(ProjectOrigin.ExtraProject) }
       }
-      val converter = config.converter
+      val converter = plugs.pluginData.converter
 
       ContextUtil.appendScalacOptions(plugs.pluginData.scalacOptions)
 
@@ -1398,7 +1398,6 @@ private[sbt] object Load:
         sbtPlugin :== true,
         isMetaBuild :== true,
         pluginData := Def.uncached {
-          val gpClasspath = globalPluginClasspath(config.globalPlugin)
           val prod = (Configurations.Runtime / exportedProducts).value
           val prodVersioned = (Configurations.Runtime / exportedProductsVersioned).value
           val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
@@ -1411,6 +1410,11 @@ private[sbt] object Load:
           val managedSrcs = (Configurations.Compile / managedSources).value
           val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
           val converter = fileConverter.value
+          val gpClasspath = GlobalPlugin.reencode(
+            globalPluginClasspath(config.globalPlugin),
+            config.globalPluginConverter,
+            converter
+          )
           PluginData(
             (removeEntries(cp, prod ++ prodVersioned) ++ gpClasspath).distinct,
             prod,
@@ -1475,7 +1479,7 @@ private[sbt] object Load:
     loadPluginDefinition(
       dir,
       config,
-      PluginData(config.globalPluginClasspath, config.converter)
+      PluginData(config.globalPluginClasspath, config.globalPluginConverter)
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1497,7 +1501,7 @@ private[sbt] object Load:
     val definitionClasspath = pluginData.definitionClasspath
     val dependencyClasspath = pluginData.dependencyClasspath
     val pluginLoader: ClassLoader =
-      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath)
+      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath, pluginData.converter)
     val fullDependencyClasspath: Def.Classpath =
       buildPluginClasspath(config, pluginData.dependencyClasspath)
     val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
@@ -1527,15 +1531,16 @@ private[sbt] object Load:
    * @param config The configuration for the whole sbt build.
    * @param dependencyClasspath The dependency classpath (sbt dependencies).
    * @param definitionClasspath The definition classpath for build definitions.
+   * @param converter The converter that encoded both classpaths.
    * @return A classloader ready to class load plugins.
    */
   def pluginDefinitionLoader(
       config: LoadBuildConfiguration,
       dependencyClasspath: Def.Classpath,
-      definitionClasspath: Def.Classpath
+      definitionClasspath: Def.Classpath,
+      converter: FileConverter,
   ): ClassLoader =
     val manager = config.pluginManagement
-    val converter = config.converter
     val parentLoader: ClassLoader =
       if dependencyClasspath.isEmpty then manager.initialLoader
       else
@@ -1661,6 +1666,8 @@ final case class LoadBuildConfiguration(
   lazy val globalPluginClasspath: Def.Classpath =
     Load.buildPluginClasspath(this, Load.globalPluginClasspath(globalPlugin))
 
+  lazy val globalPluginConverter: FileConverter = globalPlugin.fold(converter)(_.data.converter)
+
   lazy val detectedGlobalPlugins: DetectedPlugins =
     val pluginData = globalPlugin match
       case Some(info) =>
@@ -1677,7 +1684,7 @@ final case class LoadBuildConfiguration(
           Nil,
           Nil,
           None,
-          converter,
+          data.converter,
           Nil
         )
       case None => PluginData(globalPluginClasspath, converter)
