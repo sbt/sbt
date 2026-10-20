@@ -8,8 +8,8 @@
 
 package sbt.internal
 
-import java.util.concurrent.{ CancellationException, CountDownLatch, TimeUnit }
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.{ CancellationException, CountDownLatch, TimeUnit, TimeoutException }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import hedgehog.Result
 import hedgehog.runner._
 import sbt.{ Result => TaskResult, Task, Value }
@@ -29,6 +29,7 @@ object TaskProgressLifecycleTest extends Properties {
     example("closing progress releases unfinished task metadata", unfinishedTasks),
     example("interrupted completion preserves the flag and queued cleanup", interruptedCompletion),
     example("interrupted completion keeps the timer of a reused task", interruptedReuse),
+    example("timed-out completion returns and keeps the queued cleanup", timedOutCompletion),
     example(
       "completion propagates the original exception",
       failedCompletion(new IllegalStateException("progress failure"))
@@ -40,6 +41,10 @@ object TaskProgressLifecycleTest extends Properties {
     example(
       "completion propagates a cancellation thrown by cleanup",
       failedCompletion(new CancellationException("progress failure"))
+    ),
+    example(
+      "completion propagates a timeout thrown by cleanup",
+      failedCompletion(new TimeoutException("progress failure"))
     ),
     example("closing progress releases a waiting completion", closedCompletion),
   )
@@ -303,6 +308,59 @@ object TaskProgressLifecycleTest extends Properties {
     }
   }
 
+  private def timedOutCompletion: Result = {
+    val entered, release = new CountDownLatch(1)
+    val observer = Thread.currentThread()
+    val blocker = task(())
+    val p = new TaskProgress(1.hour, 1.hour, Logger.Null) {
+      override protected def completionTimeout: FiniteDuration = 100.millis
+      override protected def taskName(t: Task[_]): String = {
+        if ((t eq blocker) && (Thread.currentThread() ne observer)) {
+          entered.countDown()
+          release.await()
+        }
+        super.taskName(t)
+      }
+      override def close(): Unit = {
+        release.countDown()
+        super.close()
+      }
+    }
+    using(p) { p =>
+      val owner, dependency = task(())
+      p.afterRegistered(owner, List(dependency), List(dependency))
+      p.afterReady(blocker)
+      assert(entered.await(10, TimeUnit.SECONDS))
+      val results = PMap.empty[Task, TaskResult]
+      results(dependency) = Value(())
+      val thrown = new AtomicReference[Throwable]
+      val interrupted = new AtomicBoolean
+      val waiter = new Thread(() => {
+        thrownBy(p.afterAllCompleted(results)).foreach(thrown.set)
+        interrupted.set(Thread.currentThread().isInterrupted)
+      })
+      waiter.setDaemon(true)
+      waiter.start()
+      waiter.join(5.seconds.toMillis)
+      val returned = !waiter.isAlive
+      val queued = retained(p)
+      release.countDown()
+      p.awaitIdle()
+      p.afterCompleted(blocker, Value(()))
+      complete(p, blocker)
+      waiter.join(10.seconds.toMillis)
+      Result
+        .assert(
+          returned && thrown.get == null && !interrupted.get &&
+            queued == Map("anonOwners" -> 1) && retained(p).isEmpty
+        )
+        .log(
+          s"returned=$returned thrown=${Option(thrown.get)} interrupted=${interrupted.get} " +
+            s"queued=$queued retained=${retained(p)}"
+        )
+    }
+  }
+
   private def failedCompletion(cause: Throwable): Result = {
     val p = new TaskProgress(1.hour, 1.hour, Logger.Null) {
       override protected def clearTask(t: Task[_]): Unit = throw cause
@@ -319,6 +377,7 @@ object TaskProgressLifecycleTest extends Properties {
     val entered, blocked = new CountDownLatch(1)
     val observer = Thread.currentThread()
     val p = new TaskProgress(1.hour, 1.hour, Logger.Null) {
+      override protected def completionTimeout: FiniteDuration = 1.hour
       override protected def taskName(t: Task[_]): String = {
         if (Thread.currentThread() ne observer) {
           entered.countDown()
@@ -339,8 +398,9 @@ object TaskProgressLifecycleTest extends Properties {
         assert(entered.await(10, TimeUnit.SECONDS))
         waiter.start()
         val deadline = 10.seconds.fromNow
-        while (waiter.getState != Thread.State.WAITING && deadline.hasTimeLeft()) Thread.sleep(10)
-        val waitingBeforeClose = waiter.getState == Thread.State.WAITING
+        def waiting = waiter.getState == Thread.State.TIMED_WAITING
+        while (!waiting && deadline.hasTimeLeft()) Thread.sleep(10)
+        val waitingBeforeClose = waiting
         p.close()
         waiter.join(10.seconds.toMillis)
         Result

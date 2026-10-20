@@ -109,6 +109,7 @@ private[sbt] class TaskProgress(
   }
 
   override protected def clearTimings: Boolean = true
+  protected def completionTimeout: FiniteDuration = 10.seconds
   override def initial(): Unit = ()
 
   override private[sbt] def retainedTaskMetadata: Map[String, Set[Task[_]]] =
@@ -190,9 +191,13 @@ private[sbt] class TaskProgress(
           results.keys.foreach(clearTask)
           appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
         }
-        Util.ignoreResult(executor.submit(cleanup).get())
+        Util.ignoreResult(
+          executor.submit(cleanup).get(completionTimeout.toMillis, TimeUnit.MILLISECONDS)
+        )
       } catch {
-        case _: InterruptedException       => Thread.currentThread().interrupt()
+        case _: InterruptedException => Thread.currentThread().interrupt()
+        case _: TimeoutException =>
+          logger.debug(s"task progress cleanup did not finish within $completionTimeout")
         case _: CancellationException      =>
         case e: ExecutionException         => throw e.getCause
         case _: RejectedExecutionException =>
