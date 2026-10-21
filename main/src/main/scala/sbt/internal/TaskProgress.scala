@@ -180,19 +180,41 @@ private[sbt] class TaskProgress(
     }
 
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
+    closeReportLoop()
+    awaitCleanup(results.keys.foreach(clearTask))
+  }
+
+  override private[sbt] def afterAborted(tasks: Iterable[Task[_]]): Unit = {
+    closeReportLoop()
+    tasks.foreach(clearTimer)
+    awaitCleanup {
+      tasks.foreach { task =>
+        active.remove(task) match {
+          case null =>
+          case a    => a.close()
+        }
+        clearTask(task)
+      }
+      clearReferencesTo(tasks.toSet)
+    }
+  }
+
+  private[this] def closeReportLoop(): Unit =
     reportLoop.getAndSet(null) match {
       case null =>
       case l    => l.close()
     }
+
+  private[this] def awaitCleanup(cleanup: => Unit): Unit = {
     // send an empty progress report to clear out the previous report
     if (!closed.get) {
       try {
-        val cleanup: Runnable = () => {
-          results.keys.foreach(clearTask)
+        val runnable: Runnable = () => {
+          cleanup
           appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
         }
         Util.ignoreResult(
-          executor.submit(cleanup).get(completionTimeout.toMillis, TimeUnit.MILLISECONDS)
+          executor.submit(runnable).get(completionTimeout.toMillis, TimeUnit.MILLISECONDS)
         )
       } catch {
         case _: InterruptedException => Thread.currentThread().interrupt()
