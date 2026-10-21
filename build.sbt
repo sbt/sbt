@@ -60,6 +60,7 @@ Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
 Global / excludeLint += nativeImageJvm
 Global / excludeLint += nativeImageVersion
+Global / excludeLint += nativeImageJvmIndex
 
 usePgpKeyHex("642AC823")
 // usePgpKeyHex("2BE67AC00D699E04E840B7FE29967E804D85663F")
@@ -1198,6 +1199,7 @@ lazy val sbtClientProj = (project in file("client"))
     },
     nativeImageVersion := "23.0",
     nativeImageJvm := "graalvm-java23",
+    nativeImageJvmIndex := "https://raw.githubusercontent.com/coursier/jvm-index/master/index.json",
     nativeImageOutput := {
       val outputDir = (target.value / "bin").toPath
       if (!Files.exists(outputDir)) {
