@@ -213,18 +213,27 @@ object ActionCache:
             cacheHit = true,
             exitCode = result.exitCode,
             outputs = result.outputFiles,
+            origin = result.origin,
           )
         )
         value
-      case Left(Some(failure)) if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
+      case Left(Some((failure, result)))
+          if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
         config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
         // Replay problems to the logger so users see the cached errors/warnings
         failure.replay(config.logger)
         logExec(
-          SpawnExec(input = spawnInput, cacheHit = true, exitCode = 1)
+          SpawnExec(
+            input = spawnInput,
+            cacheHit = true,
+            exitCode = Some(1),
+            outputs = Vector.empty,
+            origin = result.origin,
+          )
         )
         throw failure.toException
       case Left(_) => organicTask
+    end match
   end cache
 
   private def hasNoStore(store: ActionCacheStore): Boolean =
@@ -234,7 +243,7 @@ object ActionCache:
 
   /**
    * Retrieves the cached value or failure with a single cache lookup.
-   * Returns Right(value) for cached success, Left(Some(failure)) for cached failure,
+   * Returns Right(value) for cached success, Left(Some((failure, result))) for cached failure,
    * or Left(None) for cache miss.
    */
   private def getWithFailure[O: JsonFormat](
@@ -242,7 +251,7 @@ object ActionCache:
       inputDigest: => Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
-  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
+  ): Either[Option[(CachedCompileFailure, ActionResult)], (O, ActionResult)] =
     if markScopePending(taskName) || hasNoStore(config.store) then Left(None)
     else getWithFailure0(inputDigest, tags, config)
 
@@ -250,7 +259,7 @@ object ActionCache:
       inputDigest: Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
-  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
+  ): Either[Option[(CachedCompileFailure, ActionResult)], (O, ActionResult)] =
     import config.store
     def valueFromStr(str: String, origin: Option[String]): O =
       config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
@@ -265,9 +274,9 @@ object ActionCache:
         str: String,
         result: ActionResult,
         isFailure: Boolean,
-    ): Option[Either[Option[CachedCompileFailure], (O, ActionResult)]] =
+    ): Option[Either[Option[(CachedCompileFailure, ActionResult)], (O, ActionResult)]] =
       try
-        if isFailure then Some(Left(Some(failureFromStr(str))))
+        if isFailure then Some(Left(Some((failureFromStr(str), result))))
         else Some(Right((valueFromStr(str, result.origin), result)))
       catch case _: Exception => None
 
