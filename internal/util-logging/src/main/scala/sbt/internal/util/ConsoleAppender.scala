@@ -374,6 +374,7 @@ class ConsoleAppender(
     case null =>
     case a    => a.stop()
   }
+  private[sbt] def hasLog4J: Boolean = log4j.get != null
 }
 trait Appender extends AutoCloseable {
   private[sbt] def name: String

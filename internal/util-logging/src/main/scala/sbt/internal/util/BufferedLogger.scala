@@ -41,6 +41,7 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
     case null =>
     case a    => a.stop()
   }
+  private[sbt] def hasLog4J: Boolean = log4j.get != null
   override private[sbt] def properties: ConsoleAppender.Properties = delegate.properties
   override private[sbt] def suppressedMessage: SuppressedTraceContext => Option[String] =
     delegate.suppressedMessage

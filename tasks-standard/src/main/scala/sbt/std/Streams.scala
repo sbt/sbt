@@ -68,10 +68,13 @@ sealed trait TaskStreams[Key] {
   def cacheStoreFactory: CacheStoreFactory
 
   // default logger
-  /** Obtains the default logger. */
+  /** Obtains the default logger. The logger stops emitting when these streams are closed. */
   final lazy val log: ManagedLogger = log(default)
 
-  /** Creates a Logger that logs to stream with ID `sid`.*/
+  /**
+   * Creates a Logger that logs to stream with ID `sid`. The logger stops emitting when these
+   * streams are closed.
+   */
   def log(sid: String): ManagedLogger
 
   private[this] def getID(s: Option[String]) = s getOrElse default
@@ -196,7 +199,12 @@ object Streams {
 
       lazy val cacheStoreFactory: CacheStoreFactory = mkFactory(cacheDirectory)
 
-      def log(sid: String): ManagedLogger = mkLogger(a, text(sid))
+      def log(sid: String): ManagedLogger = synchronized {
+        val log = mkLogger(a, text(sid))
+        val cleanup: Closeable = () => log.context.release(log.name)
+        opened ::= cleanup
+        log
+      }
 
       def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
         checkOpen()
@@ -226,6 +234,7 @@ object Streams {
         if (!closed) {
           closed = true
           opened foreach closeQuietly
+          opened = nil
         }
       }
       def checkOpen(): Unit = synchronized {

@@ -11,7 +11,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.12.3-SNAPSHOT"
+  val v = "1.13.1-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 
