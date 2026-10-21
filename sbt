@@ -954,6 +954,11 @@ isRunClient() {
 }
 
 runClient() {
+  # sbtn is only built against glibc, so it can't run on musl-based Linux such as Alpine.
+  # There, use the JVM client unless SBTN_CMD names an sbtn to run.
+  if [[ "$OSTYPE" == "linux-musl"* ]] && [[ "$sbtn_command" == "" ]]; then
+    use_jvm_client="1"
+  fi
   if [[ "$use_jvm_client" != "1" ]]; then
     detectNativeClient
     [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
