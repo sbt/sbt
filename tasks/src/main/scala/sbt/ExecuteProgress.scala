@@ -8,6 +8,7 @@
 
 package sbt
 
+import java.util.function.BooleanSupplier
 import sbt.internal.util.RMap
 
 /**
@@ -59,6 +60,18 @@ trait ExecuteProgress[F[_]] {
   /** All tasks have completed with the final `results` provided. */
   def afterAllCompleted(results: RMap[F, Result]): Unit
 
+  /**
+   * Notifies that the evaluation ended abnormally, before `afterAllCompleted`, for example because a
+   * task was cancelled. `tasks` are all tasks the evaluation registered, including those that have
+   * not completed. This is called instead of `afterAllCompleted`, after waiting up to one second
+   * for `beforeWork` and `afterWork` calls that are still in progress. Apart from `stop`, no further
+   * callbacks are made for this evaluation, also not from tasks that are still running. Only a
+   * `beforeWork` or `afterWork` call that is still in progress after that wait can still finish
+   * afterwards. `aggregate` stops passing such a call on to further reporters once it observes the
+   * abort, but a reporter that already received it can still finish it after this notification.
+   */
+  def afterAborted(tasks: Iterable[F[_]]): Unit = ()
+
   /** Notifies that either all tasks have finished or cancelled. */
   def stop(): Unit
 }
@@ -96,10 +109,10 @@ object ExecuteProgress {
       reporters foreach { _.afterReady(task) }
     }
     override def beforeWork(task: F[_]): Unit = {
-      reporters foreach { _.beforeWork(task) }
+      passWorkReport(reporters)(_.beforeWork(task))
     }
     override def afterWork[A](task: F[A], result: Either[F[A], Result[A]]): Unit = {
-      reporters foreach { _.afterWork(task, result) }
+      passWorkReport(reporters)(_.afterWork(task, result))
     }
     override def afterCompleted[A](task: F[A], result: Result[A]): Unit = {
       reporters foreach { _.afterCompleted(task, result) }
@@ -107,8 +120,60 @@ object ExecuteProgress {
     override def afterAllCompleted(results: RMap[F, Result]): Unit = {
       reporters foreach { _.afterAllCompleted(results) }
     }
+    override def afterAborted(tasks: Iterable[F[_]]): Unit = {
+      notifyEach(reporters)(_.afterAborted(tasks))
+    }
     override def stop(): Unit = {
       reporters foreach { _.stop() }
     }
+  }
+
+  private[this] val workReport = new ThreadLocal[BooleanSupplier]
+
+  /**
+   * Runs `report`, a `beforeWork` or `afterWork` call, so that the aggregates stop passing it on to
+   * further reporters once `stopped` is true.
+   */
+  private[sbt] def reportingWork(stopped: BooleanSupplier)(report: => Unit): Unit = {
+    val previous = workReport.get
+    workReport.set(stopped)
+    try report
+    finally workReport.set(previous)
+  }
+
+  /**
+   * Passes a `beforeWork` or `afterWork` call on to `xs`, and stops before the next reporter once
+   * the call's evaluation was aborted. This is best effort: a reporter that already received the
+   * call can still finish it after the abort was reported.
+   */
+  private[sbt] def passWorkReport[A](xs: Iterable[A])(call: A => Unit): Unit =
+    xs.iterator.takeWhile(_ => !workReportStopped).foreach(call)
+
+  private[this] def workReportStopped: Boolean = workReport.get match {
+    case null    => false
+    case stopped => stopped.getAsBoolean
+  }
+
+  /**
+   * Calls `call` for each of `xs`, also after one of them failed, and then rethrows the first
+   * failure with the others added as suppressed.
+   */
+  private[sbt] def notifyEach[A](xs: Iterable[A])(call: A => Unit): Unit = {
+    val failure = xs.foldLeft(Option.empty[Throwable]) { (failed, x) =>
+      try {
+        call(x)
+        failed
+      } catch {
+        case e: Throwable =>
+          if (e.isInstanceOf[InterruptedException]) Thread.currentThread.interrupt()
+          failed match {
+            case Some(first) =>
+              if (first ne e) first.addSuppressed(e)
+              failed
+            case None => Some(e)
+          }
+      }
+    }
+    failure.foreach(throw _)
   }
 }
