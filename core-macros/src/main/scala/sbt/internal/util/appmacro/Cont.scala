@@ -367,7 +367,7 @@ trait Cont:
                       if inputs.exists(_.isCacheInput) then
                         val tags = inputs
                           .withFilter(_.isCacheInput)
-                          .map(_.tags.toSet)
+                          .map(input => CacheLevelTag.storedLevels(input.tags))
                           .reduce(_ & _)
                           .toList
                         require(

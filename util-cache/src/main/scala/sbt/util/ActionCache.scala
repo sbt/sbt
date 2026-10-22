@@ -605,21 +605,36 @@ class cacheLevel(
 enum CacheLevelTag:
   case Local
   case Remote
+
+  /**
+   * The task is not cached, so it runs every time,
+   * but its value still takes part in the cache key of the tasks that read it.
+   */
+  case InputOnly
 end CacheLevelTag
 
 object CacheLevelTag:
   private[sbt] val all: Array[CacheLevelTag] = Array(CacheLevelTag.Local, CacheLevelTag.Remote)
 
+  private[sbt] def isStored(tags: Seq[CacheLevelTag]): Boolean =
+    tags.exists(_ != CacheLevelTag.InputOnly)
+
+  private[sbt] def storedLevels(tags: Seq[CacheLevelTag]): Set[CacheLevelTag] =
+    val stored = tags.filterNot(_ == CacheLevelTag.InputOnly).toSet
+    if stored.isEmpty then all.toSet else stored
+
   given CacheLevelTagToExpr: ToExpr[CacheLevelTag] with
     def apply(tag: CacheLevelTag)(using Quotes): Expr[CacheLevelTag] =
       tag match
-        case CacheLevelTag.Local  => '{ CacheLevelTag.Local }
-        case CacheLevelTag.Remote => '{ CacheLevelTag.Remote }
+        case CacheLevelTag.Local     => '{ CacheLevelTag.Local }
+        case CacheLevelTag.Remote    => '{ CacheLevelTag.Remote }
+        case CacheLevelTag.InputOnly => '{ CacheLevelTag.InputOnly }
 
   given CacheLevelTagFromExpr: FromExpr[CacheLevelTag] with
     def unapply(expr: Expr[CacheLevelTag])(using Quotes): Option[CacheLevelTag] =
       expr match
-        case '{ CacheLevelTag.Local }  => Some(CacheLevelTag.Local)
-        case '{ CacheLevelTag.Remote } => Some(CacheLevelTag.Remote)
-        case _                         => None
+        case '{ CacheLevelTag.Local }     => Some(CacheLevelTag.Local)
+        case '{ CacheLevelTag.Remote }    => Some(CacheLevelTag.Remote)
+        case '{ CacheLevelTag.InputOnly } => Some(CacheLevelTag.InputOnly)
+        case _                            => None
 end CacheLevelTag

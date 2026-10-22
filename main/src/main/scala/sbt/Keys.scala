@@ -32,7 +32,15 @@ import sbt.librarymanagement.*
 import sbt.nio.file.Glob
 import sbt.protocol.testing.TestResult
 import sbt.testing.Framework
-import sbt.util.{ ActionCacheStore, Digest, Level, Logger, LoggerContext }
+import sbt.util.{
+  ActionCacheStore,
+  CacheLevelTag,
+  Digest,
+  Level,
+  Logger,
+  LoggerContext,
+  cacheLevel
+}
 import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile.*
 import xsbti.compile.analysis.ReadStamps
@@ -222,9 +230,11 @@ object Keys {
   // compile/doc keys
   val autoCompilerPlugins = settingKey[Boolean]("If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.").withRank(AMinusSetting)
   val maxErrors = settingKey[Int]("The maximum number of errors, such as compile errors, to list.").withRank(ASetting)
+  @cacheLevel(include = Array(CacheLevelTag.InputOnly))
   val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.").withRank(BPlusTask)
   @transient
   val resolvedScalacOptions = taskKey[Seq[String]]("scalacOptions with cache placeholders (e.g. ${CSR_CACHE}) resolved to absolute machine paths.").withRank(BPlusTask)
+  @cacheLevel(include = Array(CacheLevelTag.InputOnly))
   val javacOptions = taskKey[Seq[String]]("Options for the Java compiler.").withRank(BPlusTask)
   val incOptions = taskKey[IncOptions]("Options for the incremental compiler.").withRank(BTask)
   val extraIncOptions = taskKey[Seq[(String, String)]]("Extra options for the incremental compiler").withRank(CTask)

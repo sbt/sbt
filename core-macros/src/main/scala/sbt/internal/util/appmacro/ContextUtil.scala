@@ -101,13 +101,8 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       def extractTags0(tree: Term) =
         val sym = getSymbol(tree)
         val ann = getCacheLevelAnnotation(sym) match
-          case Some(annot) =>
-            annot.asExprOf[cacheLevel] match
-              case '{ cacheLevel(include = Array.empty[CacheLevelTag](using $_)) } => Nil
-              case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) }      =>
-                include.value.get.toList
-              case _ => sys.error(Printer.TreeStructure.show(annot) + " does not match")
-          case _ =>
+          case Some(annot) => cacheLevelTags(annot)
+          case _           =>
             getTransientAnnotation(sym) match
               case Some(annot) => Nil
               case _           => CacheLevelTag.all.toList
@@ -139,13 +134,15 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
 
   def cacheLevelsForSym(sym: Symbol): Seq[CacheLevelTag] =
     sym.getAnnotation(cacheLevelSym) match
-      case Some(annot) if annot.symbol.owner.name == "cacheLevel" =>
-        annot.asExprOf[cacheLevel] match
-          case '{ cacheLevel(include = Array.empty[CacheLevelTag](using $_)) } => Nil
-          case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) }      =>
-            include.value.get
-          case _ => report.errorAndAbort(Printer.TreeStructure.show(annot) + " does not match")
-      case _ => CacheLevelTag.all.toList
+      case Some(annot) if annot.symbol.owner.name == "cacheLevel" => cacheLevelTags(annot)
+      case _                                                      => CacheLevelTag.all.toList
+
+  private def cacheLevelTags(annot: Term): List[CacheLevelTag] =
+    annot.asExprOf[cacheLevel] match
+      case '{ cacheLevel(include = Array.empty[CacheLevelTag](using $_)) }      => Nil
+      case '{ cacheLevel(include = Array[CacheLevelTag]($include*)(using $_)) } =>
+        include.value.get.toList
+      case _ => report.errorAndAbort(Printer.TreeStructure.show(annot) + " does not match")
 
   enum OutputType:
     case File
