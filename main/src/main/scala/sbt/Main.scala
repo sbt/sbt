@@ -986,17 +986,18 @@ object BuiltinCommands:
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
+    val s3 = ContinuousCommands.stopWatchesBeforeReload(s2)
     replaceOnSuccess(
-      s2.get(sbt.nio.Keys.globalFileTreeRepository),
+      s3.get(sbt.nio.Keys.globalFileTreeRepository),
       FileTreeRepository.default,
       e =>
-        s2.log.trace(e)
-        s2.log.warn(s"Failed to close the previous file tree repository: $e")
+        s3.log.trace(e)
+        s3.log.warn(s"Failed to close the previous file tree repository: $e")
     ): repository =>
-      val s3 = Project.setProject(
+      val s4 = Project.setProject(
         session,
         structure,
-        s2,
+        s3,
         st =>
           Clean
             .addCacheStoreFactoryFactory(st)
@@ -1004,7 +1005,7 @@ object BuiltinCommands:
       )
       addSuperShellParams(
         CheckBuildSources.init(
-          LintUnused.lintScalaVersion(LintUnused.lintUnusedFunc(s3))
+          LintUnused.lintScalaVersion(LintUnused.lintUnusedFunc(s4))
         )
       )
   end doLoadProject
@@ -1074,7 +1075,8 @@ object BuiltinCommands:
   private[sbt] def waitCmd: Command =
     Command.arb(_ =>
       ContinuousCommands.waitWatch.examples() ~> " ".examples() ~> matched(any.*).examples()
-    ) { (s0, channel) =>
+    ) { (initialState, channel) =>
+      val s0 = ContinuousCommands.discardStoppedWatches(initialState)
       val exchange = StandardMain.exchange
       exchange.channelForName(channel) match
         case Some(c) if ContinuousCommands.isInWatch(s0, c) =>
