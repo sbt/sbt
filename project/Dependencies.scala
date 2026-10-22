@@ -102,7 +102,7 @@ object Dependencies:
 
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.5.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "2.5.0"
-  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.3.0"
   val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.14.0"
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "3.2.4"
@@ -124,4 +124,6 @@ object Dependencies:
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.
   val jniUtilsVersion = "0.3.3"
+
+  val asm = "org.ow2.asm" % "asm" % "9.11.1" % Test
 end Dependencies
