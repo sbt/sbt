@@ -109,7 +109,7 @@ object Dependencies:
   val blake3 = "pt.kcry" %% "blake3" % "3.1.2"
   val zeroAllocationHashing = "net.openhft" % "zero-allocation-hashing" % "0.16"
 
-  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
+  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.15.1"
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
