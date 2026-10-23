@@ -766,6 +766,8 @@ lazy val mainProj = (project in file("main"))
   .settings(
     testedBaseSettings,
     name := "Main",
+    Compile / scalacOptions += "-Xcheck-macros",
+    Test / scalacOptions -= "-Xcheck-macros",
     Compile / sourceGenerators += task {
       val f = (Compile / sourceManaged).value / "sbt" / "PluginCrossExtra.scala"
       IO.write(
