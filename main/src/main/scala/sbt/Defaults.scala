@@ -721,6 +721,7 @@ object Defaults extends BuildCommon with DefExtra:
         scalaInstance := Compiler.scalaInstanceTask(console / scalaInstanceConfig).value,
       ) ++ compilersSetting
     ) ++ compileBaseGlobal ++ Seq(
+      exportPipelining := usePipelining.value,
       useScalaReplJLine :== false,
       scalaInstanceTopLoader := {
         val topLoader = if !useScalaReplJLine.value then
@@ -1112,15 +1113,9 @@ object Defaults extends BuildCommon with DefExtra:
             SemanticSelector(">=3.5.0")
           )
           if shouldApplyFlags then
-            Def.uncached(
-              Vector(
-                "-Ypickle-java",
-                "-Ypickle-write",
-                fileConverter.value.toPath(earlyOutput.value).toString
-              ) ++ old
-            )
-          else Def.uncached(old)
-        else Def.uncached(old)
+            Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.id) ++ old
+          else old
+        else old
       },
       scalacOptions := {
         val old = scalacOptions.value
@@ -1139,17 +1134,13 @@ object Defaults extends BuildCommon with DefExtra:
       compileIncSetup := Def.uncached(compileIncSetupTask.value),
       console := Compiler.consoleTask.value,
       // Strip pipelining flags before they reach the REPL (#8921).
-      console / scalacOptions := Def.uncached {
-        Compiler.toConsoleScalacOptions(scalacOptions.value)
-      },
+      console / scalacOptions := Compiler.toConsoleScalacOptions(scalacOptions.value),
       console / forkOptions := Def.uncached(Compiler.consoleForkOptions.value),
       // fork when sbt is launched with --server
       console / fork := true,
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
-      consoleQuick / scalacOptions := Def.uncached {
-        Compiler.toConsoleScalacOptions(scalacOptions.value)
-      },
+      consoleQuick / scalacOptions := Compiler.toConsoleScalacOptions(scalacOptions.value),
       resolvedScalacOptions := Def.uncached {
         Compiler.resolveVirtualizedScalacOptions(scalacOptions.value, rootPaths.value)
       },
@@ -4846,7 +4837,7 @@ object Classpaths:
       }
 
   lazy val compilerPluginConfig = Seq(
-    scalacOptions := Def.uncached {
+    scalacOptions := {
       given FileConverter = fileConverter.value
       val options = scalacOptions.value
       val newPlugins = autoPlugins(
