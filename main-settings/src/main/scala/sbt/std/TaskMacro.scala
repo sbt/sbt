@@ -17,7 +17,7 @@ import sbt.internal.util.{ SourcePosition, SourcePositionImpl }
 import language.experimental.macros
 import scala.collection.mutable
 import scala.quoted.*
-import sbt.util.BuildWideCacheConfiguration
+import sbt.util.{ BuildWideCacheConfiguration, CacheLevelTag }
 import sjsonnew.JsonFormat
 
 object TaskMacro:
@@ -125,7 +125,8 @@ object TaskMacro:
 
     val cu0 = ContextUtil0(qctx, 0)
     val cl = cu0.cacheLevels(key.asTerm)
-    val cached = ContextUtil.isTaskCacheByDefault && !isUncacheApplied && cl.nonEmpty
+    val cached =
+      ContextUtil.isTaskCacheByDefault && !isUncacheApplied && CacheLevelTag.isStored(cl)
     t match
       case '{ if $cond then $thenp else $elsep } => taskIfImpl[A1](t, cached)
       case '{ InputWrapper.`wrapInitTask_\u2603\u2603`[A1]($in) }
