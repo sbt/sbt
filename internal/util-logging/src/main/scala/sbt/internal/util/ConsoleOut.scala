@@ -64,31 +64,31 @@ object ConsoleOut {
     private[this] var current = new java.lang.StringBuffer
     def print(s: String): Unit = synchronized { current.append(s); () }
     def println(s: String): Unit = synchronized { current.append(s); println() }
-    def println(): Unit = synchronized {
+    def println(): Unit = emit(lockObject.println(_))
+    def flush(): Unit = emit(lockObject.print(_))
+    private[this] def emit(write: String => Unit): Unit = synchronized {
       val s = current.toString
-      if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
-        lockObject.print(OverwriteLine)
-      lockObject.println(s)
-      last = Some(s)
-      current.setLength(0)
-    }
-    def flush(): Unit = synchronized {
-      val s = current.toString
-      if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
-        lockObject.print(OverwriteLine)
-      lockObject.print(s)
-      last = Some(s)
-      current.setLength(0)
+      try {
+        if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
+          lockObject.print(OverwriteLine)
+        write(s)
+        last = Some(s)
+      } catch {
+        case _: ClosedChannelException => ()
+      } finally current.setLength(0)
     }
     override def toString: String = s"SystemOutOverwrite@${System.identityHashCode(this)}"
   }
 
   def terminalOut: ConsoleOut = new ConsoleOut {
     override val lockObject: AnyRef = System.out
-    override def print(s: String): Unit = Terminal.get.printStream.print(s)
-    override def println(s: String): Unit = Terminal.get.printStream.println(s)
-    override def println(): Unit = Terminal.get.printStream.println()
-    override def flush(): Unit = Terminal.get.printStream.flush()
+    override def print(s: String): Unit = emit(_.print(s))
+    override def println(s: String): Unit = emit(_.println(s))
+    override def println(): Unit = emit(_.println())
+    override def flush(): Unit = emit(_.flush())
+    private[this] def emit(write: PrintStream => Unit): Unit =
+      try write(Terminal.get.printStream)
+      catch { case _: ClosedChannelException => () }
     override def toString: String = s"TerminalOut"
   }
 
