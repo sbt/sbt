@@ -456,7 +456,8 @@ object Compiler:
       val compiler =
         (task / Keys.compilers).value.scalac match
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
-      val sc = (task / Keys.scalacOptions).value
+      val sc =
+        resolveVirtualizedScalacOptions((task / Keys.scalacOptions).value, Keys.rootPaths.value)
       val ic = (task / Keys.initialCommands).value
       val cc = (task / Keys.cleanupCommands).value
       (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get

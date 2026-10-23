@@ -1,0 +1,6 @@
+> checkOptions
+> b/Test/compile
+$ exists target/out/jvm/scala-3.9.0/a/early/a_3-0.1.0-SNAPSHOT.jar
+> set Global / rootOutputDirectory := (baseDirectory.value / "out2").toPath
+> b/Test/compile
+> checkHit

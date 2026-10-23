@@ -1402,7 +1402,10 @@ private[sbt] object Load:
           val prodVersioned = (Configurations.Runtime / exportedProductsVersioned).value
           val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
           val cp = (Configurations.Runtime / fullClasspath).value
-          val opts = (Configurations.Compile / scalacOptions).value
+          val opts = Compiler.resolveVirtualizedScalacOptions(
+            (Configurations.Compile / scalacOptions).value,
+            rootPaths.value
+          )
           val javaOpts = (Configurations.Compile / javacOptions).value
           val unmanagedSrcDirs = (Configurations.Compile / unmanagedSourceDirectories).value
           val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
