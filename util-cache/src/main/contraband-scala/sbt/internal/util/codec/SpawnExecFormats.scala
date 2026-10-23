@@ -15,8 +15,9 @@ given SpawnExecFormat: JsonFormat[sbt.internal.util.SpawnExec] = new JsonFormat[
       val cacheHit = unbuilder.readField[Boolean]("cacheHit")
       val exitCode = unbuilder.readField[Option[Int]]("exitCode")
       val outputs = unbuilder.readField[Vector[xsbti.HashedVirtualFileRef]]("outputs")
+      val origin = unbuilder.readField[Option[String]]("origin")
       unbuilder.endObject()
-      sbt.internal.util.SpawnExec(input, cacheHit, exitCode, outputs)
+      sbt.internal.util.SpawnExec(input, cacheHit, exitCode, outputs, origin)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -27,6 +28,7 @@ given SpawnExecFormat: JsonFormat[sbt.internal.util.SpawnExec] = new JsonFormat[
     builder.addField("cacheHit", obj.cacheHit)
     builder.addField("exitCode", obj.exitCode)
     builder.addField("outputs", obj.outputs)
+    builder.addField("origin", obj.origin)
     builder.endObject()
   }
 }

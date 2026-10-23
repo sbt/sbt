@@ -1,6 +1,6 @@
 package sbt.util
 
-import java.io.{ ByteArrayInputStream, IOException, InputStream }
+import java.io.{ ByteArrayInputStream, IOException, InputStream, PrintWriter, StringWriter }
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ AccessDeniedException, Files, LinkOption, NoSuchFileException, Path, Paths }
 import java.nio.file.attribute.{ PosixFileAttributeView, PosixFilePermission }
@@ -10,10 +10,12 @@ import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUni
 import scala.jdk.CollectionConverters.*
 
 import sbt.internal.util.CacheEventLog
+import sbt.internal.util.SpawnExec
 import sbt.internal.util.StringVirtualFile1
 import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
+import sjsonnew.support.scalajson.unsafe.{ Converter, Parser }
 import verify.BasicTestSuite
 import xsbti.{
   CompileFailed,
@@ -563,6 +565,78 @@ object ActionCacheTest extends BasicTestSuite:
 
   test("Disk cache caches CompileFailed exceptions"):
     withDiskCache(testCachedCompileFailure)
+
+  test("Exec log records the store that served a cache hit"):
+    import sjsonnew.BasicJsonProtocol.*
+    val action: ((Int, Int)) => InternalActionResult[Int] =
+      (a, b) => InternalActionResult(a + b, Nil)
+    withDiskCache: disk =>
+      IO.withTemporaryDirectory: tempDir =>
+        val remote = new InMemoryActionCacheStore:
+          override def storeName: String = "remote"
+        val both = getCacheConfig(AggregateActionCacheStore(Seq(disk, remote)), tempDir)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, getCacheConfig(remote, tempDir))(
+          action
+        )
+        ActionCache.cache((2, 2), Digest.zero, Digest.zero, tags, getCacheConfig(disk, tempDir))(
+          action
+        )
+        val events = withExecLog:
+          ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, both)(action)
+          ActionCache.cache((2, 2), Digest.zero, Digest.zero, tags, both)(action)
+          ActionCache.cache((3, 3), Digest.zero, Digest.zero, tags, both)(action)
+        assert(
+          events.map(e => (e.cacheHit, e.origin)) == Vector(
+            (true, Some("remote")),
+            (true, Some("disk")),
+            (false, None),
+          )
+        )
+
+  test("Exec log records the store that served a cached failure"):
+    import sjsonnew.BasicJsonProtocol.*
+    val failure = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(errorProblem)
+      override def getMessage(): String = "Compilation failed"
+    val action: ((Int, Int)) => InternalActionResult[Int] = _ => throw failure
+    def run(config: BuildWideCacheConfiguration): Unit =
+      try ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      catch case _: CompileFailed => ()
+    withDiskCache: disk =>
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(disk, tempDir)
+        run(config)
+        val events = withExecLog(run(config))
+        assert(
+          events.map(e => (e.cacheHit, e.exitCode, e.origin)) == Vector(
+            (true, Some(1), Some("disk"))
+          )
+        )
+
+  def errorProblem: Problem = new Problem:
+    override def category(): String = "Test"
+    override def severity(): Severity = Severity.Error
+    override def message(): String = "Test error message"
+    override def position(): Position = new Position:
+      override def line(): Optional[Integer] = Optional.of(1)
+      override def lineContent(): String = ""
+      override def offset(): Optional[Integer] = Optional.empty()
+      override def pointer(): Optional[Integer] = Optional.empty()
+      override def pointerSpace(): Optional[String] = Optional.empty()
+      override def sourcePath(): Optional[String] = Optional.of("/test/file.scala")
+      override def sourceFile(): Optional[java.io.File] = Optional.empty()
+
+  def withExecLog(f: => Unit): Vector[SpawnExec] =
+    import sbt.internal.util.codec.SpawnCodec.given
+    val records = Vector.newBuilder[String]
+    val writer = new PrintWriter(new StringWriter):
+      override def println(x: String): Unit = records += x
+    val previous = ActionCache.execLog
+    ActionCache.execLog = Some(writer)
+    try f
+    finally ActionCache.execLog = previous
+    records.result().map(r => Converter.fromJsonUnsafe[SpawnExec](Parser.parseUnsafe(r)))
 
   def testActionCacheInvalidJson(cache: DiskActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
