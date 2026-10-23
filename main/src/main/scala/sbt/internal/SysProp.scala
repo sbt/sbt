@@ -223,33 +223,36 @@ object SysProp:
    * Operating system specific cache directory, similar to Coursier cache.
    */
   def globalLocalCache: File =
+    globalLocalCacheFrom(sys.props.get, sys.env.get, Util.isWindows, Util.isMac, home)
+
+  private[sbt] def globalLocalCacheFrom(
+      prop: String => Option[String],
+      env: String => Option[String],
+      windows: Boolean,
+      mac: Boolean,
+      home: File
+  ): File =
     val appName = "sbt"
-    def propCacheDir: Option[File] = sys.props.get("sbt.global.localcache").map(file)
+    def propCacheDir: Option[File] = prop("sbt.global.localcache").map(file)
     def propCacheDir2: Option[File] =
-      sys.props.get(BuildPaths.GlobalBaseProperty) match
-        case Some(base) => Some(file(base) / "cache")
-        case _          => None
-    def envCacheDir: Option[File] = sys.env.get("SBT_LOCAL_CACHE").map(file)
+      prop(BuildPaths.GlobalBaseProperty).map(base => file(base) / "cache")
+    def envCacheDir: Option[File] = env("SBT_LOCAL_CACHE").map(file)
+    def xdgCacheDir: Option[File] = env("XDG_CACHE_HOME").map(cache => file(cache) / appName)
     def windowsCacheDir: Option[File] =
-      sys.env.get("LOCALAPPDATA") match
-        case Some(app) if Util.isWindows => Some(file(app) / appName)
-        case _                           => None
+      env("LOCALAPPDATA").filter(_ => windows).map(app => file(app) / appName)
     def macCacheDir: Option[File] =
-      if Util.isMac then Some(home / "Library" / "Caches" / appName)
+      if mac then Some(home / "Library" / "Caches" / appName)
       else None
-    def linuxCache: File =
-      sys.env.get("XDG_CACHE_HOME") match
-        case Some(cache) => file(cache) / appName
-        case _           => home / ".cache" / appName
     def baseCache: File =
       propCacheDir
         .orElse(propCacheDir2)
         .orElse(envCacheDir)
+        .orElse(xdgCacheDir)
         .orElse(windowsCacheDir)
         .orElse(macCacheDir)
-        .getOrElse(linuxCache)
+        .getOrElse(home / ".cache" / appName)
     baseCache.getAbsoluteFile / "v2"
-  end globalLocalCache
+  end globalLocalCacheFrom
 
   lazy val sbtCredentialsEnv: Option[Credentials] =
     sys.env.get("SBT_CREDENTIALS").map(raw => new Credentials.FileCredentials(new File(raw)))
