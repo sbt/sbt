@@ -13,7 +13,7 @@ package server
 import sbt.internal.langserver.*
 import sbt.internal.protocol.*
 import sbt.internal.protocol.codec.*
-import sbt.protocol.{ CompletionParams as CP, SettingQuery as Q }
+import sbt.protocol.{ CompletionParams as CP, Serialization, SettingQuery as Q }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.FileConverter
@@ -42,7 +42,8 @@ private[sbt] object LanguageServerProtocol:
       textDocumentSync = TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
       hoverProvider = false,
       definitionProvider = false,
-      successLog = true
+      successLog = true,
+      shutdownRequest = true
     )
 
   def handler(converter: FileConverter): ServerHandler = ServerHandler { callback =>
@@ -82,6 +83,15 @@ private[sbt] object LanguageServerProtocol:
           checkAuthenticated(r) {
             val param = Converter.fromJson[SbtExecParams](json(r)).get
             val _ = appendExec(param.commandLine, Some(r.id))
+          }
+
+        case r: JsonRpcRequestMessage if r.method == Serialization.shutdownRequest =>
+          checkAuthenticated(r) {
+            val force = r.params
+              .map(Converter.fromJson[SbtShutdownParams](_).get)
+              .flatMap(_.force)
+              .getOrElse(false)
+            StandardMain.exchange.requestShutdown(name, force, jsonRpcRespond(_, Some(r.id)))
           }
 
         case r: JsonRpcRequestMessage if r.method == "sbt/setting" =>

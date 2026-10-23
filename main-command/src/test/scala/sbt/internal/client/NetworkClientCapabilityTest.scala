@@ -16,6 +16,9 @@ object NetworkClientCapabilityTest extends BasicTestSuite:
   private def successLog(json: String): Boolean =
     NetworkClient.successLogCapability(Some(Parser.parseUnsafe(json)))
 
+  private def shutdownRequest(json: String): Boolean =
+    NetworkClient.shutdownRequestCapability(Some(Parser.parseUnsafe(json)))
+
   test("a server that advertises successLog writes the result line"):
     assert(successLog("""{ "capabilities": { "successLog": true } }"""))
 
@@ -33,4 +36,12 @@ object NetworkClientCapabilityTest extends BasicTestSuite:
 
   test("a non-boolean value reads as false rather than failing the handshake"):
     assert(!successLog("""{ "capabilities": { "successLog": "yes" } }"""))
+
+  test("a server that advertises shutdownRequest accepts sbt/shutdown"):
+    assert(
+      shutdownRequest("""{ "capabilities": { "successLog": true, "shutdownRequest": true } }""")
+    )
+
+  test("a server without shutdownRequest does not accept sbt/shutdown"):
+    assert(!shutdownRequest("""{ "capabilities": { "successLog": true } }"""))
 end NetworkClientCapabilityTest

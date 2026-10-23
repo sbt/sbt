@@ -15,8 +15,9 @@ given ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.ServerCapabil
       val hoverProvider = unbuilder.readField[Option[Boolean]]("hoverProvider")
       val definitionProvider = unbuilder.readField[Option[Boolean]]("definitionProvider")
       val successLog = unbuilder.readField[Option[Boolean]]("successLog")
+      val shutdownRequest = unbuilder.readField[Option[Boolean]]("shutdownRequest")
       unbuilder.endObject()
-      sbt.internal.langserver.ServerCapabilities(textDocumentSync, hoverProvider, definitionProvider, successLog)
+      sbt.internal.langserver.ServerCapabilities(textDocumentSync, hoverProvider, definitionProvider, successLog, shutdownRequest)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -27,6 +28,7 @@ given ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.ServerCapabil
     builder.addField("hoverProvider", obj.hoverProvider)
     builder.addField("definitionProvider", obj.definitionProvider)
     builder.addField("successLog", obj.successLog)
+    builder.addField("shutdownRequest", obj.shutdownRequest)
     builder.endObject()
   }
 }
