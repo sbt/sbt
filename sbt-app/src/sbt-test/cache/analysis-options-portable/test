@@ -1,0 +1,28 @@
+# A cache hit with another output directory restores the analysis of the compile that produced
+# it, which records that compile's scalacOptions. They must not look changed to Zinc, or the first
+# edit after the hit recompiles every source rather than the edited one. The reboot makes the
+# analysis be read from disk, as it would be by another checkout's sbt. The compiler plugin built
+# in this build reaches scalacOptions as an -Xplugin:${OUT} id, which the analysis must keep as
+# written. Compiling app reads the analysis of use as its upstream before use compiles again.
+> clean
+> app/compile
+$ copy-file changes/out2.sbt out2.sbt
+> reboot full
+> app/compile
+> checkHit
+$ copy-file changes/App.scala app/src/main/scala/App.scala
+> app/compile
+$ touch marker
+$ sleep 1000
+$ copy-file changes/C.scala use/src/main/scala/C.scala
+> use/compile
+$ exists out2/jvm/scala-3.8.4/use/classes/A1.class
+$ newer out2/jvm/scala-3.8.4/use/classes/C.class marker
+-$ newer out2/jvm/scala-3.8.4/use/classes/A1.class marker
+# After the restore, a change must still reach the sources that depend on it, in this subproject
+# and in a downstream one.
+$ copy-file changes/A1.scala use/src/main/scala/A1.scala
+-> use/compile
+$ copy-file changes/A2.scala use/src/main/scala/A2.scala
+> use/compile
+-> app/compile
