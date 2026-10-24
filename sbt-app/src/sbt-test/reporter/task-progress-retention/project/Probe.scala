@@ -1,7 +1,7 @@
 package sbt.taskprogressretention
 
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, TimeUnit }
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
 import sbt.*
 import sbt.Keys.*
 import sbt.internal.util.{ Appender, ManagedLogger }
@@ -11,6 +11,7 @@ import scala.jdk.CollectionConverters.*
 object Probe:
   val dependency = taskKey[Unit]("A dependency that the probe also returns after it completed")
   val probe = taskKey[Unit]("Records the live logger and task progress of one evaluation")
+  val cancelled = taskKey[Unit]("Waits for a sentinel task that another task cancels")
 
   final case class Observation(
       logger: String,
@@ -23,11 +24,13 @@ object Probe:
   private val metadata = Set("active", "anonOwners", "calledBy", "taskNameCache", "timings")
   private val dependencyRuns = new AtomicInteger
   private val observations = new ConcurrentLinkedQueue[Observation]
+  private val sentinelStarted = new AtomicReference(new CountDownLatch(1))
 
   def settings: Seq[Setting[?]] = Seq(
     dependency := Def.uncached(countDependency()),
     probe := Def.uncached(probeTask.value),
-    commands += evaluateRepeatedly,
+    cancelled := Def.uncached(cancelledTask.value),
+    commands ++= Seq(evaluateRepeatedly, evaluateCancelled),
   )
 
   private def countDependency(): Unit =
@@ -40,6 +43,20 @@ object Probe:
     observe(streams.value.log, s)
     awaitProgress(s)
     dependency
+
+  private val sentinel: Def.Initialize[Task[Unit]] = Def
+    .task:
+      sentinelStarted.get.countDown()
+      new CountDownLatch(1).await()
+    .tag(Tags.Sentinel)
+
+  private val cancelSentinel: Def.Initialize[Task[Unit]] = Def.task:
+    assert(sentinelStarted.get.await(10, TimeUnit.SECONDS), "the sentinel did not start")
+    ConcurrentRestrictions.cancelAllSentinels()
+
+  private def cancelledTask: Def.Initialize[Task[Unit]] = Def.task:
+    sentinel.value
+    cancelSentinel.value
 
   private def progressOf(s: State): sbt.internal.TaskProgress =
     s.get(Keys.taskProgress).getOrElse(sys.error("no task progress in task state"))
@@ -85,5 +102,19 @@ object Probe:
       val left = retained(progress)
       assert(left.isEmpty, s"evaluation $i left task progress metadata: $left")
     assert(dependencyRuns.get == evaluations, s"dependency ran ${dependencyRuns.get} times")
+    s
+
+  private def evaluateCancelled = Command.command("evaluateCancelled"): s =>
+    val progress = progressOf(s)
+    val extracted = Project.extract(s)
+    (1 to evaluations).foreach: i =>
+      sentinelStarted.set(new CountDownLatch(1))
+      val result = extracted.runTaskUnhandled(cancelled, s).map(_._2)
+      val wasCancelled = result.exists:
+        case Result.Inc(inc) => inc.message.contains("cancelled")
+        case _               => false
+      assert(wasCancelled, s"evaluation $i was not cancelled: $result")
+      val left = retained(progress)
+      assert(left.isEmpty, s"cancelled evaluation $i left task progress metadata: $left")
     s
 end Probe

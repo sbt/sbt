@@ -81,6 +81,12 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     timings.put(task, new Timer)
     ()
 
+  override private[sbt] def afterAborted(tasks: Iterable[TaskId[?]]): Unit =
+    tasks.foreach: task =>
+      timings.get(task) match
+        case null =>
+        case t    => if t.isActive then t.stop()
+
   protected def clearTimings: Boolean = false
   override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit =
     if clearTimings then timings.remove(task)
@@ -100,6 +106,12 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     calledBy.remove(task)
     taskNameCache.remove(task)
     ()
+
+  protected def clearTimer(task: TaskId[?]): Unit = Util.ignoreResult(timings.remove(task))
+
+  protected def clearReferencesTo(tasks: Set[TaskId[?]]): Unit =
+    Util.ignoreResult(anonOwners.values.removeIf(tasks.contains))
+    Util.ignoreResult(calledBy.values.removeIf(tasks.contains))
 
   protected def clearTasks(): Unit =
     anonOwners.clear()

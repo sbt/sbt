@@ -163,6 +163,20 @@ private[sbt] class TaskProgress(
 
   override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
     reportLoop.close()
+    awaitCleanup(results.keys.foreach(clearTask))
+
+  override private[sbt] def afterAborted(tasks: Iterable[TaskId[?]]): Unit =
+    reportLoop.close()
+    tasks.foreach(clearTimer)
+    awaitCleanup:
+      tasks.foreach: task =>
+        active.remove(task) match
+          case null =>
+          case a    => a.close()
+        clearTask(task)
+      clearReferencesTo(tasks.toSet)
+
+  private def awaitCleanup(cleanup: => Unit): Unit =
     // send an empty progress report to clear out the previous report
     if !closed.get then
       try
@@ -170,7 +184,7 @@ private[sbt] class TaskProgress(
           .submit(
             (
                 () =>
-                  results.keys.foreach(clearTask)
+                  cleanup
                   appendProgress(
                     ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None)
                   )
@@ -184,7 +198,7 @@ private[sbt] class TaskProgress(
         case _: CancellationException      =>
         case e: ExecutionException         => throw e.getCause
         case _: RejectedExecutionException =>
-  end afterAllCompleted
+  end awaitCleanup
   private val skipReportTasks =
     Set(
       "installSbtn",

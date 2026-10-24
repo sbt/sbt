@@ -49,6 +49,9 @@ object TaskProgressLifecycleTest extends Properties:
       failedCompletion(new TimeoutException("progress failure"))
     ),
     example("closing progress releases a waiting completion", closedCompletion),
+    example("aborted evaluations release task metadata", abortedEvaluations),
+    example("aborting an inner evaluation preserves an outer task", nestedAbort),
+    example("an abort stops the timers of the aborted tasks", abortedTimers),
   )
 
   private def progress() =
@@ -336,6 +339,72 @@ object TaskProgressLifecycleTest extends Properties:
       results(task(())) = TaskResult.Value(())
       val thrown = thrownBy(p.afterAllCompleted(results))
       Result.assert(thrown.contains(cause)).log(s"expected=$cause thrown=$thrown")
+
+  private def abortedEvaluations: Result =
+    Using.resource(progress()): p =>
+      val states = (1 to 10).map: _ =>
+        val owner = task(()).setName("compile")
+        val dependency, continuing, called, done = task(())
+        val deps = List(dependency, continuing, done)
+        p.afterRegistered(owner, deps, deps)
+        finish(p, done)
+        p.afterReady(dependency)
+        p.beforeWork(dependency)
+        p.afterReady(continuing)
+        p.beforeWork(continuing)
+        p.afterWork(continuing, Left(called))
+        p.awaitIdle()
+        val scheduled = p.scheduledReports
+        p.afterAborted(owner :: deps)
+        p.awaitIdle()
+        (scheduled, p.scheduledReports, retained(p))
+      Result
+        .assert(states.forall((before, after, left) => before == 3 && after == 0 && left.isEmpty))
+        .log(states.toString)
+
+  private def nestedAbort: Result =
+    Using.resource(progress()): p =>
+      val outerOwner = task(()).setName("outer-owner")
+      val outer = task(()).setName("outer")
+      val owner = task(()).setName("inner")
+      val dependency = task(())
+      p.afterRegistered(outerOwner, List(outer), List(outer))
+      p.afterReady(outer)
+      p.beforeWork(outer)
+      p.afterRegistered(owner, List(dependency), List(dependency))
+      p.afterReady(dependency)
+      p.beforeWork(dependency)
+      p.afterAborted(List(owner, dependency))
+      val timed = p.activeTasks(System.nanoTime()).map(_._1)
+      val displayed = keys(p)("active")
+      val owners = keys(p)("anonOwners")
+      val inner = keys(p).values.flatten.filter(Set[TaskId[?]](owner, dependency))
+      p.afterWork(outer, Right(TaskResult.Value(())))
+      p.afterCompleted(outer, TaskResult.Value(()))
+      p.afterCompleted(outerOwner, TaskResult.Value(()))
+      complete(p, outer, outerOwner)
+      Result
+        .assert(
+          timed == Vector(outer) && displayed == Set(outer) && owners == Set(outer) &&
+            inner.isEmpty && retained(p).isEmpty
+        )
+        .log(
+          s"timed=$timed displayed=$displayed owners=$owners inner=$inner retained=${retained(p)}"
+        )
+  end nestedAbort
+
+  private def abortedTimers: Result =
+    val timings = new TaskTimings(reportOnShutdown = false, Logger.Null)
+    val aborted, other = task(())
+    timings.beforeWork(aborted)
+    timings.beforeWork(other)
+    timings.afterAborted(List(aborted))
+    val states = timings.currentTimings.map((t, timer) => t -> timer.isActive).toMap
+    val duration = timings.currentTimings.collectFirst:
+      case (t, timer) if t eq aborted => timer.durationNanos
+    Result
+      .assert(states == Map(aborted -> false, other -> true) && duration.exists(_ >= 0))
+      .log(s"states=$states duration=$duration")
 
   private def closedCompletion: Result =
     val entered, blocked = new CountDownLatch(1)
