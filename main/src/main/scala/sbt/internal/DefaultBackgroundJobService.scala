@@ -27,7 +27,7 @@ import sbt.util.Logger
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{ Try, Success, Failure }
 import sbt.util.LoggerContext
 import java.util.concurrent.TimeoutException
 
@@ -375,7 +375,16 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
         }
         try {
           if (go) {
-            exitTry = Option(Try(body()))
+            exitTry = Option(
+              try Success(body())
+              catch {
+                case e: Throwable =>
+                  // not NonFatal
+                  // https://github.com/sbt/sbt/issues/6852
+                  // https://github.com/sbt/sbt/issues/7408
+                  Failure(e)
+              }
+            )
           }
         } finally cleanup()
       } finally finishedLatch.countDown()
