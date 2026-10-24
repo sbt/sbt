@@ -1,12 +1,9 @@
-package org.apache.ivy.plugins.parser.m2
-
-import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor
+package com.typesafe.config.impl
 
 object Run {
   def main(args: Array[String]): Unit = {
-    new PomModuleDescriptorBuilder.ConfMapper {
-      override def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {}
-    }
-    ()
+    // Token is package private
+    // https://github.com/lightbend/config/blob/a9e5a9d1c6c9e73a5/config/src/main/java/com/typesafe/config/impl/Token.java#L9
+    println(classOf[com.typesafe.config.impl.Token])
   }
 }
