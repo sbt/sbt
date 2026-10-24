@@ -16,6 +16,7 @@ Pull request guideline
 ----------------------
 
 - Follow the PR guidance in [CONTRIBUTING.md](./CONTRIBUTING.md).
+- Keep the changed lines to the fewest that's reasonable: aim for under 50 lines, and no more than 300 lines including tests.
 - [ ] Before working on a pull request, please confirm that **you can reproduce the reported problem** using GitHub Actions or your computer.
 - [ ] After making the code change, please confirm that **your change compiles, and has fixed the problem**.
 - [ ] Follow the [Commit message guideline](./CONTRIBUTING.md#commit), including the "Generated-by" tag for Gen-AI tools.
@@ -31,6 +32,8 @@ sbt --client --color=false --supershell=false --batch scalafmtAll
 - For newly written code, avoid braces in Scala 3.x, that is use SIP-44 Fewer Braces syntax.
 - Prefer scala.util.Using over try-finally.
 - Avoid inline comments!
+- Keep Scaladoc to 3 lines or fewer, and avoid transcribing into English what can easily be deduced by reading the code body.
+- Avoid adding helper functions to Defaults.scala; put them in main/src/main/scala/sbt/internal/Compiler.scala instead.
 
 Tests
 -----

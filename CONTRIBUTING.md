@@ -136,10 +136,12 @@ The `stable` branch represents the current stable sbt 1.x release. Once sbt 2.x 
 Before you submit a Pull Request (PR) from your forked repo, check that it meets these guidelines:
 
 - Make sure your PR is small (both scope and lines of change) and focused on one change only. Avoid adding unrelated changes, mixing adding features and refactoring.
+- Keep the changed lines to the fewest that's reasonable: aim for under 50 lines, and no more than 300 lines including tests.
 - Confirm that you can reproduce the problem prior to making the changes to the code.
 - Include tests, either as scripted test or unit tests to your pull request, or screenshots from a manual test.
 - Follow our project's [Commit message guideline](#commit).
 - Follow our project's [Coding style and best practices][03].
+- Keep Scaladoc to 3 lines or fewer, and avoid transcribing into English what can easily be deduced by reading the code body.
 - Sign the [Scala Contributor License Agreement](https://cla.scala-lang.org/sbt/sbt).
 - Maintainers will not merge a PR that regresses linting or does not pass CI tests (unless you have good justification that it a transient error or something that is being fixed in other PR).
 - Maintainers will not merge a PR that breaks binary compatibility ("bincompat"). Run `mimaReportBinaryIssues` from the sbt shell.
