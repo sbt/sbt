@@ -59,6 +59,9 @@ trait ExecuteProgress[F[_]] {
   /** All tasks have completed with the final `results` provided. */
   def afterAllCompleted(results: RMap[F, Result]): Unit
 
+  /** Notifies that the evaluation of `tasks` was aborted, instead of `afterAllCompleted`. */
+  private[sbt] def afterAborted(tasks: Iterable[F[_]]): Unit = ()
+
   /** Notifies that either all tasks have finished or cancelled. */
   def stop(): Unit
 }
@@ -106,6 +109,9 @@ object ExecuteProgress {
     }
     override def afterAllCompleted(results: RMap[F, Result]): Unit = {
       reporters foreach { _.afterAllCompleted(results) }
+    }
+    override private[sbt] def afterAborted(tasks: Iterable[F[_]]): Unit = {
+      reporters foreach { _.afterAborted(tasks) }
     }
     override def stop(): Unit = {
       reporters foreach { _.stop() }

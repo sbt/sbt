@@ -19,6 +19,7 @@ import Execute._
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 import mutable.Map
 
 private[sbt] object Execute {
@@ -65,6 +66,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   private[this] val state = idMap[F[_], State]
   private[this] val viewCache = pMap[F, Node[F, *]]
   private[this] val results = pMap[F, Result]
+  @volatile private[this] var aborted = false
 
   private[this] val getResult: F ~> Result = λ[F ~> Result](
     a =>
@@ -92,10 +94,24 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def runKeep[A](root: F[A])(implicit strategy: Strategy): RMap[F, Result] = {
     assert(state.isEmpty, "Execute already running/ran.")
 
-    addNew(root)
-    processAll()
-    assert(results contains root, "No result for root node.")
-    val finalResults = triggers.onComplete(results)
+    val finalResults =
+      try {
+        addNew(root)
+        processAll()
+        assert(results contains root, "No result for root node.")
+        triggers.onComplete(results)
+      } catch {
+        case e: Throwable =>
+          aborted = true
+          try progress.afterAborted(state.keys.toVector)
+          catch {
+            case failure: InterruptedException =>
+              Thread.currentThread.interrupt()
+              if (failure ne e) e.addSuppressed(failure)
+            case NonFatal(failure) => if (failure ne e) e.addSuppressed(failure)
+          }
+          throw e
+      }
     progress.afterAllCompleted(finalResults)
     progress.stop()
     finalResults
@@ -288,13 +304,13 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.
    */
   def work[A](node: F[A], f: => Either[F[A], A])(implicit strategy: Strategy): Completed = {
-    progress.beforeWork(node)
+    if (!aborted) progress.beforeWork(node)
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if (config.overwriteNode(i)) i.copy(node = Some(node)) else i
       case e             => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
     }
     val result = rewrap(rawResult)
-    progress.afterWork(node, result)
+    if (!aborted) progress.afterWork(node, result)
     completed {
       result match {
         case Right(v)     => retire(node, v)
