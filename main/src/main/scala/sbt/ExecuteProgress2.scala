@@ -57,6 +57,7 @@ class ExecuteProgressAdapter(ep: ExecuteProgress[Task]) extends ExecuteProgress2
   override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
     ep.afterCompleted(task, result)
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = ep.afterAllCompleted(results)
+  override def afterAborted(tasks: Iterable[Task[_]]): Unit = ep.afterAborted(tasks)
   override def stop(): Unit = ep.stop()
 }
 
@@ -73,13 +74,16 @@ object ExecuteProgress2 {
         pendingDeps: Iterable[Task[_]]
     ): Unit = xs.foreach(_.afterRegistered(task, allDeps, pendingDeps))
     override def afterReady(task: Task[_]): Unit = xs.foreach(_.afterReady(task))
-    override def beforeWork(task: Task[_]): Unit = xs.foreach(_.beforeWork(task))
+    override def beforeWork(task: Task[_]): Unit =
+      ExecuteProgress.passWorkReport(xs)(_.beforeWork(task))
     override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
-      xs.foreach(_.afterWork(task, result))
+      ExecuteProgress.passWorkReport(xs)(_.afterWork(task, result))
     override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
       xs.foreach(_.afterCompleted(task, result))
     override def afterAllCompleted(results: RMap[Task, Result]): Unit =
       xs.foreach(_.afterAllCompleted(results))
+    override def afterAborted(tasks: Iterable[Task[_]]): Unit =
+      ExecuteProgress.notifyEach(xs)(_.afterAborted(tasks))
     override def stop(): Unit = xs.foreach(_.stop())
   }
 }

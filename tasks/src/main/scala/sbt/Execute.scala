@@ -8,7 +8,9 @@
 
 package sbt
 
-import java.util.concurrent.ExecutionException
+import java.util.concurrent.{ ExecutionException, TimeUnit }
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.function.BooleanSupplier
 
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
@@ -38,6 +40,8 @@ private[sbt] object Execute {
 
   final val checkPreAndPostConditions =
     sys.props.get("sbt.execute.extrachecks").exists(java.lang.Boolean.parseBoolean)
+
+  private val workReportWaitMillis = 1000L
 }
 sealed trait Completed {
   def process(): Unit
@@ -65,6 +69,9 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   private[this] val state = idMap[F[_], State]
   private[this] val viewCache = pMap[F, Node[F, *]]
   private[this] val results = pMap[F, Result]
+  private[this] val reporting = new ReentrantReadWriteLock
+  @volatile private[this] var aborted = false
+  private[this] val stopsWorkReports: BooleanSupplier = () => aborted
 
   private[this] val getResult: F ~> Result = λ[F ~> Result](
     a =>
@@ -92,13 +99,62 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def runKeep[A](root: F[A])(implicit strategy: Strategy): RMap[F, Result] = {
     assert(state.isEmpty, "Execute already running/ran.")
 
-    addNew(root)
-    processAll()
-    assert(results contains root, "No result for root node.")
-    val finalResults = triggers.onComplete(results)
+    val finalResults =
+      try {
+        addNew(root)
+        processAll()
+        assert(results contains root, "No result for root node.")
+        triggers.onComplete(results)
+      } catch {
+        case e: Throwable =>
+          try abort()
+          catch {
+            case failure: Throwable =>
+              if (failure.isInstanceOf[InterruptedException]) Thread.currentThread.interrupt()
+              if (failure ne e) e.addSuppressed(failure)
+          }
+          throw e
+      }
     progress.afterAllCompleted(finalResults)
     progress.stop()
     finalResults
+  }
+
+  private[this] def abort(): Unit = {
+    aborted = true
+    awaitWorkReports()
+    progress.afterAborted(state.keys.toVector)
+  }
+
+  /**
+   * Waits for `beforeWork` and `afterWork` calls that started before the abort. The wait is
+   * bounded, because such a call can block until its thread is interrupted, which an ordinary
+   * shutdown does only after the evaluation has ended. An interrupt doesn't end the wait early; it
+   * is restored afterwards.
+   */
+  private[this] def awaitWorkReports(): Unit = {
+    val lock = reporting.writeLock
+    val deadline = System.nanoTime + TimeUnit.MILLISECONDS.toNanos(workReportWaitMillis)
+    @tailrec def await(interrupted: Boolean): Boolean = {
+      val remaining = deadline - System.nanoTime
+      val locked =
+        try Right(remaining > 0 && lock.tryLock(remaining, TimeUnit.NANOSECONDS))
+        catch { case e: InterruptedException => Left(e) }
+      locked match {
+        case Right(acquired) =>
+          if (acquired) lock.unlock()
+          interrupted
+        case Left(_) => await(interrupted = true)
+      }
+    }
+    if (await(interrupted = false)) Thread.currentThread.interrupt()
+  }
+
+  private[this] def reportWork(report: => Unit): Unit = {
+    val lock = reporting.readLock
+    lock.lock()
+    try if (!aborted) ExecuteProgress.reportingWork(stopsWorkReports)(report)
+    finally lock.unlock()
   }
 
   def processAll()(implicit strategy: Strategy): Unit = {
@@ -288,13 +344,13 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.
    */
   def work[A](node: F[A], f: => Either[F[A], A])(implicit strategy: Strategy): Completed = {
-    progress.beforeWork(node)
+    reportWork(progress.beforeWork(node))
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if (config.overwriteNode(i)) i.copy(node = Some(node)) else i
       case e             => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
     }
     val result = rewrap(rawResult)
-    progress.afterWork(node, result)
+    reportWork(progress.afterWork(node, result))
     completed {
       result match {
         case Right(v)     => retire(node, v)
