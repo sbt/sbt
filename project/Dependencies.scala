@@ -130,7 +130,7 @@ object Dependencies {
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
-  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
+  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.15.1"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
   val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.4").cross(CrossVersion.full)
   val gigahorseOkHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.4"
