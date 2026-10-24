@@ -8,14 +8,31 @@
 
 package sbt.internal
 
-import java.util.concurrent.{ CancellationException, CountDownLatch, TimeUnit, TimeoutException }
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
+import java.util.concurrent.{
+  CancellationException,
+  CountDownLatch,
+  ExecutorService,
+  Executors,
+  TimeUnit,
+  TimeoutException
+}
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
 import hedgehog.Result
 import hedgehog.runner.*
-import sbt.{ Result as TaskResult, Task, TaskId }
+import sbt.{
+  ConcurrentRestrictions,
+  Execute,
+  ExecuteProgress,
+  ExecuteProgress2,
+  ExecuteProgressAdapter,
+  Result as TaskResult,
+  Task,
+  TaskId
+}
 import sbt.coursierint.ResolutionProgress
 import sbt.internal.util.{ PMap, Util }
-import sbt.std.TaskExtra.task
+import sbt.std.Transform
+import sbt.std.TaskExtra.*
 import sbt.util.Logger
 import scala.concurrent.duration.*
 import scala.util.Using
@@ -49,6 +66,26 @@ object TaskProgressLifecycleTest extends Properties:
       failedCompletion(new TimeoutException("progress failure"))
     ),
     example("closing progress releases a waiting completion", closedCompletion),
+    example("aborted evaluations release task metadata", abortedEvaluations),
+    example("aborting an inner evaluation preserves an outer task", nestedAbort),
+    example("an abort reaches task progress after failing reporters", abortAfterFailures),
+    example("an abort stops the timers of the aborted tasks", abortedTimers),
+    example(
+      "a late work report of an earlier reporter stays out of task progress",
+      lateWorkReport(commandAggregate)
+    ),
+    example(
+      "a late work report of an earlier aggregated reporter stays out of task progress",
+      lateWorkReport(progressAggregate)
+    ),
+    example(
+      "a late work report of an earlier reporter keeps a reused task's timer",
+      reusedTask(commandAggregate)
+    ),
+    example(
+      "a late work report of an earlier aggregated reporter keeps a reused task's timer",
+      reusedTask(progressAggregate)
+    ),
   )
 
   private def progress() =
@@ -336,6 +373,244 @@ object TaskProgressLifecycleTest extends Properties:
       results(task(())) = TaskResult.Value(())
       val thrown = thrownBy(p.afterAllCompleted(results))
       Result.assert(thrown.contains(cause)).log(s"expected=$cause thrown=$thrown")
+
+  private def abortedEvaluations: Result =
+    Using.resource(progress()): p =>
+      val states = (1 to 10).map: _ =>
+        val owner = task(()).setName("compile")
+        val dependency, continuing, called, done = task(())
+        val deps = List(dependency, continuing, done)
+        p.afterRegistered(owner, deps, deps)
+        finish(p, done)
+        p.afterReady(dependency)
+        p.beforeWork(dependency)
+        p.afterReady(continuing)
+        p.beforeWork(continuing)
+        p.afterWork(continuing, Left(called))
+        p.awaitIdle()
+        val scheduled = p.scheduledReports
+        p.afterAborted(owner :: deps)
+        p.awaitIdle()
+        (scheduled, p.scheduledReports, retained(p))
+      Result
+        .assert(states.forall((before, after, left) => before == 3 && after == 0 && left.isEmpty))
+        .log(states.toString)
+
+  private def nestedAbort: Result =
+    Using.resource(progress()): p =>
+      val outerOwner = task(()).setName("outer-owner")
+      val outer = task(()).setName("outer")
+      val owner = task(()).setName("inner")
+      val dependency = task(())
+      p.afterRegistered(outerOwner, List(outer), List(outer))
+      p.afterReady(outer)
+      p.beforeWork(outer)
+      p.afterRegistered(owner, List(dependency), List(dependency))
+      p.afterReady(dependency)
+      p.beforeWork(dependency)
+      p.afterAborted(List(owner, dependency))
+      val timed = p.activeTasks(System.nanoTime()).map(_._1)
+      val displayed = keys(p)("active")
+      val owners = keys(p)("anonOwners")
+      val inner = keys(p).values.flatten.filter(Set[TaskId[?]](owner, dependency))
+      p.afterWork(outer, Right(TaskResult.Value(())))
+      p.afterCompleted(outer, TaskResult.Value(()))
+      p.afterCompleted(outerOwner, TaskResult.Value(()))
+      complete(p, outer, outerOwner)
+      Result
+        .assert(
+          timed == Vector(outer) && displayed == Set(outer) && owners == Set(outer) &&
+            inner.isEmpty && retained(p).isEmpty
+        )
+        .log(
+          s"timed=$timed displayed=$displayed owners=$owners inner=$inner retained=${retained(p)}"
+        )
+  end nestedAbort
+
+  private def abortAfterFailures: Result =
+    Using.resource(progress()): p =>
+      val first = new IllegalStateException("first reporter failure")
+      val second = new IllegalStateException("second reporter failure")
+      def failing(failure: Throwable) = new ExecuteProgressAdapter(ExecuteProgress.empty):
+        override def afterAborted(tasks: Iterable[TaskId[?]]): Unit = throw failure
+      val reporters = ExecuteProgress2.aggregate(
+        Seq(
+          failing(first),
+          new ExecuteProgressAdapter(ExecuteProgress.aggregate(Seq(failing(second), p)))
+        )
+      )
+      val owner = task(()).setName("compile")
+      val dependency, continuing, called = task(())
+      val deps = List(dependency, continuing)
+      p.afterRegistered(owner, deps, deps)
+      p.afterReady(dependency)
+      p.beforeWork(dependency)
+      p.afterReady(continuing)
+      p.beforeWork(continuing)
+      p.afterWork(continuing, Left(called))
+      val thrown = thrownBy(reporters.afterAborted(owner :: deps))
+      p.awaitIdle()
+      Result
+        .assert(
+          thrown.contains(first) && first.getSuppressed.toList == List(second) &&
+            retained(p).isEmpty
+        )
+        .log(s"thrown=$thrown suppressed=${first.getSuppressed.toList} retained=${retained(p)}")
+
+  private def abortedTimers: Result =
+    val timings = new TaskTimings(reportOnShutdown = false, Logger.Null)
+    val aborted, other = task(())
+    timings.beforeWork(aborted)
+    timings.beforeWork(other)
+    timings.afterAborted(List(aborted))
+    val states = timings.currentTimings.map((t, timer) => t -> timer.isActive).toMap
+    val duration = timings.currentTimings.collectFirst:
+      case (t, timer) if t eq aborted => timer.durationNanos
+    Result
+      .assert(states == Map(aborted -> false, other -> true) && duration.exists(_ >= 0))
+      .log(s"states=$states duration=$duration")
+
+  private val sentinel = ConcurrentRestrictions.Tag("sentinel")
+
+  private def cancelAfter(
+      entered: CountDownLatch,
+      progress: ExecuteProgress,
+      t: Task[Unit],
+      pool: ExecutorService
+  ): TaskResult[?] =
+    val waitingStarted = new CountDownLatch(1)
+    val service = ConcurrentRestrictions.completionService(
+      pool,
+      ConcurrentRestrictions.unrestricted,
+      _ => (),
+      _.tags.contains(sentinel)
+    )
+    val waiting = task:
+      waitingStarted.countDown()
+      new CountDownLatch(1).await()
+    val trigger = task:
+      waitingStarted.await()
+      entered.await()
+      service.cancelSentinels()
+    val root = Seq[Task[?]](waiting.tag(sentinel), trigger, t).join
+    new Execute(Execute.config(false), Execute.noTriggers, progress)(using
+      Transform(Transform.DummyTaskMap(Nil))
+    ).run(root)(using service)
+  end cancelAfter
+
+  private def cancelled(result: TaskResult[?]): Boolean = result match
+    case TaskResult.Inc(i) => i.message.contains("cancelled")
+    case _                 => false
+
+  private def commandAggregate(reporters: Seq[ExecuteProgress]): ExecuteProgress =
+    ExecuteProgress2.aggregate(reporters.map(new ExecuteProgressAdapter(_)))
+
+  private def progressAggregate(reporters: Seq[ExecuteProgress]): ExecuteProgress =
+    ExecuteProgress.aggregate(reporters)
+
+  private def drained(pool: ExecutorService): Boolean =
+    pool.shutdown()
+    pool.awaitTermination(10, TimeUnit.SECONDS)
+
+  private def lateWorkReport(aggregate: Seq[ExecuteProgress] => ExecuteProgress): Result =
+    Using.resource(progress()): p =>
+      val timings = new TaskTimings(reportOnShutdown = false, Logger.Null)
+      val entered, release, returned = new CountDownLatch(1)
+      val stuck = task(())
+      val blocker = new ExecuteProgressAdapter(ExecuteProgress.empty):
+        override def beforeWork(t: TaskId[?]): Unit =
+          if t eq stuck then
+            entered.countDown()
+            release.await()
+            returned.countDown()
+      val reporters = aggregate(Seq(blocker, p, timings))
+      val pool, coordinator = Executors.newCachedThreadPool()
+      try
+        val result = coordinator
+          .submit(() => cancelAfter(entered, reporters, stuck, pool))
+          .get(30, TimeUnit.SECONDS)
+        p.awaitIdle()
+        val cleaned = retained(p)
+        val held = returned.getCount == 1
+        release.countDown()
+        val done = drained(pool)
+        p.awaitIdle()
+        val running = timings.currentTimings.collect {
+          case (t, timer) if timer.isActive => t
+        }.toList
+        Result
+          .assert(
+            cancelled(result) && cleaned.isEmpty && held && done && retained(p).isEmpty &&
+              p.scheduledReports == 0 && running.isEmpty
+          )
+          .log(
+            s"result=$result cleaned=$cleaned held=$held done=$done retained=${retained(p)} " +
+              s"scheduled=${p.scheduledReports} running=$running"
+          )
+      finally
+        release.countDown()
+        Seq(pool, coordinator).foreach(_.shutdownNow())
+      end try
+  end lateWorkReport
+
+  private def reusedTask(aggregate: Seq[ExecuteProgress] => ExecuteProgress): Result =
+    Using.resource(progress()): p =>
+      val timings = new TaskTimings(reportOnShutdown = false, Logger.Null)
+      val entered, release, returned, started, finish = new CountDownLatch(1)
+      val runs = new AtomicInteger
+      val reused = task:
+        if runs.incrementAndGet() == 2 then
+          started.countDown()
+          finish.await()
+      val blocking = new AtomicBoolean(true)
+      val blocker = new ExecuteProgressAdapter(ExecuteProgress.empty):
+        override def afterWork[A](t: TaskId[A], r: Either[TaskId[A], TaskResult[A]]): Unit =
+          if (t eq reused) && blocking.getAndSet(false) then
+            entered.countDown()
+            release.await()
+            returned.countDown()
+      val reporters = aggregate(Seq(blocker, p, timings))
+      val first, second, coordinator = Executors.newCachedThreadPool()
+      try
+        val aborted = coordinator
+          .submit(() => cancelAfter(entered, reporters, reused, first))
+          .get(30, TimeUnit.SECONDS)
+        val service =
+          ConcurrentRestrictions.completionService(
+            second,
+            ConcurrentRestrictions.unrestricted,
+            _ => ()
+          )
+        val next = coordinator.submit: () =>
+          new Execute(Execute.config(false), Execute.noTriggers, reporters)(using
+            Transform(Transform.DummyTaskMap(Nil))
+          ).run(reused)(using service)
+        val running = started.await(30, TimeUnit.SECONDS)
+        val held = returned.getCount == 1
+        release.countDown()
+        val done = drained(first)
+        val timed = p.activeTasks(System.nanoTime()).map(_._1)
+        val traced = timings.currentTimings.collect {
+          case (t, timer) if t eq reused => timer.isActive
+        }.toList
+        finish.countDown()
+        val completed = next.get(30, TimeUnit.SECONDS)
+        p.awaitIdle()
+        Result
+          .assert(
+            cancelled(aborted) && running && held && done && timed == Vector(reused) &&
+              traced == List(true) && completed == TaskResult.Value(()) && retained(p).isEmpty
+          )
+          .log(
+            s"aborted=$aborted running=$running held=$held done=$done timed=$timed " +
+              s"traced=$traced completed=$completed retained=${retained(p)}"
+          )
+      finally
+        release.countDown()
+        finish.countDown()
+        Seq(first, second, coordinator).foreach(_.shutdownNow())
+      end try
+  end reusedTask
 
   private def closedCompletion: Result =
     val entered, blocked = new CountDownLatch(1)
