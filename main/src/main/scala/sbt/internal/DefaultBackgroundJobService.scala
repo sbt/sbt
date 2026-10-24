@@ -27,7 +27,7 @@ import sbt.util.{ Level, Logger }
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
-import scala.util.Try
+import scala.util.{ Try, Success, Failure }
 import scala.util.control.NonFatal
 import sbt.util.LoggerContext
 import java.util.concurrent.TimeoutException
@@ -402,11 +402,18 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
               throw new RuntimeException("Impossible status of bg thread")
           }
         }
-        try {
-          if (go) {
-            exitTry = Option(Try(body()))
-          }
-        } finally cleanup()
+        try
+          if go then
+            exitTry = Option(
+              try Success(body())
+              catch
+                case e: Throwable =>
+                  // not NonFatal
+                  // https://github.com/sbt/sbt/issues/6852
+                  // https://github.com/sbt/sbt/issues/7408
+                  Failure(e)
+            )
+        finally cleanup()
       } finally finishedLatch.countDown()
 
     private class StopListener(val callback: () => Unit, val executionContext: ExecutionContext)
