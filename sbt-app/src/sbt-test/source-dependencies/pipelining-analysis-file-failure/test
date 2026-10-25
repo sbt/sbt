@@ -1,0 +1,3 @@
+# a's analysis file is unknown, so a never compiles,
+# and b must not wait forever on a's early output
+-> compile
