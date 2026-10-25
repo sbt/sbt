@@ -231,7 +231,7 @@ object ConcurrentRestrictions {
 
       private[this] val sentinels: mutable.ListBuffer[JFuture[_]] = mutable.ListBuffer.empty
 
-      def cancelSentinels(): Unit = {
+      def cancelSentinels(): Unit = synchronized {
         sentinels.toList foreach { s =>
           s.cancel(true)
         }
