@@ -725,11 +725,16 @@ object Compiler:
       ci
     else if !Files.exists(earlyJar) && hasSources(ci.previousResult.analysis.toScala) then
       log.debug(s"early output $earlyJar is missing, recompiling from scratch")
-      // Without a previous analysis Zinc moves no product aside, and scalac cannot write through
-      // a restored link into the read-only CAS.
-      dropClassDirLinks(ci.options.classesDirectory, log)
       ci.withPreviousResult(PreviousResult.of(Optional.empty(), Optional.empty()))
     else ci
+
+  /**
+   * Without a previous analysis Zinc moves no product aside, and scalac cannot write through
+   * a restored link into the read-only CAS. See `cache/restored-outputs-no-analysis`.
+   */
+  private[sbt] def dropLinksWithoutAnalysis(ci: Inputs, log: Logger): Unit =
+    if !hasSources(ci.previousResult.analysis.toScala) then
+      dropClassDirLinks(ci.options.classesDirectory, log)
 
   /**
    * Whether a previous compile exists. The stored analysis carries no compilations and the cached

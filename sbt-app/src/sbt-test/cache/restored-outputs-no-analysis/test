@@ -1,0 +1,12 @@
+> compile
+
+# a cache hit restores the products as links into the read-only CAS
+$ delete target/out
+> compile
+> checkLinks
+
+# a miss without an analysis recompiles everything, so the links must not be written through
+> deleteAnalysis
+$ copy-file changes/B.scala src/main/scala/B.scala
+> compile
+> checkRegular

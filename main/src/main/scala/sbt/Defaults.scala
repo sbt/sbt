@@ -2453,6 +2453,7 @@ object Defaults extends BuildCommon with DefExtra:
         s.log,
       )
       val ci1 = earlyJar.fold(ci)(Compiler.prepareEarlyOutput(ci, _, s.log))
+      Compiler.dropLinksWithoutAnalysis(ci1, s.log)
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
       val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))
       val dir = ci.options.classesDirectory

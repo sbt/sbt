@@ -75,6 +75,7 @@ end O1
 
 - Use ScalaDoc to provide API documentation. In general, however, document the intent and background behind the code, rather than transcribing code to English.
 - Avoid excessive inline comments, especially the ones that repeats the same information as the code.
+- Keep Scaladoc to 3 lines or fewer, and avoid transcribing into English what can easily be deduced by reading the code body.
 
 ### Returns
 
@@ -89,6 +90,7 @@ Because sbt has 100+ plugins, we have to be careful not to break them when we ma
 - Expose as few public methods as possible.
 - Hide implementation details in `sbt.internal.x` packages.
 - Avoid exposing types from external libraries. We often change the library uses over the course of years.
+- Avoid adding helper functions to `Defaults.scala`, which is already large. Put them in `sbt.internal.Compiler` (`main/src/main/scala/sbt/internal/Compiler.scala`) or another `sbt.internal` object, and call them from `Defaults`.
 
 sbt build.sbt DSL
 -----------------
