@@ -5,12 +5,15 @@ import hedgehog.*
 import hedgehog.runner.*
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.core.Result
-import java.io.{ ByteArrayInputStream, PipedInputStream, PipedOutputStream }
+import java.io.{ ByteArrayInputStream, InputStream, PipedInputStream, PipedOutputStream }
+import java.nio.channels.ClosedChannelException
 import java.nio.charset.StandardCharsets
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.*
 import scala.sys.process.Process
 import scala.util.Using
+import _root_.sbt.util.Logger
 
 object WorkerExchangeTest extends Properties:
   given Gen[WorkerConnection] =
@@ -28,7 +31,32 @@ object WorkerExchangeTest extends Properties:
     example("startWorker(fo, extraCp) auto-detects a working connection type", exampleAutoDetect),
     property("readLines preserves lines", propReadLines),
     example("readLines reads a 32MB line in linear time", exampleLongLine),
+    example("readLines stops at a closed connection", exampleReadLinesClosed),
+    example("notifyExit ignores another worker's exit", exampleNotifyExitOtherWorker),
   )
+
+  def exampleReadLinesClosed: Result =
+    val bytes = ByteArrayInputStream("a\nb\n".getBytes(StandardCharsets.UTF_8))
+    val in = new InputStream:
+      def read(): Int =
+        val b = bytes.read()
+        if b < 0 then throw ClosedChannelException() else b
+    val actual = ListBuffer.empty[String]
+    WorkerExchange.readLines(in)(actual += _)
+    Result.assert(actual.toList == List("a", "b"))
+
+  def exitedProcess: Process = new Process:
+    def isAlive(): Boolean = false
+    def exitValue(): Int = 0
+    def destroy(): Unit = ()
+
+  def exampleNotifyExitOtherWorker: Result =
+    val own = exitedProcess
+    val react = React(1L, Logger.Null, Nil, mutable.Map.empty, own)
+    react.notifyExit(exitedProcess)
+    val ignored = !react.promise.isCompleted
+    react.notifyExit(own)
+    Result.assert(ignored).and(Result.assert(react.promise.isCompleted))
 
   def propReadLines: Property =
     for lines <- Gen.string(Gen.unicode, Range.linear(0, 50)).list(Range.linear(0, 10)).forAll
