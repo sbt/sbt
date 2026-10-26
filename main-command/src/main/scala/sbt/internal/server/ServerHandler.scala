@@ -83,3 +83,4 @@ trait ServerCallback:
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
   private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
   private[sbt] def onCancellationRequest(execId: Option[String], crp: CRP): Unit
+  private[sbt] def onExecsRequest(execId: Option[String]): Unit

@@ -151,8 +151,13 @@ final class NetworkChannel(
       self.onCompletionRequest(execId, cp)
     private[sbt] def onCancellationRequest(execId: Option[String], crp: CancelRequestParams): Unit =
       self.onCancellationRequest(execId, crp)
+    private[sbt] def onExecsRequest(execId: Option[String]): Unit =
+      self.onExecsRequest(execId)
 
   protected def setInitializeOption(opts: InitializeOption): Unit = initializeOption.set(opts)
+
+  override private[sbt] def clientName: String =
+    Option(initializeOption.get).flatMap(_.clientName).getOrElse(name)
 
   // Returns true if sbtn has declared with canWork: true
   protected def clientCanWork: Boolean =
@@ -484,17 +489,66 @@ final class NetworkChannel(
           )
     else log.warn(s"ignoring completion request $cp before initialization")
 
+  protected def onExecsRequest(execId: Option[String]): Unit =
+    respondResult(ExecsResponse(StandardMain.exchange.execInfos), execId)
+
+  private def cancelWaiting(p: ExecInfo => Boolean): Vector[Exec] =
+    val removed = StandardMain.exchange.removeWaiting(p)
+    for
+      e <- removed
+      s <- e.source
+      case nc: NetworkChannel <- StandardMain.exchange.channelForName(s.channelName)
+    do nc.respondError(ErrorCodes.RequestCancelled, s"cancelled by $clientName", e.execId)
+    removed
+
+  /** The channel whose exec `crp` cancels, or None when the id is ambiguous across channels. */
+  private def cancelTarget(crp: CancelRequestParams): Option[String] =
+    crp.channelName match
+      case Some(c)                                   => Some(c)
+      case None if crp.id == Serialization.CancelAll => Some(name)
+      case None                                      =>
+        val owners =
+          StandardMain.exchange.execInfos.filter(_.id == crp.id).map(_.channelName).distinct
+        if owners.isEmpty || owners.contains(name) then Some(name)
+        else if owners.size == 1 then owners.headOption
+        else None
+
   protected def onCancellationRequest(execId: Option[String], crp: CancelRequestParams) =
     if initialized then
+      val targetOpt = cancelTarget(crp)
+      val target = targetOpt.getOrElse(name)
+      def matches(info: ExecInfo) =
+        targetOpt.contains(info.channelName) &&
+          (info.id == crp.id || crp.id == Serialization.CancelAll)
+      val waiting = cancelWaiting(matches)
 
       def errorRespond(msg: String) = respondError(
         ErrorCodes.RequestCancelled,
         msg,
         execId
       )
+      def respondCancelled() = respondResult(
+        ExecStatusEvent("Task cancelled", Some(target), Some(crp.id), Vector(), None),
+        execId
+      )
 
       try
         EvaluateTask.runningTaskCancellation match
+          case _ if targetOpt.isEmpty =>
+            respondError(
+              ErrorCodes.InvalidParams,
+              s"id ${crp.id} is used by more than one channel; specify channelName",
+              execId
+            )
+          case _ if waiting.nonEmpty && crp.id != Serialization.CancelAll =>
+            respondCancelled()
+          case Some(cancel) if target != name =>
+            if StandardMain.exchange.execInfos.exists(i => i.status == "running" && matches(i))
+            then
+              cancel()
+              respondCancelled()
+            else if waiting.nonEmpty then respondCancelled()
+            else errorRespond("Task ID not matched")
           case Some(cancel) =>
             val runningExecId =
               StandardMain.exchange.withState(_.currentCommand.flatMap(_.execId).getOrElse(""))
@@ -533,9 +587,11 @@ final class NetworkChannel(
                 ),
                 execId
               )
+            else if waiting.nonEmpty then respondCancelled()
             else errorRespond("Task ID not matched")
 
-          case None =>
+          case None if waiting.nonEmpty => respondCancelled()
+          case None                     =>
             errorRespond("No tasks under execution")
       catch
         case NonFatal(_) =>

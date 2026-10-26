@@ -31,4 +31,5 @@ type InitializeOption {
   skipAnalysis: Boolean @since("1.4.0")
   canWork: Boolean @since("1.10.8")
   subscribeToAll: Boolean @since("2.0.0")
+  clientName: String @since("2.1.0")
 }

@@ -74,6 +74,7 @@ abstract class CommandChannel:
   @deprecated("Use the variant that takes the logShutdown parameter", "1.4.0")
   def shutdown(): Unit = shutdown(true)
   def name: String
+  private[sbt] def clientName: String = name
   private val level = new AtomicReference[Level.Value](Level.Info)
   private[sbt] final def setLevel(l: Level.Value): Unit = level.set(l)
   private[sbt] final def logLevel: Level.Value = level.get

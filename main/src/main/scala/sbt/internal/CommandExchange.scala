@@ -33,7 +33,7 @@ import sbt.nio.Watch.NullLogger
 import sbt.internal.nio.FileTreeRepository
 import sbt.nio.file.FileAttributes
 import sbt.protocol.Serialization.{ attach, clientJob }
-import sbt.protocol.{ ExecStatusEvent, LogEvent }
+import sbt.protocol.{ ExecInfo, ExecStatusEvent, LogEvent }
 import sbt.util.Logger
 import sjsonnew.JsonFormat
 
@@ -41,6 +41,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.{ Failure, Success, Try }
 
 /**
@@ -185,6 +186,39 @@ private[sbt] final class CommandExchange:
       .getOrElse(new UITask.AskUserTask(state, channel))
 
   private[sbt] def currentExec = Option(currentExecRef.get)
+
+  private[sbt] def execInfos: Vector[ExecInfo] =
+    currentExec.flatMap(execInfo(_, "running")).toVector ++
+      commandQueue.asScala.toVector.flatMap(execInfo(_, "waiting"))
+
+  /** Removes the waiting execs matching `p`, and returns them. */
+  private[sbt] def removeWaiting(p: ExecInfo => Boolean): Vector[Exec] =
+    val removed = Vector.newBuilder[Exec]
+    Util.ignoreResult(commandQueue.removeIf { e =>
+      execInfo(e, "waiting").exists(p) && { removed += e; true }
+    })
+    removed.result()
+
+  private def execInfo(e: Exec, status: String): Option[ExecInfo] =
+    for
+      source <- e.source
+      execId <- e.execId
+      if !e.commandLine.startsWith(networkExecPrefix)
+      channel <- channels.find(_.name == source.channelName)
+    yield ExecInfo(
+      originalExecId(execId),
+      channel.name,
+      channel.clientName,
+      e.commandLine,
+      status
+    )
+
+  private def originalExecId(execId: String): String =
+    if execId.startsWith(networkExecPrefix) then
+      withState(_.get(BasicCommands.execMap))
+        .flatMap(_.collectFirst { case (k, `execId`) => k })
+        .getOrElse(execId)
+    else execId
 
   /**
    * Check if a server instance is running already, and start one if it isn't.

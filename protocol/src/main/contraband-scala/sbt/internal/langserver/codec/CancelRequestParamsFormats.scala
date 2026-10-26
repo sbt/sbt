@@ -12,8 +12,9 @@ given CancelRequestParamsFormat: JsonFormat[sbt.internal.langserver.CancelReques
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val id = unbuilder.readField[String]("id")
+      val channelName = unbuilder.readField[Option[String]]("channelName")
       unbuilder.endObject()
-      sbt.internal.langserver.CancelRequestParams(id)
+      sbt.internal.langserver.CancelRequestParams(id, channelName)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -21,6 +22,7 @@ given CancelRequestParamsFormat: JsonFormat[sbt.internal.langserver.CancelReques
   override def write[J](obj: sbt.internal.langserver.CancelRequestParams, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("id", obj.id)
+    builder.addField("channelName", obj.channelName)
     builder.endObject()
   }
 }
