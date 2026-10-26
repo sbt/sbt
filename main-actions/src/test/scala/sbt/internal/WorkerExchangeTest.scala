@@ -5,7 +5,12 @@ import hedgehog.*
 import hedgehog.runner.*
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.core.Result
+import java.io.{ ByteArrayInputStream, PipedInputStream, PipedOutputStream }
+import java.nio.charset.StandardCharsets
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration.*
 import scala.sys.process.Process
+import scala.util.Using
 
 object WorkerExchangeTest extends Properties:
   given Gen[WorkerConnection] =
@@ -21,7 +26,37 @@ object WorkerExchangeTest extends Properties:
     propertyN("non-jsonrpc should return exit code 1", propBadInput, 10),
     propertyN("bye should return response json with a result", propBye, 10),
     example("startWorker(fo, extraCp) auto-detects a working connection type", exampleAutoDetect),
+    property("readLines preserves lines", propReadLines),
+    example("readLines reads a 32MB line in linear time", exampleLongLine),
   )
+
+  def propReadLines: Property =
+    for lines <- Gen.string(Gen.unicode, Range.linear(0, 50)).list(Range.linear(0, 10)).forAll
+    yield
+      val clean = lines.map(_.filterNot(c => c == '\n' || c == '\r'))
+      val in = ByteArrayInputStream(clean.map(_ + "\n").mkString.getBytes(StandardCharsets.UTF_8))
+      val actual = ListBuffer.empty[String]
+      WorkerExchange.readLines(in)(actual += _)
+      Result.assert(actual.toList == clean)
+
+  def exampleLongLine: Result =
+    val size = 32 * 1024 * 1024
+    val out = PipedOutputStream()
+    val in = PipedInputStream(out, 64 * 1024)
+    val writer = Thread: () =>
+      Using.resource(out): o =>
+        val chunk = ("x" * 8192).getBytes(StandardCharsets.UTF_8)
+        (0 until size / chunk.length).foreach(_ => o.write(chunk))
+        o.write('\n')
+    val start = System.nanoTime()
+    writer.start()
+    val lengths = ListBuffer.empty[Int]
+    WorkerExchange.readLines(in)(lengths += _.length)
+    val elapsed = (System.nanoTime() - start).nanos
+    Result
+      .assert(lengths.toList == List(size))
+      .and(Result.assert(elapsed < 20.seconds))
+      .log(s"elapsed: ${elapsed.toMillis}ms")
 
   def propertyN(name: String, result: => Property, n: Int): Test =
     Test(name, result)
