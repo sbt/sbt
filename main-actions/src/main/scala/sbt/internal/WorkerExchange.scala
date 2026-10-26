@@ -13,8 +13,8 @@ import org.scalasbt.shadedgson.com.google.gson.Gson
 import java.io.*
 import java.net.{ InetAddress, ServerSocket, StandardProtocolFamily, UnixDomainSocketAddress }
 import java.nio.channels.{ ServerSocketChannel, SocketChannel }
+import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path as NioPath }
-import java.util.Scanner
 import java.util.concurrent.ConcurrentLinkedQueue
 import sbt.io.IO
 import sbt.internal.io.Retry
@@ -108,8 +108,7 @@ object WorkerExchange:
     val responsesRead = Promise[Unit]()
     def runAccepter(out: OutputStream, in: InputStream): Unit =
       inputRef.success(out)
-      val scanner = Scanner(in, "UTF-8")
-      while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
+      readLines(in)(notifyListeners)
       responsesRead.trySuccess(())
     val (connArgs, closer) = connectionType match
       case WorkerConnection.Tcp =>
@@ -174,6 +173,11 @@ object WorkerExchange:
     val input = Await.result(inputRef.future, forkTimeout)
     WorkerProxy(input, p, options, closer, responsesRead.future)
   end startWorker
+
+  /** Unlike `Scanner`, `BufferedReader` reads a line in linear time (#9982). */
+  private[sbt] def readLines(in: InputStream)(f: String => Unit): Unit =
+    val reader = BufferedReader(InputStreamReader(in, StandardCharsets.UTF_8))
+    Iterator.continually(reader.readLine()).takeWhile(_ != null).foreach(f)
 
   /** Generates a fresh path suitable for binding a `WorkerConnection.Ipc` socket. */
   def newIpcSocketPath(): NioPath =
