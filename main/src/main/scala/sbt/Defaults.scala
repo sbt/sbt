@@ -2378,29 +2378,39 @@ object Defaults extends BuildCommon with DefExtra:
         val result = cachedCompileIncrementalTask.result.value
         val reporterResult = (compile / bspReporter).result.value
         val ciResult = (compile / compileInputs).result.value
+        val afResult = compileAnalysisFile.result.value
         val c = fileConverter.value
         val dir = c.toPath(backendOutput.value).toFile
         val ping = (TaskZero / earlyOutputPing).value
-        (bspTaskResult, reporterResult, ciResult) match
-          case (Result.Value(bspTask), Result.Value(reporter), Result.Value(ci)) =>
+        (bspTaskResult, reporterResult, ciResult, afResult) match
+          case (
+                Result.Value(bspTask),
+                Result.Value(reporter),
+                Result.Value(ci),
+                Result.Value(af)
+              ) =>
             result match
               case Result.Value(res) =>
-                val af = compileAnalysisFile.value
-                val store = analysisStore(af.toPath(), c)
-                if !af.exists then sys.error(s"${af} is missing")
-                val analysis = store.unsafeGet().getAnalysis()
-                // Zinc completes the ping during a real compile; on an action-cache hit zinc
-                // never runs, so re-derive its decision. The early jar is written even for
-                // subprojects that define macros, so its presence alone is not enough.
-                // tryComplete is atomic: zinc's own completion always wins when it ran.
-                ping.tryComplete(
-                  Result.Value(
-                    c.toPath(earlyOutput.value).toFile.exists && !definesMacro(analysis)
+                try
+                  val store = analysisStore(af.toPath(), c)
+                  if !af.exists then sys.error(s"${af} is missing")
+                  val analysis = store.unsafeGet().getAnalysis()
+                  // Zinc completes the ping during a real compile; on an action-cache hit zinc
+                  // never runs, so re-derive its decision. The early jar is written even for
+                  // subprojects that define macros, so its presence alone is not enough.
+                  // tryComplete is atomic: zinc's own completion always wins when it ran.
+                  ping.tryComplete(
+                    Result.Value(
+                      c.toPath(earlyOutput.value).toFile.exists && !definesMacro(analysis)
+                    )
                   )
-                )
-                reporter.sendSuccessReport(analysis)
-                bspTask.notifySuccess(analysis)
-                res
+                  reporter.sendSuccessReport(analysis)
+                  bspTask.notifySuccess(analysis)
+                  res
+                catch
+                  case e: Throwable =>
+                    ping.tryComplete(Result.Value(false))
+                    throw e
               case Result.Inc(cause) =>
                 ping.tryComplete(Result.Value(false))
                 val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
@@ -2412,7 +2422,7 @@ object Defaults extends BuildCommon with DefExtra:
             // compile never runs when its inputs fail, so complete the ping here;
             // otherwise anything blocked on earlyOutputPing.await waits forever.
             ping.tryComplete(Result.Value(false))
-            throw incompleteDeps(failures(List(bspTaskResult, reporterResult, ciResult)))
+            throw incompleteDeps(failures(List(bspTaskResult, reporterResult, ciResult, afResult)))
         end match
       },
     )
@@ -2552,9 +2562,7 @@ object Defaults extends BuildCommon with DefExtra:
     try incCompiler.compile(i, log)
     catch
       case e: Throwable =>
-        if !promise.isCompleted then
-          promise.failure(e)
-          ConcurrentRestrictions.cancelAllSentinels()
+        if !promise.isCompleted then promise.failure(e)
         throw e
     finally x.close() // workaround for #937
   end compileIncrementalTaskImpl

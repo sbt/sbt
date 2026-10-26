@@ -1,0 +1,6 @@
+> compile
+
+$ copy-file changes/A.scala a/A.scala
+# a fails to compile while b1 and b2 wait for its early output,
+# and the result of c / Compile / compile must keep the compile failure
+> checkCompileFailure

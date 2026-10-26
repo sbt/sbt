@@ -1,0 +1,7 @@
+> compile
+> a/deleteAnalysis
+
+# a's Setup names another analysis file, so the cache hit for a's compile doesn't
+# restore the deleted one, and a's compileIncremental fails after the compile succeeded;
+# b must not wait forever on a's early output
+-> b/compile
