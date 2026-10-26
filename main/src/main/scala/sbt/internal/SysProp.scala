@@ -254,17 +254,10 @@ object SysProp:
     baseCache.getAbsoluteFile / "v2"
   end globalLocalCacheFrom
 
-  /**
-   * Overrides the Ivy-style local repository that publishLocal writes to, without moving the
-   * Ivy home, so the shared download caches are left alone. Used to give scripted tests a
-   * publish target of their own.
-   */
-  def localIvyRepository: Option[File] =
-    sys.props
-      .get("sbt.local.repository")
-      .map(_.trim)
-      .filter(_.nonEmpty)
-      .map(file(_).getAbsoluteFile)
+  /** Moves the publishLocal target without moving the Ivy home or the download caches. */
+  def localIvyRepository: Option[File] = sys.props
+    .get("sbt.local_repository")
+    .map(File(_))
 
   lazy val sbtCredentialsEnv: Option[Credentials] =
     sys.env.get("SBT_CREDENTIALS").map(raw => new Credentials.FileCredentials(new File(raw)))
