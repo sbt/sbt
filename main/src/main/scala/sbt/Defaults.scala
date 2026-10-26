@@ -2456,14 +2456,11 @@ object Defaults extends BuildCommon with DefExtra:
       val earlyJar = ci.options.earlyOutput.toScala.flatMap(_.getSingleOutputAsPath.toScala)
       // Restored outputs are links into the CAS; once the CAS is gone they must not be reused.
       Compiler.dropDanglingOutputs(
-        ci.options.classesDirectory,
-        analysisFile,
-        earlyJar,
-        earlyJar.map(_ => earlyAnalysisFile),
+        analysisFile +: (earlyJar.toList ++ earlyJar.map(_ => earlyAnalysisFile)),
         s.log,
       )
       val ci1 = earlyJar.fold(ci)(Compiler.prepareEarlyOutput(ci, _, s.log))
-      Compiler.dropLinksWithoutAnalysis(ci1, s.log)
+      Compiler.dropProductsWithoutAnalysis(ci1, s.log)
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
       val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))
       val dir = ci.options.classesDirectory

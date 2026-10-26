@@ -78,6 +78,13 @@ lazy val core = project
     TaskKey[Unit]("breakAnalysis") := Def.uncached {
       breakLinks(Seq((Compile / compileAnalysisFile).value.toPath), streams.value.log)
     },
+    TaskKey[Unit]("deleteEarlyOutput") := Def.uncached {
+      val jar = fileConverter.value.toPath((Compile / earlyOutput).value)
+      try Files.delete(jar)
+      catch
+        case e: java.nio.file.FileSystemException =>
+          streams.value.log.info(s"cannot delete the open $jar: ${e.getMessage}")
+    },
     TaskKey[Unit]("breakEarlyOutput") := Def.uncached {
       breakLinks(Seq(fileConverter.value.toPath((Compile / earlyOutput).value)), streams.value.log)
     },
