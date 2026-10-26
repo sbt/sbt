@@ -174,10 +174,14 @@ object WorkerExchange:
     WorkerProxy(input, p, options, closer, responsesRead.future)
   end startWorker
 
-  /** Unlike `Scanner`, `BufferedReader` reads a line in linear time (#9982). */
+  /**
+   * Unlike `Scanner`, `BufferedReader` reads a line in linear time (#9982).
+   * Like `Scanner`, it stops at an `IOException`, such as the connection being closed.
+   */
   private[sbt] def readLines(in: InputStream)(f: String => Unit): Unit =
     val reader = BufferedReader(InputStreamReader(in, StandardCharsets.UTF_8))
-    Iterator.continually(reader.readLine()).takeWhile(_ != null).foreach(f)
+    try Iterator.continually(reader.readLine()).takeWhile(_ != null).foreach(f)
+    catch case _: IOException => ()
 
   /** Generates a fresh path suitable for binding a `WorkerConnection.Ipc` socket. */
   def newIpcSocketPath(): NioPath =
