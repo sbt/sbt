@@ -2319,14 +2319,22 @@ object Defaults extends BuildCommon {
   }
   def compileIncrementalTask = Def.task {
     val s = streams.value
-    val ci = (compile / compileInputs).value
+    val ciResult = (compile / compileInputs).result.value
     val ping = earlyOutputPing.value
-    val reporter = (compile / bspReporter).value
-    BspCompileTask
-      .compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value, ci) { task =>
-        // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-        compileIncrementalTaskImpl(task, s, ci, ping, reporter)
-      }
+    val reporterResult = (compile / bspReporter).result.value
+    val targetId = bspTargetIdentifier.value
+    val projectRef = thisProjectRef.value
+    val config = configuration.value
+    (ciResult, reporterResult) match {
+      case (Value(ci), Value(reporter)) =>
+        BspCompileTask.compute(targetId, projectRef, config, ci) { task =>
+          // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+          compileIncrementalTaskImpl(task, s, ci, ping, reporter)
+        }
+      case _ =>
+        if (!ping.isCompleted) ping.success(false)
+        throw incompleteDeps(failures(Seq(ciResult, reporterResult)))
+    }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
@@ -2380,10 +2388,7 @@ object Defaults extends BuildCommon {
       result
     } catch {
       case e: Throwable =>
-        if (!promise.isCompleted) {
-          promise.failure(e)
-          ConcurrentRestrictions.cancelAllSentinels()
-        }
+        if (!promise.isCompleted) promise.failure(e)
         reporter.sendFailureReport(ci.options.sources)
 
         throw e

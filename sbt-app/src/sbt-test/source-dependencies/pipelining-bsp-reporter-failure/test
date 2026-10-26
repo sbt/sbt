@@ -1,0 +1,3 @@
+# a's bspReporter fails, so a never compiles,
+# and b must not wait forever on a's early output
+-> compile
