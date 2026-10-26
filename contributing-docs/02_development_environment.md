@@ -9,6 +9,19 @@ This includes macOS, Linux, and modern Windows.
 
 sbt acts as a package manager, so once you installed JDK and sbt, it will download necessary dependencies.
 
+Devcontainer
+------------
+
+The repository includes a [devcontainer](../.devcontainer/devcontainer.json), which also starts bazel-remote on localhost:8000 (HTTP) and 2024 (gRPC).
+
+Rebuilding the container wipes `~/.cache/sbt`, but `target/` persists through the bind mount.
+Outputs under `target/` are symlinks into the disk cache, so they dangle, and `publishLocalBin` (used by `scripted`) fails with `Source file '.../dummy-doc/doc.jar' does not exist`.
+Delete the dangling links and re-run:
+
+```bash
+$ find target -xtype l -delete
+```
+
 IDE support
 -----------
 

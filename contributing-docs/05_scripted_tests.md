@@ -165,6 +165,14 @@ To suspend the test until you hit the enter key, add the following line to your 
 $ pause
 ```
 
+Testing log output
+------------------
+
+- In batch mode, a failed project load exits the sbt process, and scripted starts a new one for the next statement. The global log of a failed session is kept under `target/global-logging/`, so the next process can read it. See `project-load/neg-types`.
+- The global log includes `[debug]` command echoes, so a check that greps it must skip `[debug]` lines, or it finds its own command.
+- To capture output, add an appender to `LoggerContext.globalContext` from a command in `project/` (`package sbt`, since it's `private[sbt]`). Register it once by name, since `onLoad` runs several times. See `tests/summary/project/Capture.scala`.
+- Tests in a scripted batch share a directory, so prefer content-based checks over line indices. For golden files compared with `must-mirror`, set `Global / showTiming := false` to drop the timing line.
+
 Testing changes
 ---------------
 
