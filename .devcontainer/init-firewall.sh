@@ -91,6 +91,12 @@ for domain in \
         ipset add allowed-domains "$ip"
     done < <(echo "$ips")
 done
+# GitHub Actions logs
+for i in $(seq 0 19); do
+    for ip in $(dig +short A "productionresultssa$i.blob.core.windows.net" | grep -E '^[0-9.]+$'); do
+        ipset add allowed-domains "$ip" -exist
+    done
+done || true
 
 # Get host IP from default route
 HOST_IP=$(ip route | grep default | cut -d" " -f3)
