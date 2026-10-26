@@ -233,6 +233,22 @@ class GrpcActionCacheStore private (
   private[internal] def byteStreamStubWithDeadline =
     byteStreamStub.withDeadlineAfter(requestTimeout.toMillis, TimeUnit.MILLISECONDS)
 
+  /**
+   * Metadata RPCs carry no payload, so a cache that stops answering must not cost the full
+   * transfer timeout on every cached task.
+   */
+  private val metadataTimeout: FiniteDuration =
+    if requestTimeout < 10.seconds then requestTimeout else 10.seconds
+
+  private[internal] def acStubWithDeadline =
+    acStub.withDeadlineAfter(metadataTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  private[internal] def casStubWithDeadline =
+    casStub.withDeadlineAfter(metadataTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  private[internal] def casTransferStubWithDeadline =
+    casStub.withDeadlineAfter(requestTimeout.toMillis, TimeUnit.MILLISECONDS)
+
   private val awaitTimeout = requestTimeout + 2.seconds
 
   override def storeName: String = "remote"
@@ -263,7 +279,7 @@ class GrpcActionCacheStore private (
       request.inlineOutputFiles.foreach: p =>
         b.addInlineOutputFiles(p)
       val req = b.build()
-      val result = acStub.getActionResult(req)
+      val result = acStubWithDeadline.getActionResult(req)
       Right(toActionResult(result))
     catch case NonFatal(e) => Left(e)
 
@@ -279,7 +295,7 @@ class GrpcActionCacheStore private (
       b.setDigestFunction(DigestFunction.Value.SHA256)
       b.setActionResult(toXActionResult(refs, request.exitCode))
       val req = b.build()
-      val result = acStub.updateActionResult(req)
+      val result = acStubWithDeadline.updateActionResult(req)
       Right(toActionResult(result))
     catch case NonFatal(e) => Left(e)
 
@@ -350,7 +366,7 @@ class GrpcActionCacheStore private (
       bb.setCompressor(Compressor.Value.IDENTITY)
       b.addRequests(bb.build())
     val req = b.build()
-    val result = casStub.batchUpdateBlobs(req)
+    val result = casTransferStubWithDeadline.batchUpdateBlobs(req)
     val responses = result.getResponsesList().asScala.toList
     // do not assume responses to come in order
     val lookupResponse: Map[Digest, BatchUpdateBlobsResponse.Response] =
@@ -461,7 +477,7 @@ class GrpcActionCacheStore private (
       b.addBlobDigests(toXDigest(Digest(r)))
     b.setDigestFunction(DigestFunction.Value.SHA256)
     val req = b.build()
-    val res = casStub.findMissingBlobs(req)
+    val res = casStubWithDeadline.findMissingBlobs(req)
     val missing = res.getMissingBlobDigestsList().asScala.map(toDigest).toSet
     refs.flatMap: r =>
       if missing(Digest(r)) then None
@@ -475,7 +491,7 @@ class GrpcActionCacheStore private (
     b.setDigestFunction(DigestFunction.Value.SHA256)
     b.addAcceptableCompressors(Compressor.Value.IDENTITY)
     val req = b.build()
-    casStub.batchReadBlobs(req)
+    casTransferStubWithDeadline.batchReadBlobs(req)
 
   private def toXActionResult(
       refs: Seq[HashedVirtualFileRef],
