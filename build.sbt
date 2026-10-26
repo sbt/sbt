@@ -798,6 +798,18 @@ lazy val mainProj = (project in file("main"))
     SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      exclude[IncompatibleMethTypeProblem](
+        "sbt.TaskCancellationStrategy.onTaskEngineStart(sbt.RunningTaskEngine)java.lang.Object"
+      ),
+      exclude[ReversedMissingMethodProblem](
+        "sbt.TaskCancellationStrategy.onTaskEngineStart(scala.Function0)java.lang.Object"
+      ),
+      exclude[IncompatibleMethTypeProblem](
+        "sbt.TaskCancellationStrategy#Null.onTaskEngineStart(sbt.RunningTaskEngine)Unit"
+      ),
+      exclude[IncompatibleMethTypeProblem](
+        "sbt.TaskCancellationStrategy#Signal.onTaskEngineStart(sbt.RunningTaskEngine)sbt.internal.util.Signals#Registration"
+      ),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
