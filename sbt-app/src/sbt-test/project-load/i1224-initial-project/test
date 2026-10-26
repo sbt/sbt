@@ -1,21 +1,16 @@
-# Force a genuinely session-free load. project-load/* runs as one batch and the
-# runner injects "reload;initialize" before every test but the first, so without
-# this the fixture would pass alone and fail in CI.
+# Only a load without a session reads initialProject: reboot gives one, reload does not.
 > reboot
-
-# initialProject selects subA at the first load, instead of the root project.
 > checkCurrent i1224SubA
 
-# ...and must not fight the user afterwards: reload preserves navigation. This is
-# the half the Global / onLoad workaround gets wrong.
-> project i1224SubB
-> reload
-> checkCurrent i1224SubB
-> reload
+$ copy-file changes/bare.sbt ip.sbt
+> reboot
 > checkCurrent i1224SubB
 
-# Nothing else in the settings graph depends on the key - it is read imperatively
-# during load - so lintUnused would report it as unused in any build that sets it.
-# That is what the excludeLintKeys entry suppresses.
-> project i1224Root
-> checkLint
+> project i1224SubA
+> reload
+> checkCurrent i1224SubA
+
+$ copy-file changes/typo.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+> checkWarning i1224Typo
