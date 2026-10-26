@@ -13,10 +13,8 @@ checkCurrent := {
 
 checkWarning := {
   val expected = Def.spaceDelimited().parsed.head
-  val backing = state.value.globalLogging.backing
-  val warnings = (backing.last.toList :+ backing.file)
-    .filter(_.exists)
-    .flatMap(IO.readLines(_))
+  val warnings = IO
+    .readLines(state.value.globalLogging.backing.file)
     .map(sbt.internal.util.EscHelpers.stripColorsAndMoves)
     .filter(_.contains("[warn]"))
   assert(warnings.exists(_.contains(expected)), s"no warning mentions $expected")
