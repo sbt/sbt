@@ -96,35 +96,16 @@ This will copy your test build into a temporary dir, and executes the `test` scr
 Isolation
 ---------
 
-Each test runs in a temporary directory that is emptied before the next test in the batch, and
-gets its own `sbt.global.base`. On top of that, scripted points the publishing targets at
-directories of its own, so a test that runs `publishLocal` or `publishM2` cannot write into your
-real repositories:
+Each test gets its own `sbt.global.base`. Scripted also sends `publishLocal` to
+`<test dir>/global/local-repo` (`-Dsbt.local_repository`) and `publishM2` to
+`<test dir>/global/m2-repo` (`-Dmaven.repo.local`), and empties both before each test. The
+resolvers include the isolated local repository as `local-publish`, except when
+`sbt.override.build.repos` is set.
 
-| | Where it goes |
-| --- | --- |
-| `publishLocal` | `<test dir>/global/local-repo`, via `-Dsbt.local.repository` |
-| `publishM2` | `<test dir>/global/m2-repo`, via `-Dmaven.repo.local` |
-
-Both are emptied between tests, and the isolated local repository is added to `fullResolvers`
-under the name `local-publish`, so a test can still resolve what it just published.
-
-The download caches are deliberately **not** isolated. `csrCacheDirectory`, `ivyPaths` and the
-launcher's Ivy home are left alone, so tests do not re-resolve everything from the network and
-`~/.ivy2/local` stays readable — which is how a test gets at the sbt or plugin under test.
-
-A build that sets `ivyPaths` itself has already chosen where to publish, and keeps that choice.
-To opt out of a target entirely, set the property yourself:
-
-```scala
-scriptedLaunchOpts += s"-Dsbt.local.repository=${Path.userHome / ".ivy2" / "local"}"
-```
-
-Some machine-global state is still shared with the host and is worth knowing about when a test
-behaves oddly: `~/.sbtrc` is read at every startup, `SBT_CREDENTIALS` is inherited through the
-fork, and the launcher resolves sbt itself from the real `~/.ivy2/local` regardless of
-`sbt.ivy.home`. Note also that `global/` is preserved between the tests of a batch, so a test
-that installs something there (a global plugin, say) must delete it again at the end.
+The coursier cache and `~/.ivy2/local` stay shared, so a test can still read the sbt or plugin
+under test. `mavenLocal` follows `maven.repo.local`, so a test cannot read the real `~/.m2`. A
+build that sets `ivyPaths` keeps publishing under that Ivy home. To publish to the real
+repository again, set the property in `scriptedLaunchOpts`.
 
 Custom assertion
 ----------------
