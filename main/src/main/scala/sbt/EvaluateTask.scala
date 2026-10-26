@@ -23,7 +23,7 @@ import sbt.internal.langserver.ErrorCodes
 import sbt.internal.util.{ Terminal as ITerminal, * }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
-import sbt.util.{ Logger, Show }
+import sbt.util.Show
 import sbt.internal.bsp.BuildTargetIdentifier
 
 import scala.annotation.nowarn
@@ -454,65 +454,21 @@ object EvaluateTask:
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
 
-  private var runningTaskEngines = List.empty[RunningTaskEngine]
-  private var runningTaskGeneration = 0L
-  private var runningTaskCancelled = false
-  private var runningTaskCancelling = false
-  private var runningTaskLog: Logger = Logger.Null
+  private val taskEngineTracker = new TaskEngineTracker(log =>
+    val logging = scala.util.Try:
+      println("")
+      log.warn("Canceling execution...")
+    val cleanup = List(
+      logging,
+      scala.util.Try(RunningProcesses.killAll()),
+      scala.util.Try(ConcurrentRestrictions.cancelAll()),
+      scala.util.Try(DefaultBackgroundJobService.stop())
+    )
+    cleanup.foreach(_.get)
+  )
 
-  private[sbt] def addRunningTaskEngine(engine: RunningTaskEngine, log: Logger): () => Unit =
-    val (generation, cancelled) = synchronized:
-      if runningTaskEngines.isEmpty then runningTaskLog = log
-      runningTaskEngines = engine :: runningTaskEngines
-      (runningTaskGeneration, runningTaskCancelled)
-    if cancelled then
-      try engine.cancelAndShutdown()
-      catch
-        case e: Throwable =>
-          removeRunningTaskEngine(engine)
-          throw e
-    () => cancelRunningTasks(generation)
-
-  private[sbt] def removeRunningTaskEngine(engine: RunningTaskEngine): Unit = synchronized:
-    if runningTaskEngines.nonEmpty then
-      runningTaskEngines = runningTaskEngines.filterNot(_ eq engine)
-      if runningTaskEngines.isEmpty then
-        runningTaskGeneration += 1
-        runningTaskCancelled = false
-        runningTaskCancelling = false
-        runningTaskLog = Logger.Null
-
-  private[sbt] def runningTaskCancellation: Option[() => Unit] = synchronized:
-    if runningTaskEngines.isEmpty then None
-    else
-      val generation = runningTaskGeneration
-      Some(() => cancelRunningTasks(generation))
-
-  private def cancelRunningTasks(generation: Long): Unit =
-    val snapshot = synchronized:
-      if generation != runningTaskGeneration || runningTaskEngines.isEmpty || runningTaskCancelling
-      then None
-      else
-        runningTaskCancelled = true
-        runningTaskCancelling = true
-        Some((runningTaskEngines.reverse, runningTaskLog))
-    snapshot.foreach: (engines, log) =>
-      try
-        val cleanup = List(
-          scala.util.Try {
-            println("")
-            log.warn("Canceling execution...")
-          },
-          scala.util.Try(RunningProcesses.killAll()),
-          scala.util.Try(ConcurrentRestrictions.cancelAll()),
-          scala.util.Try(DefaultBackgroundJobService.stop())
-        )
-        val shutdowns = engines.map(engine => scala.util.Try(engine.cancelAndShutdown()))
-        (cleanup ++ shutdowns).foreach(_.get)
-      finally
-        synchronized:
-          if generation == runningTaskGeneration then runningTaskCancelling = false
-  end cancelRunningTasks
+  private[sbt] def runningTaskCancellation: Option[() => Unit] =
+    taskEngineTracker.currentCancellation
 
   /**
    * The main method for the task engine.
@@ -582,7 +538,7 @@ object EvaluateTask:
       (newState, replaced)
     object runningEngine extends RunningTaskEngine:
       def cancelAndShutdown(): Unit = shutdownImpl(true)
-    val cancel = addRunningTaskEngine(runningEngine, log)
+    val cancel = taskEngineTracker.add(runningEngine, log)
     val strat = config.cancelStrategy
     var started = false
     try
@@ -595,7 +551,7 @@ object EvaluateTask:
     finally
       try
         if !started then shutdown()
-      finally removeRunningTaskEngine(runningEngine)
+      finally taskEngineTracker.remove(runningEngine)
   end runTask
 
   private def storeValuesForPrevious(

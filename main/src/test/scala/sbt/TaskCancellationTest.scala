@@ -8,6 +8,7 @@ package sbt
 
 import java.util.concurrent.{ CountDownLatch, TimeUnit }
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
+import sbt.internal.TaskEngineTracker
 import sbt.util.{ Level, Logger }
 import hedgehog.*
 import hedgehog.runner.*
@@ -32,12 +33,12 @@ object TaskCancellationTest extends Properties:
         write()
   end Log
 
-  private def withEngines(engines: Engine*)(test: => Result): Result = synchronized:
-    try test
-    finally engines.foreach(EvaluateTask.removeRunningTaskEngine)
+  private def withEngines(engines: Engine*)(test: TaskEngineTracker => Result): Result =
+    val tracker = new TaskEngineTracker(_.warn("Canceling execution..."))
+    try test(tracker)
+    finally engines.foreach(tracker.remove)
 
-  private def register(engine: Engine, log: Logger = Logger.Null): () => Unit =
-    EvaluateTask.addRunningTaskEngine(engine, log)
+  private def check(name: String)(test: => Result): Test = example(name, test)
 
   private def start(cancel: () => Unit, error: AtomicReference[Throwable]): Thread =
     val thread = new Thread(() =>
@@ -50,65 +51,76 @@ object TaskCancellationTest extends Properties:
   private def await(latch: CountDownLatch): Unit = assert(latch.await(10, TimeUnit.SECONDS))
 
   override def tests: List[Test] = List(
-    example("remove engines by identity and cancel overlapping evaluations outer first", {
+    check("remove engines by identity and cancel overlapping evaluations outer first"):
       val order = new java.util.concurrent.ConcurrentLinkedQueue[Int]()
-      val engines = List.tabulate(4)(i => new Engine(() => { order.add(i); () }))
-      withEngines(engines*):
-        val cancel = register(engines.head)
-        engines.tail.foreach(register(_))
-        EvaluateTask.removeRunningTaskEngine(engines(1))
-        EvaluateTask.removeRunningTaskEngine(engines(2))
+      val engines = List.tabulate(4)(i =>
+        new Engine(() =>
+          order.add(i); ()
+        )
+      )
+      withEngines(engines*): tracker =>
+        val cancel = tracker.add(engines.head)
+        engines.tail.foreach(tracker.add(_))
+        tracker.remove(engines(1))
+        tracker.remove(engines(2))
         cancel()
         Result.assert(
           engines.map(_.cancellations.get()) == List(1, 0, 0, 1) &&
             order.toArray.toList == List(0, 3)
         )
-    }),
-    example("retain the outer engine after the inner evaluation finishes", {
+    ,
+    check("retain the outer engine after the inner evaluation finishes"):
       val outer = new Engine
       val inner = new Engine
-      withEngines(outer, inner):
-        register(outer)
-        register(inner)
-        EvaluateTask.removeRunningTaskEngine(inner)
-        EvaluateTask.runningTaskCancellation.get.apply()
-        EvaluateTask.removeRunningTaskEngine(outer)
+      withEngines(outer, inner): tracker =>
+        tracker.add(outer)
+        tracker.add(inner)
+        tracker.remove(inner)
+        tracker.currentCancellation.get.apply()
+        tracker.remove(outer)
         Result.assert(
           outer.cancellations.get() == 1 && inner.cancellations.get() == 0 &&
-            EvaluateTask.runningTaskCancellation.isEmpty
+            tracker.currentCancellation.isEmpty
         )
-    }),
-    example("repeat cancellation and common cleanup once per request using the root logger", {
+    ,
+    check("repeat cancellation and common cleanup once per request using the root logger"):
       val outer = new Engine
       val inner = new Engine
       val rootLog = new Log
       val innerLog = new Log
-      withEngines(outer, inner):
-        val cancel = register(outer, rootLog)
-        register(inner, innerLog)
+      withEngines(outer, inner): tracker =>
+        val cancel = tracker.add(outer, rootLog)
+        tracker.add(inner, innerLog)
         cancel()
         cancel()
         Result.assert(
           outer.cancellations.get() == 2 && inner.cancellations.get() == 2 &&
             rootLog.warnings.get() == 2 && innerLog.warnings.get() == 0
         )
-    }),
-    example("stop a new registration racing cancellation while the original remains live", {
+    ,
+    check("stop a new registration racing cancellation while the original remains live"):
       val entered = new CountDownLatch(1)
       val release = new CountDownLatch(1)
       val registered = new CountDownLatch(1)
-      val outer = new Engine(() => { entered.countDown(); await(release) })
+      val outer = new Engine(() =>
+        entered.countDown(); await(release)
+      )
       val inner = new Engine
       val log = new Log
       val error = new AtomicReference[Throwable]()
-      withEngines(outer, inner):
-        val cancel = register(outer, log)
+      withEngines(outer, inner): tracker =>
+        val cancel = tracker.add(outer, log)
         val cancellation = start(cancel, error)
         var registration: Thread = null
         var raced = false
         try
           await(entered)
-          registration = start(() => { register(inner); registered.countDown() }, error)
+          registration = start(
+            () =>
+              tracker.add(inner); registered.countDown()
+            ,
+            error
+          )
           raced = registered.await(2, TimeUnit.SECONDS)
           cancel()
         finally
@@ -120,45 +132,49 @@ object TaskCancellationTest extends Properties:
             outer.cancellations.get() == 1 && inner.cancellations.get() == 1 &&
             log.warnings.get() == 1
         )
-    }),
-    example("retired callbacks cannot cancel a later execution", {
+    ,
+    check("retired callbacks cannot cancel a later execution"):
       val first = new Engine
       val next = new Engine
-      withEngines(first, next):
-        val old = register(first)
-        val oldNetwork = EvaluateTask.runningTaskCancellation.get
-        EvaluateTask.removeRunningTaskEngine(first)
-        val current = register(next)
+      withEngines(first, next): tracker =>
+        val old = tracker.add(first)
+        val oldNetwork = tracker.currentCancellation.get
+        tracker.remove(first)
+        val current = tracker.add(next)
         old()
         oldNetwork()
         val untouched = next.cancellations.get() == 0
         current()
         Result.assert(untouched && next.cancellations.get() == 1)
-    }),
-    example("an old cancellation finally cannot reset cancellation of a new generation", {
+    ,
+    check("an old cancellation finally cannot reset cancellation of a new generation"):
       val oldEntered = new CountDownLatch(1)
       val oldRelease = new CountDownLatch(1)
       val newEntered = new CountDownLatch(1)
       val newRelease = new CountDownLatch(1)
-      val first = new Engine(() => { oldEntered.countDown(); await(oldRelease) })
-      val next = new Engine(() => { newEntered.countDown(); await(newRelease) })
+      val first = new Engine(() =>
+        oldEntered.countDown(); await(oldRelease)
+      )
+      val next = new Engine(() =>
+        newEntered.countDown(); await(newRelease)
+      )
       val last = new Engine
       val log = new Log
       val error = new AtomicReference[Throwable]()
-      withEngines(first, next, last):
-        val old = start(register(first), error)
+      withEngines(first, next, last): tracker =>
+        val old = start(tracker.add(first), error)
         var current: Thread = null
         var isolated = false
         try
           await(oldEntered)
-          EvaluateTask.removeRunningTaskEngine(first)
-          val cancel = register(next, log)
+          tracker.remove(first)
+          val cancel = tracker.add(next, log)
           current = start(cancel, error)
           await(newEntered)
           oldRelease.countDown()
           old.join(10000)
           cancel()
-          register(last)
+          tracker.add(last)
           isolated = log.warnings.get() == 1 && next.cancellations.get() == 1 &&
             last.cancellations.get() == 1
         finally
@@ -167,14 +183,14 @@ object TaskCancellationTest extends Properties:
           old.join(10000)
           if current != null then current.join(10000)
         Result.assert(isolated && !old.isAlive() && !current.isAlive() && error.get() == null)
-    }),
-    example("attempt every engine despite cleanup and engine failures and allow a retry", {
+    ,
+    check("attempt every engine despite cleanup and engine failures and allow a retry"):
       val first = new Engine(() => sys.error("engine failure"))
       val next = new Engine
       val log = new Log(() => sys.error("cleanup failure"))
-      withEngines(first, next):
-        val cancel = register(first, log)
-        register(next)
+      withEngines(first, next): tracker =>
+        val cancel = tracker.add(first, log)
+        tracker.add(next)
         val initial = scala.util.Try(cancel())
         val retry = scala.util.Try(cancel())
         Result.assert(
@@ -182,21 +198,31 @@ object TaskCancellationTest extends Properties:
             first.cancellations.get() == 2 && next.cancellations.get() == 2 &&
             log.warnings.get() == 2
         )
-    }),
-    example("remove a failed registration after cancellation", {
+    ,
+    check("remove a failed registration after cancellation"):
       val outer = new Engine
       val inner = new Engine(() => sys.error("registration failure"))
-      withEngines(outer, inner):
-        val cancel = register(outer)
+      withEngines(outer, inner): tracker =>
+        val cancel = tracker.add(outer)
         cancel()
-        val result = scala.util.Try(register(inner))
+        val result = scala.util.Try(tracker.add(inner))
         cancel()
         Result.assert(
           result.failed.get.getMessage == "registration failure" &&
             outer.cancellations.get() == 2 && inner.cancellations.get() == 1
         )
-    }),
-    example("custom cancellation strategies receive the callback for all active engines", {
+    ,
+    check("cancellation is independent between trackers"):
+      val first = new Engine
+      val next = new Engine
+      withEngines(first): firstTracker =>
+        withEngines(next): nextTracker =>
+          val cancel = firstTracker.add(first)
+          nextTracker.add(next)
+          cancel()
+          Result.assert(first.cancellations.get() == 1 && next.cancellations.get() == 0)
+    ,
+    check("custom cancellation strategies receive the callback for all active engines"):
       val outer = new Engine
       val inner = new Engine
       val finished = new AtomicInteger()
@@ -206,9 +232,9 @@ object TaskCancellationTest extends Properties:
         def onTaskEngineFinish(state: State): Unit =
           finished.incrementAndGet()
           ()
-      withEngines(outer, inner):
-        val cancel = register(outer)
-        register(inner)
+      withEngines(outer, inner): tracker =>
+        val cancel = tracker.add(outer)
+        tracker.add(inner)
         TaskCancellationStrategy.Null.onTaskEngineStart(cancel)
         val untouched = outer.cancellations.get() == 0 && inner.cancellations.get() == 0
         val state = strategy.onTaskEngineStart(cancel)
@@ -218,6 +244,5 @@ object TaskCancellationTest extends Properties:
           untouched && outer.cancellations.get() == 1 && inner.cancellations.get() == 1 &&
             finished.get() == 1
         )
-    })
   )
 end TaskCancellationTest
