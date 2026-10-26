@@ -1,0 +1,12 @@
+> compile
+
+# a cache hit restores the SemanticDB files as links into the read-only CAS
+$ delete target/out
+> compile
+
+# the next miss rewrites them in place, in the target root or in the class directory
+> set ThisBuild / scalacOptions += "-deprecation"
+> targetroot2/compile
+> injar2/compile
+> targetroot3/compile
+> injar3/compile

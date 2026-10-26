@@ -1,6 +1,7 @@
 package lmcoursier.internal
 
-import coursier.{ Resolution, Resolve }
+import coursier.{ CoursierEnv, Resolution, Resolve }
+import coursier.cache.CacheEnv
 import coursier.cache.internal.ThreadUtil
 import coursier.cache.loggers.{ FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger }
 import coursier.core.*
@@ -8,8 +9,9 @@ import coursier.error.ResolutionError
 import coursier.error.ResolutionError.CantDownloadModule
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepositoryLike
+import coursier.params.Mirror
 import coursier.params.rule.RuleResolution
-import coursier.util.Task
+import coursier.util.{ EnvValues, Task }
 import sbt.util.Logger
 
 import scala.annotation.nowarn
@@ -18,6 +20,35 @@ import scala.collection.mutable
 
 // private[coursier]
 object ResolutionRun:
+
+  /**
+   * Mirrors from the coursier configuration, plus the ones of Maven's settings.xml
+   * only when COURSIER_MAVEN_SETTINGS (or coursier.maven-settings) is set explicitly,
+   * since a settings.xml mirror of `*` would otherwise shadow the resolvers of the build.
+   * See https://github.com/sbt/sbt/issues/9821
+   */
+  lazy val defaultMirrors: Seq[Mirror] =
+    CoursierEnv.defaultMirrors(
+      CoursierEnv.mirrors.read(),
+      CoursierEnv.mirrorsExtra.read(),
+      CoursierEnv.scalaCliConfig.read(),
+      CacheEnv.configDir.read()
+    ) ++
+      mavenSettingsMirrors(
+        CoursierEnv.mavenSettings.read(),
+        CoursierEnv.mavenHome.read(),
+        CoursierEnv.mavenHomeFallback.read()
+      )
+
+  private[lmcoursier] def mavenSettingsMirrors(
+      mavenSettings: EnvValues,
+      mavenHome: EnvValues,
+      mavenHomeFallback: EnvValues
+  ): Seq[Mirror] =
+    val explicit = mavenSettings.env.orElse(mavenSettings.prop).exists(_.trim.nonEmpty)
+    if explicit then
+      CoursierEnv.defaultMavenSettingsMirrors(mavenSettings, mavenHome, mavenHomeFallback)
+    else Nil
 
   private def resolution(
       params: ResolutionParams,
@@ -98,6 +129,7 @@ object ResolutionRun:
           },
           boms = params.boms,
           repositories = repositories,
+          mirrors = defaultMirrors,
           resolutionParams = params.params
             .addForceVersion(
               (if isSandboxConfig then Nil

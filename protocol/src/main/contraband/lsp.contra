@@ -86,6 +86,9 @@ type ServerCapabilities {
 
   ## Goto definition
   definitionProvider: Boolean
+
+  ## The server writes the result line itself, so a client should not print its own.
+  successLog: Boolean @since("2.1.0")
 }
 
 type TextDocumentSyncOptions {

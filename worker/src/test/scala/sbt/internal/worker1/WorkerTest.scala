@@ -27,6 +27,6 @@ object WorkerTest extends verify.BasicTestSuite:
     val runInfo =
       s"""{ "jvm": true, "jvmRunInfo": { "args": ["hi"], "classpath": $cp, "mainClass": "example.Hello" } }"""
     val json = s"""{ "jsonrpc": "2.0", "id": 1, "method": "run", "params": $runInfo }"""
-    main.process(json)
+    val _ = main.process(json)
   }
 end WorkerTest

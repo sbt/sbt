@@ -172,5 +172,8 @@ object Licensed:
     if !note.exists then Nil
     else
       try seePaths(base, IO.read(note))
-      catch case NonFatal(_) => s.log.warn("Could not read NOTICE"); Nil
+      catch
+        case NonFatal(_) =>
+          s.log.warn("Could not read NOTICE")
+          Nil
 end Licensed

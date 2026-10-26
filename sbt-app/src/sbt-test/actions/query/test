@@ -22,3 +22,21 @@ $ exists target/out/jvm/scala-3.3.3/root/root.txt
 $ exists target/out/jvm/scala-3.3.3/foo/foo.txt
 $ exists target/out/jvm/scala-3.3.3/bar/bar.txt
 $ absent target/out/jvm/scala-2.12.21/baz/baz.txt
+$ exists target/out/sjs1/scala-3.3.3/qux/qux.txt
+
+> clean
+
+> ...@platform=sjs1 / someTask
+
+$ absent target/out/jvm/scala-3.3.3/root/root.txt
+$ absent target/out/jvm/scala-3.3.3/foo/foo.txt
+$ absent target/out/jvm/scala-2.12.21/baz/baz.txt
+$ exists target/out/sjs1/scala-3.3.3/qux/qux.txt
+
+> clean
+
+> ...@platform=jvm@scalaBinaryVersion=2.12 / someTask
+
+$ absent target/out/jvm/scala-3.3.3/root/root.txt
+$ absent target/out/sjs1/scala-3.3.3/qux/qux.txt
+$ exists target/out/jvm/scala-2.12.21/baz/baz.txt

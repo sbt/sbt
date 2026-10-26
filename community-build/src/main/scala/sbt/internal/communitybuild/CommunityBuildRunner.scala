@@ -36,25 +36,27 @@ trait CommunityBuildRunner:
    *  and expects community-build/sbt-injected-plugins to set any necessary plugins.
    *
    *  @param project    The project name, should be a git submodule in community-build/
-   *  @param command    The binary file of the program used to test the project – usually
-   *                    a build tool like SBT or Mill
+   *  @param command    The binary file of the program used to test the project
    *  @param arguments  Arguments to pass to the testing program
    */
   def runProject(projectDef: CommunityProject): Unit =
+    runProject0(projectDef, maxAttempt = 2)(_.scenario())
+
+  def runProject0(projectDef: CommunityProject, maxAttempt: Int)(f: CommunityProject => Int): Unit =
     val project = projectDef.project
     val command = projectDef.binaryName
     val arguments = projectDef.buildCommands
 
     @annotation.tailrec
-    def execTimes(task: () => Int, timesToRerun: Int): Boolean =
-      val exitCode = task()
+    def execTimes(task: => Int, maxAttempt: Int): Boolean =
+      val exitCode = task
       if exitCode == 0
       then true
-      else if timesToRerun == 0
+      else if maxAttempt <= 1
       then false
       else
         log(s"Rerunning tests in $project because of a previous run failure.")
-        execTimes(task, timesToRerun - 1)
+        execTimes(task, maxAttempt - 1)
 
     log(s"Building $project ...")
 
@@ -68,7 +70,7 @@ trait CommunityBuildRunner:
         |
         |""".stripMargin)
 
-    val testsCompletedSuccessfully = execTimes(projectDef.build, 3)
+    val testsCompletedSuccessfully = execTimes(f(projectDef), maxAttempt)
 
     if !testsCompletedSuccessfully then failWith(s"""
           |
@@ -83,6 +85,6 @@ trait CommunityBuildRunner:
           |    sbt export jvm/Test/compileIncremental
           |
           |""".stripMargin)
-  end runProject
+  end runProject0
 
 end CommunityBuildRunner

@@ -101,6 +101,8 @@ object SysProp:
   def remoteCacheHeaders: List[String] = sys.props
     .get("sbt.remote_cache.header")
     .toList
+  def remoteCacheRequestTimeout: FiniteDuration =
+    long("sbt.remote_cache.request_timeout", 60L).seconds
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
@@ -115,6 +117,10 @@ object SysProp:
     getOrTrue("sbt.cache_test_result")
 
   def workerMaxInstances: Int = int("sbt.worker_max_instances", 2)
+
+  def testPersistentWorker: Boolean = getOrFalse("sbt.test_persistent_worker")
+
+  def analysisCacheMaxCount: Int = int("sbt.local_cache.analysis_count", 20)
 
   /**
    * Indicates whether formatting has been disabled in environment variables.
@@ -191,7 +197,7 @@ object SysProp:
   def secondaryIdleTimeoutSec: Long = long("sbt.server.secondaryIdleTimeout", 600L)
 
   private def file(value: String): File = new File(value)
-  private def home: File = file(sys.props("user.home"))
+  private def home: File = sbt.io.Path.userHome
 
   /**
    * Default directory for global sbt config (plugins, settings). Respects XDG Base Directory
@@ -217,33 +223,36 @@ object SysProp:
    * Operating system specific cache directory, similar to Coursier cache.
    */
   def globalLocalCache: File =
+    globalLocalCacheFrom(sys.props.get, sys.env.get, Util.isWindows, Util.isMac, home)
+
+  private[sbt] def globalLocalCacheFrom(
+      prop: String => Option[String],
+      env: String => Option[String],
+      windows: Boolean,
+      mac: Boolean,
+      home: File
+  ): File =
     val appName = "sbt"
-    def propCacheDir: Option[File] = sys.props.get("sbt.global.localcache").map(file)
+    def propCacheDir: Option[File] = prop("sbt.global.localcache").map(file)
     def propCacheDir2: Option[File] =
-      sys.props.get(BuildPaths.GlobalBaseProperty) match
-        case Some(base) => Some(file(base) / "cache")
-        case _          => None
-    def envCacheDir: Option[File] = sys.env.get("SBT_LOCAL_CACHE").map(file)
+      prop(BuildPaths.GlobalBaseProperty).map(base => file(base) / "cache")
+    def envCacheDir: Option[File] = env("SBT_LOCAL_CACHE").map(file)
+    def xdgCacheDir: Option[File] = env("XDG_CACHE_HOME").map(cache => file(cache) / appName)
     def windowsCacheDir: Option[File] =
-      sys.env.get("LOCALAPPDATA") match
-        case Some(app) if Util.isWindows => Some(file(app) / appName)
-        case _                           => None
+      env("LOCALAPPDATA").filter(_ => windows).map(app => file(app) / appName)
     def macCacheDir: Option[File] =
-      if Util.isMac then Some(home / "Library" / "Caches" / appName)
+      if mac then Some(home / "Library" / "Caches" / appName)
       else None
-    def linuxCache: File =
-      sys.env.get("XDG_CACHE_HOME") match
-        case Some(cache) => file(cache) / appName
-        case _           => home / ".cache" / appName
     def baseCache: File =
       propCacheDir
         .orElse(propCacheDir2)
         .orElse(envCacheDir)
+        .orElse(xdgCacheDir)
         .orElse(windowsCacheDir)
         .orElse(macCacheDir)
-        .getOrElse(linuxCache)
+        .getOrElse(home / ".cache" / appName)
     baseCache.getAbsoluteFile / "v2"
-  end globalLocalCache
+  end globalLocalCacheFrom
 
   /**
    * Overrides the Ivy-style local repository that publishLocal writes to, without moving the

@@ -1,0 +1,3 @@
+# Assign dependencyOverrides in the meta-build of other, which also holds the root meta-build's modules.
+$ copy-file changes/overrides.sbt other/project/overrides.sbt
+> reload

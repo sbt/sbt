@@ -1,3 +1,4 @@
+@transient
 val foo = taskKey[Unit]("foo")
 foo := println("foo")
 

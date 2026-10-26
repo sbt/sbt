@@ -39,7 +39,6 @@ object ServerTokenSpec extends BasicTestSuite:
       socketfile = new File(dir, "sock"),
       pipeName = "sbt-test-" + dir.getName,
       appConfiguration = null, // only a bsp connection file reads it, and bsp is off here
-      windowsServerSecurityLevel = 0,
       useJni = false,
       bspEnabled = false,
     )

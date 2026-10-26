@@ -42,7 +42,6 @@ object ClientConnectSpec extends BasicTestSuite:
       socketfile = new File(base, "sock"),
       pipeName = "sbt-test-" + base.getName,
       appConfiguration = null, // only a bsp connection file reads it, and bsp is off here
-      windowsServerSecurityLevel = 0,
       useJni = false,
       bspEnabled = false,
     )

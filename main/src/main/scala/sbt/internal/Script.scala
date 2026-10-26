@@ -91,7 +91,7 @@ object Script:
       val scriptAsSource = (Compile / sources) := Def.uncached {
         if ScalaArtifacts.isScala3(scalaVersion.value) then scriptMain :: Nil else script :: Nil
       }
-      val asScript = scalacOptions := Def.uncached {
+      val asScript = scalacOptions := {
         val extra =
           if ScalaArtifacts.isScala3(scalaVersion.value) then Nil
           else Seq("-Xscript", scriptBaseName)

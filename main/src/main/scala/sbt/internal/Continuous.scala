@@ -43,7 +43,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration.FiniteDurationIsOrdered
 import scala.concurrent.duration.*
-import scala.util.{ Failure, Success, Try }
+import scala.util.{ Failure, Success, Try, Using }
 import scala.util.control.NonFatal
 
 /**
@@ -242,7 +242,9 @@ private[sbt] object Continuous:
       val onExit: () => Unit,
       val onStart: Int => Watch.Action,
       val onTermination: (Watch.Action, String, Int, State) => State
-  )
+  ):
+    private[sbt] val stopped = new AtomicBoolean(false)
+  end Callbacks
 
   private[sbt] def getCallbacks(
       s: State,
@@ -577,7 +579,10 @@ private[sbt] object Continuous:
         def getEvent: Option[(Watch.Event, Watch.Action)] =
           val events =
             try antiEntropyMonitor.poll(Duration.Inf)
-            catch case _: InterruptedException => interrupted.set(true); Nil
+            catch
+              case _: InterruptedException =>
+                interrupted.set(true)
+                Nil
           val actions = events.flatMap(onEvent(count, _))
           if actions.exists(_._2 != Watch.Ignore) then
             val builder = new StringBuilder
@@ -593,6 +598,7 @@ private[sbt] object Continuous:
             if min._2 == Watch.Trigger then onTrigger(count, min._1)
             if min._2 == Watch.ShowOptions then None else Some(min)
           else None
+        end getEvent
 
         @tailrec def impl(): Option[(Watch.Event, Watch.Action)] = getEvent match
           case None =>
@@ -1130,7 +1136,8 @@ private[sbt] object ContinuousCommands:
     Int.MaxValue
   )
   private[sbt] val setupWatchState: (String, Int, Seq[String], State) => State =
-    (channelName, count, commands, state) =>
+    (channelName, count, commands, initialState) =>
+      val state = discardStoppedWatches(initialState)
       state.get(watchStates).flatMap(_.get(channelName)) match
         case None =>
           val extracted = Project.extract(state)
@@ -1201,6 +1208,7 @@ private[sbt] object ContinuousCommands:
           val msg =
             s"Tried to start new watch while channel, '$channelName', was already watching '$cmd'"
           throw new IllegalStateException(msg)
+      end match
   private def watchCommand(
       name: String
   )(updateState: (String, State) => State): Command =
@@ -1208,19 +1216,51 @@ private[sbt] object ContinuousCommands:
       (cmdParser(name) ~> channelParser).map(channel => () => updateState(channel, state))
     } { case (_, newState) => newState() }
   private[sbt] val runWatchCommand = watchCommand(runWatch) { (channel, state) =>
-    state.get(watchStates).flatMap(_.get(channel)) match
-      case None     => state
+    activeWatchState(state, channel) match
+      case None     => discardStoppedWatches(state)
       case Some(cs) =>
         val pre = StashOnFailure :: s"$preWatch $channel" :: Nil
         val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: Nil
         pre ::: cs.commands.toList ::: post ::: state
   }
   private[sbt] def watchUITaskFor(state: State, channel: CommandChannel): Option[UITask] =
-    state.get(watchStates).flatMap(_.get(channel.name)).map(new WatchUITask(channel, _, state))
+    activeWatchState(state, channel.name).map(new WatchUITask(channel, _, state))
   private[sbt] def isInWatch(state: State, channel: CommandChannel): Boolean =
-    state.get(watchStates).exists(_.contains(channel.name))
+    activeWatchState(state, channel.name).isDefined
   private[sbt] def isPending(state: State, channel: CommandChannel): Boolean =
-    state.get(watchStates).exists(_.get(channel.name).exists(_.pending))
+    activeWatchState(state, channel.name).exists(_.pending)
+
+  private def activeWatchState(state: State, channel: String): Option[ContinuousState] =
+    state.get(watchStates).flatMap(_.get(channel)).filterNot(_.callbacks.stopped.get)
+
+  private[sbt] def discardStoppedWatches(state: State): State =
+    state.get(watchStates) match
+      case Some(ws) => state.put(watchStates, ws.filterNot(_._2.callbacks.stopped.get))
+      case None     => state
+
+  private[sbt] def stopWatchesBeforeReload(state: State): State =
+    val watches = state.get(watchStates).toList.flatMap(_.toList)
+    val (stopped, failure) = watches.foldLeft((state, Option.empty[Throwable])):
+      case ((s, failure), (channel, cs)) if !cs.callbacks.stopped.get =>
+        StandardMain.exchange
+          .channelForName(channel)
+          .foreach: c =>
+            c.terminal.printStream.println(
+              s"[info] Watch for '${cs.commands.mkString("; ")}' stopped because the build is being reloaded. " +
+                s"Run '~${cs.commands.mkString("; ")}' again to restart the watch."
+            )
+        try
+          val st = exitWatchShared(false, Some(Watch.CancelWatch))(
+            channel,
+            s.copy(remainingCommands = Nil)
+          )
+          st.copy(remainingCommands = st.remainingCommands ::: s.remainingCommands) -> failure
+        catch case NonFatal(e) => discardStoppedWatches(s) -> failure.orElse(Some(e))
+      case (result, _) => result
+    failure.foreach(throw _)
+    discardStoppedWatches(stopped)
+  end stopWatchesBeforeReload
+
   private class WatchUITask(
       override private[sbt] val channel: CommandChannel,
       cs: ContinuousState,
@@ -1258,49 +1298,82 @@ private[sbt] object ContinuousCommands:
           stop.map(_ :: s"$failWatch ${channel.name}" :: Nil mkString "; ")
         case _ => stop
   end WatchUITask
-  @inline
-  private def watchState(state: State, channel: String): ContinuousState =
-    state.get(watchStates).flatMap(_.get(channel)) match
-      case None    => throw new IllegalStateException(s"no watch state for $channel")
-      case Some(s) => s
-
   private[sbt] val preWatchCommand = watchCommand(preWatch) { (channel, state) =>
-    val ws = watchState(state, channel)
-    val newState = ws.beforeCommand(state)
-    ws.callbacks.beforeCommand()
-    newState
+    activeWatchState(state, channel) match
+      case Some(ws) =>
+        val newState = ws.beforeCommand(state)
+        ws.callbacks.beforeCommand()
+        newState
+      case None => discardStoppedWatches(state)
   }
   private[sbt] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
-    val cs = watchState(state, channel)
-    StandardMain.exchange.channelForName(channel).foreach { c =>
-      c.terminal.setPrompt(Prompt.Pending)
-    }
-    val postState = state.get(watchStates) match
-      case None     => state
-      case Some(ws) => state.put(watchStates, ws + (channel -> cs.withPending(false)))
-    cs.afterCommand(postState)
+    activeWatchState(state, channel) match
+      case Some(cs) =>
+        StandardMain.exchange.channelForName(channel).foreach { c =>
+          c.terminal.setPrompt(Prompt.Pending)
+        }
+        val postState = state.get(watchStates) match
+          case None     => state
+          case Some(ws) => state.put(watchStates, ws + (channel -> cs.withPending(false)))
+        cs.afterCommand(postState)
+      case None => discardStoppedWatches(state)
   }
-  private val exitWatchShared = (error: Boolean) =>
+  private def exitWatchShared(error: Boolean, action: Option[Watch.Action] = None) =
     (channel: String, state: State) =>
       state.get(watchStates).flatMap(_.get(channel)) match
-        case Some(cs) =>
-          val afterWatchState = cs.afterWatch(state)
-          cs.callbacks.onExit()
-          StandardMain.exchange
-            .channelForName(channel)
-            .foreach { c =>
-              c.terminal.setPrompt(Prompt.Pending)
-              c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
-            }
-          val newState = afterWatchState.get(watchStates) match
-            case None    => afterWatchState
-            case Some(w) => afterWatchState.put(watchStates, w - channel)
-          val commands = cs.commands.mkString("; ")
-          val count = cs.count
-          val action = cs.terminationAction.getOrElse(Watch.CancelWatch)
-          val st = cs.callbacks.onTermination(action, commands, count, newState)
-          if error then st.fail else st
-        case _ => if error then state.fail else state
+        case Some(cs) if cs.callbacks.stopped.compareAndSet(false, true) =>
+          val unprompt: AutoCloseable = () =>
+            StandardMain.exchange
+              .channelForName(channel)
+              .foreach: c =>
+                c.terminal.setPrompt(Prompt.Pending)
+                c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+          val disconnect: AutoCloseable = () =>
+            StandardMain.exchange
+              .channelForName(channel)
+              .foreach:
+                case nc: sbt.internal.server.NetworkChannel
+                    if action.isDefined && !nc.isInteractive &&
+                      !state.source.exists(_.channelName == channel) =>
+                  nc.shutdown(false)
+                case _ => ()
+          val restored = Using.resource(disconnect): _ =>
+            val onExit: AutoCloseable = () => cs.callbacks.onExit()
+            val afterWatchState = Using.resources(unprompt, onExit)((_, _) => cs.afterWatch(state))
+            val s1 = afterWatchState.get(watchStates) match
+              case None    => afterWatchState
+              case Some(w) => afterWatchState.put(watchStates, w - channel)
+            val commands = cs.commands.mkString("; ")
+            val count = cs.count
+            val termination = action.orElse(cs.terminationAction).getOrElse(Watch.CancelWatch)
+            val s2 = s1.copy(
+              currentCommand = s1.currentCommand.map(_.withSource(CommandSource(channel)))
+            )
+            val st =
+              try cs.callbacks.onTermination(termination, commands, count, s2)
+              catch
+                case NonFatal(e) if action.isDefined =>
+                  StandardMain.exchange
+                    .channelForName(channel)
+                    .foreach: c =>
+                      c.terminal.printStream.println(
+                        s"[error] Watch termination callback for '$commands' failed: ${ErrorHandling.reducedToString(e)}"
+                      )
+                  s2
+            st.copy(currentCommand = s1.currentCommand)
+          val s3 =
+            if StandardMain.exchange.channelForName(channel).isDefined then restored
+            else
+              def clearSource(exec: Exec): Exec =
+                if exec.source.exists(_.channelName == channel) then exec.withSource(None) else exec
+              restored.copy(
+                currentCommand = restored.currentCommand.map(clearSource),
+                remainingCommands = restored.remainingCommands.map(clearSource),
+                onFailure = restored.onFailure.map(clearSource)
+              )
+          if error then s3.fail else s3
+        case Some(_) => discardStoppedWatches(state)
+        case _       => if error then state.fail else state
   private[sbt] val stopWatchCommand = watchCommand(stopWatch)(exitWatchShared(false))
   private[sbt] val failWatchCommand = watchCommand(failWatch)(exitWatchShared(true))
   /*

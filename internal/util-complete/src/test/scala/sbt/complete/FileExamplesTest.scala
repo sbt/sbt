@@ -10,63 +10,64 @@ package sbt.internal.util
 package complete
 
 import java.io.File
-import org.scalatest.Assertion
-import sbt.io.IO
 
-class FileExamplesTest extends UnitSpec:
+import hedgehog.*
+import hedgehog.runner.*
+import _root_.sbt.io.IO
 
-  "listing all files in an absolute base directory" should
-    "produce the entire base directory's contents" in {
-      withDirectoryStructure() { ds =>
-        ds.fileExamples().toList should contain theSameElementsAs (ds.allRelativizedPaths)
-      }
-    }
+object FileExamplesTest extends Properties:
+  override def tests: List[Test] = List(
+    example(
+      "listing all files in an absolute base directory should produce the entire base directory's contents",
+      withDirectoryStructure()(ds => sameElements(ds.fileExamples().toList, ds.allRelativizedPaths))
+    ),
+    example(
+      "listing files with a prefix that matches none should produce an empty list",
+      withDirectoryStructure(withCompletionPrefix = "z")(ds => ds.fileExamples().toList ==== Nil)
+    ),
+    example(
+      "listing single-character prefixed files should produce matching paths only",
+      withDirectoryStructure(withCompletionPrefix = "f")(ds =>
+        sameElements(ds.fileExamples().toList, ds.prefixedPathsOnly)
+      )
+    ),
+    example(
+      "listing directory-prefixed files should produce matching paths only",
+      withDirectoryStructure(withCompletionPrefix = "far")(ds =>
+        sameElements(ds.fileExamples().toList, ds.prefixedPathsOnly)
+      )
+    ),
+    example(
+      "listing directory-prefixed files should produce sub-dir contents only when appending a file separator to the directory",
+      withDirectoryStructure(withCompletionPrefix = "far" + File.separator)(ds =>
+        sameElements(ds.fileExamples().toList, ds.prefixedPathsOnly)
+      )
+    ),
+    example(
+      "listing files with a sub-path prefix should produce matching paths only",
+      withDirectoryStructure(withCompletionPrefix = "far" + File.separator + "ba")(ds =>
+        sameElements(ds.fileExamples().toList, ds.prefixedPathsOnly)
+      )
+    ),
+    example(
+      "completing a full path should produce a list with an empty string",
+      withDirectoryStructure(withCompletionPrefix = "bazaar")(ds =>
+        ds.fileExamples().toList ==== List("")
+      )
+    ),
+  )
 
-  "listing files with a prefix that matches none" should "produce an empty list" in {
-    withDirectoryStructure(withCompletionPrefix = "z") { ds =>
-      ds.fileExamples().toList shouldBe empty
-    }
-  }
-
-  "listing single-character prefixed files" should "produce matching paths only" in {
-    withDirectoryStructure(withCompletionPrefix = "f") { ds =>
-      ds.fileExamples().toList should contain theSameElementsAs (ds.prefixedPathsOnly)
-    }
-  }
-
-  "listing directory-prefixed files" should "produce matching paths only" in {
-    withDirectoryStructure(withCompletionPrefix = "far") { ds =>
-      ds.fileExamples().toList should contain theSameElementsAs (ds.prefixedPathsOnly)
-    }
-  }
-
-  it should "produce sub-dir contents only when appending a file separator to the directory" in {
-    withDirectoryStructure(withCompletionPrefix = "far" + File.separator) { ds =>
-      ds.fileExamples().toList should contain theSameElementsAs (ds.prefixedPathsOnly)
-    }
-  }
-
-  "listing files with a sub-path prefix" should "produce matching paths only" in {
-    withDirectoryStructure(withCompletionPrefix = "far" + File.separator + "ba") { ds =>
-      ds.fileExamples().toList should contain theSameElementsAs (ds.prefixedPathsOnly)
-    }
-  }
-
-  "completing a full path" should "produce a list with an empty string" in {
-    withDirectoryStructure(withCompletionPrefix = "bazaar") { ds =>
-      ds.fileExamples().toList shouldEqual List("")
-    }
-  }
+  def sameElements(actual: List[String], expected: List[String]): Result =
+    actual.sorted ==== expected.sorted
 
   def withDirectoryStructure(withCompletionPrefix: String = "")(
-      thunk: DirectoryStructure => Assertion
-  ): Assertion =
-    IO.withTemporaryDirectory { tempDir =>
+      thunk: DirectoryStructure => Result
+  ): Result =
+    IO.withTemporaryDirectory: tempDir =>
       val ds = new DirectoryStructure(withCompletionPrefix)
       ds.createSampleDirStructure(tempDir)
       ds.fileExamples = new FileExamples(ds.baseDir, withCompletionPrefix)
       thunk(ds)
-    }
 
   final class DirectoryStructure(withCompletionPrefix: String):
     var fileExamples: FileExamples = scala.compiletime.uninitialized

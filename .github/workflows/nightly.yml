@@ -39,6 +39,10 @@ jobs:
       with:
         distribution: "${{ matrix.distribution }}"
         java-version: "${{ matrix.java }}"
+        check-latest: "true"
+    - name: Distrust compromised eMudhra intermediate CAs
+      shell: bash
+      run: sudo -E bash scripts/distrust-emudhra.sh "$JAVA_HOME"
     - name: Coursier cache
       uses: coursier/cache-action@v7
     - name: Build and deploy

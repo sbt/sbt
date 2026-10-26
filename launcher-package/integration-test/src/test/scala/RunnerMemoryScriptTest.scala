@@ -85,4 +85,16 @@ object RunnerMemoryScriptTest extends verify.BasicTestSuite with ShellScriptUtil
       assert(out.exists(_.contains("-Xms512M")))
       assert(out.exists(_.contains("-Xmx1G")))
 
+  testOutput("sbt -J-Xmx2G replaces the default memory")("-J-Xmx2G", "-v"): (out: List[String]) =>
+    assert(out.contains[String]("-Xmx2G"))
+    assert(!out.exists(_.contains("-Xmx1024m")))
+    assert(!out.exists(_.contains("-J-Xmx2G")))
+
+  testOutput("sbt -J-XX:MaxRAMPercentage=90 replaces the default memory")(
+    "-J-XX:MaxRAMPercentage=90",
+    "-v"
+  ): (out: List[String]) =>
+    assert(out.contains[String]("-XX:MaxRAMPercentage=90"))
+    assert(!out.exists(_.contains("-Xmx1024m")))
+
 end RunnerMemoryScriptTest

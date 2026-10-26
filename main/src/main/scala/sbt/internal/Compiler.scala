@@ -10,12 +10,12 @@ package sbt
 package internal
 
 import java.io.{ File, PrintWriter }
-import java.nio.file.{ Path, Paths }
-import java.util.ArrayList
+import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.util.{ ArrayList, Optional }
 import sbt.BuildExtra.*
 import sbt.Keys.Classpath
 import sbt.internal.CommandStrings
-import sbt.internal.inc.{ AnalyzingCompiler, ScalaInstance, ZincLmUtil }
+import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ScalaInstance, ZincLmUtil }
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
 import sbt.internal.worker1.{ ConsoleInfo, WorkerMain }
@@ -36,8 +36,10 @@ import sbt.librarymanagement.{
 }
 import sbt.util.Logger
 import scala.jdk.CollectionConverters.*
-import scala.util.Random
+import scala.jdk.OptionConverters.*
+import scala.util.{ Random, Using }
 import xsbti.{ HashedVirtualFileRef, ScalaProvider }
+import xsbti.compile.{ CompileAnalysis, Inputs, PreviousResult }
 
 object Compiler:
   private val r = Random()
@@ -454,7 +456,8 @@ object Compiler:
       val compiler =
         (task / Keys.compilers).value.scalac match
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
-      val sc = (task / Keys.scalacOptions).value
+      val sc =
+        resolveVirtualizedScalacOptions((task / Keys.scalacOptions).value, Keys.rootPaths.value)
       val ic = (task / Keys.initialCommands).value
       val cc = (task / Keys.cleanupCommands).value
       (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get
@@ -664,5 +667,68 @@ object Compiler:
         case None           => value
 
     options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
+
+  /**
+   * Deletes restored outputs whose CAS blob is gone (sbt/sbt#9849): a dangling analysis, early jar
+   * or early analysis. See `cache/dangling-restored-outputs`.
+   */
+  private[sbt] def dropDanglingOutputs(outputs: Seq[Path], log: Logger): Unit =
+    outputs.filter(p => Files.isSymbolicLink(p) && !Files.exists(p)).foreach { p =>
+      log.debug(s"output $p is a dangling link, deleting it")
+      Files.deleteIfExists(p)
+    }
+
+  /**
+   * Gets the early output into a state Zinc can update incrementally.
+   *
+   * An action-cache hit restores the early jar as a symlink into the CAS. Zinc rewrites the jar in
+   * place when it merges a round's pickles, which would corrupt the cached blob, so Zinc gets a
+   * real copy. A read-only early jar, such as a copy of a CAS blob left by an earlier sbt, is made
+   * writable. When there is a previous analysis but no early jar (a cache populated before the
+   * jar was an output, `exportPipelining` switched on for an existing build, a deleted `early`
+   * directory), an incremental round would create the jar from its own pickles alone, so the
+   * subproject is recompiled from scratch instead.
+   */
+  private[sbt] def prepareEarlyOutput(ci: Inputs, earlyJar: Path, log: Logger): Inputs =
+    if Files.isSymbolicLink(earlyJar) then
+      val tmp = earlyJar.resolveSibling(earlyJar.getFileName.toString + ".tmp")
+      Files.copy(earlyJar.toRealPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+      tmp.toFile.setWritable(true)
+      Files.move(tmp, earlyJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      ci
+    else if Files.exists(earlyJar) && !Files.isWritable(earlyJar) then
+      earlyJar.toFile.setWritable(true)
+      ci
+    else if !Files.exists(earlyJar) && hasSources(ci.previousResult.analysis.toScala) then
+      log.debug(s"early output $earlyJar is missing, recompiling from scratch")
+      ci.withPreviousResult(PreviousResult.of(Optional.empty(), Optional.empty()))
+    else ci
+
+  /**
+   * Without a previous analysis nothing tracks the class directory's products, and scalac cannot
+   * write through a restored link into the read-only CAS (sbt/sbt#9975), so both are deleted.
+   */
+  private[sbt] def dropProductsWithoutAnalysis(ci: Inputs, log: Logger): Unit =
+    val classesDir = ci.options.classesDirectory
+    if !hasSources(ci.previousResult.analysis.toScala) && Files.isDirectory(classesDir) then
+      val dropped = Using.resource(Files.walk(classesDir)):
+        _.iterator.asScala.drop(1).filter(p => Files.isSymbolicLink(p) || isProduct(p)).toList
+      dropped.foreach(Files.deleteIfExists)
+      if dropped.nonEmpty then log.debug(s"dropped ${dropped.size} class files under $classesDir")
+
+  private val productExtensions = Seq(".class", ".tasty", ".sjsir", ".nir")
+
+  private def isProduct(p: Path): Boolean =
+    val name = p.getFileName.toString
+    productExtensions.exists(name.endsWith) && Files.isRegularFile(p)
+
+  /**
+   * Whether a previous compile exists. The stored analysis carries no compilations and the cached
+   * analysis store strips them anyway, so the sources it knows are the tell.
+   */
+  private def hasSources(analysis: Option[CompileAnalysis]): Boolean =
+    analysis match
+      case Some(a: Analysis) => a.relations.allSources.nonEmpty
+      case _                 => false
 
 end Compiler

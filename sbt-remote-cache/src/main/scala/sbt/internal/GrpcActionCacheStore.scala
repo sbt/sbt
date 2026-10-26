@@ -14,7 +14,6 @@ import build.bazel.remote.execution.v2.{
   DigestFunction,
   FindMissingBlobsRequest,
   GetActionResultRequest as XGetActionResultRequest,
-  OutputFile,
   UpdateActionResultRequest as XUpdateActionResultRequest,
 }
 import com.eed3si9n.remoteapis.shaded.com.google.bytestream.{ ByteStreamGrpc, ByteStreamProto }
@@ -30,7 +29,7 @@ import com.eed3si9n.remoteapis.shaded.io.grpc.{
 }
 import com.eed3si9n.remoteapis.shaded.io.grpc.stub.StreamObserver
 import ByteStreamProto.{ ReadRequest, WriteRequest }
-import java.io.{ BufferedOutputStream, FileOutputStream, InputStream, OutputStream }
+import java.io.{ BufferedOutputStream, FileOutputStream, IOException, InputStream, OutputStream }
 import java.net.URI
 import java.nio.file.Path
 import java.util.UUID
@@ -56,14 +55,13 @@ import xsbti.{ HashedVirtualFileRef, VirtualFile }
 object GrpcActionCacheStore:
   // chunk uploads to 1MB
   val chunkSizeBytes = 1024 * 1024
-  val remoteTimeoutInSec = 60
-  val remoteTimeout = (remoteTimeoutInSec + 2).second
 
   private case class CacheValue(
       rootCerts: Option[Path],
       clientCertChain: Option[Path],
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
+      requestTimeout: FiniteDuration,
       store: WeakReference[GrpcActionCacheStore],
   )
 
@@ -76,9 +74,18 @@ object GrpcActionCacheStore:
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
       disk: DiskActionCacheStore,
+      requestTimeout: FiniteDuration,
   ): GrpcActionCacheStore =
     def mkStore(): GrpcActionCacheStore =
-      val store = build(uri, rootCerts, clientCertChain, clientPrivateKey, remoteHeaders, disk)
+      val store = build(
+        uri,
+        rootCerts,
+        clientCertChain,
+        clientPrivateKey,
+        remoteHeaders,
+        disk,
+        requestTimeout,
+      )
       instances.put(
         uri,
         CacheValue(
@@ -86,14 +93,17 @@ object GrpcActionCacheStore:
           clientCertChain,
           clientPrivateKey,
           remoteHeaders,
+          requestTimeout,
           WeakReference(store)
         )
       )
       store
+    end mkStore
     instances.get(uri) match
       case Some(v)
           if v.rootCerts == rootCerts && v.clientCertChain == clientCertChain
-            && v.clientPrivateKey == clientPrivateKey && v.remoteHeaders == remoteHeaders =>
+            && v.clientPrivateKey == clientPrivateKey && v.remoteHeaders == remoteHeaders
+            && v.requestTimeout == requestTimeout =>
         v.store.get match
           case Some(existing) => existing
           case None           => mkStore()
@@ -107,6 +117,7 @@ object GrpcActionCacheStore:
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
       disk: DiskActionCacheStore,
+      requestTimeout: FiniteDuration,
   ): GrpcActionCacheStore =
     val b: ManagedChannelBuilder[?] = uri.getScheme() match
       case "grpc" =>
@@ -139,17 +150,14 @@ object GrpcActionCacheStore:
       case Some(x) if x.startsWith("/") => x.drop(1)
       case Some(x)                      => x
       case None                         => ""
-    new GrpcActionCacheStore(channel, instanceName, remoteHeaders, disk, uri)
+    new GrpcActionCacheStore(channel, instanceName, remoteHeaders, disk, uri, requestTimeout)
   end build
 
   class AuthCallCredentials(remoteHeaders: List[String]) extends CallCredentials:
-    val pairs = remoteHeaders.map: h =>
-      // Split on the first '=' only. Splitting on every '=' would drop trailing
-      // padding from values such as Basic auth credentials ("Basic dXNlcjpwdw==")
-      // and reject values that legitimately contain '='.
-      h.split("=", 2).toList match
-        case List(k, v) => Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER) -> v
-        case _          => sys.error("remote header must contain '='")
+    val pairs = BazelRemote
+      .parseHeaders(remoteHeaders)
+      .map: (k, v) =>
+        Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER) -> v
     override def applyRequestMetadata(
         requestInfo: CallCredentials.RequestInfo,
         executor: java.util.concurrent.Executor,
@@ -164,6 +172,19 @@ object GrpcActionCacheStore:
           applier.apply(headers)
         catch case NonFatal(e) => applier.fail(Status.UNAUTHENTICATED.withCause(e))
   end AuthCallCredentials
+
+  /**
+   * Fails a batch read in which any blob failed, like a failed download. Returning no paths
+   * instead let a cache hit be served without its outputs (sbt/sbt#9827).
+   */
+  private[sbt] def requireAllRead(responses: Seq[BatchReadBlobsResponse.Response]): Unit =
+    val failed = responses.filter(_.getStatus().getCode() != 0)
+    if failed.nonEmpty then
+      val details = failed.map: r =>
+        s"${r.getDigest().getHash()} (code ${r.getStatus().getCode()}: ${r.getStatus().getMessage()})"
+      throw IOException(
+        s"failed to read ${failed.size} of ${responses.size} blobs: ${details.mkString(", ")}"
+      )
 
   def chunkBytes(sizeBytes: Long): List[Long] =
     if sizeBytes <= 0 then Nil
@@ -185,6 +206,7 @@ class GrpcActionCacheStore private (
     remoteHeaders: List[String],
     disk: DiskActionCacheStore,
     cacheKey: URI,
+    requestTimeout: FiniteDuration,
 ) extends AbstractActionCacheStore
     with AutoCloseable:
   import GrpcActionCacheStore.*
@@ -205,11 +227,29 @@ class GrpcActionCacheStore private (
 
   // The deadline must be attached per call, not on the memoized stub above.
   // withDeadlineAfter computes an absolute deadline at the moment it is called, so a stub
-  // stored in a (session-lived) lazy val would expire remoteTimeoutInSec after first use and
+  // stored in a (session-lived) lazy val would expire requestTimeout after first use and
   // then reject every later call with DEADLINE_EXCEEDED. Deriving a fresh stub per RPC gives
   // each call its own relative timeout.
   private[internal] def byteStreamStubWithDeadline =
-    byteStreamStub.withDeadlineAfter(remoteTimeoutInSec, TimeUnit.SECONDS)
+    byteStreamStub.withDeadlineAfter(requestTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  /**
+   * Metadata RPCs carry no payload, so a cache that stops answering must not cost the full
+   * transfer timeout on every cached task.
+   */
+  private val metadataTimeout: FiniteDuration =
+    if requestTimeout < 10.seconds then requestTimeout else 10.seconds
+
+  private[internal] def acStubWithDeadline =
+    acStub.withDeadlineAfter(metadataTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  private[internal] def casStubWithDeadline =
+    casStub.withDeadlineAfter(metadataTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  private[internal] def casTransferStubWithDeadline =
+    casStub.withDeadlineAfter(requestTimeout.toMillis, TimeUnit.MILLISECONDS)
+
+  private val awaitTimeout = requestTimeout + 2.seconds
 
   override def storeName: String = "remote"
 
@@ -239,7 +279,7 @@ class GrpcActionCacheStore private (
       request.inlineOutputFiles.foreach: p =>
         b.addInlineOutputFiles(p)
       val req = b.build()
-      val result = acStub.getActionResult(req)
+      val result = acStubWithDeadline.getActionResult(req)
       Right(toActionResult(result))
     catch case NonFatal(e) => Left(e)
 
@@ -255,7 +295,7 @@ class GrpcActionCacheStore private (
       b.setDigestFunction(DigestFunction.Value.SHA256)
       b.setActionResult(toXActionResult(refs, request.exitCode))
       val req = b.build()
-      val result = acStub.updateActionResult(req)
+      val result = acStubWithDeadline.updateActionResult(req)
       Right(toActionResult(result))
     catch case NonFatal(e) => Left(e)
 
@@ -269,24 +309,22 @@ class GrpcActionCacheStore private (
     else if totalBytes <= chunkSizeBytes then
       val result = batchReadBlobs(refs)
       val blobs = result.getResponsesList().asScala.toList
-      val allOk = blobs.forall(_.getStatus().getCode() == 0)
-      if allOk then
-        // do not assume the responses to come in order
-        val lookupResponse: Map[Digest, BatchReadBlobsResponse.Response] =
-          Map(blobs.map(res => toDigest(res.getDigest) -> res)*)
-        refs.map: r =>
-          val digest = Digest(r)
-          val blob = lookupResponse(digest)
-          val casFile = disk.putBlob(blob.getData().newInput(), digest)
-          disk.syncFile(r, casFile, outputDirectory)
-      else Nil
+      requireAllRead(blobs)
+      // do not assume the responses to come in order
+      val lookupResponse: Map[Digest, BatchReadBlobsResponse.Response] =
+        Map(blobs.map(res => toDigest(res.getDigest) -> res)*)
+      refs.map: r =>
+        val digest = Digest(r)
+        val blob = lookupResponse(digest)
+        val casFile = disk.putBlob(blob.getData().newInput(), digest)
+        disk.syncFile(r, casFile, outputDirectory)
     else
       val paths = Await.result(
         downloadBlobs(digests, outputDirectory).recover: e =>
           e.printStackTrace()
           throw e
         ,
-        remoteTimeout
+        awaitTimeout
       )
       refs
         .zip(digests)
@@ -313,7 +351,7 @@ class GrpcActionCacheStore private (
               e.printStackTrace()
               throw e
             ,
-            remoteTimeout
+            awaitTimeout
           )
       catch case _: TimeoutException => Nil
 
@@ -328,7 +366,7 @@ class GrpcActionCacheStore private (
       bb.setCompressor(Compressor.Value.IDENTITY)
       b.addRequests(bb.build())
     val req = b.build()
-    val result = casStub.batchUpdateBlobs(req)
+    val result = casTransferStubWithDeadline.batchUpdateBlobs(req)
     val responses = result.getResponsesList().asScala.toList
     // do not assume responses to come in order
     val lookupResponse: Map[Digest, BatchUpdateBlobsResponse.Response] =
@@ -439,7 +477,7 @@ class GrpcActionCacheStore private (
       b.addBlobDigests(toXDigest(Digest(r)))
     b.setDigestFunction(DigestFunction.Value.SHA256)
     val req = b.build()
-    val res = casStub.findMissingBlobs(req)
+    val res = casStubWithDeadline.findMissingBlobs(req)
     val missing = res.getMissingBlobDigestsList().asScala.map(toDigest).toSet
     refs.flatMap: r =>
       if missing(Digest(r)) then None
@@ -453,45 +491,20 @@ class GrpcActionCacheStore private (
     b.setDigestFunction(DigestFunction.Value.SHA256)
     b.addAcceptableCompressors(Compressor.Value.IDENTITY)
     val req = b.build()
-    casStub.batchReadBlobs(req)
+    casTransferStubWithDeadline.batchReadBlobs(req)
 
   private def toXActionResult(
       refs: Seq[HashedVirtualFileRef],
       exitCode: Option[Int]
   ): XActionResult =
-    val b = XActionResult.newBuilder()
-    exitCode.foreach: e =>
-      b.setExitCode(e)
-    refs.foreach: ref =>
-      val out = toOutputFile(ref)
-      b.addOutputFiles(out)
-    b.build()
-
-  // per spec, Clients SHOULD NOT populate [contents] when uploading to the cache.
-  private def toOutputFile(ref: HashedVirtualFileRef): OutputFile =
-    val b = OutputFile.newBuilder()
-    b.setPath(ref.id)
-    b.setDigest(toXDigest(Digest(ref)))
-    b.build()
+    BazelRemote.toXActionResult(refs, exitCode)
 
   def toActionResult(ar: XActionResult): ActionResult =
-    val outs = ar.getOutputFilesList.asScala.toVector.map: out =>
-      val d = toDigest(out.getDigest())
-      HashedVirtualFileRef.of(out.getPath(), d.contentHashStr, d.sizeBytes)
-    ActionResult(outs, storeName, ar.getExitCode())
+    BazelRemote.toActionResult(ar, storeName)
 
-  def toXDigest(d: Digest): XDigest =
-    val str = d.contentHashStr.split("-")(1)
-    val sizeBytes = d.sizeBytes
-    val b = XDigest.newBuilder()
-    b.setHash(str)
-    b.setSizeBytes(sizeBytes)
-    b.build()
+  def toXDigest(d: Digest): XDigest = BazelRemote.toXDigest(d)
 
-  def toDigest(d: XDigest): Digest =
-    val hash = d.getHash()
-    val sizeBytes = d.getSizeBytes()
-    Digest(s"sha256-$hash/$sizeBytes")
+  def toDigest(d: XDigest): Digest = BazelRemote.toDigest(d)
 
   private def toByteString(blob: VirtualFile): ByteString =
     val out = ByteString.newOutput()

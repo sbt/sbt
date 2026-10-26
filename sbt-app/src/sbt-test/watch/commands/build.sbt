@@ -1,7 +1,9 @@
 import java.nio.file.Files
+import sbt.internal.FileChangesMacro.inputFiles
 
 import scala.jdk.CollectionConverters.*
 
+@transient
 val foo = taskKey[Unit]("foo")
 foo := {
   val fooTxt = baseDirectory.value / "foo.txt"
@@ -33,6 +35,7 @@ watchOnFileInputEvent := { (_, _) => sbt.nio.Watch.CancelWatch }
  * versions. It also checks that the fileInputs are automatically detected during task evaluation
  * even though we can't directly inspect the fileInputs of the cross ('+') command.
  */
+@transient
 val expectFailure = taskKey[Unit]("expect failure")
 expectFailure := {
   val main = baseDirectory.value.toPath / "src" / "main"

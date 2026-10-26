@@ -32,9 +32,8 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler:
       "newer".twoArg("Two paths", newer),
       "pause" noArg {
         println("Pausing in " + baseDirectory)
-        /*readLine("Press enter to continue. ") */
         print("Press enter to continue. ")
-        System.console.readLine
+        scala.io.StdIn.readLine()
         println()
       },
       "sleep".oneArg("Time in milliseconds", time => Thread.sleep(time.toLong)),

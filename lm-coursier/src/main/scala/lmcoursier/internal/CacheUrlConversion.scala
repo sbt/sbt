@@ -9,50 +9,44 @@
 package lmcoursier.internal
 
 import java.io.File
+import java.net.URI
+import java.nio.file.{ Path, Paths }
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 object CacheUrlConversion:
 
   final val FileUrlPrefix = "file:"
   final val UnconvertiblePrefix = "${CSR_CACHE}"
 
-  private def normalizePathForComparison(path: String): String =
-    path.replace('\\', '/')
+  private def toPath(fileUrl: String): Path =
+    Try(Paths.get(new URI(fileUrl))).getOrElse(
+      Paths.get(fileUrl.stripPrefix(FileUrlPrefix).replaceFirst("^/+([A-Za-z]:)", "$1"))
+    )
 
-  private def normalizedFilePath(fileUrl: String): String =
-    val afterPrefix = fileUrl.stripPrefix(FileUrlPrefix).replaceFirst("^/+", "/")
-    val withForwardSlash = normalizePathForComparison(afterPrefix)
-    if withForwardSlash.length >= 3 && withForwardSlash
-        .charAt(0) == '/' && withForwardSlash.charAt(2) == ':'
-    then withForwardSlash.substring(1)
-    else withForwardSlash
+  // Coursier caches <protocol>/<user>@<host>/<path> with unsafe characters percent-escaped
+  private def toRemoteUrl(relative: Path): Option[String] =
+    relative.iterator.asScala.map(_.toString).toVector match
+      case protocol +: rest if rest.nonEmpty =>
+        for
+          escaped <- Try(new URI(s"//${rest.mkString("/")}")).toOption
+          authority <- Try(new URI(null, escaped.getAuthority, null, null, null)).toOption
+          host <- Option(authority.getHost)
+        yield
+          val port = if authority.getPort == -1 then "" else s":${authority.getPort}"
+          s"$protocol://$host$port${escaped.getPath}"
+      case _ => None
 
   def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String =
     if !fileUrl.startsWith(FileUrlPrefix) then fileUrl
     else
-      val filePath = normalizedFilePath(fileUrl)
-      val cachePaths = Seq(
-        cacheDir.getAbsolutePath,
-        cacheDir.getCanonicalPath
-      ).distinct.map(p =>
-        normalizePathForComparison(if p.endsWith("/") || p.endsWith("\\") then p else p + "/")
-      )
-
-      def extractHttpUrl(relativePath: String): Option[String] =
-        val protocolSepIndex = relativePath.indexOf('/')
-        if protocolSepIndex > 0 then
-          val protocol = relativePath.substring(0, protocolSepIndex)
-          val rest = relativePath.substring(protocolSepIndex + 1)
-          Some(s"$protocol://$rest")
-        else None
-
-      cachePaths
+      val filePath = toPath(fileUrl).normalize
+      Seq(cacheDir.toPath.toAbsolutePath.normalize, cacheDir.getCanonicalFile.toPath).distinct
         .collectFirst {
-          case cachePath if filePath.startsWith(cachePath) =>
-            val relativePath = filePath.stripPrefix(cachePath)
-            extractHttpUrl(relativePath)
+          case cachePath if filePath.startsWith(cachePath) => cachePath.relativize(filePath)
         }
-        .flatten
-        .getOrElse(s"$UnconvertiblePrefix$filePath")
+        .flatMap(toRemoteUrl)
+        .getOrElse(s"$UnconvertiblePrefix${filePath.toString.replace('\\', '/')}")
 
   def isPortableUrl(url: String): Boolean =
     !url.startsWith(FileUrlPrefix) && !url.contains(UnconvertiblePrefix)

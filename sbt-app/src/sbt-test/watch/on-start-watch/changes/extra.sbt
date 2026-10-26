@@ -1,9 +1,10 @@
+@transient
 val checkReloaded = taskKey[Unit]("Asserts that the build was reloaded")
 checkReloaded := { () }
 
 watchOnIteration := { (_, _, _) => sbt.nio.Watch.CancelWatch }
 
-Compile / compile := {
+Compile / compile := Def.uncached {
   Count.increment()
   // Trigger a new build by updating the last modified time
   val file = (Compile / scalaSource).value / "A.scala"

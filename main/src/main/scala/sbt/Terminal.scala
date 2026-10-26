@@ -59,6 +59,29 @@ trait Terminal:
    * @param echo toggles whether or not to echo the characters received from the terminal input stream
    */
   def setMode(canonical: Boolean, echo: Boolean): Unit
+
+  /**
+   * Runs a thunk with the terminal in raw mode. In raw mode the terminal's inputStream
+   * returns every byte as soon as it is typed, without echo and without translating
+   * carriage return to line feed, so Enter reads as 13, Ctrl+J as 10 and Ctrl+D as 4.
+   * Ctrl+C still interrupts the task. When the thunk returns or throws, the terminal
+   * goes back to canonical mode with echo enabled. Calls do not nest: an inner call
+   * restores canonical mode when it returns.
+   *
+   * The terminal that sbt provides to a task switches the terminal of the client that
+   * runs the task, which is either the sbt console or a thin client. The default
+   * implementation, used by other Terminal implementations, only calls
+   * setMode(canonical = false, echo = false), so carriage return may still be read as
+   * line feed.
+   *
+   * @param f the thunk to run in raw mode
+   * @tparam A the result type of the thunk
+   * @return the result of the thunk
+   */
+  def withRawInput[A](f: => A): A =
+    setMode(canonical = false, echo = false)
+    try f
+    finally setMode(canonical = true, echo = true)
 end Terminal
 
 private[sbt] object Terminal:
@@ -69,3 +92,4 @@ private[sbt] object Terminal:
     override def printStream: PrintStream = term.printStream
     override def setMode(canonical: Boolean, echo: Boolean): Unit =
       JLine3.setMode(term, canonical, echo)
+    override def withRawInput[A](f: => A): A = term.withRawInput(f)

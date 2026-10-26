@@ -11,7 +11,17 @@ package internal
 package server
 
 import java.io.{ File, IOException }
-import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
+import java.net.{
+  InetAddress,
+  ServerSocket,
+  Socket,
+  SocketException,
+  SocketTimeoutException,
+  StandardProtocolFamily,
+  URI,
+  UnixDomainSocketAddress
+}
+import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.security.SecureRandom
 import java.math.BigInteger
@@ -25,10 +35,9 @@ import sbt.io.IO
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec.*
 import sbt.internal.util.ErrorHandling
-import sbt.internal.util.Util.isWindows
-import org.scalasbt.ipcsocket.*
+import sbt.internal.util.Util.isMac
 import sbt.internal.bsp.BuildServerConnection
-import sbt.protocol.ClientSocket
+import sbt.protocol.{ ClientSocket, DuplexChannels }
 import xsbti.AppConfiguration
 
 private[sbt] sealed trait ServerInstance:
@@ -38,6 +47,8 @@ private[sbt] sealed trait ServerInstance:
   def authenticate(challenge: String): Boolean
 
 private[sbt] object Server:
+  private val maxSocketLength = if isMac then 103 else 107
+
   sealed trait JsonProtocol
       extends sjsonnew.BasicJsonProtocol
       with PortFileFormats
@@ -68,18 +79,7 @@ private[sbt] object Server:
         override def run(): Unit =
           Try {
             connection.connectionType match
-              case ConnectionType.Local if isWindows =>
-                // Named pipe already has an exclusive lock.
-                addServerError(
-                  new Win32NamedPipeServerSocket(
-                    pipeName,
-                    connection.useJni,
-                    connection.windowsServerSecurityLevel
-                  )
-                )
               case ConnectionType.Local =>
-                val maxSocketLength =
-                  UnixDomainSocketLibraryProvider.maxSocketLength(connection.useJni) - 1
                 val path = socketfile.getAbsolutePath
                 if path.length > maxSocketLength then
                   sys.error(
@@ -88,9 +88,9 @@ private[sbt] object Server:
                       "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
                       s"Current path: ${path}"
                   )
-                tryClient(new UnixDomainSocket(path, connection.useJni))
+                tryClient(ClientSocket.unixSocket(socketfile.toPath))
                 prepareSocketfile()
-                addServerError(new UnixDomainServerSocket(path, connection.useJni))
+                addServerError(unixServerSocket(path))
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
@@ -135,6 +135,16 @@ private[sbt] object Server:
               socket.close()
               throw new AlreadyRunningException()
         else ()
+
+      def unixServerSocket(path: String): ServerSocket =
+        val ch = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+        try
+          ch.bind(UnixDomainSocketAddress.of(path))
+          DuplexChannels.newServerSocket(ch)
+        catch
+          case e: Throwable =>
+            ch.close()
+            throw e
 
       def addServerError(f: => ServerSocket): ServerSocket =
         ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
@@ -217,15 +227,21 @@ private[sbt] case class ServerConnection(
     socketfile: File,
     pipeName: String,
     appConfiguration: AppConfiguration,
-    windowsServerSecurityLevel: Int,
     useJni: Boolean,
     bspEnabled: Boolean,
 ):
   def shortName: String =
     connectionType match
-      case ConnectionType.Local if isWindows => s"local:$pipeName"
-      case ConnectionType.Local              => s"local://$socketfile"
-      case ConnectionType.Tcp                => s"tcp://$host:$port"
+      case ConnectionType.Local => ServerConnection.localUri(socketfile)
+      case ConnectionType.Tcp   => s"tcp://$host:$port"
       // case ConnectionType.Ssh                => s"ssh://$host:$port"
+
+private[sbt] object ServerConnection:
+  /**
+   * The `local:///...` URI of a socket file, with forward slashes and escapes, so that a Windows
+   * path reads back as `local:///C:/...`.
+   */
+  def localUri(socketfile: File): String =
+    new URI("local", "", socketfile.toPath.toAbsolutePath.toUri.getPath, null, null).toString
 
 private[sbt] class AlreadyRunningException extends IOException("sbt server is already running.")

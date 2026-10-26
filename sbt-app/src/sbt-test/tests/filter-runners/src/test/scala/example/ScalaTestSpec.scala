@@ -1,10 +1,9 @@
 package example
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 
-class ScalaTestSpec extends AnyFlatSpec with Matchers {
-  "ScalaTest" should "work" in {
-    1 shouldBe 1
+class ScalaTestSpec extends AnyFunSuite {
+  test("ScalaTest should work") {
+    assert(1 == 1)
   }
 }

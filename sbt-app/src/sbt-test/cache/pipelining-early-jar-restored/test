@@ -1,0 +1,12 @@
+> compile
+
+# wipe the build output but keep the disk cache: core's next compile is an action-cache hit
+$ delete target/out
+> compile
+$ exists target/out/jvm/scala-3.9.0/core/early/core_3-0.1.0-SNAPSHOT.jar
+
+# an incremental round in core after the hit: app must still see core's unchanged types
+$ copy-file changes/Added.scala core/Added.scala
+$ copy-file changes/UseAdded.scala app/UseAdded.scala
+> compile
+> app/checkEarlyJar

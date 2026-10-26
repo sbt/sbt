@@ -1,0 +1,10 @@
+# Move the output directory in the global settings, delete the old one, and load the build.
+$ copy-file changes/out.sbt global/out.sbt
+$ delete target/out
+> reload
+
+# Load the build again, so the meta-build classes come from the cache.
+> reload
+
+# The tests of one scripted run share `global`, so delete the global settings.
+$ delete global/out.sbt

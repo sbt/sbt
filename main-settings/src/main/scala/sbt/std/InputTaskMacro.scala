@@ -21,6 +21,13 @@ object InputTaskMacro:
   ): Expr[Def.Initialize[InputTask[A1]]] =
     inputTaskMacro0[A1](tree)
 
+  def inputTaskAssignMacroImpl[A1: Type](
+      rec: Expr[Scoped.DefinableSetting[InputTask[A1]]],
+      tree: Expr[A1]
+  )(using Quotes): Expr[Def.Setting[InputTask[A1]]] =
+    val init = inputTaskMacro0[A1](tree)
+    '{ $rec.set0($init, ${ TaskMacro.sourcePosition }) }
+
   def inputTaskDynMacroImpl[A1: Type](tree: Expr[Def.Initialize[Task[A1]]])(using
       qctx: Quotes
   ): Expr[Def.Initialize[InputTask[A1]]] =

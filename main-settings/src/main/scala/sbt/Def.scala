@@ -17,6 +17,7 @@ import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal as ITerminal, * }
 import sbt.util.{
+  ActionCacheStore,
   AggregateActionCacheStore,
   BuildWideCacheConfiguration,
   DiskActionCacheStore,
@@ -286,6 +287,8 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
     SettingKey[Long](BasicKeys.localDigestCacheByteSize)
   private[sbt] val cacheVersionKey =
     SettingKey[Long](BasicKeys.cacheVersion)
+  private[sbt] val cacheStoresKey =
+    SettingKey[Seq[ActionCacheStore]](BasicKeys.cacheStores)
   @cacheLevel(include = Array.empty)
   val cacheConfiguration: Initialize[Task[BuildWideCacheConfiguration]] = Def.task {
     val state = stateKey.value
@@ -294,9 +297,8 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       .getOrElse(sys.error("outputDirectory has not been set"))
     val fileConverter =
       state.get(BasicKeys.fileConverter).getOrElse(sys.error("outputDirectory has not been set"))
-    val cacheStore = state
-      .get(BasicKeys.cacheStores)
-      .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
+    val cacheStore = cacheStoresKey.?.value
+      .map(AggregateActionCacheStore(_))
       .getOrElse(
         DiskActionCacheStore(state.baseDir.toPath.resolve("target/bootcache"), fileConverter)
       )

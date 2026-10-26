@@ -29,7 +29,12 @@ import java.util.concurrent.{
 }
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
-import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
+import sbt.internal.langserver.{
+  InitializeResult,
+  LogMessageParams,
+  MessageType,
+  PublishDiagnosticsParams
+}
 import sbt.internal.worker.{ ClientJobParams, NativeRunInfo, RunInfo }
 import sbt.internal.protocol.*
 import sbt.internal.util.{
@@ -160,6 +165,8 @@ class NetworkClient(
   private val attachUUID = new AtomicReference[String](null)
   private val connectionHolder = AtomicCloseable[ServerSession]()
   private val batchMode = new AtomicBoolean(false)
+  private val serverLogsResult = new AtomicBoolean(false)
+  private val ranClientSideJob = new AtomicBoolean(false)
   private val interactiveThread = new AtomicReference[Thread](null)
   private val rebooting = new AtomicBoolean(false)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
@@ -550,7 +557,9 @@ class NetworkClient(
               token => initiateHandshake(handshake, token)
             )
           else handshake.release(s"sbt server refused the connection: ${err.message}")
-        case _ => handshake.release()
+        case _ =>
+          serverLogsResult.set(NetworkClient.successLogCapability(msg.result))
+          handshake.release()
     pendingResponseHandlers.put(execId, handleHandshakeResponse)
     if handshake.initiateFailed(initCommand(token, execId)) then
       pendingResponseHandlers.remove(execId)
@@ -723,8 +732,7 @@ class NetworkClient(
             }
             if socket.isEmpty && readThreadAlive.get then
               try Thread.sleep(10)
-              catch
-                case _: InterruptedException =>
+              catch case _: InterruptedException => readThreadAlive.set(false)
           end while
         catch case e: IOException => e.printStackTrace(System.err)
     val connectDeadline = connectTimeout.fromNow
@@ -845,9 +853,10 @@ class NetworkClient(
     pendingResults.remove(execId) match
       case null                 => ()
       case (q, startTime, name) =>
-        val now = System.currentTimeMillis
-        val message = NetworkClient.elapsedString(startTime, now)
-        if batchMode.get || !attached.get then
+        val clientSideJob = ranClientSideJob.getAndSet(false)
+        // an unattached client renders build/logMessage instead, so its line is left as it was
+        if !attached.get || (batchMode.get && (!serverLogsResult.get || clientSideJob)) then
+          val message = NetworkClient.elapsedString(startTime, System.currentTimeMillis)
           if exitCode == 0 then console.success(message)
           else console.appendLog(Level.Error, message)
         Util.ignoreResult(q.offer(exitCode))
@@ -942,6 +951,7 @@ class NetworkClient(
           import sbt.internal.worker.codec.JsonProtocol.given
           Converter.fromJson[ClientJobParams](json) match
             case Success(params) =>
+              ranClientSideJob.set(true)
               clientSideRun(params) match
                 case Success(_) =>
                   if interactive then console.success("ok")
@@ -1354,6 +1364,15 @@ end NetworkClient
 object NetworkClient:
   private[sbt] val CancelAll = "__CancelAll"
   private[sbt] val handshakeAttemptLimit = 3
+
+  /** Absent on a server from before this, so that one keeps printing its own line. */
+  private[sbt] def successLogCapability(jvalue: Option[JValue]): Boolean =
+    import sbt.internal.langserver.codec.JsonProtocol.given
+    jvalue
+      .flatMap(Converter.fromJson[InitializeResult](_).toOption)
+      .flatMap(_.capabilities.successLog)
+      .getOrElse(false)
+
   private def consoleAppenderInterface(printStream: PrintStream): ConsoleInterface =
     val appender = ConsoleAppender("thin", ConsoleOut.printStreamOut(printStream))
     new ConsoleInterface:
@@ -1417,7 +1436,9 @@ object NetworkClient:
       case Some(lj) =>
         val java =
           Option(Properties.javaHome).map(javaHome => s"$javaHome/bin/java").getOrElse("java")
-        List(java) ++ arguments.sbtArguments.filterNot(emptyBuildFlags.contains) ++
+        val javaOptions = arguments.launcherValueArgs.collect:
+          case s"-J$option" => option
+        List(java) ++ javaOptions ++ arguments.sbtArguments.filterNot(emptyBuildFlags.contains) ++
           List("-jar", lj, DashDashDetachStdio, DashDashServer)
       case _ =>
         List(arguments.sbtScript) ++ arguments.launcherValueArgs ++ arguments.sbtArguments ++
@@ -1645,7 +1666,9 @@ object NetworkClient:
     var i = 0
     while i < sanitized.length do
       sanitized(i) match
-        case a if completionArguments.nonEmpty                        => completionArguments += a
+        case a if completionArguments.nonEmpty => completionArguments += a
+        case a if a.startsWith("-J") && (commandArgs.isEmpty || !splitFromPrev(i)) =>
+          if a.length > 2 then launcherValueArgs += a
         case a if commandArgs.nonEmpty && emptyBuildFlags.contains(a) =>
           sbtArguments += a
         case a if commandArgs.nonEmpty                                     => commandArgs += a
@@ -1689,7 +1712,6 @@ object NetworkClient:
             launcherValueArgs += full.substring(eq + 1)
         case a if launcherNoValueFlags.contains(a)                => ()
         case a if launcherEqPrefixes.exists(p => a.startsWith(p)) => ()
-        case a if a.startsWith("-J")                              => ()
         case a if !a.startsWith("-")                              => commandArgs += a
         case a @ SysProp(key, value)                              =>
           System.setProperty(key, value)

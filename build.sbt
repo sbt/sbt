@@ -16,7 +16,7 @@ ThisBuild / version := {
   nightlyVersion.getOrElse(v)
 }
 // update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.1.0-M1"
+ThisBuild / Utils.sbtnVersion := "2.1.0-6eac8efa"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -125,7 +125,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.1.0-M1",
+    "2.1.0-M3",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def.settings(
@@ -428,7 +428,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies += scalaParsers,
+    libraryDependencies ++= Seq(scalaParsers, hedgehog % Test),
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
@@ -565,7 +565,7 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
   .configure(addSbtIO, addSbtCompilerInterface)
 
 lazy val remoteCacheProj = (project in file("sbt-remote-cache"))
-  .dependsOn(sbtProj)
+  .dependsOn(sbtProj % Provided)
   .settings(
     sbtPlugin := true,
     baseSettings,
@@ -621,7 +621,7 @@ lazy val protocolProj = (project in file("protocol"))
   .settings(
     testedBaseSettings,
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value, ipcSocket),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value),
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
@@ -714,8 +714,18 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
   .settings(
     name := "Zinc LM Integration",
     testedBaseSettings,
-    Test / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
+    Test / sourceGenerators += task {
+      val f = (Test / sourceManaged).value / "sbt" / "internal" / "inc" / "ZincTestInfo.scala"
+      IO.write(
+        f,
+        s"""|package sbt.internal.inc
+            |
+            |object ZincTestInfo:
+            |  val zincVersion: String = "$zincVersion"
+            |""".stripMargin
+      )
+      Seq(f)
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
     ),
@@ -751,10 +761,13 @@ lazy val mainProj = (project in file("main"))
     collectionProj,
     zincLmIntegrationProj,
     utilLogging,
+    lmCore % "test->test",
   )
   .settings(
     testedBaseSettings,
     name := "Main",
+    Compile / scalacOptions += "-Xcheck-macros",
+    Test / scalacOptions -= "-Xcheck-macros",
     Compile / sourceGenerators += task {
       val f = (Compile / sourceManaged).value / "sbt" / "PluginCrossExtra.scala"
       IO.write(
@@ -785,10 +798,6 @@ lazy val mainProj = (project in file("main"))
     SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // mima mistakenly checks inside private ProjectMatrixDef
-      exclude[Problem]("sbt.ProjectMatrix*ProjectMatrixDef*"),
-      // unresolved is private[sbt], and mima sees only the trait's static forwarder
-      exclude[DirectMissingMethodProblem]("sbt.ProjectMatrix.unresolved"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
@@ -806,6 +815,7 @@ lazy val sbtProj = (project in file("sbt-app"))
     crossPaths := false,
     crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
+    libraryDependencies += Dependencies.asm,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
@@ -895,6 +905,7 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies ++= scalatest,
+    libraryDependencies ++= (if isWin then Seq(ipcSocket) else Nil),
     Compile / mainClass := Some("sbt.client.Client"),
     nativeImageReady := { () =>
       ()
@@ -1276,7 +1287,6 @@ lazy val lmCoursierDependencies = Def.settings(
     coursier,
     "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-    graalNativeImage % Provided,
   ),
   libraryDependencies ++= Dependencies.scalatest,
   libraryDependencies += scalaVerify % Test,
@@ -1380,7 +1390,31 @@ lazy val lmCoursierShaded = project
       case x =>
         val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
         oldStrategy(x)
-    }
+    },
+    assembly := {
+      val oldJarHashedFile = assembly.value
+      val converter = fileConverter.value
+      val log = streams.value.log
+      scribe.Logger.root
+        .clearHandlers()
+        .withHandler(
+          minimumLevel = Some(scribe.Level.Warn),
+        )
+        .replace()
+      IO.withTemporaryFile("", ".jar") { newJar =>
+        val oldJarPath = converter.toPath(oldJarHashedFile)
+        val result = sloth.jar.JarProcessor.process(
+          oldJarPath,
+          newJar.toPath
+        )
+        log.info(s"[${name.value}] sloth totalClasses = ${result.totalClasses}")
+        log.info(s"[${name.value}] sloth patchedClasses = ${result.patchedClasses}")
+        assert(result.errors.isEmpty, result)
+        assert(result.failedClasses == 0, result)
+        IO.move(newJar, oldJarPath.toFile)
+        converter.toVirtualFile(oldJarPath)
+      }
+    },
   )
   .dependsOn(lmCore % "provided")
 
@@ -1442,10 +1476,12 @@ lazy val launcherPackageIntegrationTest =
 
 val prepareCommunityBuild = taskKey[Unit]("Publish local etc")
 lazy val `community-build` = (project in file("community-build"))
+  .configure(addSbtIO)
   .settings(
     scalaVersion := scala3,
     libraryDependencies ++= Seq(junit % Test, junitInterface % Test),
-    prepareCommunityBuild := {
+    Test / parallelExecution := false,
+    prepareCommunityBuild := Def.uncached {
       val _ = (sbtRoot / publishLocalBinAll).value
       IO.write(baseDirectory.value / "target" / "sbt.version", version.value)
     },
@@ -1457,6 +1493,7 @@ lazy val `community-build` = (project in file("community-build"))
     Compile / run := (Compile / run).dependsOn(prepareCommunityBuild).evaluated,
     Test / testOnly := (Test / testOnly).dependsOn(prepareCommunityBuild).evaluated,
     Test / testQuick := (Test / testQuick).dependsOn(prepareCommunityBuild).evaluated,
+    Test / testFull := (Test / testFull).dependsOn(prepareCommunityBuild).value,
     publish / skip := true,
     publishLocalBin / skip := true,
   )

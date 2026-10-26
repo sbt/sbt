@@ -1,0 +1,9 @@
+> map1
+> map1
+> checkNoHits
+
+> compile
+> compile
+> checkNoHits
+$ absent no-disk-cache
+$ absent target/bootcache

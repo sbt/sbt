@@ -36,7 +36,16 @@ jobs:
         java-version: |
           25
           17
+        check-latest: "true"
         cache: sbt
+    - name: Distrust compromised eMudhra intermediate CAs
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          bash scripts/distrust-emudhra.sh "$JAVA_HOME"
+        else
+          sudo -E bash scripts/distrust-emudhra.sh "$JAVA_HOME"
+        fi
     - uses: sbt/setup-sbt@v1
       with:
         disk-cache: false

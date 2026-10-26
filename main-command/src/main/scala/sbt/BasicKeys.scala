@@ -76,10 +76,14 @@ object BasicKeys:
       10000
     )
 
+  @deprecated(
+    "windowsServerSecurityLevel has no effect; the sbt server listens on a Unix domain socket on every platform, guarded by the permissions of its directory",
+    "2.1.0"
+  )
   val windowsServerSecurityLevel =
     AttributeKey[Int](
       "windowsServerSecurityLevel",
-      "Configures the security level of the named pipe. Values: 0 - No security; 1 - Logon user only; 2 - Process owner only",
+      "Ignored. Configured the security level of the Windows named pipe that sbt server used to listen on. Values: 0 - No security; 1 - Process owner only; 2 - Logon user only",
       10000
     )
   val serverUseJni =

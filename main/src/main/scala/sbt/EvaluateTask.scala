@@ -287,6 +287,8 @@ object EvaluateTask:
             progress.afterCompleted(task, result)
           override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
             progress.afterAllCompleted(results)
+          override private[sbt] def afterAborted(tasks: Iterable[TaskId[?]]): Unit =
+            progress.afterAborted(tasks)
           override def stop(): Unit = {
             // TODO: this is not a typo, but a questionable decision in 6559c3a0 that is probably obsolete
           }
@@ -406,7 +408,12 @@ object EvaluateTask:
       val log = getStreams(key, streams).log
       val display = contextDisplay(state, ITerminal.isColorEnabled)
       val errorMessage = "(" + display.show(key) + ") " + msgString
-      state.respondError(ErrorCodes.InternalError, errorMessage)
+      StandardMain.exchange.respondTaskError(
+        ErrorCodes.InternalError,
+        errorMessage,
+        state.currentCommand.flatMap(_.execId),
+        state.source
+      )
       log.error(errorMessage)
   end logIncomplete
 

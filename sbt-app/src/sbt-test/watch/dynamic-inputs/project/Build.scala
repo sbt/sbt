@@ -2,14 +2,17 @@ package sbt.watch.task
 
 import java.nio.file.Path
 import sbt._
+import sbt.internal.FileChangesMacro.inputFiles
 import Keys._
 import sbt.nio.Keys._
 import sbt.nio.Watch
 
 object Build {
   val reloadFile = settingKey[File]("file to toggle whether or not to reload")
+  @transient
   val setStringValue = taskKey[Unit]("set a global string to a value")
   val checkStringValue = inputKey[Unit]("check the value of a global")
+  @transient
   val foo = taskKey[Seq[Path]]("foo")
   def setStringValueImpl: Def.Initialize[Task[Unit]] = Def.task {
     val i = (setStringValue / fileInputs).value

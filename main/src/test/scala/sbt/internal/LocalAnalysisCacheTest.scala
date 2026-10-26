@@ -44,6 +44,7 @@ object LocalAnalysisCacheTest extends Properties:
     example("a re-created analysis file stays cached", reCreatedFileStaysCached),
     example("a rewritten analysis file is read again", rewrittenFileIsReadAgain),
     example("the compilations a read drops are not served", compilationsAreNotServed),
+    example("a stored analysis outlives often-read ones", storedAnalysisOutlivesOftenRead),
   )
 
   /**
@@ -118,6 +119,30 @@ object LocalAnalysisCacheTest extends Properties:
             .log("expected the file itself to hold no compilations"),
         )
       )
+
+  /**
+   * A batch of scripted tests, or a long-lived server, fills the cache with analyses read many
+   * times; the analysis a compile just stored is the one read next, so it must not be the one
+   * evicted.
+   */
+  def storedAnalysisOutlivesOftenRead: Result =
+    IO.withTemporaryDirectory: tmp =>
+      val others = (0 until SysProp.analysisCacheMaxCount * 2).map: i =>
+        val file = (tmp / s"other$i.zip").toPath
+        cachedStore(file).set(contentsOf(oneSourceAnalysis))
+        file
+      for
+        _ <- 0 until 10
+        file <- others
+      do cachedStore(file).get()
+      val file = (tmp / "inc_compile.zip").toPath
+      val contents = contentsOf(oneSourceAnalysis)
+      cachedStore(file).set(contents)
+      others.take(3).foreach(cachedStore(_).get())
+      val got = cachedStore(file).get().toScala
+      Result
+        .assert(got.exists(_ eq contents))
+        .log("the analysis just stored was evicted in favor of ones read before it")
 
   // ---------- helpers ----------
 

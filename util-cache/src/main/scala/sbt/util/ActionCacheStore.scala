@@ -11,7 +11,7 @@ import java.nio.file.{
   Paths,
   StandardCopyOption
 }
-import java.nio.file.attribute.{ BasicFileAttributes, FileTime }
+import java.nio.file.attribute.{ BasicFileAttributes, FileTime, PosixFilePermission }
 import java.util.concurrent.atomic.AtomicBoolean
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
@@ -19,6 +19,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import scala.collection.mutable
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.parallel.CollectionConverters.*
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 import sbt.internal.io.Retry
 import sbt.io.IO
@@ -94,12 +95,6 @@ end AbstractActionCacheStore
  */
 case class AggregateActionCacheStore(stores: Seq[ActionCacheStore])
     extends AbstractActionCacheStore:
-  extension [A1](xs: Seq[A1])
-    // unlike collectFirst this accepts A1 => Seq[A2]
-    inline def collectFirst2[A2](f: A1 => Seq[A2], size: Int): Seq[A2] =
-      xs.foldLeft(Seq.empty[A2]): (res, x) =>
-        if res.size == size then res else f(x)
-
   override def storeName: String = "aggregate"
 
   override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
@@ -121,11 +116,30 @@ case class AggregateActionCacheStore(stores: Seq[ActionCacheStore])
       val xs = store.putBlobs(blobs)
       if res.isEmpty then xs else res
 
+  /**
+   * Syncs each blob from the first store that has it, asking a store only for the blobs the
+   * stores before it did not sync, and returns the paths in the order of `refs`.
+   */
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    stores.collectFirst2(_.syncBlobs(refs, outputDirectory), refs.size)
+    val synced = stores.foldLeft(Map.empty[(String, String), Path]): (synced, store) =>
+      val remaining = refs.filterNot(r => synced.contains(blobKey(r)))
+      if remaining.isEmpty then synced
+      else
+        val paths = store.syncBlobs(remaining, outputDirectory)
+        // A store syncs the blobs it has, in order. On a partial sync, find out which those were.
+        val from = if paths.size == remaining.size then remaining else store.findBlobs(remaining)
+        if from.size == paths.size then synced ++ from.map(blobKey).zip(paths) else synced
+    refs.flatMap(r => synced.get(blobKey(r)))
 
+  /** Asks each store only for the blobs the stores before it did not find. */
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
-    stores.collectFirst2(_.findBlobs(refs), refs.size)
+    val found = stores.foldLeft(Set.empty[(String, String)]): (found, store) =>
+      val remaining = refs.filterNot(r => found.contains(blobKey(r)))
+      if remaining.isEmpty then found else found ++ store.findBlobs(remaining).map(blobKey)
+    refs.filter(r => found.contains(blobKey(r)))
+
+  private def blobKey(ref: HashedVirtualFileRef): (String, String) =
+    (ref.id(), ref.contentHashStr())
 end AggregateActionCacheStore
 
 object AggregateActionCacheStore:
@@ -188,6 +202,8 @@ end InMemoryActionCacheStore
 
 case class DiskActionCacheStore(base: Path, converter: FileConverter)
     extends AbstractActionCacheStore:
+  import DiskActionCacheStore.copyOnRestore
+
   lazy val casBase: Path =
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)
@@ -272,6 +288,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     if isCompleteBlob(casFile, digest) then casFile
     else
       IO.move(blob.toFile(), casFile.toFile())
+      sealBlob(casFile)
       verifiedBlob(casFile, digest)
 
   /**
@@ -308,6 +325,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
     val tempFile = casBase.resolve(s"${java.util.UUID.randomUUID()}.part")
     try
       write(tempFile)
+      sealBlob(tempFile)
       IO.move(tempFile.toFile(), casFile.toFile())
       if verified then markComplete(casFile, digest)
       casFile
@@ -326,10 +344,22 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         val stamp = BlobStamp(digest, attrs.lastModifiedTime, attrs.fileKey)
         if stamp == completeBlobStamps.getIfPresent(casFile) then true
         else if Digest.sameDigest(casFile, digest) then
+          sealBlob(casFile)
           completeBlobStamps.put(casFile, stamp)
           true
         else false
     catch case _: IOException => false
+
+  /**
+   * Makes a CAS file read-only so that writing through a symlink fails instead of corrupting it.
+   * POSIX only, since the read-only attribute on Windows would also block replace and delete.
+   */
+  private def sealBlob(p: Path): Unit =
+    try
+      val perms = Files.getPosixFilePermissions(p).asScala.toSet
+      val sealedPerms = perms -- DiskActionCacheStore.writePermissions
+      if sealedPerms != perms then Files.setPosixFilePermissions(p, sealedPerms.asJava)
+    catch case _: UnsupportedOperationException | _: IOException => ()
 
   private def markComplete(casFile: Path, digest: Digest): Unit =
     try
@@ -405,13 +435,17 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         StandardCopyOption.COPY_ATTRIBUTES,
         StandardCopyOption.REPLACE_EXISTING,
       )
+      outPath.toFile().setWritable(true)
+      outPath
     // See https://github.com/sbt/sbt/issues/7656
     // On Windows, the program has be running under the Administrator privileges or the
     // user enable Developer Mode on Windows 10+ to create symbolic links.
     def linkOrCopy(outPath: Path): Path =
       Retry:
-        if Files.exists(outPath) then IO.delete(outPath.toFile())
-        if symlinkSupported.get() && Files.exists(casFile) then
+        // A link whose blob is gone fails Files.exists but still blocks createSymbolicLink.
+        if Files.isSymbolicLink(outPath) then Files.deleteIfExists(outPath)
+        else if Files.exists(outPath) then IO.delete(outPath.toFile())
+        if symlinkSupported.get() && !copyOnRestore(outPath) && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
           catch
             case e: FileSystemException =>
@@ -448,7 +482,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         try
           if Digest.sameDigest(p, d) then
             val result =
-              if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p) else p
+              if copyOnRestore(p) then if Files.isSymbolicLink(p) then linkOrCopy(p) else p
+              else if symlinkSupported.get() && !Files.isSymbolicLink(p) then linkOrCopy(p)
+              else p
             afterFileUpToDate(ref, result, outputDirectory)
             result
           else
@@ -460,6 +496,7 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
           // but in practice, NoSuchFileException is thrown often
           case _: NoSuchFileException =>
             writeFileAndNotify(p)
+    end match
   end syncFile
 
   /**
@@ -509,8 +546,9 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
         def tempPath = tempDir.toPath.resolve(shortPath)
         currentItem match
           case p if !Files.exists(p)        => doSync(ref, tempPath)
-          case p if Digest.sameDigest(p, d) => ()
-          case p                            =>
+          case p if Digest.sameDigest(p, d) =>
+            if Files.isSymbolicLink(p) && copyOnRestore(p) then doSync(ref, tempPath)
+          case p =>
             IO.delete(p.toFile())
             doSync(ref, tempPath)
     // sync deleted files
@@ -533,6 +571,19 @@ case class DiskActionCacheStore(base: Path, converter: FileConverter)
 end DiskActionCacheStore
 
 object DiskActionCacheStore:
+  /**
+   * Whether a restored output must be a writable copy rather than a link into the read-only CAS.
+   * SemanticDB writers, the semanticdb-scalac plugin and Scala 3's -Xsemanticdb, overwrite their
+   * previous output in place, and Zinc does not move it aside since it is not a class file.
+   */
+  private[sbt] def copyOnRestore(path: Path): Boolean =
+    path.getFileName.toString.endsWith(".semanticdb")
+
+  private val writePermissions: Set[PosixFilePermission] = Set(
+    PosixFilePermission.OWNER_WRITE,
+    PosixFilePermission.GROUP_WRITE,
+    PosixFilePermission.OTHERS_WRITE,
+  )
   private val blobTaskSupport: ForkJoinTaskSupport =
     ForkJoinTaskSupport(
       java.util.concurrent.ForkJoinPool(

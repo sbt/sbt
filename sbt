@@ -26,7 +26,7 @@ declare use_sbtn=
 declare use_jvm_client=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="2.1.0-M1"
+declare sbtn_version="2.1.0-6eac8efa"
 declare use_colors=1
 declare is_this_dir_sbt=""
 declare hide_jdk_warnings=1
@@ -954,6 +954,11 @@ isRunClient() {
 }
 
 runClient() {
+  # sbtn is only built against glibc, so it can't run on musl-based Linux such as Alpine.
+  # There, use the JVM client unless SBTN_CMD names an sbtn to run.
+  if [[ "$OSTYPE" == "linux-musl"* ]] && [[ "$sbtn_command" == "" ]]; then
+    use_jvm_client="1"
+  fi
   if [[ "$use_jvm_client" != "1" ]]; then
     detectNativeClient
     [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
@@ -995,6 +1000,8 @@ sbt_file_opts=()
 
 if [[ -f "$JAVACMD" ]]; then
   java_cmd="$JAVACMD"
+elif [[ -n "$JAVA_HOME" && -f "$JAVA_HOME/bin/java" ]]; then
+  java_cmd="$JAVA_HOME/bin/java"
 fi
 
 # Pull in the machine-wide settings configuration.

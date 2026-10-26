@@ -94,12 +94,17 @@ object VirtualAxis:
       extends StrongAxis:
     override val suffixOrder: Int = 80
 
+  def scalaPartialVersionValue(scalaVersion: String): String =
+    partialVersion(scalaVersion).fold(scalaVersion) { (m, n) => s"$m.$n" }
+
   def scalaPartialVersion(scalaVersion: String): ScalaVersionAxis =
-    partialVersion(scalaVersion) match
-      case Some((m, n)) => scalaVersionAxis(scalaVersion, s"$m.$n")
-      case _            => scalaVersionAxis(scalaVersion, scalaVersion)
+    scalaVersionAxisBy(scalaPartialVersionValue)(scalaVersion)
+
   def scalaABIVersion(scalaVersion: String): ScalaVersionAxis =
-    scalaVersionAxis(scalaVersion, binaryScalaVersion(scalaVersion))
+    scalaVersionAxisBy(binaryScalaVersion)(scalaVersion)
+
+  def scalaVersionAxisBy(f: String => String)(scalaVersion: String): ScalaVersionAxis =
+    scalaVersionAxis(scalaVersion, f(scalaVersion))
 
   def scalaVersionAxis(scalaVersion: String, value: String) =
     ScalaVersionAxis(scalaVersion, value)

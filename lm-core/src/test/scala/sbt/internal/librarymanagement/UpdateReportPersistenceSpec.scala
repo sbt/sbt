@@ -9,226 +9,131 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.util.Calendar
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import sbt.io.IO
-import sbt.util.CacheStore
-import sbt.librarymanagement.*
-import sbt.librarymanagement.syntax.*
-import sbt.librarymanagement.LibraryManagementCodec.given
+import hedgehog.*
+import hedgehog.runner.*
+import _root_.sbt.io.IO
+import _root_.sbt.util.CacheStore
+import _root_.sbt.librarymanagement.*
+import _root_.sbt.librarymanagement.LibraryManagementCodec.given
+import GenUpdateReport.genUpdateReport
 
-class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
+object UpdateReportPersistenceSpec extends Properties:
+  override def tests: List[Test] = List(
+    property(
+      "fromCache(toCache(report)) restores the report with artificial callers filtered out",
+      propInMemoryRoundTrip
+    ),
+    property(
+      "fromCache(toCache(report)) preserves the resolver's module order",
+      propModuleOrder
+    ),
+    property(
+      "fromCache(toCache(report)) ignores whether details were present",
+      propDetailsStripped
+    ),
+    property("writeTo then readFrom matches the in-memory round trip", propStoreRoundTrip),
+    property(
+      "readFrom falls back to the legacy UpdateReport format",
+      propLegacyFallback
+    ),
+    example("readFrom returns None for a missing cache file", testMissingCacheFile),
+    property(
+      "UpdateReportPersistenceBenchmark rejects invalid inputs",
+      propBenchmarkRejectsInvalid
+    ),
+    example("UpdateReportPersistenceBenchmark runs and formats its result", testBenchmarkRun),
+  )
 
-  def buildTestReport(baseDir: File): UpdateReport =
-    val epochCalendar = Calendar.getInstance()
-    epochCalendar.setTimeInMillis(0L)
+  def normalize(ur: UpdateReport): UpdateReport =
+    ur.withConfigurations(ur.configurations.map: cr =>
+      val details =
+        if cr.details.nonEmpty then cr.details
+        else
+          val keys = cr.modules.map(m => (m.module.organization, m.module.name)).distinct
+          keys.map: (org, n) =>
+            OrganizationArtifactReport(
+              org,
+              n,
+              cr.modules.filter(m => m.module.organization == org && m.module.name == n)
+            )
+      cr.withModules(cr.modules.map(JsonUtil.withFilteredCallers))
+        .withDetails(details.map(d => d.withModules(d.modules.map(JsonUtil.withFilteredCallers)))))
 
-    val modId = ModuleID("org.example", "test-module", "1.0.0")
-    val artifact = Artifact("test-module", "jar", "jar", None, Vector.empty, None, Map.empty, None)
-    val jarFile = new File(baseDir, "test-module.jar")
-    IO.touch(jarFile)
+  def restore(ur: UpdateReport): UpdateReport =
+    UpdateReportPersistence.fromCache(UpdateReportPersistence.toCache(ur))
 
-    val moduleReport = ModuleReport(
-      modId,
-      Vector((artifact, jarFile)),
-      Vector.empty,
-      None,
-      Some(epochCalendar),
-      Some("maven-central"),
-      Some("maven-central"),
-      false,
-      None,
-      None,
-      None,
-      None,
-      Map.empty,
-      Some(true),
-      None,
-      Vector(ConfigRef("compile")),
-      Vector.empty,
-      Vector.empty
-    )
+  def propInMemoryRoundTrip: Property =
+    for ur <- genUpdateReport.forAll
+    yield restore(ur) ==== normalize(ur)
 
-    val details = Vector(
-      OrganizationArtifactReport("org.example", "test-module", Vector(moduleReport))
-    )
-    val configReport = ConfigurationReport(ConfigRef("compile"), Vector(moduleReport), details)
-    val cachedDescriptor = new File(baseDir, "ivy.xml")
-    IO.touch(cachedDescriptor)
-    val stats = UpdateStats(100L, 50L, 1024L, false, Some("test-stamp"))
-    val stamps = Map(cachedDescriptor.getAbsolutePath -> 12345L)
+  def propModuleOrder: Property =
+    for ur <- genUpdateReport.forAll
+    yield restore(ur).configurations.map(_.modules.map(_.module)) ====
+      ur.configurations.map(_.modules.map(_.module))
 
-    UpdateReport(cachedDescriptor, Vector(configReport), stats, stamps)
-  end buildTestReport
+  def propDetailsStripped: Property =
+    for ur <- genUpdateReport.forAll
+    yield
+      val stripped = ur.withConfigurations(ur.configurations.map(_.withDetails(Vector.empty)))
+      restore(stripped).configurations.map(_.modules) ====
+        restore(ur).configurations.map(_.modules)
 
-  "UpdateReportPersistence.toCache and fromCache" should "preserve stats and stamps" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val original = buildTestReport(baseDir)
-      val cache = UpdateReportPersistence.toCache(original)
-      val restored = UpdateReportPersistence.fromCache(cache)
+  def propStoreRoundTrip: Property =
+    for ur <- genUpdateReport.forAll
+    yield IO.withTemporaryDirectory: dir =>
+      val store = CacheStore(new File(dir, "cache.json"))
+      UpdateReportPersistence.writeTo(store, UpdateReportPersistence.toCache(ur))
+      UpdateReportPersistence.readFrom(store).map(UpdateReportPersistence.fromCache) ====
+        Some(restore(ur))
 
-      restored.stats.resolveTime.shouldBe(original.stats.resolveTime)
-      restored.stats.downloadTime.shouldBe(original.stats.downloadTime)
-      restored.stats.downloadSize.shouldBe(original.stats.downloadSize)
-      restored.stats.stamp.shouldBe(original.stats.stamp)
-      restored.stamps.shouldBe(original.stamps)
-      restored.cachedDescriptor.shouldBe(original.cachedDescriptor)
+  def propLegacyFallback: Property =
+    for ur <- genUpdateReport.forAll
+    yield IO.withTemporaryDirectory: dir =>
+      val store = CacheStore(new File(dir, "legacy.json"))
+      store.write(ur)
+      UpdateReportPersistence.readFrom(store).map(UpdateReportPersistence.fromCache) ====
+        Some(restore(ur))
 
-  it should "preserve all modules without filtering" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val original = buildTestReport(baseDir)
-      val cache = UpdateReportPersistence.toCache(original)
-      val restored = UpdateReportPersistence.fromCache(cache)
+  def testMissingCacheFile: Result =
+    IO.withTemporaryDirectory: dir =>
+      UpdateReportPersistence.readFrom(CacheStore(new File(dir, "nonexistent.json"))) ==== None
 
-      restored.configurations.size.shouldBe(original.configurations.size)
-      restored.configurations.head.modules.size.shouldBe(original.configurations.head.modules.size)
-      restored.allFiles.size.shouldBe(original.allFiles.size)
-
-  it should "preserve modules when details are stripped from the report" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val original = buildTestReport(baseDir)
-      val withoutDetails = original.withConfigurations(
-        original.configurations.map(_.withDetails(Vector.empty))
+  def propBenchmarkRejectsInvalid: Property =
+    for
+      bad <- Gen.int(Range.linear(-100, 0)).forAll
+      badWarmup <- Gen.int(Range.linear(-100, -1)).forAll
+      good <- Gen.int(Range.linear(1, 100)).forAll
+    yield Result.all(
+      List(
+        UpdateReportPersistenceBenchmark.run(iterations = bad) ====
+          Left("iterations must be positive"),
+        UpdateReportPersistenceBenchmark.run(iterations = good, configs = Seq.empty) ====
+          Left("configs must be non-empty"),
+        UpdateReportPersistenceBenchmark.run(iterations = good, modulesPerConfig = bad) ====
+          Left("modulesPerConfig must be positive"),
+        UpdateReportPersistenceBenchmark.run(iterations = good, warmupIterations = badWarmup) ====
+          Left("warmupIterations must be non-negative"),
       )
-      val cache = UpdateReportPersistence.toCache(withoutDetails)
-      val restored = UpdateReportPersistence.fromCache(cache)
-
-      restored.configurations.size.shouldBe(withoutDetails.configurations.size)
-      restored.configurations.head.modules.size
-        .shouldBe(withoutDetails.configurations.head.modules.size)
-      restored.allFiles.size.shouldBe(withoutDetails.allFiles.size)
-
-  "UpdateReportPersistence.readFrom and writeTo" should "round-trip correctly" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val original = buildTestReport(baseDir)
-      val store = CacheStore(new File(baseDir, "cache.json"))
-
-      UpdateReportPersistence.writeTo(store, UpdateReportPersistence.toCache(original))
-      val readBack = UpdateReportPersistence.readFrom(store)
-
-      readBack.isDefined.shouldBe(true)
-      val restored = UpdateReportPersistence.fromCache(readBack.get)
-      restored.stats.stamp.shouldBe(original.stats.stamp)
-      restored.stamps.shouldBe(original.stamps)
-
-  it should "return None for missing cache file" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val store = CacheStore(new File(baseDir, "nonexistent.json"))
-      val result = UpdateReportPersistence.readFrom(store)
-      result.shouldBe(None)
-
-  it should "fall back to legacy UpdateReport format" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val original = buildTestReport(baseDir)
-      val store = CacheStore(new File(baseDir, "legacy.json"))
-
-      store.write(original)
-
-      val readBack = UpdateReportPersistence.readFrom(store)
-      readBack.isDefined.shouldBe(true)
-
-      val restored = UpdateReportPersistence.fromCache(readBack.get)
-      restored.configurations.size.shouldBe(original.configurations.size)
-
-  "UpdateReportPersistenceBenchmark" should "run and return valid result" in:
-    val result = UpdateReportPersistenceBenchmark.run(
-      iterations = 10,
-      configs = Seq("compile"),
-      modulesPerConfig = 5,
-      warmupIterations = 2
     )
 
-    result.isRight.shouldBe(true)
-    val benchResult = result.toOption.get
-    benchResult.iterationCount.shouldBe(10)
-    benchResult.fullFormatMs.should(be >= 0L)
-    benchResult.cacheFormatMs.should(be >= 0L)
-    benchResult.fullSizeBytes.should(be > 0L)
-    benchResult.cacheSizeBytes.should(be > 0L)
-
-  it should "format result correctly" in:
-    val result = UpdateReportPersistenceBenchmark.run(
+  def testBenchmarkRun: Result =
+    UpdateReportPersistenceBenchmark.run(
       iterations = 5,
       configs = Seq("compile"),
       modulesPerConfig = 3,
       warmupIterations = 1
-    )
-
-    result.isRight.shouldBe(true)
-    val formatted = UpdateReportPersistenceBenchmark.formatResult(result.toOption.get)
-    formatted.should(include("Full format"))
-    formatted.should(include("Cache format"))
-    formatted.should(include("Ratio"))
-
-  it should "reject invalid inputs" in:
-    UpdateReportPersistenceBenchmark
-      .run(iterations = 0)
-      .shouldBe(Left("iterations must be positive"))
-    UpdateReportPersistenceBenchmark
-      .run(iterations = 1, configs = Seq.empty)
-      .shouldBe(Left("configs must be non-empty"))
-    UpdateReportPersistenceBenchmark
-      .run(iterations = 1, modulesPerConfig = 0)
-      .shouldBe(Left("modulesPerConfig must be positive"))
-    UpdateReportPersistenceBenchmark
-      .run(iterations = 1, warmupIterations = -1)
-      .shouldBe(Left("warmupIterations must be non-negative"))
-
-  def moduleFor(baseDir: File, org: String, name: String, version: String): ModuleReport =
-    val modId = ModuleID(org, name, version)
-    val artifact = Artifact(name, "jar", "jar", None, Vector.empty, None, Map.empty, None)
-    val jarFile = new File(baseDir, s"$org-$name-$version.jar")
-    IO.touch(jarFile)
-    ModuleReport(
-      modId,
-      Vector((artifact, jarFile)),
-      Vector.empty,
-      None,
-      None,
-      Some("maven-central"),
-      Some("maven-central"),
-      false,
-      None,
-      None,
-      None,
-      None,
-      Map.empty,
-      Some(true),
-      None,
-      Vector(ConfigRef("compile")),
-      Vector.empty,
-      Vector.empty
-    )
-  end moduleFor
-
-  // `managedJars` derives the managed classpath's order from `ConfigurationReport.modules`, and that
-  // order is part of the compile task's cache key.
-  it should "preserve the resolver's module order, not the order details are grouped in" in:
-    IO.withTemporaryDirectory: baseDir =>
-      val a1 = moduleFor(baseDir, "org.a", "a", "1.0.0")
-      val a2 = moduleFor(baseDir, "org.a", "a", "2.0.0")
-      val b1 = moduleFor(baseDir, "org.b", "b", "1.0.0")
-      val details = Vector(
-        OrganizationArtifactReport("org.a", "a", Vector(a1, a2)),
-        OrganizationArtifactReport("org.b", "b", Vector(b1))
-      )
-      // The resolver interleaves the two organizations; flattening `details` would yield a1, a2, b1.
-      val resolved = Vector(a1, b1, a2)
-      val configReport = ConfigurationReport(ConfigRef("compile"), resolved, details)
-      val cachedDescriptor = new File(baseDir, "ivy.xml")
-      IO.touch(cachedDescriptor)
-      val original = UpdateReport(
-        cachedDescriptor,
-        Vector(configReport),
-        UpdateStats(0L, 0L, 0L, false),
-        Map.empty
-      )
-
-      val restored = UpdateReportPersistence.fromCache(UpdateReportPersistence.toCache(original))
-
-      restored.configurations.head.modules
-        .map(_.module)
-        .shouldBe(resolved.map(_.module))
-
+    ) match
+      case Right(r) =>
+        val formatted = UpdateReportPersistenceBenchmark.formatResult(r)
+        Result.all(
+          List(
+            r.iterationCount ==== 5,
+            Result.assert(r.fullFormatMs >= 0L),
+            Result.assert(r.cacheFormatMs >= 0L),
+            Result.assert(r.fullSizeBytes > 0L),
+            Result.assert(r.cacheSizeBytes > 0L),
+          ) ++ List("Full format", "Cache format", "Ratio").map: s =>
+            Result.assert(formatted.contains(s)).log(s"missing $s in $formatted")
+        )
+      case Left(err) => Result.failure.log(err)
 end UpdateReportPersistenceSpec

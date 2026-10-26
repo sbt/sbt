@@ -1,0 +1,24 @@
+> a/test
+$ exists run-1
+> b/test
+$ exists run-2
+> a/test
+> b/test
+$ absent run-3
+> a / Other / test
+$ exists run-3
+> a / Other / test
+$ absent run-4
+$ delete diskcache
+> b/test
+$ exists run-4
+> a/test
+$ exists run-5
+> b/test
+> a/test
+$ absent run-6
+> set a / platform := "other-runtime"
+> a/test
+$ exists run-6
+> a/test
+$ absent run-7

@@ -269,7 +269,7 @@ val launcherPackage = (project in file("."))
         if rpmRelease.value == "0" then stable0
         else stable0 + "." + rpmRelease.value
       if isExperimental then
-        (sbtVersionToRelease.split("[^\\d]").filterNot(_.isEmpty).toList match
+        (sbtVersionToRelease.split("[^\\d]").filterNot(_.isEmpty).toList.runtimeChecked match
           case List(_, _, c, d) => List(0, 99, c, d).mkString(".")
       )
       else stable

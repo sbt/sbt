@@ -1,0 +1,13 @@
+> checkOpts -feature -unchecked
+> compile
+
+# same-file edit, as in lichess-org/lila project/BuildSettings.scala
+$ copy-file changes/B1.scala project/B1.scala
+> reload
+> checkOpts -feature -deprecation -Werror -unchecked
+-> compile
+
+# separate-file edit: only B2.scala changes, B1.scala is untouched
+$ copy-file changes/B2.scala project/B2.scala
+> reload
+> checkOpts -feature -deprecation -Werror -unchecked -explain

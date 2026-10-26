@@ -32,7 +32,15 @@ import sbt.librarymanagement.*
 import sbt.nio.file.Glob
 import sbt.protocol.testing.TestResult
 import sbt.testing.Framework
-import sbt.util.{ ActionCacheStore, Digest, Level, Logger, LoggerContext }
+import sbt.util.{
+  ActionCacheStore,
+  CacheLevelTag,
+  Digest,
+  Level,
+  Logger,
+  LoggerContext,
+  cacheLevel
+}
 import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile.*
 import xsbti.compile.analysis.ReadStamps
@@ -88,7 +96,6 @@ object Keys {
   val thisProjectRef = settingKey[ProjectRef]("Provides a fully-resolved reference to the current project for the referencing scope.").withRank(CSetting)
   val configurationStr = StringAttributeKey("configuration")
 
-  @transient
   val configuration = settingKey[Configuration]("Provides the current configuration of the referencing scope.").withRank(CSetting)
   val commands = settingKey[Seq[Command]]("Defines commands to be registered when this project or build is the current selected one.").withRank(CSetting)
   val initialize = settingKey[Unit]("A convenience setting for performing side-effects during initialization.").withRank(BSetting)
@@ -113,6 +120,10 @@ object Keys {
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
   val serverIdleTimeout = SettingKey(BasicKeys.serverIdleTimeout)
+  @deprecated(
+    "windowsServerSecurityLevel has no effect; the sbt server listens on a Unix domain socket on every platform, guarded by the permissions of its directory",
+    "2.1.0"
+  )
   val windowsServerSecurityLevel = SettingKey(BasicKeys.windowsServerSecurityLevel)
   val serverUseJni = SettingKey(BasicKeys.serverUseJni)
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
@@ -128,6 +139,9 @@ object Keys {
   val remoteCacheTlsClientKey = settingKey[Option[File]]("Path to a TLS client key *.pem used with remoteCacheTlsClientCertificate")
   @transient
   val remoteCacheHeaders = settingKey[Seq[String]]("List of key=value headers to be sent to the remote cache.")
+  @transient
+  val remoteCacheRequestTimeout = settingKey[FiniteDuration]("Timeout for remote cache operations.")
+
   val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 
   // val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
@@ -216,9 +230,11 @@ object Keys {
   // compile/doc keys
   val autoCompilerPlugins = settingKey[Boolean]("If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.").withRank(AMinusSetting)
   val maxErrors = settingKey[Int]("The maximum number of errors, such as compile errors, to list.").withRank(ASetting)
+  @cacheLevel(include = Array(CacheLevelTag.InputOnly))
   val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.").withRank(BPlusTask)
   @transient
   val resolvedScalacOptions = taskKey[Seq[String]]("scalacOptions with cache placeholders (e.g. ${CSR_CACHE}) resolved to absolute machine paths.").withRank(BPlusTask)
+  @cacheLevel(include = Array(CacheLevelTag.InputOnly))
   val javacOptions = taskKey[Seq[String]]("Options for the Java compiler.").withRank(BPlusTask)
   val incOptions = taskKey[IncOptions]("Options for the incremental compiler.").withRank(BTask)
   val extraIncOptions = taskKey[Seq[(String, String)]]("Extra options for the incremental compiler").withRank(CTask)
@@ -403,6 +419,7 @@ object Keys {
 
   @transient
   val testListeners = taskKey[Seq[TestReportListener]]("Defines test listeners.").withRank(DTask)
+  val testPersistentWorker = settingKey[Boolean]("Whether forked test worker JVMs are pooled and reused across separate test task executions instead of forked fresh every time. Default false.")
   val testForkedParallel = settingKey[Boolean]("Whether forked tests should be executed in parallel").withRank(CTask)
   val testForkedParallelism = settingKey[Option[Int]]("Maximum number of parallel test threads when using testForkedParallel. Default: 2.").withRank(CTask)
   val workerMaxInstances = settingKey[Int]("Maximum number of test workers. Default: 2")

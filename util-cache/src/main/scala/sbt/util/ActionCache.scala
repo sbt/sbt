@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.{ File, PrintWriter }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ NoSuchFileException, Path, Paths }
+import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.util.{
   ActionCacheEvent,
@@ -22,6 +22,7 @@ import sbt.internal.util.{
 }
 import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.internal.io.Retry
 import sbt.io.IO.Implicits.zipContext
 import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
@@ -112,7 +113,7 @@ object ActionCache:
   ): O =
     import config.*
 
-    val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion)
+    lazy val inputDigest = mkInput(key, codeContentHash, extraHash, cacheVersion)
 
     def cacheFailure(e: CompileFailed): Nothing =
       // Cache the failure so subsequent builds don't re-run failed compilation
@@ -134,7 +135,7 @@ object ActionCache:
         try action(key): @unchecked
         catch
           case e: CompileFailed =>
-            if CachedCompileFailure.hasSufficientInfo(e) then cacheFailure(e)
+            if CachedCompileFailure.hasSufficientInfo(e) && !hasNoStore(store) then cacheFailure(e)
             else
               cacheEventLog.append(ActionCacheEvent.OnsiteTask)
               throw e
@@ -145,9 +146,9 @@ object ActionCache:
             )
             throw e
       try
-        val json = Converter.toJsonUnsafe(result)
+        lazy val json = Converter.toJsonUnsafe(result)
         val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
-        val uncacheableOutputs =
+        lazy val uncacheableOutputs =
           outputs.filter(f =>
             f match
               case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
@@ -156,7 +157,10 @@ object ActionCache:
                 val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
                 !outputPath.startsWith(normalizedOutputDir)
           )
-        if uncacheableOutputs.nonEmpty then
+        if hasNoStore(store) then
+          cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+          result
+        else if uncacheableOutputs.nonEmpty then
           cacheEventLog.append(ActionCacheEvent.Error)
           logger.error(
             s"Cannot cache task because its output files are outside the output directory: \n" +
@@ -209,39 +213,53 @@ object ActionCache:
             cacheHit = true,
             exitCode = result.exitCode,
             outputs = result.outputFiles,
+            origin = result.origin,
           )
         )
         value
-      case Left(Some(failure)) if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
+      case Left(Some((failure, result)))
+          if CachedCompileFailure.hasSufficientInfo(failure.toException) =>
         config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
         // Replay problems to the logger so users see the cached errors/warnings
         failure.replay(config.logger)
         logExec(
-          SpawnExec(input = spawnInput, cacheHit = true, exitCode = 1)
+          SpawnExec(
+            input = spawnInput,
+            cacheHit = true,
+            exitCode = Some(1),
+            outputs = Vector.empty,
+            origin = result.origin,
+          )
         )
         throw failure.toException
       case Left(_) => organicTask
+    end match
   end cache
+
+  private def hasNoStore(store: ActionCacheStore): Boolean =
+    store match
+      case a: AggregateActionCacheStore => a.stores.isEmpty
+      case _                            => false
 
   /**
    * Retrieves the cached value or failure with a single cache lookup.
-   * Returns Right(value) for cached success, Left(Some(failure)) for cached failure,
+   * Returns Right(value) for cached success, Left(Some((failure, result))) for cached failure,
    * or Left(None) for cache miss.
    */
   private def getWithFailure[O: JsonFormat](
       taskName: String,
-      inputDigest: Digest,
+      inputDigest: => Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
-  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
-    if markScopePending(taskName) then Left(None)
+  ): Either[Option[(CachedCompileFailure, ActionResult)], (O, ActionResult)] =
+    if markScopePending(taskName) || hasNoStore(config.store) then Left(None)
     else getWithFailure0(inputDigest, tags, config)
 
   private def getWithFailure0[O: JsonFormat](
       inputDigest: Digest,
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
-  ): Either[Option[CachedCompileFailure], (O, ActionResult)] =
+  ): Either[Option[(CachedCompileFailure, ActionResult)], (O, ActionResult)] =
     import config.store
     def valueFromStr(str: String, origin: Option[String]): O =
       config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
@@ -256,9 +274,9 @@ object ActionCache:
         str: String,
         result: ActionResult,
         isFailure: Boolean,
-    ): Option[Either[Option[CachedCompileFailure], (O, ActionResult)]] =
+    ): Option[Either[Option[(CachedCompileFailure, ActionResult)], (O, ActionResult)]] =
       try
-        if isFailure then Some(Left(Some(failureFromStr(str))))
+        if isFailure then Some(Left(Some((failureFromStr(str), result))))
         else Some(Right((valueFromStr(str, result.origin), result)))
       catch case _: Exception => None
 
@@ -266,17 +284,23 @@ object ActionCache:
       case Right(result) =>
         try
           val isFailure = result.exitCode.contains(failureExitCode)
-          result.contents.headOption match
-            case Some(head) =>
-              store.syncBlobs(result.outputFiles, config.outputDirectory)
-              val str = String(head.array(), StandardCharsets.UTF_8)
-              parseCachedValue(str, result, isFailure).getOrElse(Left(None))
-            case _ =>
-              val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-              if paths.isEmpty then Left(None)
-              else
-                val str = IO.read(paths.head.toFile())
+          // syncBlobs skips an output whose blob is gone from the store. Such a hit cannot be
+          // served: the outputs it would not sync are whatever the output directory held before.
+          val missing = result.outputFiles.size - store.findBlobs(result.outputFiles).size
+          if missing > 0 then
+            config.logger.debug(s"Ignoring cache hit with $missing blobs missing, will recompute")
+            Left(None)
+          else
+            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            result.contents.headOption match
+              case Some(head) =>
+                val str = String(head.array(), StandardCharsets.UTF_8)
                 parseCachedValue(str, result, isFailure).getOrElse(Left(None))
+              case _ =>
+                if paths.isEmpty then Left(None)
+                else
+                  val str = IO.read(paths.head.toFile())
+                  parseCachedValue(str, result, isFailure).getOrElse(Left(None))
         catch
           case NonFatal(e) =>
             config.logger.debug(
@@ -349,7 +373,7 @@ object ActionCache:
       )
     config.store.get(getRequest)
 
-  private[sbt] inline def mkInput[I: HashWriter](
+  private[sbt] def mkInput[I: HashWriter](
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
@@ -357,7 +381,7 @@ object ActionCache:
   ): Digest =
     // Hashing serializes every task input; surface a missing input file directly rather than as an
     // opaque serialization failure that buries it.
-    val inputDigest =
+    val inputDigest = Retry(
       try DigestHasher.hashUnsafe[I](key)
       catch
         case NonFatal(t) =>
@@ -365,6 +389,10 @@ object ActionCache:
             case Some(path) =>
               throw MessageOnlyException(s"file referenced by the build does not exist: $path")
             case None => throw t
+      ,
+      2,
+      classOf[MessageOnlyException]
+    )
     Digest.sha256Hash(
       (Vector(
         codeContentHash,
@@ -403,6 +431,18 @@ object ActionCache:
     outputs += vf
     vf
 
+  /**
+   * Packages `dir` into a zip next to it, so the directory can be stored as a single blob.
+   * Without a cache store there is nothing to store, so `dir` itself is returned unpackaged,
+   * and a zip left by an earlier run is deleted since it no longer describes `dir`.
+   */
+  def packageDirectory(dir: VirtualFileRef, config: BuildWideCacheConfiguration): VirtualFile =
+    if hasNoStore(config.store) then
+      val dirPath = config.fileConverter.toPath(dir)
+      Files.deleteIfExists(dirZipPath(dirPath))
+      config.fileConverter.toVirtualFile(dirPath)
+    else packageDirectory(dir, config.fileConverter, config.outputDirectory)
+
   /** The zip `packageDirectory` writes for `dirPath`, as a sibling of the directory itself. */
   def dirZipPath(dirPath: Path): Path =
     Paths.get(dirPath.toString + dirZipExt)
@@ -414,10 +454,19 @@ object ActionCache:
   ): VirtualFile =
     import sbt.internal.util.codec.ManifestCodec.given
     val dirPath = conv.toPath(dir)
+    // A restored output is a link into the CAS. Once its blob is gone the link dangles and can
+    // neither be hashed nor packaged, so it is deleted: the task that reruns writes a fresh file
+    // where one is still needed. The views disagree on the attributes of a dangling link, so the
+    // check asks the filesystem; deleteIfExists tolerates another packager of the same directory
+    // having removed the link first.
     val allPaths = FileTreeView.default
       .list(dirPath.toGlob / ** / "*")
-      .withFilter(!_._2.isDirectory)
-      .map(_._1)
+      .flatMap: (p, attrs) =>
+        if attrs.isDirectory then None
+        else if !attrs.isRegularFile && !Files.exists(p) then
+          Files.deleteIfExists(p)
+          None
+        else Some(p)
       .sortBy(_.toString())
     // create a manifest of files and their hashes here
     def makeManifest(manifestFile: Path): Unit =
@@ -565,21 +614,36 @@ class cacheLevel(
 enum CacheLevelTag:
   case Local
   case Remote
+
+  /**
+   * The task is not cached, so it runs every time,
+   * but its value still takes part in the cache key of the tasks that read it.
+   */
+  case InputOnly
 end CacheLevelTag
 
 object CacheLevelTag:
   private[sbt] val all: Array[CacheLevelTag] = Array(CacheLevelTag.Local, CacheLevelTag.Remote)
 
+  private[sbt] def isStored(tags: Seq[CacheLevelTag]): Boolean =
+    tags.exists(_ != CacheLevelTag.InputOnly)
+
+  private[sbt] def storedLevels(tags: Seq[CacheLevelTag]): Set[CacheLevelTag] =
+    val stored = tags.filterNot(_ == CacheLevelTag.InputOnly).toSet
+    if stored.isEmpty then all.toSet else stored
+
   given CacheLevelTagToExpr: ToExpr[CacheLevelTag] with
     def apply(tag: CacheLevelTag)(using Quotes): Expr[CacheLevelTag] =
       tag match
-        case CacheLevelTag.Local  => '{ CacheLevelTag.Local }
-        case CacheLevelTag.Remote => '{ CacheLevelTag.Remote }
+        case CacheLevelTag.Local     => '{ CacheLevelTag.Local }
+        case CacheLevelTag.Remote    => '{ CacheLevelTag.Remote }
+        case CacheLevelTag.InputOnly => '{ CacheLevelTag.InputOnly }
 
   given CacheLevelTagFromExpr: FromExpr[CacheLevelTag] with
     def unapply(expr: Expr[CacheLevelTag])(using Quotes): Option[CacheLevelTag] =
       expr match
-        case '{ CacheLevelTag.Local }  => Some(CacheLevelTag.Local)
-        case '{ CacheLevelTag.Remote } => Some(CacheLevelTag.Remote)
-        case _                         => None
+        case '{ CacheLevelTag.Local }     => Some(CacheLevelTag.Local)
+        case '{ CacheLevelTag.Remote }    => Some(CacheLevelTag.Remote)
+        case '{ CacheLevelTag.InputOnly } => Some(CacheLevelTag.InputOnly)
+        case _                            => None
 end CacheLevelTag

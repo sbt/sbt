@@ -98,8 +98,7 @@ trait Terminal extends AutoCloseable:
   def isEchoEnabled: Boolean
 
   /**
-   * Returns true if the terminal has success enabled, which it may not if it is for batch commands
-   * because the client will print the success results when received from the server.
+   * Returns true if the terminal has success enabled.
    *
    * @return
    *   true if the terminal has success enabled

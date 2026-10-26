@@ -9,21 +9,30 @@
 package sbt.internal.util
 package complete
 
-class FixedSetExamplesTest extends UnitSpec:
+import hedgehog.*
+import hedgehog.runner.*
 
-  "adding a prefix" should "produce a smaller set of examples with the prefix removed" in {
-    val _ = new Examples:
-      fixedSetExamples.withAddedPrefix("f")() should contain theSameElementsAs
-        (List("oo", "ool", "u"))
-      fixedSetExamples.withAddedPrefix("fo")() should contain theSameElementsAs (List("o", "ol"))
-      fixedSetExamples.withAddedPrefix("b")() should contain theSameElementsAs (List("ar"))
-  }
+object FixedSetExamplesTest extends Properties:
+  override def tests: List[Test] = List(
+    example(
+      "adding a prefix should produce a smaller set of examples with the prefix removed",
+      testAddedPrefix
+    ),
+    example(
+      "without a prefix should produce the original set",
+      fixedSetExamples().toList ==== exampleSet
+    ),
+  )
 
-  "without a prefix" should "produce the original set" in {
-    val _ = new Examples:
-      fixedSetExamples() shouldBe exampleSet
-  }
+  val exampleSet = List("foo", "bar", "fool", "fu")
+  def fixedSetExamples = FixedSetExamples(exampleSet)
 
-  trait Examples:
-    val exampleSet = List("foo", "bar", "fool", "fu")
-    val fixedSetExamples = FixedSetExamples(exampleSet)
+  def testAddedPrefix: Result =
+    Result.all(
+      List(
+        fixedSetExamples.withAddedPrefix("f")().toList.sorted ==== List("oo", "ool", "u"),
+        fixedSetExamples.withAddedPrefix("fo")().toList.sorted ==== List("o", "ol"),
+        fixedSetExamples.withAddedPrefix("b")().toList ==== List("ar"),
+      )
+    )
+end FixedSetExamplesTest

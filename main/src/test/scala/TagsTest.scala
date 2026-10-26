@@ -47,5 +47,14 @@ object TagsTest extends Properties("Tags"):
     excl(etag)(tm)
   }
 
+  property("effectiveLimit recovers the max a single limit() rule was constructed with") =
+    forAll(tag, Gen.choose(1, 500)) { (t: Tag, max: Int) =>
+      effectiveLimit(limit(t, max) :: Nil, t, bound = 512) == max
+    }
+
+  property("effectiveLimit is capped at bound when the tag is unrestricted") = forAll { (t: Tag) =>
+    effectiveLimit(Nil, t, bound = 7) == 7
+  }
+
   private def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
 end TagsTest

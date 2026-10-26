@@ -1,6 +1,8 @@
 package sbt
 package librarymanagement
 
+import sjsonnew.{ Builder, HashWriter }
+
 /** Represents an Ivy configuration. */
 final class Configuration private[sbt] (
     val id: String,
@@ -71,6 +73,11 @@ object Configuration:
       transitive: Boolean
   ): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
+
+  /** Hashes a configuration by its name, which is its identity in scopes and Ivy. */
+  given HashWriter[Configuration] = new HashWriter[Configuration]:
+    def write[J](obj: Configuration, builder: Builder[J]): Unit =
+      builder.writeString(obj.name)
 
 /*
 Configuration isn't defined with Contraband.

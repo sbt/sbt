@@ -1,16 +1,21 @@
 package sbt.util
 
-import java.io.{ ByteArrayInputStream, IOException, InputStream }
+import java.io.{ ByteArrayInputStream, IOException, InputStream, PrintWriter, StringWriter }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
+import java.nio.file.{ AccessDeniedException, Files, LinkOption, NoSuchFileException, Path, Paths }
+import java.nio.file.attribute.{ PosixFileAttributeView, PosixFilePermission }
 import java.util.Optional
+import java.util.zip.ZipFile
 import java.util.concurrent.{ CyclicBarrier, ExecutorService, Executors, TimeUnit }
+import scala.jdk.CollectionConverters.*
 
 import sbt.internal.util.CacheEventLog
+import sbt.internal.util.SpawnExec
 import sbt.internal.util.StringVirtualFile1
 import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
+import sjsonnew.support.scalajson.unsafe.{ Converter, Parser }
 import verify.BasicTestSuite
 import xsbti.{
   CompileFailed,
@@ -44,6 +49,38 @@ object ActionCacheTest extends BasicTestSuite:
   test("findMissingFile returns None when no file is missing"):
     val chain = new RuntimeException("boom", new IllegalStateException("unrelated"))
     assert(ActionCache.findMissingFile(chain) == None)
+
+  final case class Locked(n: Int)
+
+  def lockedWriter(failures: Int): sjsonnew.HashWriter[Locked] =
+    var remaining = failures
+    new sjsonnew.HashWriter[Locked]:
+      override def write[J](obj: Locked, builder: sjsonnew.Builder[J]): Unit =
+        if remaining > 0 then
+          remaining -= 1
+          throw sjsonnew.SerializationException(
+            "error while writing the field sources",
+            IOException(
+              "The process cannot access the file because another process has locked a portion of the file"
+            )
+          )
+        builder.writeInt(obj.n)
+
+  test("A transiently locked input file is retried and the task is cached"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      given sjsonnew.HashWriter[Locked] = lockedWriter(1)
+      var called = 0
+      val action: Locked => InternalActionResult[Int] = l =>
+        called += 1
+        InternalActionResult(l.n, Nil)
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache(Locked(1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 1)
+        val v2 = ActionCache.cache(Locked(1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 1)
+        assert(called == 1)
 
   test("Distinct inputs that collide in the 32-bit murmur hash get distinct cache keys"):
     import sjsonnew.BasicJsonProtocol.given
@@ -99,6 +136,240 @@ object ActionCacheTest extends BasicTestSuite:
 
       assert(!Files.exists(casFile))
       assert(Files.list(cache.casBase).toArray.isEmpty)
+
+  test("Writing to a synced output leaves the CAS blob intact"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        IO.write(out.toFile(), "bar")
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(Files.readString(out, StandardCharsets.UTF_8) == "bar")
+        val out2 = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        IO.append(out2.toFile(), "+baz")
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(Files.readString(out2, StandardCharsets.UTF_8) == "foo+baz")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  private def supportsPosix(p: Path): Boolean =
+    Files.getFileAttributeView(p, classOf[PosixFileAttributeView]) != null
+
+  private def hasWritePermission(p: Path): Boolean =
+    Files
+      .getPosixFilePermissions(p)
+      .asScala
+      .exists(
+        Set(
+          PosixFilePermission.OWNER_WRITE,
+          PosixFilePermission.GROUP_WRITE,
+          PosixFilePermission.OTHERS_WRITE,
+        )
+      )
+
+  test("Disk cache stores blobs without write permissions"):
+    withDiskCache: cache =>
+      val ref = cache.putBlobs(StringVirtualFile1("a.txt", "hello") :: Nil).head
+      val casFile = cache.toCasFile(Digest(ref))
+      assert(Files.readString(casFile, StandardCharsets.UTF_8) == "hello")
+      if supportsPosix(casFile) then assert(!hasWritePermission(casFile))
+
+  test("Disk cache removes write permissions from a blob it verifies"):
+    withDiskCache: cache =>
+      val blob = StringVirtualFile1("a.txt", "hello")
+      val ref: HashedVirtualFileRef = blob
+      val casFile = cache.toCasFile(Digest(blob))
+      Files.writeString(casFile, "hello", StandardCharsets.UTF_8)
+      assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+      if supportsPosix(casFile) then assert(!hasWritePermission(casFile))
+
+  test("Disk cache replaces a truncated blob without write permissions"):
+    withDiskCache: cache =>
+      val blob = StringVirtualFile1("a.txt", "hello")
+      val ref: HashedVirtualFileRef = blob
+      val casFile = cache.toCasFile(Digest(blob))
+      Files.writeString(casFile, "he", StandardCharsets.UTF_8)
+      casFile.toFile().setWritable(false)
+      cache.putBlobs(blob :: Nil)
+      assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+      assert(Files.readString(casFile, StandardCharsets.UTF_8) == "hello")
+
+  test("Writing through a synced symlink fails instead of corrupting the CAS blob"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        if Files.isSymbolicLink(out) && supportsPosix(casFile) then
+          assert(!hasWritePermission(casFile))
+          if !Files.isWritable(casFile) then
+            intercept[AccessDeniedException](Files.writeString(out, "bar", StandardCharsets.UTF_8))
+        else assert(Files.isWritable(out))
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  test("Disk cache restores a SemanticDB file as a writable copy, replacing a link"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/A.scala.semanticdb", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val casFile = cache.toCasFile(Digest(ref))
+        val out = (tempDir / "A.scala.semanticdb").toPath()
+        Util.ignoreResult(trySymlink(out, casFile))
+        val synced = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+        assert(synced == out)
+        assert(!Files.isSymbolicLink(out), s"$out was linked into the CAS")
+        Files.writeString(out, "bar", StandardCharsets.UTF_8)
+        assert(Files.readString(casFile, StandardCharsets.UTF_8) == "foo")
+        assert(cache.findBlobs(ref :: Nil) == Seq(ref))
+
+  test("A cache hit whose blob is gone from the CAS is a miss"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        var called = 0
+        val blob = StringVirtualFile1(s"$tempDir/a.txt", "2")
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(blob))
+        val config = getCacheConfig(cache, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val out = tempDir / "a.txt"
+        Files.delete(cache.toCasFile(Digest(blob)))
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "the task did not rerun although its output blob is gone")
+        assert(out.exists() && IO.read(out) == "2")
+
+  test("A cache hit whose blobs a store finds but fails to sync is a miss"):
+    withDiskCache: disk =>
+      import sjsonnew.BasicJsonProtocol.*
+      IO.withTemporaryDirectory: tempDir =>
+        // Like the remote store, whose batch read fails when one blob cannot be read.
+        var failNextSync = false
+        val store = new ActionCacheStore:
+          override def storeName: String = "fails-to-sync"
+          override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+            disk.put(request)
+          override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+            disk.get(request)
+          override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+            disk.putBlobs(blobs)
+          override def syncBlobs(
+              refs: Seq[HashedVirtualFileRef],
+              outputDirectory: Path
+          ): Seq[Path] =
+            if failNextSync then
+              failNextSync = false
+              throw IOException("failed to read 1 of 2 blobs")
+            else disk.syncBlobs(refs, outputDirectory)
+          override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+            disk.findBlobs(refs)
+        var called = 0
+        val blob = StringVirtualFile1(s"$tempDir/a.txt", "2")
+        val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+          called += 1
+          InternalActionResult(a + b, Seq(blob))
+        val config = getCacheConfig(store, tempDir)
+        val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v1 == 2)
+        val out = tempDir / "a.txt"
+        IO.delete(out)
+        failNextSync = true
+        val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v2 == 2)
+        assert(called == 2, "the task did not rerun although its output was not synced")
+        assert(out.exists() && IO.read(out) == "2")
+
+  // Probative where the store links: on APFS it copies, and a copy replaced the dangling link
+  // before this change too.
+  test("An aggregate store asks a later store only for the blobs an earlier one lacks"):
+    withDiskCache: first =>
+      withDiskCache: second =>
+        IO.withTemporaryDirectory: tempDir =>
+          val a = StringVirtualFile1(s"$tempDir/a.txt", "a")
+          val b = StringVirtualFile1(s"$tempDir/b.txt", "b")
+          first.putBlobs(a :: Nil)
+          val refs = second.putBlobs(a :: b :: Nil)
+          val asked = scala.collection.mutable.ListBuffer.empty[Seq[String]]
+          val recording = new ActionCacheStore:
+            override def storeName: String = "recording"
+            override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+              second.put(request)
+            override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+              second.get(request)
+            override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+              second.putBlobs(blobs)
+            override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path) =
+              asked += refs.map(_.id)
+              second.syncBlobs(refs, outputDirectory)
+            override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+              asked += refs.map(_.id)
+              second.findBlobs(refs)
+          val aggregate = AggregateActionCacheStore(Seq(first, recording))
+          val paths = aggregate.syncBlobs(refs, tempDir.toPath())
+          assert(paths == Seq((tempDir / "a.txt").toPath(), (tempDir / "b.txt").toPath()))
+          assert(IO.read(tempDir / "a.txt") == "a" && IO.read(tempDir / "b.txt") == "b")
+          assert(asked.toList == List(Seq(b.id)), s"asked = $asked")
+          asked.clear()
+          assert(aggregate.findBlobs(refs) == refs)
+          assert(asked.toList == List(Seq(b.id)), s"asked = $asked")
+
+  test("An aggregate store returns what it synced when no store has every blob"):
+    withDiskCache: first =>
+      withDiskCache: second =>
+        IO.withTemporaryDirectory: tempDir =>
+          val a = StringVirtualFile1(s"$tempDir/a.txt", "a")
+          val b = StringVirtualFile1(s"$tempDir/b.txt", "b")
+          val c = StringVirtualFile1(s"$tempDir/c.txt", "c")
+          first.putBlobs(a :: Nil)
+          second.putBlobs(c :: Nil)
+          val refs = Seq[HashedVirtualFileRef](a, b, c)
+          val aggregate = AggregateActionCacheStore(Seq(first, second))
+          val paths = aggregate.syncBlobs(refs, tempDir.toPath())
+          assert(paths == Seq((tempDir / "a.txt").toPath(), (tempDir / "c.txt").toPath()))
+          assert(aggregate.findBlobs(refs) == Seq[HashedVirtualFileRef](a, c))
+
+  test("Disk cache syncs a blob over a dangling link"):
+    withDiskCache: cache =>
+      IO.withTemporaryDirectory: tempDir =>
+        val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+        val ref = cache.putBlobs(in :: Nil).head
+        val out = (tempDir / "a.txt").toPath()
+        if trySymlink(out, (tempDir / "gone").toPath()) then
+          val synced = cache.syncBlobs(ref :: Nil, tempDir.toPath()).head
+          assert(synced == out)
+          assert(Files.readString(out, StandardCharsets.UTF_8) == "foo")
+          assertMaterialized(cache, out)
+
+  test("packageDirectory drops a dangling link instead of failing"):
+    IO.withTemporaryDirectory: tempDir =>
+      val outputDirectory = tempDir.toPath()
+      val dir = tempDir / "gen-dir"
+      IO.write(dir / "a.txt", "contents A")
+      val dangling = (dir / "b.txt").toPath()
+      if trySymlink(dangling, (tempDir / "gone").toPath()) then
+        val zipVf = ActionCache.packageDirectory(
+          binaryFileConverter.toVirtualFile(dir.toPath()),
+          binaryFileConverter,
+          outputDirectory,
+        )
+        assert(!Files.exists(dangling, LinkOption.NOFOLLOW_LINKS), "the dangling link survived")
+        val zip = new ZipFile(binaryFileConverter.toPath(zipVf).toFile)
+        val entries =
+          try zip.entries.asScala.map(_.getName).filterNot(_.endsWith("/")).toSet
+          finally zip.close()
+        assert(entries == Set("gen-dir/a.txt", ActionCache.manifestFileName), s"entries = $entries")
+
+  /** Links `link` to `target`; false where the platform refuses symbolic links. */
+  def trySymlink(link: Path, target: Path): Boolean =
+    try
+      Files.createSymbolicLink(link, target)
+      true
+    catch case _: IOException | _: UnsupportedOperationException => false
 
   def testHoldBlob(cache: ActionCacheStore): Unit =
     IO.withTemporaryDirectory: tempDir =>
@@ -223,6 +494,43 @@ object ActionCacheTest extends BasicTestSuite:
       // check that the action has been invoked only once
       assert(called == 1)
 
+  test("An empty store list runs the action every time"):
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+      called += 1
+      InternalActionResult(a + b, Nil)
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(AggregateActionCacheStore.empty, tempDir)
+      val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v1 == 2 && v2 == 2)
+      assert(called == 2)
+      val summary = config.cacheEventLog.summary.toString
+      assert(summary == "cache 0%, 2 onsite tasks", summary)
+
+  test("An empty store list does not hash the action input"):
+    import sjsonnew.BasicJsonProtocol.*
+    given sjsonnew.HashWriter[Locked] = lockedWriter(Int.MaxValue)
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(AggregateActionCacheStore.empty, tempDir)
+      val v = ActionCache.cache(Locked(1), Digest.zero, Digest.zero, tags, config)(l =>
+        InternalActionResult(l.n, Nil)
+      )
+      assert(v == 1)
+
+  test("An empty store list leaves a directory unpackaged and drops a stale zip"):
+    IO.withTemporaryDirectory: tempDir =>
+      val config =
+        getCacheConfig(AggregateActionCacheStore.empty, tempDir, converter = binaryFileConverter)
+      val dir = tempDir / "classes"
+      IO.write(dir / "A.class", "A")
+      val zip = ActionCache.dirZipPath(dir.toPath)
+      IO.write(zip.toFile, "stale")
+      val vf = ActionCache.packageDirectory(binaryFileConverter.toVirtualFile(dir.toPath), config)
+      assert(binaryFileConverter.toPath(vf) == dir.toPath)
+      assert(!Files.exists(zip), s"$zip survived")
+
   test("Disk cache can hold action value with blob"):
     withDiskCache(testActionCacheWithBlob)
 
@@ -257,6 +565,78 @@ object ActionCacheTest extends BasicTestSuite:
 
   test("Disk cache caches CompileFailed exceptions"):
     withDiskCache(testCachedCompileFailure)
+
+  test("Exec log records the store that served a cache hit"):
+    import sjsonnew.BasicJsonProtocol.*
+    val action: ((Int, Int)) => InternalActionResult[Int] =
+      (a, b) => InternalActionResult(a + b, Nil)
+    withDiskCache: disk =>
+      IO.withTemporaryDirectory: tempDir =>
+        val remote = new InMemoryActionCacheStore:
+          override def storeName: String = "remote"
+        val both = getCacheConfig(AggregateActionCacheStore(Seq(disk, remote)), tempDir)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, getCacheConfig(remote, tempDir))(
+          action
+        )
+        ActionCache.cache((2, 2), Digest.zero, Digest.zero, tags, getCacheConfig(disk, tempDir))(
+          action
+        )
+        val events = withExecLog:
+          ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, both)(action)
+          ActionCache.cache((2, 2), Digest.zero, Digest.zero, tags, both)(action)
+          ActionCache.cache((3, 3), Digest.zero, Digest.zero, tags, both)(action)
+        assert(
+          events.map(e => (e.cacheHit, e.origin)) == Vector(
+            (true, Some("remote")),
+            (true, Some("disk")),
+            (false, None),
+          )
+        )
+
+  test("Exec log records the store that served a cached failure"):
+    import sjsonnew.BasicJsonProtocol.*
+    val failure = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(errorProblem)
+      override def getMessage(): String = "Compilation failed"
+    val action: ((Int, Int)) => InternalActionResult[Int] = _ => throw failure
+    def run(config: BuildWideCacheConfiguration): Unit =
+      try ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      catch case _: CompileFailed => ()
+    withDiskCache: disk =>
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(disk, tempDir)
+        run(config)
+        val events = withExecLog(run(config))
+        assert(
+          events.map(e => (e.cacheHit, e.exitCode, e.origin)) == Vector(
+            (true, Some(1), Some("disk"))
+          )
+        )
+
+  def errorProblem: Problem = new Problem:
+    override def category(): String = "Test"
+    override def severity(): Severity = Severity.Error
+    override def message(): String = "Test error message"
+    override def position(): Position = new Position:
+      override def line(): Optional[Integer] = Optional.of(1)
+      override def lineContent(): String = ""
+      override def offset(): Optional[Integer] = Optional.empty()
+      override def pointer(): Optional[Integer] = Optional.empty()
+      override def pointerSpace(): Optional[String] = Optional.empty()
+      override def sourcePath(): Optional[String] = Optional.of("/test/file.scala")
+      override def sourceFile(): Optional[java.io.File] = Optional.empty()
+
+  def withExecLog(f: => Unit): Vector[SpawnExec] =
+    import sbt.internal.util.codec.SpawnCodec.given
+    val records = Vector.newBuilder[String]
+    val writer = new PrintWriter(new StringWriter):
+      override def println(x: String): Unit = records += x
+    val previous = ActionCache.execLog
+    ActionCache.execLog = Some(writer)
+    try f
+    finally ActionCache.execLog = previous
+    records.result().map(r => Converter.fromJsonUnsafe[SpawnExec](Parser.parseUnsafe(r)))
 
   def testActionCacheInvalidJson(cache: DiskActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*

@@ -14,7 +14,6 @@ import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.Configuration as CConfiguration
-import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition, parsed }
 import sbt.Keys.*
 import sbt.OptionSyntax.*
@@ -116,6 +115,7 @@ import xsbti.compile.{
 
 object Defaults extends BuildCommon with DefExtra:
   final val CacheDirectoryName = "cache"
+  private final val OWNER_DACL = 1
 
   def configSrcSub(key: SettingKey[File]): Initialize[File] =
     Def.setting {
@@ -194,6 +194,7 @@ object Defaults extends BuildCommon with DefExtra:
       testForkedParallel :== true,
       testForkedParallelism :== None,
       workerMaxInstances :== SysProp.workerMaxInstances,
+      testPersistentWorker :== SysProp.testPersistentWorker,
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
@@ -399,7 +400,7 @@ object Defaults extends BuildCommon with DefExtra:
         else Set()
       },
       serverHandlers :== Nil,
-      windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
+      ((windowsServerSecurityLevel := OWNER_DACL): @nowarn("cat=deprecation")),
       serverUseJni := SysProp.serverUseJni,
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
@@ -720,6 +721,7 @@ object Defaults extends BuildCommon with DefExtra:
         scalaInstance := Compiler.scalaInstanceTask(console / scalaInstanceConfig).value,
       ) ++ compilersSetting
     ) ++ compileBaseGlobal ++ Seq(
+      exportPipelining := usePipelining.value,
       useScalaReplJLine :== false,
       scalaInstanceTopLoader := {
         val topLoader = if !useScalaReplJLine.value then
@@ -1001,7 +1003,7 @@ object Defaults extends BuildCommon with DefExtra:
             sourcesVF.value,
             scalacOptions.value.toVector,
             javacOptions.value.toVector,
-            c.toVirtualFile(inputs.options.classesDirectory),
+            outputPath.value + prefix(configuration.value.name),
             c.toVirtualFile(inputs.setup.cacheFile.toPath),
             extraIncOptions.value.toVector,
             scalaVersion.value,
@@ -1057,6 +1059,7 @@ object Defaults extends BuildCommon with DefExtra:
       compile := Def.uncached(compileTask.value),
       compileScalaBackend := Def.uncached(compileScalaBackendTask.value),
       compileJava := Def.uncached(compileJavaTask.value),
+      compileJava / cacheStores := (compile / cacheStores).value,
       compileSplit := {
         // conditional task
         if incOptions.value.pipelining then Def.uncached(compileJava.value)
@@ -1110,15 +1113,9 @@ object Defaults extends BuildCommon with DefExtra:
             SemanticSelector(">=3.5.0")
           )
           if shouldApplyFlags then
-            Def.uncached(
-              Vector(
-                "-Ypickle-java",
-                "-Ypickle-write",
-                fileConverter.value.toPath(earlyOutput.value).toString
-              ) ++ old
-            )
-          else Def.uncached(old)
-        else Def.uncached(old)
+            Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.id) ++ old
+          else old
+        else old
       },
       scalacOptions := {
         val old = scalacOptions.value
@@ -1137,17 +1134,13 @@ object Defaults extends BuildCommon with DefExtra:
       compileIncSetup := Def.uncached(compileIncSetupTask.value),
       console := Compiler.consoleTask.value,
       // Strip pipelining flags before they reach the REPL (#8921).
-      console / scalacOptions := Def.uncached {
-        Compiler.toConsoleScalacOptions(scalacOptions.value)
-      },
+      console / scalacOptions := Compiler.toConsoleScalacOptions(scalacOptions.value),
       console / forkOptions := Def.uncached(Compiler.consoleForkOptions.value),
       // fork when sbt is launched with --server
       console / fork := true,
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
-      consoleQuick / scalacOptions := Def.uncached {
-        Compiler.toConsoleScalacOptions(scalacOptions.value)
-      },
+      consoleQuick / scalacOptions := Compiler.toConsoleScalacOptions(scalacOptions.value),
       resolvedScalacOptions := Def.uncached {
         Compiler.resolveVirtualizedScalacOptions(scalacOptions.value, rootPaths.value)
       },
@@ -1244,6 +1237,13 @@ object Defaults extends BuildCommon with DefExtra:
     testTaskOptions(testSelected),
     testTaskOptions(testQuick),
     testDefaults,
+    testQuick / cacheStores := (test / cacheStores).value,
+    testOnly / cacheStores := (test / cacheStores).value,
+    testSelected / cacheStores := (testOnly / cacheStores).value,
+    baseDirectory := {
+      if testPersistentWorker.value then (ThisBuild / baseDirectory).value
+      else baseDirectory.value
+    },
     testLoader := Def.uncached(ClassLoaders.testTask.value),
     loadedTestFrameworks := Def.uncached {
       val loader = testLoader.value
@@ -1264,6 +1264,11 @@ object Defaults extends BuildCommon with DefExtra:
     executeTests := Def.uncached(Def.taskDyn {
       import sbt.TupleSyntax.*
       val fpm = testForkedParallelism.value
+      val pw = testPersistentWorker.value
+      // Reuse the ForkedTestGroup concurrency limit as the persistent worker pool cap: never keep
+      // more idle worker JVMs around than the number of forked test groups allowed to run at once.
+      val pwMax =
+        Tags.effectiveLimit(concurrentRestrictions.value, Tags.ForkedTestGroup, 12)
       (
         test / streams,
         loadedTestFrameworks,
@@ -1289,7 +1294,9 @@ object Defaults extends BuildCommon with DefExtra:
           jo,
           clls,
           s"${Util.quoteIfNotScalaId(thisProj.id)} / ",
-          c
+          c,
+          pw,
+          pwMax,
         )
       }
     }.value),
@@ -1558,6 +1565,9 @@ object Defaults extends BuildCommon with DefExtra:
         classLoaderLayeringStrategy.value,
         projectId = s"${Util.quoteIfNotScalaId(thisProject.value.id)} / ",
         converter = fileConverter.value,
+        persistentWorker = testPersistentWorker.value,
+        persistentWorkerPoolMax =
+          Tags.effectiveLimit(concurrentRestrictions.value, Tags.ForkedTestGroup, 12),
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
@@ -1698,6 +1708,39 @@ object Defaults extends BuildCommon with DefExtra:
       projectId: String,
       converter: FileConverter,
   ): Task[Tests.Output] =
+    allTestGroupsTask(
+      s,
+      frameworks,
+      loader,
+      groups,
+      config,
+      cp,
+      forkedParallelExecution,
+      forkedParallelism,
+      javaOptions,
+      strategy,
+      projectId,
+      converter,
+      persistentWorker = false,
+      persistentWorkerPoolMax = 1,
+    )
+
+  private[sbt] def allTestGroupsTask(
+      s: TaskStreams,
+      frameworks: Map[TestFramework, Framework],
+      loader: ClassLoader,
+      groups: Seq[Tests.Group],
+      config: Tests.Execution,
+      cp: Classpath,
+      forkedParallelExecution: Boolean,
+      forkedParallelism: Option[Int],
+      javaOptions: Seq[String],
+      strategy: ClassLoaderLayeringStrategy,
+      projectId: String,
+      converter: FileConverter,
+      persistentWorker: Boolean,
+      persistentWorkerPoolMax: Int,
+  ): Task[Tests.Output] =
     val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
       groups
         .map(group => group -> Tests.processOptions(config, group.tests.toVector, s.log))
@@ -1741,6 +1784,8 @@ object Defaults extends BuildCommon with DefExtra:
             s.log,
             forkedParallelism,
             strategy != ClassLoaderLayeringStrategy.Raw,
+            persistentWorker,
+            persistentWorkerPoolMax,
             Vector((Tags.ForkedTestGroup, 1)) ++ innerTags ++ group.tags*
           )
         case Tests.InProcess =>
@@ -2327,38 +2372,57 @@ object Defaults extends BuildCommon with DefExtra:
 
   def compileIncrementalTaskSettings = inTask(compileIncremental)(
     Seq(
+      cacheStores := (compile / cacheStores).value,
       TaskZero / compileIncremental := Def.uncached {
-        val bspTask = (compile / bspCompileTask).value
+        val bspTaskResult = (compile / bspCompileTask).result.value
         val result = cachedCompileIncrementalTask.result.value
-        val reporter = (compile / bspReporter).value
-        val ci = (compile / compileInputs).value
+        val reporterResult = (compile / bspReporter).result.value
+        val ciResult = (compile / compileInputs).result.value
+        val afResult = compileAnalysisFile.result.value
         val c = fileConverter.value
         val dir = c.toPath(backendOutput.value).toFile
         val ping = (TaskZero / earlyOutputPing).value
-        result match
-          case Result.Value(res) =>
-            val af = compileAnalysisFile.value
-            val store = analysisStore(af.toPath(), c)
-            if !af.exists then sys.error(s"${af} is missing")
-            val analysis = store.unsafeGet().getAnalysis()
-            // Zinc completes the ping during a real compile; on an action-cache hit zinc
-            // never runs, so re-derive its decision. The early jar is written even for
-            // subprojects that define macros, so its presence alone is not enough.
-            // tryComplete is atomic: zinc's own completion always wins when it ran.
-            ping.tryComplete(
-              Result.Value(
-                c.toPath(earlyOutput.value).toFile.exists && !definesMacro(analysis)
-              )
-            )
-            reporter.sendSuccessReport(analysis)
-            bspTask.notifySuccess(analysis)
-            res
-          case Result.Inc(cause) =>
+        (bspTaskResult, reporterResult, ciResult, afResult) match
+          case (
+                Result.Value(bspTask),
+                Result.Value(reporter),
+                Result.Value(ci),
+                Result.Value(af)
+              ) =>
+            result match
+              case Result.Value(res) =>
+                try
+                  val store = analysisStore(af.toPath(), c)
+                  if !af.exists then sys.error(s"${af} is missing")
+                  val analysis = store.unsafeGet().getAnalysis()
+                  // Zinc completes the ping during a real compile; on an action-cache hit zinc
+                  // never runs, so re-derive its decision. The early jar is written even for
+                  // subprojects that define macros, so its presence alone is not enough.
+                  // tryComplete is atomic: zinc's own completion always wins when it ran.
+                  ping.tryComplete(
+                    Result.Value(
+                      c.toPath(earlyOutput.value).toFile.exists && !definesMacro(analysis)
+                    )
+                  )
+                  reporter.sendSuccessReport(analysis)
+                  bspTask.notifySuccess(analysis)
+                  res
+                catch
+                  case e: Throwable =>
+                    ping.tryComplete(Result.Value(false))
+                    throw e
+              case Result.Inc(cause) =>
+                ping.tryComplete(Result.Value(false))
+                val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
+                reporter.sendFailureReport(ci.options.sources, compileFailed)
+                bspTask.notifyFailure(compileFailed)
+                throw cause
+            end match
+          case _ =>
+            // compile never runs when its inputs fail, so complete the ping here;
+            // otherwise anything blocked on earlyOutputPing.await waits forever.
             ping.tryComplete(Result.Value(false))
-            val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
-            reporter.sendFailureReport(ci.options.sources, compileFailed)
-            bspTask.notifyFailure(compileFailed)
-            throw cause
+            throw incompleteDeps(failures(List(bspTaskResult, reporterResult, ciResult, afResult)))
         end match
       },
     )
@@ -2385,9 +2449,20 @@ object Defaults extends BuildCommon with DefExtra:
       val ping = (TaskZero / earlyOutputPing).value
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
-      val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val analysisFile = compileAnalysisFile.value.toPath()
+      val store = analysisStore(analysisFile, c)
+      val earlyAnalysisFile = (earlyCompileAnalysisFile.value: @nowarn("msg=transient")).toPath()
+      // Present iff exportPipelining: the jar scalac's -Ypickle-write pickles end up in.
+      val earlyJar = ci.options.earlyOutput.toScala.flatMap(_.getSingleOutputAsPath.toScala)
+      // Restored outputs are links into the CAS; once the CAS is gone they must not be reused.
+      Compiler.dropDanglingOutputs(
+        analysisFile +: (earlyJar.toList ++ earlyJar.map(_ => earlyAnalysisFile)),
+        s.log,
+      )
+      val ci1 = earlyJar.fold(ci)(Compiler.prepareEarlyOutput(ci, _, s.log))
+      Compiler.dropProductsWithoutAnalysis(ci1, s.log)
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci1, ping, projectId))
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
       val dirZip = ActionCache.dirZipPath(dir)
@@ -2403,6 +2478,13 @@ object Defaults extends BuildCommon with DefExtra:
       // which forces a recompile, rather than a current analysis paired with an outdated zip.
       store.set(contents)
       Def.declareOutput(analysisOut)
+      // Downstream pipelined compiles read the early jar and the early analysis, so a cache hit
+      // has to bring them back too. Otherwise the hit leaves no early jar and the next incremental
+      // round builds one from its own pickles alone, and downstream then fails to resolve every
+      // type this subproject did not just recompile.
+      earlyJar.filter(Files.exists(_)).foreach(jar => Def.declareOutput(c.toVirtualFile(jar)))
+      if earlyJar.isDefined && Files.exists(earlyAnalysisFile) then
+        Def.declareOutput(c.toVirtualFile(earlyAnalysisFile))
       s.log.debug(s"wrote $vfDir")
       (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
@@ -2477,9 +2559,7 @@ object Defaults extends BuildCommon with DefExtra:
     try incCompiler.compile(i, log)
     catch
       case e: Throwable =>
-        if !promise.isCompleted then
-          promise.failure(e)
-          ConcurrentRestrictions.cancelAllSentinels()
+        if !promise.isCompleted then promise.failure(e)
         throw e
     finally x.close() // workaround for #937
   end compileIncrementalTaskImpl
@@ -2578,7 +2658,7 @@ object Defaults extends BuildCommon with DefExtra:
           sourcesVF.value,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
-          c.toVirtualFile(inputs.options.classesDirectory),
+          outputPath.value + prefix(configuration.value.name),
           c.toVirtualFile(inputs.setup.cacheFile.toPath),
           incrementalOptions,
           scalaVersion.value,
@@ -2757,7 +2837,7 @@ object Defaults extends BuildCommon with DefExtra:
 
   lazy val defaultConfigs: Seq[Setting[?]] = inConfig(Compile)(compileSettings) ++
     inConfig(Test)(testSettings) ++
-    inConfig(Runtime)(Classpaths.configSettings)
+    inConfig(Runtime)(Classpaths.configSettings ++ Classpaths.runtimeClasspaths)
 
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[?]] =
@@ -2867,6 +2947,15 @@ object Classpaths:
       )
     )
   )
+  private[sbt] lazy val runtimeClasspaths: Seq[Setting[?]] = Seq(
+    fullClasspath := Def.uncached(
+      concatDistinct(exportedProductsVersioned, dependencyClasspath).value
+    ),
+    fullClasspathAsJars := Def.uncached(
+      concatDistinct(exportedProductJarsVersioned, dependencyClasspathAsJars).value
+    ),
+  )
+
   private def classpaths: Seq[Setting[?]] =
     Seq(
       externalDependencyClasspath := Def.uncached(
@@ -3190,10 +3279,30 @@ object Classpaths:
     val version = Keys.version.value
     val pomFile = config.file.get.getParentFile / s"$nameWithCross-$version.pom"
     val pub = Keys.publisher.value
-    val module =
-      pub.moduleDescriptor(moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration])
+    val settings = appendSbtCrossVersion(
+      moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration]
+    )
+    val module = pub.moduleDescriptor(settings)
     pub.makePomFile(module, config.withFile(pomFile), streams.value.log)
     converter.toVirtualFile(pomFile.toPath)
+
+  private def appendSbtCrossVersion(
+      settings: ModuleDescriptorConfiguration
+  ): ModuleDescriptorConfiguration =
+    settings
+      .withModule(appendSbtCrossVersion(settings.module))
+      .withDependencies(settings.dependencies.map(appendSbtCrossVersion))
+
+  private def appendSbtCrossVersion(module: ModuleID): ModuleID =
+    val attributes = module.extraAttributes
+    val suffix = for
+      scalaVersion <- attributes.get(s"e:${PomExtraAttributeKeys.ScalaVersionKey}")
+      sbtVersion <- attributes.get(s"e:${PomExtraAttributeKeys.SbtVersionKey}")
+    yield s"_${scalaVersion}_$sbtVersion"
+    suffix
+      .filterNot(module.name.endsWith)
+      .map(value => module.withName(module.name + value))
+      .getOrElse(module)
 
   def ivyPublishSettings: Seq[Setting[?]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,
@@ -3660,7 +3769,8 @@ object Classpaths:
           fullResolvers.value.toVector,
           csrProject.value.withPublications(csrPublications.value),
           allCredentials.value,
-          knownResolvers
+          knownResolvers,
+          CrossVersion(projectID.value, scalaModuleInfo.value)
         )
       )
     },
@@ -3942,7 +4052,7 @@ object Classpaths:
                 val log = s.log
                 val out = ivyPaths.value.ivyHome
                   .map(new File(_))
-                  .getOrElse(new File(System.getProperty("user.home"), ".ivy2"))
+                  .getOrElse(LMSysProp.defaultIvyHome)
                 val uwConfig = (update / unresolvedWarningConfiguration).value
                 withExcludes(out, mod.classifiers, lock(app)) { excludes =>
                   // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
@@ -4695,9 +4805,11 @@ object Classpaths:
     val app = appConfiguration.value
     def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
     val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
+    // Sorted for the same reason as the metabuild classpath in `Load`.
     val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath)
       .map(_.toPath)
       .map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
+      .sortBy(_.id)
       .map(Attributed.blank)
     val cpConfig = classpathConfiguration.value
     val up = update.value
@@ -4746,7 +4858,7 @@ object Classpaths:
       }
 
   lazy val compilerPluginConfig = Seq(
-    scalacOptions := Def.uncached {
+    scalacOptions := {
       given FileConverter = fileConverter.value
       val options = scalacOptions.value
       val newPlugins = autoPlugins(
@@ -4773,7 +4885,7 @@ object Classpaths:
     }
 
   private[sbt] def defaultIvyHome(paths: IvyPaths): File =
-    paths.ivyHome.map(new File(_)).getOrElse(new File(sys.props("user.home")) / ".ivy2")
+    paths.ivyHome.map(new File(_)).getOrElse(LMSysProp.defaultIvyHome)
 
   // try/catch for supporting earlier launchers
   def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =

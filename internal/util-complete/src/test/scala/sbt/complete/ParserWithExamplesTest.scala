@@ -9,69 +9,50 @@
 package sbt.internal.util
 package complete
 
+import hedgehog.*
+import hedgehog.runner.*
 import Completion.*
 
-class ParserWithExamplesTest extends UnitSpec:
+object ParserWithExamplesTest extends Properties:
+  override def tests: List[Test] = List(
+    example(
+      "listing a limited number of completions should grab only the needed number of elements from the iterable source of examples",
+      testLazyExamples
+    ),
+    example(
+      "listing only valid completions should use the delegate parser to remove invalid examples",
+      validExamples.parserWithExamples.completions(0) ====
+        Completions(Set(suggestion("blue"), suggestion("red")))
+    ),
+    example(
+      "listing valid completions in a derived parser should produce only valid examples that start with the character of the derivation",
+      validExamples.parserWithExamples.derive('b').completions(0) ====
+        Completions(Set(suggestion("lue")))
+    ),
+    example(
+      "listing valid and invalid completions should produce the entire source of examples",
+      allExamples.parserWithExamples.completions(0) ====
+        Completions(allExamples.examples.map(suggestion(_)).toSet)
+    ),
+    example(
+      "listing valid and invalid completions in a derived parser should produce only examples that start with the character of the derivation",
+      allExamples.parserWithExamples.derive('b').completions(0) ====
+        Completions(Set(suggestion("lue"), suggestion("lock")))
+    ),
+  )
 
-  "listing a limited number of completions" should
-    "grab only the needed number of elements from the iterable source of examples" in {
-      val _ = new ParserWithLazyExamples:
-        parserWithExamples.completions(0)
-        examples.size shouldEqual maxNumberOfExamples
-    }
+  def testLazyExamples: Result =
+    val p = ParserExample(
+      GrowableSourceOfExamples(),
+      maxNumberOfExamples = 5,
+      removeInvalidExamples = false
+    )
+    p.parserWithExamples.completions(0)
+    p.examples.size ==== p.maxNumberOfExamples
 
-  "listing only valid completions" should
-    "use the delegate parser to remove invalid examples" in {
-      val _ = new ParserWithValidExamples:
-        val validCompletions = Completions(
-          Set(
-            suggestion("blue"),
-            suggestion("red")
-          )
-        )
-        parserWithExamples.completions(0) shouldEqual validCompletions
-    }
+  def validExamples: ParserExample = ParserExample(removeInvalidExamples = true)
 
-  "listing valid completions in a derived parser" should
-    "produce only valid examples that start with the character of the derivation" in {
-      val _ = new ParserWithValidExamples:
-        val derivedCompletions = Completions(
-          Set(
-            suggestion("lue")
-          )
-        )
-        parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
-    }
-
-  "listing valid and invalid completions" should
-    "produce the entire source of examples" in {
-      val _ = new parserWithAllExamples:
-        val completions = Completions(examples.map(suggestion(_)).toSet)
-        parserWithExamples.completions(0) shouldEqual completions
-    }
-
-  "listing valid and invalid completions in a derived parser" should
-    "produce only examples that start with the character of the derivation" in {
-      val _ = new parserWithAllExamples:
-        val derivedCompletions = Completions(
-          Set(
-            suggestion("lue"),
-            suggestion("lock")
-          )
-        )
-        parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
-    }
-
-  class ParserWithLazyExamples
-      extends ParserExample(
-        GrowableSourceOfExamples(),
-        maxNumberOfExamples = 5,
-        removeInvalidExamples = false
-      )
-
-  class ParserWithValidExamples extends ParserExample(removeInvalidExamples = true)
-
-  class parserWithAllExamples extends ParserExample(removeInvalidExamples = false)
+  def allExamples: ParserExample = ParserExample(removeInvalidExamples = false)
 
   case class ParserExample(
       examples: Iterable[String] = Set("blue", "yellow", "green_", "block", "red"),

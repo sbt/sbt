@@ -367,7 +367,7 @@ trait Cont:
                       if inputs.exists(_.isCacheInput) then
                         val tags = inputs
                           .withFilter(_.isCacheInput)
-                          .map(_.tags.toSet)
+                          .map(input => CacheLevelTag.storedLevels(input.tags))
                           .reduce(_ & _)
                           .toList
                         require(
@@ -549,8 +549,7 @@ trait Cont:
                       ActionCache.registerOutput(
                         ActionCache.packageDirectory(
                           dir = ${ output.term.asExprOf[VirtualFileRef] },
-                          conv = $cacheConfigExpr.fileConverter,
-                          outputDirectory = $cacheConfigExpr.outputDirectory,
+                          config = $cacheConfigExpr,
                         ),
                         $outputAccRef,
                       )
@@ -595,7 +594,6 @@ private[sbt] object Cont:
     "compileIncSetup",
     "compileInputs",
     "classDirectory",
-    "configuration",
     "definedTests",
     "earlyOutputPing",
     "fileConverter",

@@ -1,0 +1,27 @@
+# Export the global plugin as a classes directory, and load the build.
+$ copy-file changes/classes.sbt global/plugins/classes.sbt
+> reload
+
+# Move the global plugin output, delete the old one, and load the build.
+$ copy-file changes/out.sbt global/plugins/out.sbt
+$ delete target/out
+> reload
+
+# Load the build again, so the global plugin classes come from the cache.
+> reload
+
+# Compile the project definition against the global plugin classes.
+$ copy-file changes/B.scala project/B.scala
+> reload
+
+# Move the meta-build output instead, delete the old ones, and load the build.
+$ delete global/plugins/out.sbt
+$ copy-file changes/out.sbt project/out.sbt
+$ delete target/out target2/out
+> reload
+
+# Load the build again, so the plugin classes come from the cache.
+> reload
+
+# The tests of one scripted run share `global`, so delete the global plugin.
+$ delete global/plugins

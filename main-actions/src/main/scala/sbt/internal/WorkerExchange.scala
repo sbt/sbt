@@ -13,22 +13,29 @@ import org.scalasbt.shadedgson.com.google.gson.Gson
 import java.io.*
 import java.net.{ InetAddress, ServerSocket, StandardProtocolFamily, UnixDomainSocketAddress }
 import java.nio.channels.{ ServerSocketChannel, SocketChannel }
+import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path as NioPath }
-import java.util.Scanner
+import java.util.concurrent.ConcurrentLinkedQueue
 import sbt.io.IO
 import sbt.internal.io.Retry
 import sbt.internal.worker1.*
 import sbt.protocol.DuplexChannels
 import sbt.testing.Framework
 import scala.sys.process.{ BasicIO, Process, ProcessIO }
-import scala.collection.mutable
 import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ Await, Promise }
+import scala.concurrent.{ Await, Future, Promise }
 import scala.concurrent.duration.*
+import scala.util.Try
 import scala.util.control.NonFatal
 
 object WorkerExchange:
+  /**
+   * What makes two test runs interchangeable enough to reuse the same worker JVM
+   */
+  private case class WorkerKey(fo: ForkOptions)
+
   val listeners: mutable.ListBuffer[WorkerResponseListener] = ListBuffer.empty
   private val loopback = InetAddress.getByName(null)
   private val jdkIpcSupportCache = TrieMap.empty[Option[File], Boolean]
@@ -69,6 +76,12 @@ object WorkerExchange:
     jdkIpcSupportCache.getOrElseUpdate(javaHome, doDetect)
   end supportsUnixDomainSockets
 
+  // Idle checked-in workers, oldest first; outlives any single test task execution.
+  private val idleWorkers = new ConcurrentLinkedQueue[(WorkerKey, WorkerProxy)]()
+
+  // Best-effort cleanup: forked children outlive this JVM otherwise.
+  Runtime.getRuntime.addShutdownHook(new Thread(() => closeIdleWorkers()))
+
   /**
    * Start a worker process.
    */
@@ -77,6 +90,14 @@ object WorkerExchange:
       extraCp: Seq[File],
       connectionType: WorkerConnection,
   ): WorkerProxy =
+    startWorker(fo, extraCp, connectionType, persistent = false)
+
+  def startWorker(
+      fo: ForkOptions,
+      extraCp: Seq[File],
+      connectionType: WorkerConnection,
+      persistent: Boolean,
+  ): WorkerProxy =
     // put extraCp first so we can shadow the WorkerMain class
     val fullCp = extraCp ++ Seq(
       IO.classLocationPath(classOf[WorkerMain]).toFile,
@@ -84,10 +105,11 @@ object WorkerExchange:
       IO.classLocationPath(classOf[Gson]).toFile,
     )
     val inputRef = Promise[OutputStream]()
+    val responsesRead = Promise[Unit]()
     def runAccepter(out: OutputStream, in: InputStream): Unit =
       inputRef.success(out)
-      val scanner = Scanner(in, "UTF-8")
-      while scanner.hasNextLine() do notifyListeners(scanner.nextLine())
+      readLines(in)(notifyListeners)
+      responsesRead.trySuccess(())
     val (connArgs, closer) = connectionType match
       case WorkerConnection.Tcp =>
         val serverSocket = Retry(ServerSocket(0, 1, loopback))
@@ -128,25 +150,34 @@ object WorkerExchange:
       "-classpath",
       fullCp.mkString(File.pathSeparator),
       classOf[WorkerMain].getCanonicalName,
-    ) ++ connArgs
+    ) ++ connArgs ++
+      (if persistent then Seq("--persistent_worker") else Nil)
     val onStdoutLine: String => Unit = connectionType match
       case WorkerConnection.Stdio => notifyListeners
       case _                      => (line) => scala.Console.out.println(line)
+    def readStdout(stdout: InputStream): Unit =
+      BasicIO.processFully(onStdoutLine)(stdout)
+      if connectionType == WorkerConnection.Stdio then responsesRead.trySuccess(())
     val processIo = ProcessIO(
       in = (input) =>
         (connectionType match
           case WorkerConnection.Stdio => inputRef.success(input)
           case _                      => ()
         ),
-      out = BasicIO.processFully(onStdoutLine),
+      out = readStdout,
       err = BasicIO.processFully((line) => scala.Console.err.println(line)),
     )
     val forkWithIo = fo.withOutputStrategy(OutputStrategy.CustomInputOutput(processIo))
     val p = Fork.java.fork(forkWithIo, options)
     val forkTimeout = fo.connectionTimeout.getOrElse(30.seconds)
     val input = Await.result(inputRef.future, forkTimeout)
-    WorkerProxy(input, p, options, closer)
+    WorkerProxy(input, p, options, closer, responsesRead.future)
   end startWorker
+
+  /** Unlike `Scanner`, `BufferedReader` reads a line in linear time (#9982). */
+  private[sbt] def readLines(in: InputStream)(f: String => Unit): Unit =
+    val reader = BufferedReader(InputStreamReader(in, StandardCharsets.UTF_8))
+    Iterator.continually(reader.readLine()).takeWhile(_ != null).foreach(f)
 
   /** Generates a fresh path suitable for binding a `WorkerConnection.Ipc` socket. */
   def newIpcSocketPath(): NioPath =
@@ -157,6 +188,66 @@ object WorkerExchange:
     val path = Files.createTempFile(dir, "fork-", ".sock")
     Files.deleteIfExists(path)
     path
+
+  /**
+   * `maxPoolSize` bounds the total number of idle workers kept across every key combined (not
+   * per key); once a checkin would exceed it, the globally least-recently-used idle worker is
+   * closed to make room, regardless of which key it belongs to.
+   */
+  def withWorker[A1](fo: ForkOptions, extraCp: Seq[File], persistent: Boolean, maxPoolSize: Int)(
+      f: WorkerProxy => A1
+  ): A1 =
+    val ct =
+      if persistent then WorkerConnection.Tcp
+      else if supportsUnixDomainSockets(fo.javaHome) then WorkerConnection.Ipc(newIpcSocketPath())
+      else WorkerConnection.Stdio
+    val key = WorkerKey(fo)
+    def checkout: Option[WorkerProxy] =
+      val it = idleWorkers.iterator()
+      Iterator
+        .continually(if it.hasNext() then Some(it.next()) else None)
+        .takeWhile(_.isDefined)
+        .flatten
+        .filter((k, _) => k == key)
+        .map: (_, w) =>
+          it.remove(); w
+        .find: w =>
+          val alive = w.process.isAlive()
+          if !alive then
+            try w.close()
+            catch case NonFatal(_) => ()
+          alive
+    def checkin(worker: WorkerProxy): Unit =
+      if worker.process.isAlive() then
+        idleWorkers.add(key -> worker)
+        evictExcess(maxPoolSize)
+    val w = (if persistent then checkout else None)
+      .getOrElse(startWorker(fo, extraCp, ct, persistent))
+    try f(w)
+    finally
+      if persistent && w.process.isAlive() then checkin(w)
+      else w.close()
+  end withWorker
+
+  /** Asks the worker to shut itself down before closing the connection and reaping the process. */
+  private def shutdownWorker(w: WorkerProxy): Unit =
+    try w.println("""{ "jsonrpc": "2.0", "method": "bye", "params": {}, "id": 0 }""")
+    catch case NonFatal(_) => ()
+    try w.close()
+    catch case NonFatal(_) => ()
+    w.process.destroy()
+
+  private def evictExcess(maxPoolSize: Int): Unit =
+    while idleWorkers.size() > maxPoolSize do
+      Option(idleWorkers.poll()).foreach((_, w) => shutdownWorker(w))
+
+  /** Close every idle worker. Workers currently checked out are unaffected. */
+  def closeIdleWorkers(): Unit =
+    Iterator
+      .continually(Option(idleWorkers.poll()))
+      .takeWhile(_.isDefined)
+      .flatten
+      .foreach((_, w) => shutdownWorker(w))
 
   def registerListener(listener: WorkerResponseListener): Unit =
     synchronized:
@@ -181,6 +272,7 @@ class WorkerProxy(
     val process: Process,
     val options: Seq[String],
     closer: Option[AutoCloseable],
+    responsesRead: Future[Unit],
 ) extends AutoCloseable:
   lazy val inputStream = PrintStream(input)
   def close(): Unit =
@@ -197,9 +289,19 @@ class WorkerProxy(
 
   val watch = Thread(() =>
     while process.isAlive() do Thread.sleep(100)
+    Try(Await.ready(responsesRead, WorkerProxy.responseDrainTimeout))
     WorkerExchange.listeners.foreach(_.notifyExit(process))
   )
   watch.start()
+end WorkerProxy
+
+object WorkerProxy:
+  /**
+   * How long to keep reading a worker's responses after it exits, before reporting the exit.
+   * The reader reaches end of stream as soon as it has consumed everything the worker wrote;
+   * the bound only matters for a worker that died before connecting.
+   */
+  private val responseDrainTimeout = 10.seconds
 end WorkerProxy
 
 abstract class WorkerResponseListener extends Function1[String, Unit]:

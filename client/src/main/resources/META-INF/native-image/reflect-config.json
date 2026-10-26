@@ -14,5 +14,9 @@
   {
     "name":"jline.UnixTerminal",
     "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "name":"org.scalasbt.ipcsocket.Win32NamedPipeSocket",
+    "methods":[{"name":"<init>","parameterTypes":["java.lang.String","boolean"] }]
   }
 ]

@@ -1,0 +1,9 @@
+> test
+$ exists ran.txt
+$ delete ran.txt
+> test
+$ exists ran.txt
+
+> snapshotAc
+> testOnly MarkerTest
+> checkNoNewAc

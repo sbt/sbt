@@ -10,12 +10,12 @@ object Dependencies:
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  val ioVersion = nightlyVersion.getOrElse("1.13.2")
-  val zincVersion = nightlyVersion.getOrElse("2.1.0-M2")
+  val ioVersion = nightlyVersion.getOrElse("1.13.5")
+  val zincVersion = nightlyVersion.getOrElse("2.1.0-M8")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  val launcherVersion = "1.7.0"
+  val launcherVersion = "1.7.1"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
@@ -102,33 +102,28 @@ object Dependencies:
 
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.5.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "2.5.0"
-  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.3.0"
   val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.14.0"
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "3.2.4"
   val blake3 = "pt.kcry" %% "blake3" % "3.1.2"
   val zeroAllocationHashing = "net.openhft" % "zero-allocation-hashing" % "0.16"
 
-  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.13.0"
+  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.15.1"
 
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
-  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.6"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.7"
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.25"
+  val coursierVersion = "2.1.26"
 
-  val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
-    .exclude("org.codehaus.plexus" % "plexus-archiver")
-    .exclude("org.codehaus.plexus" % "plexus-container-default")
-
-  // coursier-cache references org.graalvm.nativeimage.Platform (a "provided"-scope dependency
-  // of coursier-cache, so not resolved transitively) in annotations on some of its classes.
-  // Scala 3's classfile parser fails to parse those classes unless the class is on the classpath.
-  val graalNativeImage = "org.graalvm.sdk" % "nativeimage" % "25.0.4.1"
+  val coursier = "io.get-coursier" %% "coursier" % coursierVersion
 
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.
   val jniUtilsVersion = "0.3.3"
+
+  val asm = "org.ow2.asm" % "asm" % "9.11.1" % Test
 end Dependencies

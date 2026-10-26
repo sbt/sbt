@@ -57,6 +57,7 @@ class ExecuteProgressAdapter(ep: ExecuteProgress) extends ExecuteProgress2:
     ep.afterCompleted(task, result)
   override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
     ep.afterAllCompleted(results)
+  override private[sbt] def afterAborted(tasks: Iterable[TaskId[?]]): Unit = ep.afterAborted(tasks)
   override def stop(): Unit = ep.stop()
 
 object ExecuteProgress2:
@@ -79,5 +80,7 @@ object ExecuteProgress2:
       xs.foreach(_.afterCompleted(task, result))
     override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
       xs.foreach(_.afterAllCompleted(results))
+    override private[sbt] def afterAborted(tasks: Iterable[TaskId[?]]): Unit =
+      xs.foreach(_.afterAborted(tasks))
     override def stop(): Unit = xs.foreach(_.stop())
 end ExecuteProgress2

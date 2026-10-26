@@ -1,6 +1,6 @@
 package sbt.input.aggregation
 
-import sbt._
+import sbt.{ *, given }
 import Keys._
 import sbt.nio.Keys._
 import sbt.nio.Watch
@@ -29,7 +29,7 @@ object Build {
       },
       Compile / watchStartMessage := { (count: Int, _, _) => Some(s"Compile $count") },
       Runtime / watchStartMessage := { (count: Int, _, _) => Some(s"Runtime $count") },
-      setStringValue := {
+      Runtime / setStringValue := {
         val _ = (bar / setStringValue / fileInputs).value
         setStringValueImpl.evaluated
       },

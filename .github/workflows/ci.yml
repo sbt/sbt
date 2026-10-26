@@ -56,10 +56,6 @@ jobs:
             java: 17
             distribution: zulu
             jobtype: 12
-          - os: ubuntu-latest
-            java: 17
-            distribution: temurin
-            jobtype: 13
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -107,7 +103,16 @@ jobs:
         with:
           distribution: "${{ matrix.distribution }}"
           java-version: "${{ matrix.java }}"
+          check-latest: "true"
           cache: "sbt"
+      - name: Distrust compromised eMudhra intermediate CAs
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            bash scripts/distrust-emudhra.sh "$JAVA_HOME"
+          else
+            sudo -E bash scripts/distrust-emudhra.sh "$JAVA_HOME"
+          fi
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
         with:
@@ -143,22 +148,19 @@ jobs:
         if: ${{ matrix.jobtype == 2 }}
         shell: bash
         run: |
-          ./sbt -v "scripted actions/* apiinfo/* cache/* compiler-project/* ivy-deps-management/* reporter/* tests/* classloader-cache/* package/*"
-          # ./sbt -v "scripted watch/*"
+          ./sbt -v "scripted actions/* apiinfo/* cache/* compiler-project/* ivy-deps-management/* reporter/* classloader-cache/* package/*"
+          ./sbt -v "scripted watch/*"
       - name: Build and test (3)
         if: ${{ matrix.jobtype == 3 }}
         shell: bash
         run: |
-          ./sbt -v --client "scripted dependency-graph/*"
-          ./sbt -v --client "scripted dependency-management/* project-load/* project-matrix/* java/* run/*"
-          ./sbt -v --client "scripted plugins/*"
-          ./sbt -v --client "scripted nio/*"
+          ./sbt -v --client "scripted dependency-graph/* dependency-management/* java/*"
       - name: Build and test (4)
         if: ${{ matrix.jobtype == 4 }}
         shell: bash
         run: |
           ./sbt -v "RepoOverrideTest/scripted force-proxy-repos-file/*"
-          ./sbt -v "scripted source-dependencies/*"
+          ./sbt -v "scripted source-dependencies/* nio/* plugins/*"
       - name: Build and test (5)
         if: ${{ matrix.jobtype == 5 }}
         shell: bash
@@ -180,7 +182,7 @@ jobs:
         if: ${{ matrix.jobtype == 7 }}
         shell: bash
         run: |
-          ./sbt -v "scripted tests/*"
+          ./sbt -v "scripted tests/* project-matrix/* project-load/* run/*"
       - name: Build and test lm-coursier (10)
         if: ${{ matrix.jobtype == 10 }}
         shell: bash
@@ -197,8 +199,3 @@ jobs:
         shell: bash
         run: |
           ./sbt -v --server "scripted cache/*"
-      - name: Community build
-        if: ${{ matrix.jobtype == 13 }}
-        shell: bash
-        run: |
-          ./sbt -v --server "community-build/test"

@@ -22,7 +22,7 @@ object BootServerSocketSpec extends BasicTestSuite:
       override def provider(): xsbti.AppProvider = null
 
   private def probe(location: String): Boolean =
-    BootServerSocketProbe.liveServerDetected(location, false)
+    BootServerSocketProbe.liveServerDetected(location)
 
   private def freshBase(prefix: String): (java.io.File, Long) =
     val base = Files.createTempDirectory(prefix).toRealPath().toFile

@@ -208,7 +208,8 @@ class CoursierDependencyResolution(
     def isBom(m: ModuleID): Boolean =
       m.explicitArtifacts.nonEmpty && m.explicitArtifacts.forall(_.`type` == "pom")
     val (bomModules, regularModules) = module0.dependencies.partition(isBom)
-    val boms: Seq[BomDependency] = bomModules.map { m =>
+    val bomScopes = Seq(Configuration.empty, Configuration.provided, Configuration.test)
+    val boms: Seq[BomDependency] = bomModules.flatMap { m =>
       val (mod, ver) =
         FromSbt.moduleVersion(
           m,
@@ -217,7 +218,7 @@ class CoursierDependencyResolution(
           optionalCrossVer = true,
           projectPlatform = projectPlatform
         )
-      BomDependency(ToCoursier.module(mod), VersionConstraint(ver), Configuration.empty)
+      bomScopes.map(BomDependency(ToCoursier.module(mod), VersionConstraint(ver), _))
     }
     // Coursier fills version from BOM only when versionConstraint is empty (Resolution.processedRootDependencies).
     // So for deps with "*" or "" and BOMs present, pass empty version so BOM can supply it (sbt#4531).
@@ -569,6 +570,8 @@ object CoursierDependencyResolution:
             .toOption
             .flatten
         }
+        .flatMap(CrossVersion.partialVersion)
+        .map((major, minor) => s"$major.$minor")
         .getOrElse("2.1")
     s"Coursier/$version (+https://github.com/coursier)"
 
