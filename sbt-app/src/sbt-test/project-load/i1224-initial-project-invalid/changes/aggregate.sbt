@@ -1,1 +1,0 @@
-ThisBuild / initialProject := Some(LocalAggregate)
