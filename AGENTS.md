@@ -40,6 +40,7 @@ Tests
 
 Always add tests. For changes with small scopes prefer HedgeHog for Scala.
 For changes that require coordination with file changes and tasks, use scripted test.
+Write checks as plain `assert(...)`, not the ScalaTest Matchers DSL (`should`, `shouldBe`, `all(...)`).
 
 - [contributing-docs/04_unit_tests.md](contributing-docs/04_unit_tests.md)
 - [contributing-docs/05_scripted_tests.md](contributing-docs/05_scripted_tests.md)
@@ -50,6 +51,12 @@ For example, here's how to run "actions/compile" scripted test:
 ```bash
 sbt --color=false --supershell=false --client --batch scripted actions/compile
 ```
+
+Stale snapshot in the boot directory:
+after `publishLocalBin`, any non-scripted run against the `-SNAPSHOT` version (manual tests, community build, server tests)
+silently loads old core JARs from `~/.sbt/boot/scala-3.*/org.scala-sbt/sbt/*-SNAPSHOT`.
+Before trusting the result, delete that `-SNAPSHOT` directory (not all of `~/.sbt/boot`) and the test project's `target/`.
+See [Clearing out boot and local cache](contributing-docs/06_manual_tests.md#clearing-out-boot-and-local-cache).
 
 Tech stack
 ----------
@@ -67,6 +74,17 @@ Use mima to check:
 ```bash
 sbt --client --color=false --supershell=false --batch mimaReportBinaryIssues
 ```
+
+Breaking compatibility with an RC or milestone release (e.g. 2.1.0-RC1) is fine; only final releases count.
+
+Design decisions
+----------------
+
+- Restore disk cache (CAS) outputs as symlinks or copies, never hard links, which risk rewriting the cached blob.
+- Don't walk output directories on every compile or cache hit; fix restored outputs at restore time.
+- Keep sbtn dynamically linked against glibc; GraalVM musl support is x86_64-only and breaks ARM Linux.
+- Local server/client IPC is moving to JDK AF_UNIX sockets on all platforms, including Windows; don't add named pipe shims.
+- The disk cache honors `sbt.global.base/cache` on purpose, while the launcher's rt-ext cache does not.
 
 Copyright
 ---------

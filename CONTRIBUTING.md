@@ -159,6 +159,9 @@ $ sbt
 > publishLocalBin
 ```
 
+⚠️ `publishLocalBin` does not refresh the `$HOME/.sbt/boot` cache, so a project using the `-SNAPSHOT` version keeps loading the old core JARs.
+Before trusting a manual test, delete `$HOME/.sbt/boot/scala-3.*/org.scala-sbt/sbt/*-SNAPSHOT`. See [Clearing out boot and local cache][06].
+
 See also [Development environment][02] and [Coding style and best practices][03].
 
 

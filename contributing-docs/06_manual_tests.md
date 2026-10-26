@@ -22,19 +22,26 @@ $ sbt --server
 
 ### Clearing out boot and local cache
 
-sbt consists of lots of JAR files. When running sbt locally, these JAR artifacts are cached in the `boot` directory under `$HOME/.sbt/boot/scala-3.8.2/org.scala-sbt/sbt/2.0.0-RC9-bin-SNAPSHOT` directory (The Scala version and sbt version part changes).
+sbt consists of lots of JAR files. When running sbt locally, these JAR artifacts are cached in the `boot` directory under `$HOME/.sbt/boot/scala-3.x.y/org.scala-sbt/sbt/2.$MINOR.$PATCH-SNAPSHOT` directory (The Scala version and sbt version part changes).
 
-In order to see a change you've made to sbt's source code, this cache MUST be cleared. To clear this out, from the sbt shell in your application run:
+In order to see a change you've made to sbt's source code, this cache MUST be cleared.
+`publishLocalBin` does not refresh it, so without clearing it sbt silently loads the old core JARs, while plugins resolve fresh from `~/.ivy2/local`.
+This can make a fixed bug look unfixed, or fail with `NoSuchMethodError`.
+Scripted tests are not affected.
+To clear this out, from the sbt shell in your application run:
 
 ```bash
 > reboot dev
 ```
 
-Alternatively from Bash:
+Alternatively from Bash, delete only the snapshot directory:
 
 ```bash
-$ rm -rf $HOME/.sbt/boot/scala-3.*
+$ ls $HOME/.sbt/boot/scala-3.*/org.scala-sbt/sbt/
+$ rm -rf $HOME/.sbt/boot/scala-3.*/org.scala-sbt/sbt/*-SNAPSHOT
 ```
+
+Also clear the test project's `target/` directory, since stale restored outputs persist there.
 
 By default sbt uses a snapshot version (this is a scala convention for quick local changes- it tells users that this version could change).
 One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers.
