@@ -124,8 +124,6 @@ jobs:
       - name: Pre-test cleanup
         shell: bash
         run: |
-          # scripted publishes into a repository of its own (see sbt/sbt#1361), so ~/.ivy2/local
-          # no longer accumulates fixture artifacts and does not need purging here.
           rm -rf "$HOME/.sbt/scripted/" || true
           find "$HOME/.sbt/boot" -name "*-SNAPSHOT" -exec rm -rf {} + 2>/dev/null || true
       - name: Publish local Zinc
