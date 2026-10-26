@@ -669,38 +669,14 @@ object Compiler:
     options.map(_.split(":").map(_.split(",").map(convertValue).mkString(",")).mkString(":"))
 
   /**
-   * Deletes restored outputs whose CAS blob is gone (sbt/sbt#9849): a dangling analysis together
-   * with every link in the class directory, and a dangling early jar or early analysis. Zinc deals
-   * with dangling products itself when it has an analysis. See `cache/dangling-restored-outputs`.
+   * Deletes restored outputs whose CAS blob is gone (sbt/sbt#9849): a dangling analysis, early jar
+   * or early analysis. See `cache/dangling-restored-outputs`.
    */
-  private[sbt] def dropDanglingOutputs(
-      classesDir: Path,
-      analysisFile: Path,
-      earlyJar: Option[Path],
-      earlyAnalysisFile: Option[Path],
-      log: Logger,
-  ): Unit =
-    val analysisDangles = dangles(analysisFile)
-    if analysisDangles then
-      log.debug(s"analysis $analysisFile is a dangling link, dropping the restored class files")
-      Files.deleteIfExists(analysisFile)
-      dropClassDirLinks(classesDir, log)
-    (earlyJar.toList ++ earlyAnalysisFile).filter(dangles).foreach { p =>
-      log.debug(s"early output $p is a dangling link, deleting it")
+  private[sbt] def dropDanglingOutputs(outputs: Seq[Path], log: Logger): Unit =
+    outputs.filter(p => Files.isSymbolicLink(p) && !Files.exists(p)).foreach { p =>
+      log.debug(s"output $p is a dangling link, deleting it")
       Files.deleteIfExists(p)
     }
-
-  private def dangles(p: Path): Boolean = Files.isSymbolicLink(p) && !Files.exists(p)
-
-  /** Deletes the class directory's links, restored products that Zinc cannot write through. */
-  private def dropClassDirLinks(classesDir: Path, log: Logger): Unit =
-    if Files.isDirectory(classesDir) then
-      // the walk starts with the directory itself, which may be a link of the user's making
-      val links = Using.resource(Files.walk(classesDir)): paths =>
-        paths.iterator.asScala.filter(p => p != classesDir && Files.isSymbolicLink(p)).toList
-      links.foreach(Files.deleteIfExists)
-      if links.nonEmpty then
-        log.debug(s"dropped ${links.size} restored class files under $classesDir")
 
   /**
    * Gets the early output into a state Zinc can update incrementally.
@@ -729,12 +705,22 @@ object Compiler:
     else ci
 
   /**
-   * Without a previous analysis Zinc moves no product aside, and scalac cannot write through
-   * a restored link into the read-only CAS. See `cache/restored-outputs-no-analysis`.
+   * Without a previous analysis nothing tracks the class directory's products, and scalac cannot
+   * write through a restored link into the read-only CAS (sbt/sbt#9975), so both are deleted.
    */
-  private[sbt] def dropLinksWithoutAnalysis(ci: Inputs, log: Logger): Unit =
-    if !hasSources(ci.previousResult.analysis.toScala) then
-      dropClassDirLinks(ci.options.classesDirectory, log)
+  private[sbt] def dropProductsWithoutAnalysis(ci: Inputs, log: Logger): Unit =
+    val classesDir = ci.options.classesDirectory
+    if !hasSources(ci.previousResult.analysis.toScala) && Files.isDirectory(classesDir) then
+      val dropped = Using.resource(Files.walk(classesDir)):
+        _.iterator.asScala.drop(1).filter(p => Files.isSymbolicLink(p) || isProduct(p)).toList
+      dropped.foreach(Files.deleteIfExists)
+      if dropped.nonEmpty then log.debug(s"dropped ${dropped.size} class files under $classesDir")
+
+  private val productExtensions = Seq(".class", ".tasty", ".sjsir", ".nir")
+
+  private def isProduct(p: Path): Boolean =
+    val name = p.getFileName.toString
+    productExtensions.exists(name.endsWith) && Files.isRegularFile(p)
 
   /**
    * Whether a previous compile exists. The stored analysis carries no compilations and the cached

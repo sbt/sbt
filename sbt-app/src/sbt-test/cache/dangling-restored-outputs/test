@@ -1,3 +1,23 @@
+# A compile from scratch leaves real class files, but the analysis is a link into the disk cache.
+# Delete the cache and remove a source: the compile starts from scratch and no class file of the
+# removed source may survive
+> compile
+$ delete diskcache
+$ copy-file core/Other.scala saved/Other.scala
+$ delete core/Other.scala
+> compile
+> core/checkProducts
+$ copy-file saved/Other.scala core/Other.scala
+
+# the early output alone is deleted: the compile starts from scratch with a valid analysis on disk,
+# and no class file of a removed source may survive
+> compile
+> core/deleteEarlyOutput
+$ delete core/Other.scala
+> compile
+> core/checkProducts
+$ copy-file saved/Other.scala core/Other.scala
+
 # A compile from scratch leaves real class files; the early output and a few other outputs are
 # linked into the disk cache. Delete the cache and change a core source: the analysis is gone
 # too, so the compile starts from scratch and must not write through the links
