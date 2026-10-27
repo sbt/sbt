@@ -434,11 +434,26 @@ final class NetworkChannel(
           impl()
         }
       }
-      impl()
+      try impl()
+      finally closeConnection()
     },
     s"sbt-$name-write-thread"
   )
   writeThread.setDaemon(true)
+
+  /**
+   * Once nothing more will be written, end the connection: the client then sees EOF rather than
+   * waiting forever for a response that will never be sent. Closing alone is not enough: an
+   * ipcsocket close is deferred while the read thread is parked in a native read, which ignores
+   * SO_TIMEOUT and interrupts; shutting the socket down wakes it.
+   */
+  private def closeConnection(): Unit =
+    try connection.shutdownInput()
+    catch case _: IOException => ()
+    try connection.shutdownOutput()
+    catch case _: IOException => ()
+    try connection.close()
+    catch case _: IOException => ()
 
   def publishBytes(event: Array[Byte], delimit: Boolean): Unit =
     Util.ignoreResult(pendingWrites.add(event -> delimit))
