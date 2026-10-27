@@ -96,6 +96,9 @@ private[sbt] object LanguageServerProtocol:
             onCancellationRequest(Option(r.id), param)
           }
 
+        case r: JsonRpcRequestMessage if r.method == "sbt/execs" =>
+          checkAuthenticated(r)(onExecsRequest(Option(r.id)))
+
         case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
           checkAuthenticated(r) {
             val param = Converter.fromJson[CP](json(r)).get

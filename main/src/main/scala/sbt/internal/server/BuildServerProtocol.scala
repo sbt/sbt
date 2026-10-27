@@ -21,7 +21,7 @@ import sbt.SlashSyntax0.*
 import sbt.StandardMain.exchange
 import sbt.internal.bsp.*
 import sbt.internal.langserver.ErrorCodes
-import sbt.internal.protocol.JsonRpcRequestMessage
+import sbt.internal.protocol.{ InitializeOption, JsonRpcRequestMessage }
 import sbt.internal.util.{ Attributed, ErrorHandling, MessageOnlyException }
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.librarymanagement.CrossVersion.binaryScalaVersion
@@ -421,6 +421,9 @@ object BuildServerProtocol:
           case r if r.method == Method.Initialize =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
+            callback.setInitializeOption(
+              InitializeOption(None, None, None, None, Some(params.displayName))
+            )
 
             val response = InitializeBuildResult(
               "sbt",

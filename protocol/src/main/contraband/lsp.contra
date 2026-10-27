@@ -137,6 +137,7 @@ type SbtExecParams {
 ## Id for a cancel request
 type CancelRequestParams {
   id: String!
+  channelName: String @since("2.1.0")
 }
 
 ## Goto definition params model

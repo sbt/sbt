@@ -74,6 +74,19 @@ type CompletionResponse {
   cachedTestNames: Boolean @since("1.4.0")
 }
 
+## An exec requested by a client, either running or waiting.
+type ExecInfo {
+  id: String!
+  channelName: String!
+  clientName: String!
+  commandLine: String!
+  status: String!
+}
+
+type ExecsResponse {
+  execs: [sbt.protocol.ExecInfo]
+}
+
 # enum Status {
 #  Ready
 #  Processing

@@ -50,7 +50,7 @@ jobs:
             jobtype: 11
           - os: windows-latest
             java: 17
-            distribution: temurin
+            distribution: zulu
             jobtype: 10
           - os: windows-latest
             java: 17

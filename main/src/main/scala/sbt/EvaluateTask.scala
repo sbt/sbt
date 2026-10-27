@@ -62,7 +62,11 @@ trait TaskCancellationStrategy:
    * @param canceller An object that can cancel the current task evaluation session.
    * @return Whatever state you need to cleanup in your finish method.
    */
+  @deprecated("Use onTaskEngineStartWithCancellation instead", "2.1.0")
   def onTaskEngineStart(canceller: RunningTaskEngine): State
+
+  /** Starts with shared cancellation, or returns None to use the legacy start hook. */
+  def onTaskEngineStartWithCancellation(cancel: () => Unit): Option[State] = None
 
   /** Called when task evaluation completes, either in success or failure. */
   def onTaskEngineFinish(state: State): Unit
@@ -73,6 +77,7 @@ object TaskCancellationStrategy:
   object Null extends TaskCancellationStrategy:
     type State = Unit
     def onTaskEngineStart(canceller: RunningTaskEngine): Unit = ()
+    override def onTaskEngineStartWithCancellation(cancel: () => Unit): Option[Unit] = Some(())
     def onTaskEngineFinish(state: Unit): Unit = ()
     override def toString: String = "Null"
 
@@ -83,9 +88,15 @@ object TaskCancellationStrategy:
     def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration =
       Signals.register(() => canceller.cancelAndShutdown())
 
+    override def onTaskEngineStartWithCancellation(
+        cancel: () => Unit
+    ): Option[Signals.Registration] =
+      Some(Signals.register(cancel))
+
     def onTaskEngineFinish(registration: Signals.Registration): Unit = registration.remove()
 
     override def toString: String = "Signal"
+end TaskCancellationStrategy
 
 /**
  * The new API for running tasks.
@@ -454,8 +465,21 @@ object EvaluateTask:
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
 
-  private[sbt] val currentlyRunningTaskEngine: AtomicReference[RunningTaskEngine] =
-    new AtomicReference()
+  private val taskEngineTracker = new TaskEngineTracker(log =>
+    val logging = scala.util.Try:
+      println("")
+      log.warn("Canceling execution...")
+    val cleanup = List(
+      logging,
+      scala.util.Try(RunningProcesses.killAll()),
+      scala.util.Try(ConcurrentRestrictions.cancelAll()),
+      scala.util.Try(DefaultBackgroundJobService.stop())
+    )
+    cleanup.foreach(_.get)
+  )
+
+  private[sbt] def runningTaskCancellation: Option[() => Unit] =
+    taskEngineTracker.currentCancellation
 
   /**
    * The main method for the task engine.
@@ -524,22 +548,25 @@ object EvaluateTask:
       suspendChannel(newState, replaced)
       (newState, replaced)
     object runningEngine extends RunningTaskEngine:
-      def cancelAndShutdown(): Unit =
-        println("")
-        log.warn("Canceling execution...")
-        RunningProcesses.killAll()
-        ConcurrentRestrictions.cancelAll()
-        DefaultBackgroundJobService.stop()
-        shutdownImpl(true)
-    currentlyRunningTaskEngine.set(runningEngine)
-    // Register with our cancel handler we're about to start.
+      def cancelAndShutdown(): Unit = shutdownImpl(true)
+    val cancel = taskEngineTracker.add(runningEngine, log)
     val strat = config.cancelStrategy
-    val cancelState = strat.onTaskEngineStart(runningEngine)
-    config.progressReporter.initial()
-    try run()
+    var started = false
+    try
+      @nowarn("cat=deprecation")
+      val cancelState = strat
+        .onTaskEngineStartWithCancellation(cancel)
+        .getOrElse:
+          strat.onTaskEngineStart(runningEngine)
+      try
+        config.progressReporter.initial()
+        started = true
+        run()
+      finally strat.onTaskEngineFinish(cancelState)
     finally
-      strat.onTaskEngineFinish(cancelState)
-      currentlyRunningTaskEngine.set(null)
+      try
+        if !started then shutdown()
+      finally taskEngineTracker.remove(runningEngine)
   end runTask
 
   private def storeValuesForPrevious(
