@@ -65,7 +65,7 @@ jobs:
       uses: actions/checkout@v7
       with:
         repository: sbt/zinc
-        ref: 1.12.x
+        ref: 1.13.x
         path: zinc
     - name: Setup JDK
       uses: actions/setup-java@v6
