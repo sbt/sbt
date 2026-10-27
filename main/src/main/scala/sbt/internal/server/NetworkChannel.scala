@@ -185,7 +185,9 @@ final class NetworkChannel(
           execId,
           Vector.empty,
           None,
-          Some(CommandExchange.waitingForMessage(currentExec.commandLine))
+          currentExec.commandLine match
+            case cmd if cmd.length > 50 => Some(s"waiting for: ${cmd.take(50)}...")
+            case cmd                    => Some(s"waiting for: $cmd")
         )
         jsonRpcNotify("sbt/exec", event)
       case None =>

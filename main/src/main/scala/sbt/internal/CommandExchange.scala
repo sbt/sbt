@@ -457,34 +457,19 @@ private[sbt] final class CommandExchange:
     lastActivityTime.set(System.currentTimeMillis)
 
   /**
-   * Handles an `sbt/shutdown` request. Every request is accepted, including one sent while a
-   * shutdown is already pending: a repeated graceful request queues one more `shutdown`, which
-   * never runs because the first one exits the server, and a repeated force cancels and clears
-   * the queue again, which is harmless.
+   * Handles an `sbt/shutdown` request with `force: true`. A graceful request is queued like
+   * `sbt/exec shutdown` and does not come here. Every forced request is accepted, including one
+   * sent while a shutdown is already pending.
    *
-   * A graceful request queues a `shutdown` behind the running command, as `sbt/exec shutdown`
-   * does. A forced one cancels the running command and drops the queued ones. `respond` gets the
-   * answer before the shutdown is queued, so the answer is on its way before the shutdown closes
-   * the channel.
-   *
-   * Even a forced shutdown request may have to wait for the running command to finish, because
-   * cancellation only reaches the task engine. Unlike a `shutdown` typed in a console, this
-   * request does not disconnect the requesting channel early ([[sbt.internal.CommandExchange.FastTrackThread#run()]]).
+   * Unlike a `shutdown` typed in a console, this request does not disconnect the requesting channel early.
    */
-  private[sbt] def requestShutdown(
+  private[sbt] def onForceShutdownRequest(
       channelName: String,
-      force: Boolean,
+      requestId: String,
       respond: ExecStatusEvent => Unit
   ): Unit =
-    val execId = Some(Exec.newExecId)
-    if force then
-      respond(ExecStatusEvent("Processing", Some(channelName), execId, Vector.empty))
-      shutdown(channelName, execId.get)
-    else
-      val message = currentExec.map(e => CommandExchange.waitingForMessage(e.commandLine))
-      val status = if message.isDefined then "Queued" else "Processing"
-      respond(ExecStatusEvent(status, Some(channelName), execId, Vector.empty, None, message))
-      commandQueue.add(Exec(Shutdown, execId, Some(CommandSource(channelName))))
+    respond(ExecStatusEvent("Processing", Some(channelName), Some(requestId), Vector.empty))
+    shutdown(channelName, requestId)
 
   private def idleSeconds: Long =
     (System.currentTimeMillis - lastActivityTime.get) / 1000
@@ -569,9 +554,7 @@ private[sbt] final class CommandExchange:
 
   /**
    * Forces a shutdown: replaces the queue with a `shutdown` and then cancels the running command,
-   * so the main loop finds nothing else to start once the cancelled command ends. `execId` is
-   * the id the queued `shutdown` gets, so an `sbt/shutdown` request can name it in its answer
-   * before queueing it.
+   * so the main loop finds nothing else to start once the cancelled command ends.
    */
   private[sbt] def shutdown(name: String, execId: String = Exec.newExecId): Unit =
     val running = currentExec
@@ -692,12 +675,6 @@ end CommandExchange
 
 private[sbt] object CommandExchange:
   import sbt.protocol.Serialization.dropIfIdle
-
-  /** The message of a `Queued` status: the running command, cut to 50 characters. */
-  private[sbt] def waitingForMessage(commandLine: String): String =
-    if commandLine.length > 50 then s"waiting for: ${commandLine.take(50)}..."
-    else s"waiting for: $commandLine"
-
   val idleHandler: ServerHandler = ServerHandler: callback =>
     ServerIntent(
       onRequest = PartialFunction.empty,

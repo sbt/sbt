@@ -91,7 +91,7 @@ type ServerCapabilities {
   successLog: Boolean @since("2.1.0")
 
   ## The server accepts the sbt/shutdown request.
-  shutdownRequest: Boolean @since("2.1.0")
+  canShutdown: Boolean @since("2.1.0")
 }
 
 type TextDocumentSyncOptions {

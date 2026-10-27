@@ -14,6 +14,7 @@ import sbt.internal.langserver.{ ErrorCodes, LogMessageParams, SbtExecParams, Sb
 import sbt.internal.langserver.codec.JsonProtocol.given
 import sbt.protocol.{ ExecStatusEvent, ServerSession }
 import sbt.protocol.codec.JsonProtocol.given
+import sjsonnew.support.scalajson.unsafe.Converter
 
 /**
  * A forced `sbt/shutdown` cancels the running command and takes over a graceful shutdown that
@@ -28,6 +29,17 @@ class ShutdownForceTest extends AbstractServerTest:
     session.initialize(10.seconds, subscribeToAll = false).get
     session
 
+  /**
+   * Waits for the `shutdown` notification the server sends to `session` just before it closes the
+   * connection, and returns its params `(logShutdown, remainingCommands)`.
+   *
+   * @see [[sbt.internal.server.NetworkChannel#shutdown]]
+   */
+  protected def shutdownNotification(session: ServerSession): (Boolean, Option[(String, String)]) =
+    import sjsonnew.BasicJsonProtocol.*
+    val message = session.waitForNotificationMsg(15.seconds)(_.method == "shutdown").get
+    Converter.fromJson[(Boolean, Option[(String, String)])](message.params.get).get
+
   test("a forced shutdown cancels the running command and takes over the waiting graceful one") {
     val slowId = svr.session.nextId()
     svr.session.sendJsonRpc(slowId, "sbt/exec", SbtExecParams("gatedSlowTask")).get
@@ -40,8 +52,9 @@ class ShutdownForceTest extends AbstractServerTest:
     val gracefulClient = connect()
     val gracefulId = gracefulClient.nextId()
     gracefulClient.sendJsonRpc(gracefulId, "sbt/shutdown", SbtShutdownParams(Some(false))).get
-    val graceful =
-      gracefulClient.waitForResultInResponseMsg[ExecStatusEvent](10.seconds, gracefulId).get
+    val graceful = gracefulClient
+      .waitForParamsInNotificationMsg[ExecStatusEvent](10.seconds)(_.execId.contains(gracefulId))
+      .get
     assert(graceful.status == "Queued", graceful.toString)
 
     val forcingClient = connect()
@@ -50,6 +63,7 @@ class ShutdownForceTest extends AbstractServerTest:
     val forced =
       forcingClient.waitForResultInResponseMsg[ExecStatusEvent](10.seconds, forceId).get
     assert(forced.status == "Processing", forced.toString)
+    assert(forced.execId.contains(forceId), forced.toString)
 
     val slowResponse = svr.session.waitForResponseMsg(10.seconds, slowId).get
     assert(

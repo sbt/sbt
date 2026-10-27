@@ -17,9 +17,9 @@ import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.protocol.ServerSession
 import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
+
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.BeforeAndAfterAll
-import sjsonnew.support.scalajson.unsafe.Converter
 
 /**
  * Holds the running sbt server instance: the session for JSON-RPC communication,
@@ -127,17 +127,6 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll:
         false
       )
     )
-
-  /**
-   * Waits for the `shutdown` notification the server sends to `session` just before it closes the
-   * connection, and returns its params `(logShutdown, remainingCommands)`.
-   *
-   * @see [[sbt.internal.server.NetworkChannel#shutdown]]
-   */
-  protected def shutdownNotification(session: ServerSession): (Boolean, Option[(String, String)]) =
-    import sjsonnew.BasicJsonProtocol.*
-    val message = session.waitForNotificationMsg(15.seconds)(_.method == "shutdown").get
-    Converter.fromJson[(Boolean, Option[(String, String)])](message.params.get).get
 
   protected def waitUntil(timeout: FiniteDuration)(p: => Boolean): Boolean =
     val deadline = timeout.fromNow

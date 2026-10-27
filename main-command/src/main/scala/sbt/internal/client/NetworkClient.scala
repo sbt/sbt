@@ -564,7 +564,7 @@ class NetworkClient(
           else handshake.release(s"sbt server refused the connection: ${err.message}")
         case _ =>
           serverLogsResult.set(NetworkClient.successLogCapability(msg.result))
-          serverAcceptsShutdownRequest.set(NetworkClient.shutdownRequestCapability(msg.result))
+          serverAcceptsShutdownRequest.set(NetworkClient.canShutdownCapability(msg.result))
           handshake.release()
     pendingResponseHandlers.put(execId, handleHandshakeResponse)
     if handshake.initiateFailed(initCommand(token, execId)) then
@@ -1206,7 +1206,7 @@ class NetworkClient(
   /**
    * Sends `sbt/shutdown` with `force: true`. Waits until the client is disconnected.
    * Returns 0 when the connection closes, 1 when the server refuses the request.
-   * A server without the `shutdownRequest` capability gets plain `shutdown` and a warning instead.
+   * A server without the `canShutdown` capability gets plain `shutdown` and a warning instead.
    *
    * The server does not disconnect this client early, as it does for `shutdown` typed in a console.
    */
@@ -1419,8 +1419,8 @@ object NetworkClient:
     capability(jvalue)(_.successLog)
 
   /** Absent on a server from before `sbt/shutdown`, which gets plain `shutdown` instead. */
-  private[sbt] def shutdownRequestCapability(jvalue: Option[JValue]): Boolean =
-    capability(jvalue)(_.shutdownRequest)
+  private[sbt] def canShutdownCapability(jvalue: Option[JValue]): Boolean =
+    capability(jvalue)(_.canShutdown)
 
   private def capability(jvalue: Option[JValue])(
       flag: ServerCapabilities => Option[Boolean]

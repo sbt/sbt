@@ -43,7 +43,7 @@ private[sbt] object LanguageServerProtocol:
       hoverProvider = false,
       definitionProvider = false,
       successLog = true,
-      shutdownRequest = true
+      canShutdown = true
     )
 
   def handler(converter: FileConverter): ServerHandler = ServerHandler { callback =>
@@ -91,7 +91,10 @@ private[sbt] object LanguageServerProtocol:
               .map(Converter.fromJson[SbtShutdownParams](_).get)
               .flatMap(_.force)
               .getOrElse(false)
-            StandardMain.exchange.requestShutdown(name, force, jsonRpcRespond(_, Some(r.id)))
+            if force then
+              StandardMain.exchange
+                .onForceShutdownRequest(name, r.id, jsonRpcRespond(_, Some(r.id)))
+            else appendExec(BasicCommandStrings.Shutdown, Some(r.id))
           }
 
         case r: JsonRpcRequestMessage if r.method == "sbt/setting" =>
