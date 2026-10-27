@@ -36,5 +36,7 @@ trait JsonProtocol extends sbt.internal.protocol.codec.InitializeOptionFormats
   with sbt.protocol.codec.EventMessageFormats
   with sbt.protocol.codec.SettingQueryResponseFormats
   with sbt.protocol.codec.CompletionResponseFormats
+  with sbt.protocol.codec.ExecInfoFormats
+  with sbt.protocol.codec.ExecsResponseFormats
   with sbt.protocol.codec.ExecutionEventFormats
 object JsonProtocol extends JsonProtocol
