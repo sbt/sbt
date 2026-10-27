@@ -8,8 +8,8 @@
 
 package sbt.internal.server
 
-import java.io.{ File, OutputStream }
-import java.net.{ InetAddress, ServerSocket, Socket }
+import java.io.{ File, IOException, InputStream, OutputStream }
+import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
 import sbt.{ State, StandardMain }
 import sbt.internal.util.{ AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Terminal, Util }
 import sbt.internal.util.Terminal.TerminalImpl
@@ -92,6 +92,34 @@ object NetworkChannelSpec extends BasicTestSuite:
             StandardMain.exchange.subscribe(channel)
             channel.start()
             assert(eventually(channel.isAttached), "the attach request was dropped")
+
+  test("a failed write to the client ends the connection instead of leaving the client waiting"):
+    withServerState:
+      withChannelThreadsJoined:
+        withLoopbackConnection: (client, connection) =>
+          Using.resource(newChannel(FailingWrites(connection), Nil)): channel =>
+            channel.start()
+            channel.publishBytes("lost".getBytes, delimit = true)
+            client.setSoTimeout(5000)
+            val read =
+              try client.getInputStream.read()
+              catch case _: SocketTimeoutException => -2
+            assert(read == -1, s"expected EOF after the failed write, but read returned $read")
+
+  /**
+   * A connection whose writes fail, and whose output stream ignores close, as ipcsocket's does: the
+   * channel must still end the connection itself.
+   */
+  private final class FailingWrites(underlying: Socket) extends Socket:
+    override def getInputStream: InputStream = underlying.getInputStream
+    override def getOutputStream: OutputStream = new OutputStream:
+      override def write(b: Int): Unit = throw new IOException("injected write failure")
+      override def close(): Unit = ()
+    override def getPort: Int = underlying.getPort
+    override def setSoTimeout(timeout: Int): Unit = underlying.setSoTimeout(timeout)
+    override def shutdownInput(): Unit = underlying.shutdownInput()
+    override def shutdownOutput(): Unit = underlying.shutdownOutput()
+    override def close(): Unit = underlying.close()
 
   private val acceptThreadDelay = 200.millis
 
