@@ -12,6 +12,7 @@ import sbt.internal.TaskEngineTracker
 import sbt.util.{ Level, Logger }
 import hedgehog.*
 import hedgehog.runner.*
+import scala.annotation.nowarn
 
 object TaskCancellationTest extends Properties:
   private class Engine(cancel: () => Unit = () => ()) extends RunningTaskEngine:
@@ -222,27 +223,78 @@ object TaskCancellationTest extends Properties:
           cancel()
           Result.assert(first.cancellations.get() == 1 && next.cancellations.get() == 0)
     ,
-    check("custom cancellation strategies receive the callback for all active engines"):
+    check("legacy strategies retain the actual engine and their start state"):
       val outer = new Engine
       val inner = new Engine
+      val log = new Log
+      val received = new AtomicReference[RunningTaskEngine]()
+      val initial = new Object
+      val completed = new AtomicReference[Object]()
       val finished = new AtomicInteger()
+      val legacyStarts = new AtomicInteger()
       val strategy = new TaskCancellationStrategy:
-        type State = () => Unit
-        def onTaskEngineStart(cancel: () => Unit): State = cancel
+        type State = Object
+        def onTaskEngineStart(canceller: RunningTaskEngine): State =
+          legacyStarts.incrementAndGet()
+          received.set(canceller)
+          initial
         def onTaskEngineFinish(state: State): Unit =
+          completed.set(state)
           finished.incrementAndGet()
           ()
       withEngines(outer, inner): tracker =>
-        val cancel = tracker.add(outer)
-        tracker.add(inner)
-        TaskCancellationStrategy.Null.onTaskEngineStart(cancel)
-        val untouched = outer.cancellations.get() == 0 && inner.cancellations.get() == 0
-        val state = strategy.onTaskEngineStart(cancel)
+        tracker.add(outer, log)
+        val cancel = tracker.add(inner)
+        val callbackState = strategy.onTaskEngineStartWithCancellation(cancel)
+        val untouched = callbackState.isEmpty && legacyStarts.get() == 0
+        @nowarn("cat=deprecation")
+        val state = callbackState.getOrElse:
+          strategy.onTaskEngineStart(inner)
+        try received.get().cancelAndShutdown()
+        finally strategy.onTaskEngineFinish(state)
+        Result.assert(
+          untouched && legacyStarts.get() == 1 && (received.get() eq inner) &&
+            (completed.get() eq initial) && finished.get() == 1 &&
+            outer.cancellations.get() == 0 && inner.cancellations.get() == 1 &&
+            log.warnings.get() == 0
+        )
+    ,
+    check("custom cancellation strategies receive the callback for all active engines"):
+      val outer = new Engine
+      val inner = new Engine
+      val log = new Log
+      val legacyStarts = new AtomicInteger()
+      val finished = new AtomicInteger()
+      val completed = new AtomicReference[() => Unit]()
+      val strategy = new TaskCancellationStrategy:
+        type State = () => Unit
+        def onTaskEngineStart(canceller: RunningTaskEngine): State =
+          legacyStarts.incrementAndGet()
+          () => canceller.cancelAndShutdown()
+        override def onTaskEngineStartWithCancellation(
+            cancel: () => Unit
+        ): Option[State] = Some(cancel)
+        def onTaskEngineFinish(state: State): Unit =
+          completed.set(state)
+          finished.incrementAndGet()
+          ()
+      withEngines(outer, inner): tracker =>
+        tracker.add(outer, log)
+        val cancel = tracker.add(inner)
+        val empty = TaskCancellationStrategy.Null.onTaskEngineStartWithCancellation(cancel)
+        val untouched = empty.contains(()) && outer.cancellations.get() == 0 &&
+          inner.cancellations.get() == 0 && log.warnings.get() == 0
+        @nowarn("cat=deprecation")
+        val state = strategy
+          .onTaskEngineStartWithCancellation(cancel)
+          .getOrElse:
+            strategy.onTaskEngineStart(inner)
         try state()
         finally strategy.onTaskEngineFinish(state)
         Result.assert(
           untouched && outer.cancellations.get() == 1 && inner.cancellations.get() == 1 &&
-            finished.get() == 1
+            log.warnings.get() == 1 && legacyStarts.get() == 0 && finished.get() == 1 &&
+            (completed.get() eq state)
         )
   )
 end TaskCancellationTest

@@ -59,10 +59,14 @@ trait TaskCancellationStrategy:
   /**
    * Called when task evaluation starts.
    *
-   * @param cancel A callback that cancels all active task evaluations.
+   * @param canceller An object that can cancel the current task evaluation session.
    * @return Whatever state you need to cleanup in your finish method.
    */
-  def onTaskEngineStart(cancel: () => Unit): State
+  @deprecated("Use onTaskEngineStartWithCancellation instead", "2.1.0")
+  def onTaskEngineStart(canceller: RunningTaskEngine): State
+
+  /** Starts with shared cancellation, or returns None to use the legacy start hook. */
+  def onTaskEngineStartWithCancellation(cancel: () => Unit): Option[State] = None
 
   /** Called when task evaluation completes, either in success or failure. */
   def onTaskEngineFinish(state: State): Unit
@@ -72,7 +76,8 @@ object TaskCancellationStrategy:
   /** An empty handler that does not cancel tasks. */
   object Null extends TaskCancellationStrategy:
     type State = Unit
-    def onTaskEngineStart(cancel: () => Unit): Unit = ()
+    def onTaskEngineStart(canceller: RunningTaskEngine): Unit = ()
+    override def onTaskEngineStartWithCancellation(cancel: () => Unit): Option[Unit] = Some(())
     def onTaskEngineFinish(state: Unit): Unit = ()
     override def toString: String = "Null"
 
@@ -80,12 +85,18 @@ object TaskCancellationStrategy:
   object Signal extends TaskCancellationStrategy:
     type State = Signals.Registration
 
-    def onTaskEngineStart(cancel: () => Unit): Signals.Registration =
-      Signals.register(cancel)
+    def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration =
+      Signals.register(() => canceller.cancelAndShutdown())
+
+    override def onTaskEngineStartWithCancellation(
+        cancel: () => Unit
+    ): Option[Signals.Registration] =
+      Some(Signals.register(cancel))
 
     def onTaskEngineFinish(registration: Signals.Registration): Unit = registration.remove()
 
     override def toString: String = "Signal"
+end TaskCancellationStrategy
 
 /**
  * The new API for running tasks.
@@ -542,7 +553,11 @@ object EvaluateTask:
     val strat = config.cancelStrategy
     var started = false
     try
-      val cancelState = strat.onTaskEngineStart(cancel)
+      @nowarn("cat=deprecation")
+      val cancelState = strat
+        .onTaskEngineStartWithCancellation(cancel)
+        .getOrElse:
+          strat.onTaskEngineStart(runningEngine)
       try
         config.progressReporter.initial()
         started = true
