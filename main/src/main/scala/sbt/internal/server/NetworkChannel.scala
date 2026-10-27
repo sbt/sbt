@@ -494,8 +494,8 @@ final class NetworkChannel(
       )
 
       try
-        Option(EvaluateTask.currentlyRunningTaskEngine.get) match
-          case Some(runningEngine) =>
+        EvaluateTask.runningTaskCancellation match
+          case Some(cancel) =>
             val runningExecId =
               StandardMain.exchange.withState(_.currentCommand.flatMap(_.execId).getOrElse(""))
             val expected = StandardMain.exchange.withState(
@@ -519,7 +519,7 @@ final class NetworkChannel(
             if checkId() || (crp.id == Serialization.CancelAll &&
                 StandardMain.exchange.currentExec.exists(_.source.exists(_.channelName == name)))
             then
-              runningEngine.cancelAndShutdown()
+              cancel()
               isCanceled.set(true)
               discardPending()
 
@@ -924,8 +924,8 @@ object NetworkChannel:
       force: Boolean
   ): Either[String, String] =
 
-    Option(EvaluateTask.currentlyRunningTaskEngine.get) match
-      case Some(runningEngine) =>
+    EvaluateTask.runningTaskCancellation match
+      case Some(cancel) =>
         val runningExecId =
           StandardMain.exchange.withState(_.currentCommand.flatMap(_.execId).getOrElse(""))
 
@@ -942,7 +942,7 @@ object NetworkChannel:
         // direct comparison on strings and
         // remove hotspring unicode added character for numbers
         if checkId() || force then
-          runningEngine.cancelAndShutdown()
+          cancel()
           Right(runningExecId)
         else Left("Task ID not matched")
 

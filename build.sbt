@@ -797,8 +797,6 @@ lazy val mainProj = (project in file("main"))
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
-    mimaBinaryIssueFilters ++= Vector(
-    ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)

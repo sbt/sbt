@@ -64,4 +64,51 @@ class EventsTest extends AbstractServerTest:
       .get
     assert(cancelResult.status == "Task cancelled")
   }
+  private def cancelNested(command: String, ready: String, interrupted: List[String]): Unit =
+    val id = svr.session.nextId()
+    svr.session.sendJsonRpc(id, "sbt/exec", SbtExecParams(command)).get
+    assert(waitUntil(10.seconds)(testPath.resolve(ready).toFile.exists()))
+    val cancelled = svr.session
+      .sendJsonRpcAwaitResult[ExecStatusEvent](
+        "sbt/cancelRequest",
+        CancelRequestParams(id),
+        10.seconds
+      )
+      .get
+    assert(cancelled.status == "Task cancelled")
+    for marker <- interrupted do
+      assert(waitUntil(10.seconds)(testPath.resolve(marker).toFile.exists()), marker)
+    assert(!testPath.resolve("outer-completed").toFile.exists())
+    svr.session.waitForResponseMsg(10.seconds, id).get
+    val response = svr.session
+      .sendJsonRpcAwaitResult[ExecStatusEvent]("sbt/exec", SbtExecParams("show name"), 10.seconds)
+      .get
+    assert(response.status == "Done")
+
+  test("cancel outer task after a nested evaluation completes"):
+    cancelNested("nested", "nested-ready", List("nested-interrupted"))
+
+  test("cancel inner and outer tasks during a nested evaluation"):
+    cancelNested("during", "inner-ready", List("inner-interrupted", "outer-interrupted"))
+  test("retry cancellation after the outer task swallows its first interrupt"):
+    val ready = testPath.resolve("inner-ready").toFile
+    sbt.io.IO.delete(ready)
+    val id = svr.session.nextId()
+    svr.session.sendJsonRpc(id, "sbt/exec", SbtExecParams("duringRetry")).get
+    assert(waitUntil(10.seconds)(ready.exists()))
+    def cancel(): Unit =
+      val result = svr.session
+        .sendJsonRpcAwaitResult[ExecStatusEvent](
+          "sbt/cancelRequest",
+          CancelRequestParams(id),
+          10.seconds
+        )
+        .get
+      assert(result.status == "Task cancelled")
+    cancel()
+    assert(waitUntil(10.seconds)(testPath.resolve("retry-first-interrupted").toFile.exists()))
+    sbt.io.IO.touch(testPath.resolve("retry-resume").toFile)
+    assert(waitUntil(10.seconds)(testPath.resolve("retry-ready").toFile.exists()))
+    cancel()
+    assert(waitUntil(10.seconds)(testPath.resolve("retry-interrupted").toFile.exists()))
 end EventsTest
