@@ -490,6 +490,21 @@ private[sbt] final class CommandExchange:
     currentExecRef.set(exec.orNull)
     lastActivityTime.set(System.currentTimeMillis)
 
+  /**
+   * Handles an `sbt/shutdown` request with `force: true`. A graceful request is queued like
+   * `sbt/exec shutdown` and does not come here. Every forced request is accepted, including one
+   * sent while a shutdown is already pending.
+   *
+   * Unlike a `shutdown` typed in a console, this request does not disconnect the requesting channel early.
+   */
+  private[sbt] def onForceShutdownRequest(
+      channelName: String,
+      requestId: String,
+      respond: ExecStatusEvent => Unit
+  ): Unit =
+    respond(ExecStatusEvent("Processing", Some(channelName), Some(requestId), Vector.empty))
+    shutdown(channelName, requestId)
+
   private def idleSeconds: Long =
     (System.currentTimeMillis - lastActivityTime.get) / 1000
 
@@ -571,12 +586,16 @@ private[sbt] final class CommandExchange:
         case c                  => c.shutdown(false)
       }
 
-  private[sbt] def shutdown(name: String): Unit =
-    Option(currentExecRef.get).foreach(cancel)
+  /**
+   * Forces a shutdown: replaces the queue with a `shutdown` and then cancels the running command,
+   * so the main loop finds nothing else to start once the cancelled command ends.
+   */
+  private[sbt] def shutdown(name: String, execId: String = Exec.newExecId): Unit =
+    val running = currentExec
     commandQueue.clear()
-    val exit = Exec(Shutdown, Some(Exec.newExecId), Some(CommandSource(name)))
-    commandQueue.add(exit)
-    ()
+    commandQueue.add(Exec(Shutdown, Some(execId), Some(CommandSource(name))))
+    running.foreach(cancel)
+
   private def cancel(e: Exec): Unit =
     if e.commandLine.startsWith("console") then
       val terminal = Terminal.get

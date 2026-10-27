@@ -48,6 +48,7 @@ object Serialization:
   val terminalSetEcho = "sbt/terminalSetEcho"
   val terminalSetRawMode = "sbt/terminalSetRawMode"
   val dropIfIdle = "sbt/dropIfIdle"
+  val shutdownRequest = "sbt/shutdown"
   val CancelAll = "__CancelAll"
 
   @deprecated("unused", since = "1.4.0")

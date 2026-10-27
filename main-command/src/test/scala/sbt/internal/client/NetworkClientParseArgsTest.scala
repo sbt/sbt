@@ -293,4 +293,12 @@ object NetworkClientParseArgsTest extends BasicTestSuite:
     assert(result.launcherValueArgs == Seq("-mem", "10000"))
     assert(result.commandArguments == Seq("compile"))
 
+  test("only shutdown with --force or -f alone asks for a forced shutdown"):
+    assert(NetworkClient.isForceShutdown(Seq("shutdown", "--force")))
+    assert(NetworkClient.isForceShutdown(Seq("shutdown", "-f")))
+    assert(!NetworkClient.isForceShutdown(Seq("shutdown")))
+    assert(!NetworkClient.isForceShutdown(Seq("--force", "shutdown")))
+    assert(!NetworkClient.isForceShutdown(Seq("shutdown", "--force", "compile")))
+    assert(!NetworkClient.isForceShutdown(Seq("compile", "-f")))
+
 end NetworkClientParseArgsTest
