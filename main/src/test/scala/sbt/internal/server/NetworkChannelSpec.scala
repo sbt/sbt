@@ -10,7 +10,8 @@ package sbt.internal.server
 
 import java.io.{ File, IOException, InputStream, OutputStream }
 import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
-import sbt.{ State, StandardMain }
+import java.util.concurrent.{ CountDownLatch, TimeUnit }
+import sbt.{ BasicCommandStrings, State, StandardMain }
 import sbt.internal.util.{ AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Terminal, Util }
 import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.protocol.JsonRpcRequestMessage
@@ -105,6 +106,61 @@ object NetworkChannelSpec extends BasicTestSuite:
               try client.getInputStream.read()
               catch case _: SocketTimeoutException => -2
             assert(read == -1, s"expected EOF after the failed write, but read returned $read")
+
+  test("shutdown sends the Shutdown notification before ending the connection"):
+    withServerState:
+      withChannelThreadsJoined:
+        withLoopbackConnection: (client, connection) =>
+          val held = HeldFirstWrite(connection)
+          val channel = newChannel(held, Nil)
+          channel.start()
+          channel.publishBytes("first".getBytes, delimit = true)
+          assert(held.writeStarted.await(5, TimeUnit.SECONDS), "the first write never started")
+          channel.shutdown(true, Some(("reboot-id", "reboot")))
+          held.release.countDown()
+          client.setSoTimeout(5000)
+          val received = readUntilEof(client)
+          val shutdownNotification = "\"method\":\"" + BasicCommandStrings.Shutdown + "\""
+          assert(
+            received.contains(shutdownNotification),
+            s"expected the Shutdown notification before EOF, but received: $received"
+          )
+
+  private def readUntilEof(client: Socket): String =
+    try new String(client.getInputStream.readAllBytes(), "UTF-8")
+    catch case _: SocketTimeoutException => "<timed out>"
+
+  /**
+   * A connection whose output stream ignores close and interrupts, as ipcsocket's does, and whose
+   * first write blocks until released, so the channel can be shut down while a write is in flight.
+   */
+  private final class HeldFirstWrite(underlying: Socket) extends Socket:
+    val writeStarted = new CountDownLatch(1)
+    val release = new CountDownLatch(1)
+    private val out = new OutputStream:
+      private val delegate = underlying.getOutputStream
+      override def write(b: Int): Unit = write(Array(b.toByte), 0, 1)
+      override def write(b: Array[Byte], off: Int, len: Int): Unit =
+        holdFirstWrite()
+        delegate.write(b, off, len)
+      override def flush(): Unit = delegate.flush()
+      override def close(): Unit = ()
+    private def holdFirstWrite(): Unit =
+      if writeStarted.getCount > 0 then
+        writeStarted.countDown()
+        var interrupted = false
+        while release.getCount > 0 do
+          try release.await()
+          catch case _: InterruptedException => interrupted = true
+        if interrupted then Thread.currentThread().interrupt()
+    override def getInputStream: InputStream = underlying.getInputStream
+    override def getOutputStream: OutputStream = out
+    override def getPort: Int = underlying.getPort
+    override def setSoTimeout(timeout: Int): Unit = underlying.setSoTimeout(timeout)
+    override def shutdownInput(): Unit = underlying.shutdownInput()
+    override def shutdownOutput(): Unit = underlying.shutdownOutput()
+    override def close(): Unit = underlying.close()
+  end HeldFirstWrite
 
   /**
    * A connection whose writes fail, and whose output stream ignores close, as ipcsocket's does: the
