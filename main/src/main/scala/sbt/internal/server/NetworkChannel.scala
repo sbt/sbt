@@ -223,6 +223,7 @@ final class NetworkChannel(
     private val onHeader: String => Unit = line =>
       if line.startsWith(ct) && line.contains(x1) then
         logMessage("error", s"server protocol $x1 is no longer supported")
+    private var inputEnded = false
     override def run(): Unit =
       try
         connection.setSoTimeout(5000)
@@ -233,14 +234,20 @@ final class NetworkChannel(
           val content = readBody(in)
           if content.nonEmpty then handleBody(content)
       catch case _: InterruptedException => ()
-      finally shutdown(false)
+      finally
+        shutdown(false)
+        if inputEnded then closeConnection()
 
     /** Only failures reading from the socket stop the channel. */
     private def readBody(in: InputStream): Seq[Byte] =
       try ReadJsonFromInputStream(in, running, Some(onHeader))
       catch
-        case _: SocketTimeoutException                => Nil
-        case _: IOException | _: InterruptedException =>
+        case _: SocketTimeoutException => Nil
+        case _: IOException            =>
+          inputEnded = true
+          running.set(false)
+          Nil
+        case _: InterruptedException =>
           running.set(false)
           Nil
 
@@ -409,6 +416,7 @@ final class NetworkChannel(
    */
   private val writeThread = new Thread(
     () => {
+      var writeFailed = false
       @tailrec def impl(): Unit = {
         val (event, delimit) =
           try pendingWrites.take
@@ -426,6 +434,7 @@ final class NetworkChannel(
             out.flush()
           } catch {
             case _: IOException =>
+              writeFailed = true
               alive.set(false)
               shutdown(true)
             case _: InterruptedException =>
@@ -435,17 +444,40 @@ final class NetworkChannel(
         }
       }
       try impl()
-      finally closeConnection()
+      finally
+        if writeFailed then closeConnection()
+        else endOutput()
     },
     s"sbt-$name-write-thread"
   )
   writeThread.setDaemon(true)
 
   /**
-   * Once nothing more will be written, end the connection: the client then sees EOF rather than
-   * waiting forever for a response that will never be sent. Closing alone is not enough: an
-   * ipcsocket close is deferred while the read thread is parked in a native read, which ignores
-   * SO_TIMEOUT and interrupts; shutting the socket down wakes it.
+   * shutdown interrupts the write thread right after queuing the final flush and the Shutdown
+   * notification, which tells a rebooting client to reconnect, so write whatever is still queued.
+   * Then end only the output: the client reads everything sent and then EOF, while replies it is
+   * still sending, such as to a terminal query, do not fail. Closing the socket here would make
+   * them fail, and a client whose write fails drops the connection without reading the Shutdown
+   * notification. The read thread closes the connection once the client has closed its end.
+   */
+  private def endOutput(): Unit =
+    try
+      var next = pendingWrites.poll()
+      while next != null do
+        val (event, delimit) = next
+        out.write(event)
+        if delimit then out.write(delimiter.toInt)
+        next = pendingWrites.poll()
+      out.flush()
+    catch case _: IOException => ()
+    try connection.shutdownOutput()
+    catch case _: IOException => ()
+
+  /**
+   * After a failed write nothing more can be sent, so end the connection: the client then sees EOF
+   * rather than waiting forever for a response that will never be sent. Closing alone is not
+   * enough: an ipcsocket close is deferred while the read thread is parked in a native read, which
+   * ignores SO_TIMEOUT and interrupts; shutting the socket down wakes it.
    */
   private def closeConnection(): Unit =
     try connection.shutdownInput()
