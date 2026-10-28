@@ -11,8 +11,8 @@ import scala.concurrent.duration.*
 import scala.util.Using
 import sbt.io.syntax.*
 import sbt.protocol.ServerSession
-import sbt.internal.langserver.{ CancelRequestParams, SbtExecParams }
-import sbt.internal.protocol.JsonRpcResponseMessage
+import sbt.internal.langserver.{ CancelRequestParams, InitializeParams, SbtExecParams }
+import sbt.internal.protocol.{ InitializeOption, JsonRpcResponseMessage }
 import sbt.protocol.{ ExecInfo, ExecStatusEvent, ExecsResponse }
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.Converter
@@ -143,6 +143,41 @@ class QueuedNotificationTest extends AbstractServerTest:
       val slowResponse =
         svr.session.waitForResultInResponseMsg[ExecStatusEvent](10.seconds, slowId).get
       assert(slowResponse.status == "Done")
+    }
+  }
+
+  test("sbt/execsChanged is sent to clients that set subscribeToExecs") {
+    val options = InitializeOption(None).withSkipAnalysis(true).withSubscribeToExecs(true)
+    val params = InitializeParams(None, None, None, Some(Converter.toJson(options).get), None, None)
+    Using.resource(
+      ServerSession.connect(svr.baseDirectory / "project" / "target" / "active.json")
+    ) { sub =>
+      val initId = sub.nextId()
+      sub.sendJsonRpc(initId, "initialize", params).get
+      sub.waitForResponseMsg(10.seconds, initId).get
+      def nextExecs(): Vector[(String, String)] =
+        val n = sub.waitForNotificationMsg(10.seconds)(_.method == "sbt/execsChanged").get
+        Converter
+          .fromJson[ExecsResponse](n.params.get)
+          .get
+          .execs
+          .map(e => e.commandLine -> e.status)
+      assert(nextExecs() == Vector())
+      val (slowId, quickId) = startSlowAndQueueQuick()
+      val seen = Iterator.continually(nextExecs()).take(6).toVector
+      assert(
+        seen == Vector(
+          Vector("slowTask" -> "waiting"),
+          Vector("slowTask" -> "running"),
+          Vector("slowTask" -> "running", "quickTask" -> "waiting"),
+          Vector("quickTask" -> "waiting"),
+          Vector("quickTask" -> "running"),
+          Vector(),
+        )
+      )
+      svr.session.waitForResponseMsg(10.seconds, slowId).get
+      svr.session.waitForResponseMsg(10.seconds, quickId).get
+      assert(svr.session.waitForNotificationMsg(1.second)(_.method == "sbt/execsChanged").isFailure)
     }
   }
 end QueuedNotificationTest

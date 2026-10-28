@@ -78,6 +78,11 @@ private[sbt] object LanguageServerProtocol:
           setInitialized(true)
           if !opt.skipAnalysis.getOrElse(false) then appendExec("collectAnalyses", None)
           jsonRpcRespond(InitializeResult(serverCapabilities), Some(r.id))
+          if opt.subscribeToExecs.getOrElse(false) then
+            jsonRpcNotify(
+              sbt.protocol.Serialization.execsChanged,
+              sbt.protocol.ExecsResponse(StandardMain.exchange.execInfos)
+            )
 
         case r: JsonRpcRequestMessage if r.method == "sbt/exec" =>
           checkAuthenticated(r) {

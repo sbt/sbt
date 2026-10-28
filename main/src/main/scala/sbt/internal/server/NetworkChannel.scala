@@ -159,6 +159,9 @@ final class NetworkChannel(
   override private[sbt] def clientName: String =
     Option(initializeOption.get).flatMap(_.clientName).getOrElse(name)
 
+  private[sbt] def subscribeToExecs: Boolean =
+    Option(initializeOption.get).flatMap(_.subscribeToExecs).getOrElse(false)
+
   // Returns true if sbtn has declared with canWork: true
   protected def clientCanWork: Boolean =
     Option(initializeOption.get) match
