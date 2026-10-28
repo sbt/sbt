@@ -14,6 +14,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Hashtable
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import java.util.concurrent.atomic.AtomicReference
 
@@ -59,7 +60,8 @@ object JUnitXmlTestsListener:
  *   directory in which test reports are generated
  */
 class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logger: Logger)
-    extends TestsListener:
+    extends TestsListener
+    with GroupedTestReportListener:
   // These constructors are for binary compatibility with older versions of sbt
   // Use old hard-coded behaviour for constructing `targetDir` from `outputDir`
   def this(outputDir: String, legacyTestReport: Boolean, logger: Logger) =
@@ -206,8 +208,11 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   private val testSuite = new InheritableThreadLocal[SuiteRef]:
     override def initialValue(): SuiteRef = new SuiteRef(None)
 
-  private def withTestSuite[T](f: TestSuite => T): T =
-    testSuite.get().current.map(f).getOrElse(sys.error("no test suite"))
+  /** The running suites by group name, for events reported from threads without the suite. */
+  private val suitesByGroup = new ConcurrentHashMap[String, SuiteRef]
+
+  private def suiteRef(group: String): SuiteRef =
+    Option(suitesByGroup.get(group)).getOrElse(testSuite.get())
 
   /** Creates the output Dir */
   override def doInit(): Unit =
@@ -217,7 +222,9 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * Starts a new, initially empty Suite with the given name.
    */
   override def startGroup(name: String): Unit =
-    testSuite.set(new SuiteRef(Some(new TestSuite(name))))
+    val ref = new SuiteRef(Some(new TestSuite(name)))
+    suitesByGroup.put(name, ref)
+    testSuite.set(ref)
 
   /**
    * Adds all details for the given even to the current suite.
@@ -229,8 +236,13 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
    * were discarded in practice; dropping them here keeps that outcome without turning every
    * late event into an error line via `TestFramework.safeForeach`.
    */
-  override def testEvent(event: TestEvent): Unit =
-    testSuite.get().current match
+  override def testEvent(event: TestEvent): Unit = addEvents(testSuite.get(), event)
+
+  override def testEvent(group: String, event: TestEvent): Unit =
+    addEvents(suiteRef(group), event)
+
+  private def addEvents(ref: SuiteRef, event: TestEvent): Unit =
+    ref.current match
       case Some(suite) => for e <- event.detail do suite.addEvent(e)
       case None        =>
         if logger != null then
@@ -267,15 +279,15 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
       def fingerprint = null
       def selector = null
       def throwable = new OptionalThrowable(t)
-    withTestSuite(_.addEvent(event))
-    writeSuite()
+    suiteRef(name).current.getOrElse(sys.error("no test suite")).addEvent(event)
+    writeSuite(name)
 
   /**
    * Ends the current suite, wraps up the result and writes it to an XML file in the output folder
    * that is named after the suite.
    */
   override def endGroup(name: String, result: TestResult): Unit =
-    writeSuite()
+    writeSuite(name)
 
   // Here we normalize the name to ensure that it's a nicer filename, rather than
   // contort the user into not using spaces.
@@ -287,12 +299,14 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   private def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-  private def writeSuite(): Unit =
+  private def writeSuite(group: String): Unit =
+    val ref = suiteRef(group)
+    val suite = ref.current.getOrElse(sys.error("no test suite"))
     val file = if legacyTestReport then
-      new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    else new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
+      new File(targetDir, s"${normalizeName(suite.name)}.xml").getAbsolutePath
+    else new File(targetDir, s"TEST-${normalizeName(suite.name)}.xml").getAbsolutePath
     if logger != null then logger.debug(s"writing JUnit XML test report: $file")
-    val testSuiteResult = withTestSuite(_.stop())
+    val testSuiteResult = suite.stop()
     XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
     /* Order matters: `clear()` releases the suite for this thread *and* for every thread that
      * inherited the cell, which `remove()` cannot reach. `remove()` then drops this thread's
@@ -300,8 +314,9 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
      * class loader with its open jar handles -- would stay reachable from pooled worker threads
      * for the life of the JVM.
      */
-    testSuite.get().clear()
-    testSuite.remove()
+    ref.clear()
+    suitesByGroup.remove(group, ref)
+    if testSuite.get() eq ref then testSuite.remove()
 
   /** Does nothing, as we write each file after a suite is done. */
   override def doComplete(finalResult: TestResult): Unit = {}

@@ -128,7 +128,7 @@ private[sbt] final class TestRunner(
       val handler = new EventHandler:
         def handle(e: Event): Unit =
           results.add(e)
-          safeListenersCall(_.testEvent(TestEvent(Seq(e))))
+          safeListenersCall(TestReportListener.testEvent(_, name, TestEvent(Seq(e))))
       val loggers: Vector[ContentLogger] = listeners.flatMap(_.contentLogger(testDefinition))
       def errorEvents(e: Throwable): Array[sbt.testing.Task] =
         val taskDef = testTask.taskDef
@@ -140,7 +140,7 @@ private[sbt] final class TestRunner(
           val fingerprint = taskDef.fingerprint
           val duration = -1L
         results.add(event)
-        safeListenersCall(_.testEvent(TestEvent(Seq(event))))
+        safeListenersCall(TestReportListener.testEvent(_, name, TestEvent(Seq(event))))
         Array.empty
       val nestedTasks =
         try testTask.execute(handler, loggers.map(_.log).toArray)
