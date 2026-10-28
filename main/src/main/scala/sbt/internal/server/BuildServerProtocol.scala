@@ -421,9 +421,7 @@ object BuildServerProtocol:
           case r if r.method == Method.Initialize =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
-            callback.setInitializeOption(
-              InitializeOption(None, None, None, None, Some(params.displayName))
-            )
+            callback.setInitializeOption(InitializeOption(None).withClientName(params.displayName))
 
             val response = InitializeBuildResult(
               "sbt",

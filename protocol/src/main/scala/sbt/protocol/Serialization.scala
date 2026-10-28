@@ -40,6 +40,7 @@ object Serialization:
   val attach = "sbt/attach"
   val attachResponse = "sbt/attachResponse"
   val cancelRequest = "sbt/cancelRequest"
+  val execsChanged = "sbt/execsChanged"
   val promptChannel = "sbt/promptChannel"
   val setTerminalAttributes = "sbt/setTerminalAttributes"
   val getTerminalAttributes = "sbt/getTerminalAttributes"

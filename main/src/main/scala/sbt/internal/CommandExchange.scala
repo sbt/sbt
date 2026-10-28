@@ -18,6 +18,7 @@ import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 import sbt.BasicCommandStrings.{
   Cancel,
   CompleteExec,
+  ReportResult,
   Shutdown,
   TerminateAction,
   networkExecPrefix
@@ -33,7 +34,7 @@ import sbt.nio.Watch.NullLogger
 import sbt.internal.nio.FileTreeRepository
 import sbt.nio.file.FileAttributes
 import sbt.protocol.Serialization.{ attach, clientJob }
-import sbt.protocol.{ ExecInfo, ExecStatusEvent, LogEvent }
+import sbt.protocol.{ ExecInfo, ExecStatusEvent, ExecsResponse, LogEvent, Serialization }
 import sbt.util.Logger
 import sjsonnew.JsonFormat
 
@@ -58,7 +59,9 @@ private[sbt] final class CommandExchange:
   private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
   private val watchedRepository = new AtomicReference[AnyRef]
   private val portfileWatch = AtomicCloseable[AutoCloseable]()
-  private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
+  private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]:
+    override def offer(e: Exec): Boolean = super.offer(e) && { notifyExecsChanged(); true }
+  private val lastExecInfos = new AtomicReference[Vector[ExecInfo]](Vector.empty)
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
   private val fastTrackChannelQueue = new LinkedBlockingQueue[FastTrackTask]
@@ -171,6 +174,7 @@ private[sbt] final class CommandExchange:
     }
     def isFromChannel(e: Exec): Boolean = e.source.exists(_.channelName == c.name)
     commandQueue.removeIf { e => isFromChannel(e) && e.commandLine != Shutdown }
+    notifyExecsChanged()
     currentExec.foreach { e => if isFromChannel(e) then doCancel(e, force = false) }
     Util.ignoreResult(
       commandQueue.add(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", CommandSource(c.name)))
@@ -197,13 +201,25 @@ private[sbt] final class CommandExchange:
     Util.ignoreResult(commandQueue.removeIf { e =>
       execInfo(e, "waiting").exists(p) && { removed += e; true }
     })
+    notifyExecsChanged()
     removed.result()
+
+  /** Sends sbt/execsChanged to the subscribed channels when the execs have changed. */
+  private[sbt] def notifyExecsChanged(): Unit = lastExecInfos.synchronized {
+    import sbt.protocol.codec.JsonProtocol.given
+    val infos = execInfos
+    if infos != lastExecInfos.getAndSet(infos) then
+      channels.foreach:
+        case c: NetworkChannel if c.subscribeToExecs =>
+          tryTo(_.jsonRpcNotify(Serialization.execsChanged, ExecsResponse(infos)))(c)
+        case _ =>
+  }
 
   private def execInfo(e: Exec, status: String): Option[ExecInfo] =
     for
       source <- e.source
       execId <- e.execId
-      if !e.commandLine.startsWith(networkExecPrefix)
+      if !e.commandLine.startsWith(networkExecPrefix) && !e.commandLine.startsWith(ReportResult)
       channel <- channels.find(_.name == source.channelName)
     yield ExecInfo(
       originalExecId(execId),
@@ -487,8 +503,9 @@ private[sbt] final class CommandExchange:
   end respondStatus
 
   private[sbt] def setExec(exec: Option[Exec]): Unit =
-    currentExecRef.set(exec.orNull)
+    val previous = Option(currentExecRef.getAndSet(exec.orNull))
     lastActivityTime.set(System.currentTimeMillis)
+    if (previous ++ exec).exists(execInfo(_, "running").isDefined) then notifyExecsChanged()
 
   /**
    * Handles an `sbt/shutdown` request with `force: true`. A graceful request is queued like
