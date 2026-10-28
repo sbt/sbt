@@ -18,7 +18,7 @@ ThisBuild / version := {
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
 
 // update sbt.sh at root
-ThisBuild / Utils.sbtnVersion := "2.0.0-8753a981"
+ThisBuild / Utils.sbtnVersion := "2.1.0-e5346417"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
