@@ -7,15 +7,23 @@
 
 package sbt
 
+import java.util.concurrent.Executors
+
 import scala.collection.mutable.ArrayBuffer
 
+import sbt.io.IO
 import sbt.protocol.testing.TestResult
 import sbt.util.LoggerContext
 import testing.{
   AnnotatedFingerprint,
+  Event,
   EventHandler,
+  Fingerprint,
   Logger as TestLogger,
+  OptionalThrowable,
   Runner,
+  Selector,
+  Status,
   SuiteSelector,
   Task as TestTask,
   TaskDef
@@ -53,6 +61,39 @@ object TestRunnerSpec extends BasicTestSuite:
       s"expected no result-based group end, got ${listener.resultEnds}"
     )
   }
+
+  test("JUnit reports keep events handled on a thread created before the suite started"):
+    val reporter = Executors.newSingleThreadExecutor()
+    reporter.submit((() => ()): Runnable).get()
+    try
+      IO.withTemporaryDirectory: dir =>
+        val listener = new JUnitXmlTestsListener(dir, false, null)
+        listener.doInit()
+        withTestRunner(listener): runner =>
+          for suite <- Seq("example.AlphaSpec", "example.BetaSpec") do
+            val td = taskDef(suite)
+            runner.run(td, new ReportingTask(td, reporter))
+        for suite <- Seq("example.AlphaSpec", "example.BetaSpec") do
+          val xml = IO.read(new java.io.File(dir, s"TEST-$suite.xml"))
+          assert(xml.contains("tests=\"1\""), xml)
+    finally reporter.shutdown()
+
+  private final class ReportingTask(
+      testTaskDef: TaskDef,
+      reporter: java.util.concurrent.ExecutorService
+  ) extends TestTask:
+    override def tags(): Array[String] = Array.empty
+    override def taskDef(): TaskDef = testTaskDef
+    override def execute(handler: EventHandler, loggers: Array[TestLogger]): Array[TestTask] =
+      val event = new Event:
+        override def fullyQualifiedName(): String = testTaskDef.fullyQualifiedName
+        override def fingerprint(): Fingerprint = testTaskDef.fingerprint
+        override def selector(): Selector = new SuiteSelector
+        override def status(): Status = Status.Success
+        override def throwable(): OptionalThrowable = new OptionalThrowable
+        override def duration(): Long = 1L
+      reporter.submit((() => handler.handle(event)): Runnable).get()
+      Array.empty
 
   private final class RecordingListener extends TestReportListener:
     val startedGroups: ArrayBuffer[String] = ArrayBuffer.empty

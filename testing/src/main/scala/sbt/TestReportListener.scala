@@ -28,6 +28,16 @@ trait TestReportListener:
   /** Used by the test framework for logging test results */
   def contentLogger(@deprecated("unused", "") test: TestDefinition): Option[ContentLogger] = None
 
+/** A listener that receives the group of each event, whichever thread reports it. */
+private[sbt] trait GroupedTestReportListener extends TestReportListener:
+  def testEvent(group: String, event: TestEvent): Unit
+
+private[sbt] object TestReportListener:
+  def testEvent(listener: TestReportListener, group: String, event: TestEvent): Unit =
+    listener match
+      case l: GroupedTestReportListener => l.testEvent(group, event)
+      case l                            => l.testEvent(event)
+
 final class ContentLogger(val log: TLogger, val flush: () => Unit)
 
 trait TestsListener extends TestReportListener:

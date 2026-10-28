@@ -251,7 +251,7 @@ private class React(
           val buf = progressEvents.getOrElseUpdate(info.group, mutable.ArrayBuffer.empty)
           for e <- info.events.asScala do
             buf += e
-            listeners.foreach(_.testEvent(TestEvent(Seq(e))))
+            listeners.foreach(TestReportListener.testEvent(_, info.group, TestEvent(Seq(e))))
         else ()
       case "endTestGroup" =>
         val params = o.getAsJsonObject("params")

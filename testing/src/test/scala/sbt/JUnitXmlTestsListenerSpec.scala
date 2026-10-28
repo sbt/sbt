@@ -138,4 +138,24 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
         s"a late test event should be dropped, but threw: ${testEventOutcome.get()}"
       )
 
+  test("JUnitXmlTestsListener should write interleaved groups to their own reports"):
+    IO.withTemporaryDirectory: tempDir =>
+      val listener = new JUnitXmlTestsListener(tempDir, false, null)
+      listener.doInit()
+      def event(name: String) = new TEvent:
+        def fullyQualifiedName = name
+        def duration() = 1L
+        def status = TStatus.Success
+        def fingerprint = null
+        def selector = new TestSelector("t")
+        def throwable = new OptionalThrowable()
+      listener.startGroup("A")
+      listener.startGroup("B")
+      listener.testEvent("A", sbt.TestEvent(Seq(event("A"), event("A"))))
+      listener.testEvent("B", sbt.TestEvent(Seq(event("B"))))
+      listener.endGroup("A", TestResult.Passed)
+      listener.endGroup("B", TestResult.Passed)
+      assert(IO.read(new File(tempDir, "TEST-A.xml")).contains("tests=\"2\""))
+      assert(IO.read(new File(tempDir, "TEST-B.xml")).contains("tests=\"1\""))
+
 end JUnitXmlTestsListenerSpec
