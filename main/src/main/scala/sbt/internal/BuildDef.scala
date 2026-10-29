@@ -204,7 +204,11 @@ private[sbt] object BuildDef:
     private val underlying = MixedAnalyzingCompiler.staticCachedStore(
       analysisFile = path,
       useTextAnalysis = false,
+      useConsistent = false,
       cacheLast = false,
+      mappers = AnalysisUtil.virtualizedMappers(converter),
+      reproducible = true,
+      parallelism = Runtime.getRuntime.availableProcessors(),
     )
     override def get: Optional[AnalysisContents] =
       val ref: VirtualFileRef = converter.toVirtualFile(path)
