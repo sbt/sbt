@@ -170,7 +170,7 @@ class NetworkClient(
   private val serverLogsResult = new AtomicBoolean(false)
   private val serverAcceptsShutdownRequest = new AtomicBoolean(false)
   private val ranClientSideJob = new AtomicBoolean(false)
-  private val interactiveThread = new AtomicReference[Thread](null)
+  private val interactiveThread = InteractiveThread()
   private val rebooting = new AtomicBoolean(false)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
@@ -514,7 +514,7 @@ class NetworkClient(
                 console.appendLog(Level.Info, s"${if log then "sbt server " else ""}disconnected")
               stdinBytes.offer(-1)
               inputThread.close()
-              Option(interactiveThread.get).foreach(_.interrupt)
+              interactiveThread.interrupt()
             end if
           case `readSystemIn`       => startInputThread()
           case `cancelReadSystemIn` => inputThread.cancel()
@@ -528,7 +528,7 @@ class NetworkClient(
           if serverDropped && !shutdownOnly then
             console.appendLog(Level.Error, "sbt server disconnected")
         running.set(false)
-        Option(interactiveThread.get).foreach(_.interrupt())
+        interactiveThread.interrupt()
     // initiate handshake
     val settled = CountDownLatch(1)
     initiateHandshake(Handshake(conn, settled), tkn)
@@ -1355,8 +1355,7 @@ class NetworkClient(
     try
       running.set(false)
       stdinBytes.offer(-1)
-      val mainThread = interactiveThread.getAndSet(null)
-      if mainThread != null && mainThread != Thread.currentThread then mainThread.interrupt
+      interactiveThread.clear().filter(_ != Thread.currentThread).foreach(_.interrupt())
       if connectionHolder.get ne null then
         try sendExecCommand("exit")
         finally connectionHolder.close()
