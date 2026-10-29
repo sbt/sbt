@@ -1,4 +1,4 @@
-FROM sbtscala/scala-sbt:eclipse-temurin-17.0.19_10_1.12.13_3.8.4
+FROM sbtscala/scala-sbt:eclipse-temurin-17_1.x
 
 ARG NODE_VERSION=20
 
