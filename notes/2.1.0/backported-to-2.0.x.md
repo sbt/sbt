@@ -144,6 +144,13 @@
 - fix: Use `Path.userHome` by @eed3si9n in https://github.com/sbt/sbt/pull/9866 (merged to 2.0.x, pending release)
 - fix: Fixes task output lost by the thin client under CPU load by @eed3si9n in https://github.com/sbt/sbt/pull/9868 (merged to 2.0.x, pending release)
 - fix: Fixes `AccessDeniedException` writing SemanticDB by @eed3si9n in https://github.com/sbt/sbt/pull/9878 (merged to 2.0.x, pending release)
+- fix: Fail a gRPC batch read when a blob fails by @eugkhp in https://github.com/sbt/sbt/pull/9904 (merged to 2.0.x, pending release)
+- fix: Fixes pipelined compile hanging when compile inputs fail by @jleider in https://github.com/sbt/sbt/pull/9896 (merged to 2.0.x, pending release)
+- fix: Workaround compiler-interface eviction by @eed3si9n in https://github.com/sbt/sbt/pull/9913 (merged to 2.0.x, pending release)
+- fix: Fixes logging and BSP connection after sbtn closes by @eed3si9n in https://github.com/sbt/sbt/pull/9911 (merged to 2.0.x, pending release)
+- fix: Fixes `run` task by @xuwei-k in https://github.com/sbt/sbt/pull/9963 (merged to 2.0.x, pending release)
+- fix: End the client connection when the channel's write thread stops by @retronym in https://github.com/sbt/sbt/pull/9991 (merged to 2.0.x, pending release)
+- fix: Fixes client not reconnecting after reboot by @eed3si9n in https://github.com/sbt/sbt/pull/10000 (merged to 2.0.x, pending release)
 
 ## ⚡ Performance improvements
 
@@ -194,3 +201,6 @@
 - Update user-agent to major.minor by @eed3si9n in https://github.com/sbt/sbt/pull/9818 (merged to 2.0.x, pending release)
 - deps: Update Coursier to 2.1.26 by @eed3si9n in https://github.com/sbt/sbt/pull/9852 (merged to 2.0.x, pending release)
 - deps: sbtn 2.1.0-6eac8efa by @eed3si9n in https://github.com/sbt/sbt/pull/9861 (merged to 2.0.x, pending release)
+- deps: IO 1.13.6 by @eed3si9n in https://github.com/sbt/sbt/pull/9988 (merged to 2.0.x, pending release)
+- deps: Zinc 2.1.0-M9 + IPC Socket 1.8.1 by @eed3si9n in https://github.com/sbt/sbt/pull/9994 (partially merged to 2.0.x as IPC Socket 1.8.1, pending release)
+- deps: Update sbtn to 2.1.0-e5346417 by @eed3si9n in https://github.com/sbt/sbt/pull/9996 (merged to 2.0.x, pending release)
