@@ -115,7 +115,8 @@ class WatchReloadTest extends AbstractServerTest with BeforeAndAfterEach:
       assert(client.awaitExit() == 0)
       assert(stops("marker") == List(s"stop:marker:$channel:before:before:CancelWatch"))
       val events = read("events")
-      assert(events.indexOf("stop:marker:") < events.lastIndexOf("unload:before"), events)
+      assert(events.indexOf("stop:marker:") < events.indexOf("unload:before"), events)
+      assert(events.linesIterator.count(_ == "unload:before") == 1, events)
       assert(client.text.contains("stopped because the build is being reloaded"), client.text)
       assert(client.text.contains("Run '~marker' again to restart the watch."), client.text)
       assert(runBatchClient("show name") == 0)
@@ -172,16 +173,10 @@ class WatchReloadTest extends AbstractServerTest with BeforeAndAfterEach:
       try bspReload(expectSuccess = false)
       finally write("build.sbt", originalBuild)
       assert(stops("marker").isEmpty)
-      write("input", "v1")
-      awaitText("iteration-marker")(_.endsWith(":v1"))
-      assert(!client.isDone)
-
-  test("keep watching when an unload hook fails during loading"):
-    Using.resource(new WatchClient): client =>
-      owner()
-      write("fail-unload")
-      bspReload(expectSuccess = false)
-      assert(stops("marker").isEmpty)
+      assert(
+        !read("events").contains("unload:"),
+        "The failed reload ran the old build's unload hook"
+      )
       write("input", "v1")
       awaitText("iteration-marker")(_.endsWith(":v1"))
       assert(!client.isDone)
@@ -208,6 +203,9 @@ class WatchReloadTest extends AbstractServerTest with BeforeAndAfterEach:
 
   test("discard stopped watches after a throwing new-build load hook"):
     checkLateFailure("fail-load")
+
+  test("discard stopped watches after a throwing old-build unload hook"):
+    checkLateFailure("fail-unload")
 
   private def checkTerminationFailure(bsp: Boolean): Unit =
     Using.resource(new WatchClient): first =>
