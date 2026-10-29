@@ -11,7 +11,8 @@ package internal
 
 import java.io.File
 import java.net.URI
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files, LinkOption, Path, Paths }
+import java.nio.file.attribute.{ PosixFileAttributes, PosixFilePermission, PosixFilePermissions }
 import java.util.Locale
 
 import scala.util.control.NonFatal
@@ -292,12 +293,36 @@ object SysProp:
    * native files etc.
    * A deterministic hash is appended in the directory name as "/tmp/.sbt1234ABCD/"
    * to avoid collision between multiple users in a shared server environment.
+   * Because that name is predictable, another user could create the directory first and
+   * replace the native libraries extracted to it. If the directory isn't private, a fresh
+   * private temporary directory is used instead.
    */
-  private def runtimeDirectory: Path =
+  private lazy val runtimeDirectory: Path =
     val hashValue =
       java.lang.Long.toHexString(HashUtil.farmHash(home.toString.getBytes("UTF-8")))
     val halfhash = hashValue.take(8)
-    Paths
+    val dir = Paths
       .get(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir")))
       .resolve(s".sbt$halfhash")
+    def isPrivate =
+      try isPrivateDirectory(dir)
+      catch case _: java.io.IOException => false
+    if !FileSystems.getDefault.supportedFileAttributeViews.contains("posix") || isPrivate then dir
+    else Files.createTempDirectory("sbt")
+
+  /** Creates dir if needed, and checks that only this user can change what is in it. */
+  private[sbt] def isPrivateDirectory(dir: Path): Boolean =
+    Files.createDirectories(dir.getParent)
+    try
+      Files.createDirectory(
+        dir,
+        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))
+      )
+    catch case _: FileAlreadyExistsException => ()
+    val attrs = Files.readAttributes(dir, classOf[PosixFileAttributes], LinkOption.NOFOLLOW_LINKS)
+    val perms = attrs.permissions
+    attrs.isDirectory &&
+    attrs.owner.getName == sys.props("user.name") &&
+    !perms.contains(PosixFilePermission.GROUP_WRITE) &&
+    !perms.contains(PosixFilePermission.OTHERS_WRITE)
 end SysProp
