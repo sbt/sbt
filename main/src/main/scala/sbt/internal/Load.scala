@@ -1572,7 +1572,9 @@ private[sbt] object Load:
 
   def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings =
     val session = s.get(Keys.sessionSettings)
-    val currentProject = session map (_.currentProject) getOrElse Map.empty
+    val currentProject = session
+      .map(_.currentProject)
+      .getOrElse(configuredInitialProject(structure, s.log).map(structure.root -> _).toMap)
     val currentBuild = session
       .map(_.currentBuild)
       .filter(uri => structure.units.keys.exists(uri == _))
@@ -1585,6 +1587,23 @@ private[sbt] object Load:
       Nil,
       rootEval
     )
+
+  /** The project that `initialProject` selects at first load, if the root build has it. */
+  private def configuredInitialProject(structure: BuildStructure, log: Logger): Option[String] =
+    val root = structure.root
+    val ids = structure.allProjects(root).map(_.id)
+    (ProjectRef(root, structure.rootProject(root)) / Keys.initialProject)
+      .get(structure.data)
+      .flatten
+      .map(_.project)
+      .flatMap: id =>
+        if ids.contains(id) then Some(id)
+        else
+          log.warn(
+            s"initialProject: no project '$id' in the root build, using the root project." +
+              s" Valid project IDs: ${ids.mkString(", ")}"
+          )
+          None
 
   def initialSession(structure: BuildStructure, rootEval: () => Eval): SessionSettings =
     new SessionSettings(

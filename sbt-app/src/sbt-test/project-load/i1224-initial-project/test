@@ -1,0 +1,16 @@
+# Only a load without a session reads initialProject: reboot gives one, reload does not.
+> reboot
+> checkCurrent i1224SubA
+
+$ copy-file changes/bare.sbt ip.sbt
+> reboot
+> checkCurrent i1224SubB
+
+> project i1224SubA
+> reload
+> checkCurrent i1224SubA
+
+$ copy-file changes/typo.sbt ip.sbt
+> reboot
+> checkCurrent i1224Root
+> checkWarning i1224Typo
