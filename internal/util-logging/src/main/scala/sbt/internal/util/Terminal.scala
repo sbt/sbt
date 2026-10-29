@@ -604,8 +604,7 @@ object Terminal:
       buffer.size
     override def close(): Unit = if closed.compareAndSet(false, true) then
       executor.shutdownNow()
-      buffer.synchronized(buffer.put(-1: Integer))
-      ()
+      Util.ignoreResult(buffer.synchronized(buffer.add(-1: Integer)))
   end WriteableInputStream
   private def nonBlockingIn(term: org.jline.terminal.Terminal): WriteableInputStream =
     val in =
