@@ -92,6 +92,9 @@ final class NetworkChannel(
 
   private val inputBuffer = new LinkedBlockingQueue[Int]()
   private val pendingWrites = new LinkedBlockingQueue[(Array[Byte], Boolean)]()
+
+  /** Queued by shutdown: the write thread writes what is still queued and ends the output. */
+  private val endOfWrites: (Array[Byte], Boolean) = (new Array[Byte](0), false)
   private val attached = new AtomicBoolean(false)
   private val alive = new AtomicBoolean(true)
   private val isCanceled = new AtomicBoolean(false)
@@ -231,7 +234,16 @@ final class NetworkChannel(
       catch case _: InterruptedException => ()
       finally
         shutdown(false)
-        if inputEnded then closeConnection()
+        if !inputEnded then awaitEndOfInput()
+        closeConnection()
+
+    /** Gives the client time to read the Shutdown notification and close its end. */
+    private def awaitEndOfInput(): Unit =
+      val deadline = 5.seconds.fromNow
+      try
+        val in = connection.getInputStream
+        while deadline.hasTimeLeft() && in.read() >= 0 do ()
+      catch case _: IOException => ()
 
     /** Only failures reading from the socket stop the channel. */
     private def readBody(in: InputStream): Seq[Byte] =
@@ -403,7 +415,10 @@ final class NetworkChannel(
       var writeFailed = false
       @tailrec def impl(): Unit =
         val (event, delimit) =
-          try pendingWrites.take
+          try
+            val next = pendingWrites.take
+            if next eq endOfWrites then alive.set(false)
+            next
           catch
             case _: InterruptedException =>
               alive.set(false)
@@ -421,6 +436,7 @@ final class NetworkChannel(
             case _: InterruptedException =>
               alive.set(false)
           impl()
+      end impl
       try impl()
       finally
         if writeFailed then closeConnection()
@@ -431,8 +447,8 @@ final class NetworkChannel(
   writeThread.setDaemon(true)
 
   /**
-   * shutdown interrupts the write thread right after queuing the final flush and the Shutdown
-   * notification, which tells a rebooting client to reconnect, so write whatever is still queued.
+   * shutdown queues `endOfWrites` right after the final flush and the Shutdown notification,
+   * which tells a rebooting client to reconnect, so write whatever is still queued.
    * Then end only the output: the client reads everything sent and then EOF, while replies it is
    * still sending, such as to a terminal query, do not fail. Closing the socket here would make
    * them fail, and a client whose write fails drops the connection without reading the Shutdown
@@ -681,8 +697,7 @@ final class NetworkChannel(
     running.set(false)
     out.close()
     outputStream.close()
-    thread.interrupt()
-    writeThread.interrupt()
+    Util.ignoreResult(pendingWrites.add(endOfWrites))
 
   /** Respond back to Language Server's client. */
   private[sbt] def jsonRpcRespond[A: JsonFormat](event: A, execId: String): Unit =
@@ -758,7 +773,7 @@ final class NetworkChannel(
   import scala.jdk.CollectionConverters.*
   private val outputBuffer = new LinkedBlockingQueue[Byte]
   private def discardPending(): Unit =
-    pendingWrites.clear()
+    Util.ignoreResult(pendingWrites.removeIf(_ ne endOfWrites))
     outputBuffer.synchronized(outputBuffer.clear())
 
   // Batches writes to the client at most once per 20ms to cut terminal flicker (see
