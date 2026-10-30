@@ -1233,6 +1233,24 @@ object ActionCacheTest extends BasicTestSuite:
       intercept[IOException](cache.putBlob(tampered, digest))
       assert(!Files.exists(casFile), "tampered bytes must not remain in the CAS")
 
+  // A build that may read a cache but not write it has to stop before the network, not collect a
+  // rejection per cold task, so put must not reach the wrapped store at all.
+  test("A read-only store serves reads and drops writes"):
+    withDiskCache: disk =>
+      IO.withTemporaryDirectory: outDir =>
+        val blob = StringVirtualFile1(s"$outDir/a.txt", "hello")
+        val ref: HashedVirtualFileRef = blob
+        val store = ReadOnlyCacheStore(disk)
+        val request = UpdateActionResultRequest(Digest.zero, Vector(blob), exitCode = 0)
+        assert(store.put(request).isLeft)
+        assert(store.putBlobs(Seq(blob)).isEmpty)
+        assert(disk.findBlobs(Seq(ref)).isEmpty)
+        // Reads keep working, which is the whole point of the wrapper.
+        disk.putBlobs(Seq(blob))
+        assert(store.findBlobs(Seq(ref)) == Seq(ref))
+        assert(store.syncBlobs(Seq(ref), outDir.toPath).nonEmpty)
+        assert(store.storeName == disk.storeName)
+
   test("Disk cache recovers when the cache directory is deleted mid-session"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: outDir =>

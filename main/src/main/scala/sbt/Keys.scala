@@ -141,6 +141,8 @@ object Keys {
   val remoteCacheHeaders = settingKey[Seq[String]]("List of key=value headers to be sent to the remote cache.")
   @transient
   val remoteCacheRequestTimeout = settingKey[FiniteDuration]("Timeout for remote cache operations.")
+  @transient
+  val remoteCacheReadOnly = settingKey[Boolean]("Read from the remote cache without writing to it.")
 
   val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 

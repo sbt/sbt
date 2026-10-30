@@ -1,0 +1,7 @@
+# A build authorized only to read a remote cache still attempts an upload for every task that
+# misses, because put goes to every store in cacheStores. remoteCacheReadOnly wraps the remote
+# store where the plugin builds it, so the writes stop before the network.
+> checkNotWrapped
+> set Global / remoteCacheReadOnly := true
+> checkWrapped
+-> checkNotWrapped
