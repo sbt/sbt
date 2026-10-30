@@ -13,7 +13,7 @@ import sbt.io.syntax.*
 import sbt.protocol.ServerSession
 import sbt.internal.langserver.{ CancelRequestParams, InitializeParams, SbtExecParams }
 import sbt.internal.protocol.{ InitializeOption, JsonRpcResponseMessage }
-import sbt.protocol.{ ExecInfo, ExecStatusEvent, ExecsResponse }
+import sbt.protocol.{ ExecStatusEvent, ExecsResponse }
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.codec.JsonProtocol.given
@@ -54,12 +54,6 @@ class QueuedNotificationTest extends AbstractServerTest:
     svr.session.sendJsonRpc(quickId, "sbt/exec", SbtExecParams("quickTask")).get
     Thread.sleep(500)
     (slowId, quickId)
-
-  private def execs(): Vector[ExecInfo] =
-    svr.session
-      .sendJsonRpcAwaitResult[ExecsResponse]("sbt/execs", Map.empty[String, String], 10.seconds)
-      .get
-      .execs
 
   private def cancelAndCollect[A: JsonWriter](
       method: String,

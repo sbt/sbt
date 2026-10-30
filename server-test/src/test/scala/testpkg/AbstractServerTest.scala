@@ -15,7 +15,8 @@ import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
 import sbt.io.IO
 import sbt.io.syntax.*
-import sbt.protocol.ServerSession
+import sbt.protocol.{ ExecInfo, ExecsResponse, ServerSession }
+import sbt.protocol.codec.JsonProtocol.given
 import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 
 import org.scalatest.funsuite.AnyFunSuite
@@ -127,6 +128,12 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll:
         false
       )
     )
+
+  protected def execs(): Vector[ExecInfo] =
+    svr.session
+      .sendJsonRpcAwaitResult[ExecsResponse]("sbt/execs", Map.empty[String, String], 10.seconds)
+      .get
+      .execs
 
   protected def waitUntil(timeout: FiniteDuration)(p: => Boolean): Boolean =
     val deadline = timeout.fromNow
