@@ -255,6 +255,11 @@ object SysProp:
     baseCache.getAbsoluteFile / "v2"
   end globalLocalCacheFrom
 
+  /** Moves the publishLocal target without moving the Ivy home or the download caches. */
+  def localIvyRepository: Option[File] = sys.props
+    .get("sbt.local_repository")
+    .map(File(_))
+
   lazy val sbtCredentialsEnv: Option[Credentials] =
     sys.env.get("SBT_CREDENTIALS").map(raw => new Credentials.FileCredentials(new File(raw)))
 

@@ -3484,11 +3484,13 @@ object Classpaths:
         val pr =
           if includePluginResolvers.value then pluginResolvers
           else Vector.empty
+        val localPublish = localIvyRepository.value.toVector
+          .map(Resolver.file("local-publish", _)(using Resolver.ivyStylePatterns))
         bootResolvers.value match
           case Some(repos) if overrideBuildResolvers.value => proj +: repos
           case _                                           =>
             val base = if sbtPlugin.value then sbtResolvers.value ++ rs ++ pr else rs ++ pr
-            (proj +: base).distinct
+            (proj +: (localPublish ++ base)).distinct
       }).value),
     csrSameVersions ++= {
       partialVersion(scalaVersion.value) match
@@ -3526,6 +3528,11 @@ object Classpaths:
       baseDirectory.value.toString,
       bootIvyHome(appConfiguration.value).map(_.toString)
     ),
+    localIvyRepository := {
+      if ivyPaths.value.ivyHome == bootIvyHome(appConfiguration.value).map(_.toString) then
+        SysProp.localIvyRepository
+      else None
+    },
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
       val ac = appConfiguration.value
@@ -3744,7 +3751,8 @@ object Classpaths:
     ivyModule := Def.uncached((): Any),
     publisher := Def.uncached {
       val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse(LMSysProp.defaultIvyHome)
-      val localResolver = Resolver.file("local", ivyHome / "local")(using Resolver.ivyStylePatterns)
+      val localRepo = localIvyRepository.value.getOrElse(ivyHome / "local")
+      val localResolver = Resolver.file("local", localRepo)(using Resolver.ivyStylePatterns)
       // publishLocal/publishM2/publish target these by name (see publishConfig's resolverName
       // default and publishM2Configuration below).
       val knownResolvers = localResolver +: otherResolvers.value

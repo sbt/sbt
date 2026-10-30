@@ -79,16 +79,19 @@ final class ScriptedTests(
       prop: RemoteSbtCreatorProp
   ): Map[Char, StatementHandler] =
     val fileHandler = new FileCommands(testDir)
+    val opts = ScriptedTests
+      .isolatedRepos(testDir)
+      .map((key, repo) => s"-D$key=${repo.getAbsolutePath}") ++ launchOpts
     val remoteSbtCreator =
       prop match
         case LauncherBased(launcherJar) =>
-          new LauncherBasedRemoteSbtCreator(testDir, launcherJar, buffered, javaCommand, launchOpts)
+          new LauncherBasedRemoteSbtCreator(testDir, launcherJar, buffered, javaCommand, opts)
         case RunFromSourceBased(scalaVersion, sbtVersion, classpath) =>
           new RunFromSourceBasedRemoteSbtCreator(
             testDir,
             buffered,
             javaCommand,
-            launchOpts,
+            opts,
             scalaVersion,
             sbtVersion,
             classpath
@@ -254,6 +257,10 @@ final class ScriptedTests(
         if reposForce.exists() then IO.delete(reposForce)
         val repos = new File(targetGlobal, "repositories")
         if repos.exists() then IO.delete(repos)
+        ScriptedTests
+          .isolatedRepos(tempTestDir)
+          .foreach: (_, repo) =>
+            if repo.exists() then IO.delete(repo)
         // Copy test's contents and reload the sbt instance to pick them up
         IO.copyDirectory(originalDir, tempTestDir)
 
@@ -356,6 +363,12 @@ object ScriptedTests extends ScriptedRunner:
 
   /** Represents the function that runs the scripted tests, both in single or batch mode. */
   type TestRunner = () => Seq[Option[String]]
+
+  /** Publish targets of the forked sbt, under `global/`, which a batch keeps between tests. */
+  private def isolatedRepos(testDir: File): List[(String, File)] =
+    val global = new File(testDir, "global")
+    List("sbt.local_repository" -> "local-repo", "maven.repo.local" -> "m2-repo")
+      .map((key, name) => key -> new File(global, name))
 
   def main(args: Array[String]): Unit =
     val directory = new File(args(0))
