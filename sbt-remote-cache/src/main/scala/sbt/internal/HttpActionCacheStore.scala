@@ -153,17 +153,14 @@ class HttpActionCacheStore private (
   override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
     try
       val refs = putBlobsIfNeeded(request.outputFiles)
-      if refs.size != request.outputFiles.size then
-        Left(RuntimeException(s"failed to upload ${request.outputFiles.size - refs.size} blobs"))
-      else
-        val xar = BazelRemote.toXActionResult(refs, request.exitCode)
-        val req = acRequest(request.actionDigest)
-          .withMethod("PUT")
-          .withBody(InMemoryBody(xar.toByteArray()))
-        await(statusOf(req)) match
-          case status if isOk(status) =>
-            Right(ActionResult(refs.toVector, Some(storeName), request.exitCode))
-          case status => Left(StatusError(status))
+      val xar = BazelRemote.toXActionResult(refs, request.exitCode)
+      val req = acRequest(request.actionDigest)
+        .withMethod("PUT")
+        .withBody(InMemoryBody(xar.toByteArray()))
+      await(statusOf(req)) match
+        case status if isOk(status) =>
+          Right(ActionResult(refs.toVector, Some(storeName), request.exitCode))
+        case status => Left(StatusError(status))
     catch case NonFatal(e) => Left(e)
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
