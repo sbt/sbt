@@ -44,9 +44,10 @@ object IncrementalTest:
       val cp = (Keys.test / fullClasspath).value
       val digests = (Keys.definedTestDigests).value
       val config = Def.cacheConfiguration.value
+      val taskName = Def.resolvedScopedStr.value
       def hasCachedSuccess(ts: Digest, options: Seq[String]): Boolean =
         val input = cacheInput(ts, options)
-        ActionCache.exists(input._1, input._2, input._3, config)
+        ActionCache.exists(taskName, input._1, input._2, input._3, config)
       def hasSucceeded(
           className: String,
           options: Seq[String],
@@ -134,6 +135,7 @@ object IncrementalTest:
   private[sbt] def cachedTestNames(
       digests: Map[String, Digest],
       config: BuildWideCacheConfiguration,
+      taskName: String,
       executed: Set[String],
       selected: Seq[String],
       frameworkOptions: Seq[String],
@@ -145,12 +147,13 @@ object IncrementalTest:
         case (name, ts)
             if cacheTestResult && !executed.contains(name) && filters.exists(_(name)) && {
               val input = cacheInput(ts, frameworkOptions)
-              ActionCache.exists(input._1, input._2, input._3, config)
+              ActionCache.exists(taskName, input._1, input._2, input._3, config)
             } =>
           name
       }
       .toVector
       .sorted
+  end cachedTestNames
 
 end IncrementalTest
 

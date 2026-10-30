@@ -30,8 +30,20 @@ $ exists run-6
 $ exists run-7
 $ absent run-8
 
-> replaceTestFilter
+> clean
 > test
 > test
 $ exists run-8
+$ absent run-9
+
+> Test/clean
+> test
+> test
 $ exists run-9
+$ absent run-10
+
+> replaceTestFilter
+> test
+> test
+$ exists run-10
+$ exists run-11

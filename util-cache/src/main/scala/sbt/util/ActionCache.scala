@@ -334,11 +334,23 @@ object ActionCache:
       codeContentHash: Digest,
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
+  ): Boolean = exists(taskName = "", key, codeContentHash, extraHash, config)
+
+  /**
+   * Checks if the ActionResult exists in the cache,
+   * treating it as absent when `taskName` falls under a scope invalidated by `clean`.
+   */
+  def exists[I: HashWriter](
+      taskName: String,
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      config: BuildWideCacheConfiguration,
   ): Boolean =
-    val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
-    findActionResult(inputDigest, config) match
-      case Right(_) => true
-      case Left(_)  => false
+    !markScopePending(taskName) && {
+      val inputDigest = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
+      findActionResult(inputDigest, config).isRight
+    }
 
   inline private[sbt] def findActionResult(
       inputDigest: Digest,
