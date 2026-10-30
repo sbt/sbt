@@ -9,13 +9,23 @@
 package sbt.internal.server
 
 import java.io.{ File, IOException, InputStream, OutputStream }
-import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
+import java.net.{
+  InetAddress,
+  ServerSocket,
+  Socket,
+  SocketTimeoutException,
+  StandardProtocolFamily,
+  UnixDomainSocketAddress
+}
+import java.nio.channels.{ ServerSocketChannel, SocketChannel }
+import java.nio.file.Files
 import java.util.concurrent.{ CountDownLatch, TimeUnit }
 import sbt.{ BasicCommandStrings, State, StandardMain }
 import sbt.internal.util.{ AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Terminal, Util }
 import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.protocol.JsonRpcRequestMessage
-import sbt.protocol.Serialization
+import sbt.io.IO
+import sbt.protocol.{ DuplexChannels, Serialization }
 import sjsonnew.support.scalajson.unsafe.Parser
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -126,6 +136,23 @@ object NetworkChannelSpec extends BasicTestSuite:
             s"expected the Shutdown notification before EOF, but received: $received"
           )
 
+  test("shutdown sends the Shutdown notification after output the client has not read yet"):
+    withServerState:
+      withChannelThreadsJoined:
+        withUnixDomainConnection: (client, connection) =>
+          val channel = newChannel(connection, Nil)
+          channel.start()
+          channel.publishBytes(new Array[Byte](4 * 1024 * 1024), delimit = true)
+          Thread.sleep(fillSendBuffer.toMillis)
+          channel.shutdown(true, Some(("reboot-id", "reboot")))
+          client.setSoTimeout(5000)
+          val received = readUntilEof(client)
+          val shutdownNotification = "\"method\":\"" + BasicCommandStrings.Shutdown + "\""
+          assert(
+            received.contains(shutdownNotification),
+            s"expected the Shutdown notification before EOF, but received ${received.length} chars"
+          )
+
   private def readUntilEof(client: Socket): String =
     try new String(client.getInputStream.readAllBytes(), "UTF-8")
     catch case _: SocketTimeoutException => "<timed out>"
@@ -178,6 +205,7 @@ object NetworkChannelSpec extends BasicTestSuite:
     override def close(): Unit = underlying.close()
 
   private val acceptThreadDelay = 200.millis
+  private val fillSendBuffer = 200.millis
 
   private def attachRequest: Array[Byte] =
     val params = Parser.parseUnsafe("""{"interactive": false}""")
@@ -256,6 +284,16 @@ object NetworkChannelSpec extends BasicTestSuite:
     Using.resource(new ServerSocket(anyFreePort, backlog, loopback)): server =>
       Using.resource(new Socket(loopback, server.getLocalPort)): client =>
         Using.resource(server.accept())(f(client, _))
+
+  private def withUnixDomainConnection[A](f: (Socket, Socket) => A): A =
+    val directory = Files.createTempDirectory("sbt-nc")
+    val address = UnixDomainSocketAddress.of(directory.resolve("socket"))
+    try
+      Using.resource(ServerSocketChannel.open(StandardProtocolFamily.UNIX)): server =>
+        server.bind(address)
+        Using.resource(DuplexChannels.newSocket(SocketChannel.open(address))): client =>
+          Using.resource(DuplexChannels.newSocket(server.accept()))(f(client, _))
+    finally IO.delete(directory.toFile)
 
   private def withServerState[A](f: => A): A =
     val previous = StandardMain.exchange.withState(Option(_))

@@ -166,7 +166,7 @@ object BasicCommands:
         .examples()
 
     val completionParser: Option[Parser[String]] =
-      state.map(s => (matched(s.nonMultiParser) & cmdPart) | cmdPart)
+      state.map(s => cmdPart | (matched(s.nonMultiParser) & cmdPart))
     val cmdParser =
       val parser = completionParser.getOrElse(cmdPart).map(_.trim)
       exclude.foldLeft(parser) { (p, e) => p & not(OptSpace ~ s"$e ", s"!$e").examples() }
@@ -516,12 +516,18 @@ object BasicCommands:
       .tag(CommandAliasKey, (name, value))
 
   def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
-    val aliasRemoved = removeAlias(state, name)
     // apply the alias value to the commands of `state` except for the alias to avoid recursion (#933)
-    val partiallyApplied = Parser(aliasRemoved.combinedParser)(value)
-    val arg: Parser[String] = matched(
-      partiallyApplied & (success((): Any) | ((SpaceClass ~ any.*): Parser[Any]))
-    )
+    lazy val partiallyApplied = Parser(removeAlias(state, name).combinedParser)(value)
+    def completions(level: Int) =
+      (partiallyApplied & (success((): Any) | ((SpaceClass ~ any.*): Parser[Any])))
+        .completions(level)
+    val noArgs: Parser[String] =
+      Parser.endOfInput(partiallyApplied.resultEmpty.map(_ => ""), completions)
+    val withArgs: Parser[String] =
+      SpaceClass.flatMap(sp =>
+        matched(Parser.derive1(partiallyApplied, sp) & any.*).map(rest => s"$sp$rest")
+      )
+    val arg: Parser[String] = noArgs | withArgs
     // by scheduling the expanded alias instead of directly executing,
     // we get errors on the expanded string (#598)
     arg.map(str => () => (value + str) :: state)

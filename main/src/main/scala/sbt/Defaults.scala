@@ -1573,12 +1573,14 @@ object Defaults extends BuildCommon with DefExtra:
       val trl = testResultLogger.value
       val digests = definedTestDigests.value
       val cacheConfig = Def.cacheConfiguration.value
+      val scopedStr = Def.resolvedScopedStr.value
       (Def
         .value[Task[Tests.Output]] { output })
         .map: out =>
           val cached = IncrementalTest.cachedTestNames(
             digests,
             cacheConfig,
+            scopedStr,
             out.events.keySet,
             selected,
             frameworkOptions,
