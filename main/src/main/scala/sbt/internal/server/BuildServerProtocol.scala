@@ -328,7 +328,7 @@ object BuildServerProtocol:
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := {
       val target = Keys.bspTargetIdentifier.value
-      val scalacOptions = Keys.resolvedScalacOptions.value.toVector
+      val scalacOptions = (Keys.compile / Keys.resolvedScalacOptions).value.toVector
       val classDirectory = Keys.classDirectory.value
       val classpath = classpathTask.value
       ScalacOptionsItem(target, scalacOptions, classpath, classDirectory.toURI)
