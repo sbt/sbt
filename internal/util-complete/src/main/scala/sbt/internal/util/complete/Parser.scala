@@ -157,6 +157,14 @@ end RichParser
 
 /** Contains Parser implementation helper methods not typically needed for using parsers. */
 object Parser extends ParserMain:
+
+  /**
+   * Parser that only succeeds at the end of input, with `r` evaluated lazily as its result and
+   * `completions` used for tab completion.
+   */
+  private[sbt] def endOfInput[A](r: => Result[A], completions: Int => Completions): Parser[A] =
+    new EndOfInput(r, completions)
+
   sealed abstract class Result[+T]:
     def isFailure: Boolean
     def isValid: Boolean
@@ -655,6 +663,14 @@ private final case class Invalid(fail: Failure) extends Parser[Nothing]:
   override def toString = fail.errors.mkString("; ")
   def valid = false
   def ifValid[S](p: => Parser[S]): Parser[S] = this
+
+private final class EndOfInput[A](r: => Result[A], completions0: Int => Completions)
+    extends ValidParser[A]:
+  lazy val resultEmpty = r
+  def result = None
+  def derive(c: Char) = Invalid(mkFailure("Expected end of input"))
+  def completions(level: Int) = completions0(level)
+  override def toString = "endOfInput"
 
 private final case class SoftInvalid(fail: Failure) extends ValidParser[Nothing]:
   def result = None
