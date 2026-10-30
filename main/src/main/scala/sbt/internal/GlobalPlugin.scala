@@ -61,7 +61,7 @@ object GlobalPlugin {
     )
     val (eval, structure) = Load(base, s, globalConfig)
     val session = Load.initialSession(structure, eval)
-    (structure, Project.setProject(session, structure, s))
+    (structure, Project.setProject(session, structure, Load.withoutUnloadHooks(s)))
   }
   def load(base: File, s: State, config: LoadBuildConfiguration): GlobalPlugin = {
     val (structure, state) = build(base, s, config)
