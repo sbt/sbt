@@ -1326,9 +1326,14 @@ private[sbt] object Load {
 
   def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData = {
     val (eval, pluginDef) = apply(dir, s, config)
-    val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
+    val pluginState =
+      Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, withoutUnloadHooks(s))
     config.evalPluginDef(Project.structure(pluginState), pluginState)
   }
+
+  /** Keeps the current build's unload and exit hooks out of a build that doesn't replace it. */
+  private[sbt] def withoutUnloadHooks(s: State): State =
+    s.copy(exitHooks = Set.empty).remove(onUnload.key)
 
   def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): LoadedPlugins =
     new LoadedPlugins(dir, data, loader, PluginDiscovery.discoverAll(data, loader))
