@@ -146,6 +146,37 @@ object AggregateActionCacheStore:
   lazy val empty: AggregateActionCacheStore = AggregateActionCacheStore(Nil)
 end AggregateActionCacheStore
 
+/**
+ * Passes reads through to `underlying` and drops writes, for a cache this build may read but not
+ * write. Short-circuiting in `put` also skips the `findBlobs` call `putBlobsIfNeeded` would make.
+ */
+final class ReadOnlyCacheStore(underlying: ActionCacheStore)
+    extends AbstractActionCacheStore,
+      AutoCloseable:
+  override def storeName: String = underlying.storeName
+
+  override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+    underlying.get(request)
+
+  override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+    underlying.findBlobs(refs)
+
+  override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+    underlying.syncBlobs(refs, outputDirectory)
+
+  override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+    Left(RuntimeException(s"${underlying.storeName} is read-only"))
+
+  override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] = Nil
+
+  /** Forwarded so that wrapping a store does not take away its ability to release a connection. */
+  override def close(): Unit = underlying match
+    case c: AutoCloseable => c.close()
+    case _                => ()
+
+  override def toString: String = s"ReadOnlyCacheStore($underlying)"
+end ReadOnlyCacheStore
+
 class InMemoryActionCacheStore extends AbstractActionCacheStore:
   private val underlying: mutable.Map[Digest, JValue] = mutable.Map.empty
   private val blobCache: mutable.Map[String, VirtualFile] = mutable.Map.empty

@@ -2,7 +2,7 @@ package sbt
 package plugins
 
 import Keys.*
-import sbt.util.DiskActionCacheStore
+import sbt.util.{ DiskActionCacheStore, ReadOnlyCacheStore }
 import sbt.internal.{ GrpcActionCacheStore, HttpActionCacheStore }
 
 object RemoteCachePlugin extends AutoPlugin:
@@ -58,7 +58,7 @@ object RemoteCachePlugin extends AutoPlugin:
                 disk = disk,
                 requestTimeout = remoteCacheRequestTimeout.value,
               )
-          orig ++ Seq(r)
+          orig ++ Seq(if remoteCacheReadOnly.value then ReadOnlyCacheStore(r) else r)
         case _ => orig
       end match
     },
