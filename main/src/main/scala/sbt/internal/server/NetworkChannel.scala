@@ -542,15 +542,6 @@ final class NetworkChannel(
   protected def onExecsRequest(execId: Option[String]): Unit =
     respondResult(ExecsResponse(StandardMain.exchange.execInfos), execId)
 
-  private def cancelWaiting(p: ExecInfo => Boolean): Vector[Exec] =
-    val removed = StandardMain.exchange.removeWaiting(p)
-    for
-      e <- removed
-      s <- e.source
-      case nc: NetworkChannel <- StandardMain.exchange.channelForName(s.channelName)
-    do nc.respondError(ErrorCodes.RequestCancelled, s"cancelled by $clientName", e.execId)
-    removed
-
   /** The channel whose exec `crp` cancels, or None when the id is ambiguous across channels. */
   private def cancelTarget(crp: CancelRequestParams): Option[String] =
     crp.channelName match
@@ -570,7 +561,7 @@ final class NetworkChannel(
       def matches(info: ExecInfo) =
         targetOpt.contains(info.channelName) &&
           (info.id == crp.id || crp.id == Serialization.CancelAll)
-      val waiting = cancelWaiting(matches)
+      val waiting = StandardMain.exchange.cancelWaiting(matches, clientName)
 
       def errorRespond(msg: String) = respondError(
         ErrorCodes.RequestCancelled,
