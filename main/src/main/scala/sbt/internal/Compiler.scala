@@ -603,7 +603,7 @@ object Compiler:
             import sbt.internal.inc.javac.JavaCompilerArguments
             val javaSourcesOnly: xsbti.VirtualFile => Boolean = _.id.endsWith(".java")
             val classpath = cp.map(converter.toPath).map(converter.toVirtualFile)
-            val options = Keys.javacOptions.value.toList
+            val options = resolveVirtualizedScalacOptions(Keys.javacOptions.value, rootPaths).toList
             cs.javaTools.javadoc.run(
               srcs.toArray
                 .map { x =>
