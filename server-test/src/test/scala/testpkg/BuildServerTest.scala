@@ -434,7 +434,7 @@ class BuildServerTest extends AbstractServerTest:
     val id2 = javacOptions(buildTargets)
     val javacResult =
       svr.session.waitForResultInResponseMsg[JavacOptionsResult](10.seconds, id2).get
-    val javacItem = javacResult.items.head
+    val javacItem = javacResult.items.find(_.target.uri == buildTargets.head).get
     assert(
       javacItem.classpath.exists(_.toString.contains("scala-library-2.13.11.jar")),
       "javacOptions classpath should contain scala-library"
@@ -443,6 +443,15 @@ class BuildServerTest extends AbstractServerTest:
       javacItem.classDirectory.contains(classDirectoryUri),
       s"expected classDirectory $classDirectoryUri, got ${javacItem.classDirectory}"
     )
+  }
+
+  test("buildTarget/javacOptions resolves virtual paths (#10029)") {
+    val id = javacOptions(Seq(buildTargetUri("javaProj", "Compile")))
+    val result = svr.session.waitForResultInResponseMsg[JavacOptionsResult](30.seconds, id).get
+    val options = result.items.head.options
+    val headers = options.lift(options.indexOf("-h") + 1).map(new File(_))
+    assert(options.forall(!_.contains("${")), s"unresolved virtual path: $options")
+    assert(headers.exists(f => f.isAbsolute && f.getName == "headers"), s"got $options")
   }
 
   test("buildTarget/scalacOptions resolves cache placeholders (#9578)") {
@@ -902,10 +911,9 @@ class BuildServerTest extends AbstractServerTest:
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
 
-  // sbt serves javac options via buildTarget/scalacOptions (no separate javacOptions endpoint)
   private def javacOptions(buildTargets: Seq[URI]): String =
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
-    sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
+    sendRequest("buildTarget/javacOptions", JavacOptionsParams(targets))
 
   private def buildTargetSources(buildTargets: Seq[URI]): String =
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector

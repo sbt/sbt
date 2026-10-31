@@ -335,7 +335,9 @@ object BuildServerProtocol:
     },
     bspBuildTargetJavacOptionsItem := {
       val target = Keys.bspTargetIdentifier.value
-      val javacOptions = Keys.javacOptions.value.toVector
+      val javacOptions = Compiler
+        .resolveVirtualizedScalacOptions(Keys.javacOptions.value, Keys.rootPaths.value)
+        .toVector
       val classDirectory = Keys.classDirectory.value
       val classpath = classpathTask.value
       JavacOptionsItem(target, javacOptions, classpath, classDirectory.toURI)
@@ -393,11 +395,13 @@ object BuildServerProtocol:
     final val Run = "buildTarget/run"
     final val CleanCache = "buildTarget/cleanCache"
     final val ScalacOptions = "buildTarget/scalacOptions"
+    final val JavacOptions = "buildTarget/javacOptions"
     final val JvmRunEnvironment = "buildTarget/jvmRunEnvironment"
     final val JvmTestEnvironment = "buildTarget/jvmTestEnvironment"
     final val ScalaTestClasses = "buildTarget/scalaTestClasses"
     final val ScalaMainClasses = "buildTarget/scalaMainClasses"
     final val Exit = "build/exit"
+  end Method
   identity(
     Method
   ) // silence spurious "private object Method in object BuildServerProtocol is never used" warning!
@@ -499,6 +503,12 @@ object BuildServerProtocol:
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetScalacOptions.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == Method.JavacOptions =>
+            val param = Converter.fromJson[JavacOptionsParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetJavacOptions.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
           case r if r.method == Method.JvmRunEnvironment =>
