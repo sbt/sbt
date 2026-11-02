@@ -78,11 +78,11 @@ final class CircuitBreakerCacheStore(
     else
       try
         val a = call
-        record(None, direction)
+        succeeded(direction)
         a
       catch
         case NonFatal(e) =>
-          record(Some(e), direction)
+          failed(e, direction)
           throw e
 
   private def guardEither(direction: Direction)(
@@ -92,11 +92,11 @@ final class CircuitBreakerCacheStore(
     else
       try
         val result = call
-        record(result.left.toOption, direction)
+        result.fold(failed(_, direction), _ => succeeded(direction))
         result
       catch
         case NonFatal(e) =>
-          record(Some(e), direction)
+          failed(e, direction)
           throw e
 
   @tailrec
@@ -116,12 +116,16 @@ final class CircuitBreakerCacheStore(
           else if state.compareAndSet(current, current.copy(probing = true)) then true
           else allowed(direction)
 
+  private def succeeded(direction: Direction): Unit = update(None, direction)
+
+  private def failed(e: Throwable, direction: Direction): Unit = update(Some(e), direction)
+
   @tailrec
-  private def record(failure: Option[Throwable], direction: Direction): Unit =
+  private def update(failure: Option[Throwable], direction: Direction): Unit =
     val current = state.get()
     val (next, report) = transition(current, failure, direction)
     if state.compareAndSet(current, next) then report.foreach(logger.warn(_))
-    else record(failure, direction)
+    else update(failure, direction)
 
   private def transition(
       current: State,
