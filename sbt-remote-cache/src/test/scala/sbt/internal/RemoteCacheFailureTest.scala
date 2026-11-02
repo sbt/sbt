@@ -32,8 +32,9 @@ object RemoteCacheFailureTest extends verify.BasicTestSuite:
     assert(classify(grpc("INVALID_ARGUMENT")) == CacheFailure.Answered)
 
   /**
-   * Builds the status by scanning the code values, because shading strips the enum flag from
-   * `Status.Code`, which leaves its constants unreachable from Scala.
+   * Looks the status up by name, because naming a constant of the shaded `Status.Code` fails at
+   * runtime here with `NoSuchFieldError: ... MODULE$`. `fromCodeValue` is a plain static method,
+   * so it is unaffected.
    */
   private def grpc(name: String): StatusRuntimeException =
     (0 to 16).iterator
