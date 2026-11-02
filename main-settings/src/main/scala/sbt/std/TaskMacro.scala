@@ -125,8 +125,8 @@ object TaskMacro:
 
     val cu0 = ContextUtil0(qctx, 0)
     val cl = cu0.cacheLevels(key.asTerm)
-    val cached =
-      ContextUtil.isTaskCacheByDefault && !isUncacheApplied && CacheLevelTag.isStored(cl)
+    val byDefault = ContextUtil.isTaskCacheByDefault(using qctx)
+    val cached = byDefault && !isUncacheApplied && CacheLevelTag.isStored(cl)
     t match
       case '{ if $cond then $thenp else $elsep } => taskIfImpl[A1](t, cached)
       case '{ InputWrapper.`wrapInitTask_\u2603\u2603`[A1]($in) }

@@ -4,7 +4,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-/** A global in-memory storage to pass information. */
+/**
+ * A global in-memory storage to pass information.
+ *
+ * @deprecated No longer read by sbt; macros read -Xmacro-settings from the compiler.
+ */
+@Deprecated
 public class Attic {
   private static List<String> _items = new ArrayList<String>();
 

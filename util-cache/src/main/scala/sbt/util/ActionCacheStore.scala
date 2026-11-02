@@ -82,9 +82,14 @@ trait AbstractActionCacheStore extends ActionCacheStore:
       if found.contains(ref) then None
       else Some(blob)
     val combined = putBlobs(missing).toSet ++ found
-    materialized.flatMap: (blob, plain) =>
+    val stored = materialized.flatMap: (blob, plain) =>
       val ref: HashedVirtualFileRef = blob
       if combined.contains(ref) then Some(plain) else None
+    // Recording an action result for blobs that did not land leaves an entry its key cannot be
+    // served from, so the caller has to see the failure rather than a shorter output list.
+    if stored.size != blobs.size then
+      throw IOException(s"failed to store ${blobs.size - stored.size} of ${blobs.size} blobs")
+    stored
 
   def notFound: Throwable =
     new RuntimeException("not found")

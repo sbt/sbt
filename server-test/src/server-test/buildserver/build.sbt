@@ -49,7 +49,7 @@ lazy val diagnostics = project
 lazy val javaProj = project
   .in(file("java-proj"))
   .settings(
-    javacOptions += "-Xlint:all"
+    javacOptions ++= Seq("-Xlint:all", "-h", "${OUT}/headers")
   )
 
 // lazy val twirlProj = project

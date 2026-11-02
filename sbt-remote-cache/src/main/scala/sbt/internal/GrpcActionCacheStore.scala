@@ -186,6 +186,23 @@ object GrpcActionCacheStore:
         s"failed to read ${failed.size} of ${responses.size} blobs: ${details.mkString(", ")}"
       )
 
+  /**
+   * Keeps the blobs a batch update stored. A batch reports its failures per blob inside a
+   * successful call, so a declined blob must not be recorded in the action result.
+   */
+  private[sbt] def storedBlobs(
+      blobs: Seq[VirtualFile],
+      responses: Seq[BatchUpdateBlobsResponse.Response],
+  ): Seq[HashedVirtualFileRef] =
+    val stored = responses.iterator
+      .filter(_.getStatus().getCode() == 0)
+      .map(r => BazelRemote.toDigest(r.getDigest()))
+      .toSet
+    blobs.flatMap: blob =>
+      val d = Digest(blob)
+      if stored(d) then Some(HashedVirtualFileRef.of(blob.id(), d.contentHashStr, d.sizeBytes))
+      else None
+
   def chunkBytes(sizeBytes: Long): List[Long] =
     if sizeBytes <= 0 then Nil
     else
@@ -367,15 +384,7 @@ class GrpcActionCacheStore private (
       b.addRequests(bb.build())
     val req = b.build()
     val result = casTransferStubWithDeadline.batchUpdateBlobs(req)
-    val responses = result.getResponsesList().asScala.toList
-    // do not assume responses to come in order
-    val lookupResponse: Map[Digest, BatchUpdateBlobsResponse.Response] =
-      Map(responses.map(res => toDigest(res.getDigest()) -> res)*)
-    blobs.flatMap: blob =>
-      val d = Digest(blob)
-      if lookupResponse.contains(d) then
-        Some(HashedVirtualFileRef.of(blob.id(), d.contentHashStr, d.sizeBytes))
-      else None
+    storedBlobs(blobs, result.getResponsesList().asScala.toList)
   end batchUpdateBlobs
 
   def uploadBlobs(blobs: Seq[VirtualFile]): Future[Seq[HashedVirtualFileRef]] =

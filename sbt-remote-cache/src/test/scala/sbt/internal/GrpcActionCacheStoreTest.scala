@@ -1,15 +1,21 @@
 package sbt
 package internal
 
-import build.bazel.remote.execution.v2.{ BatchReadBlobsResponse, Digest as XDigest }
+import build.bazel.remote.execution.v2.{
+  BatchReadBlobsResponse,
+  BatchUpdateBlobsResponse,
+  Digest as XDigest
+}
 import com.eed3si9n.remoteapis.shaded.com.google.rpc.Status as RpcStatus
 import java.io.IOException
 import java.net.URI
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import sbt.internal.inc.PlainVirtualFileConverter
-import sbt.util.DiskActionCacheStore
+import sbt.internal.util.StringVirtualFile1
+import sbt.util.{ Digest, DiskActionCacheStore }
 import scala.concurrent.duration.*
+import xsbti.VirtualFile
 
 object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
   test("chunkBytes"):
@@ -108,6 +114,24 @@ object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
         "no exception"
       catch case e: IOException => e.getMessage
     assert(message.contains("failed to read 1 of 2 blobs: b (code 5"), message)
+
+  // A batch update reports its failures per blob inside a successful call, so keying the
+  // responses by digest alone counted a declined blob as stored, and the action result then
+  // referred to a blob the CAS does not have.
+  test("A batch update records only the blobs the server stored"):
+    val a = StringVirtualFile1("a.txt", "a")
+    val b = StringVirtualFile1("b.txt", "b")
+    def response(blob: VirtualFile, code: Int) =
+      BatchUpdateBlobsResponse.Response
+        .newBuilder()
+        .setDigest(BazelRemote.toXDigest(Digest(blob)))
+        .setStatus(RpcStatus.newBuilder().setCode(code))
+        .build()
+    val both = GrpcActionCacheStore.storedBlobs(Seq(a, b), Seq(response(a, 0), response(b, 0)))
+    assert(both.map(_.id) == Seq("a.txt", "b.txt"))
+    // 7 is PERMISSION_DENIED in google.rpc.Code.
+    val one = GrpcActionCacheStore.storedBlobs(Seq(a, b), Seq(response(a, 0), response(b, 7)))
+    assert(one.map(_.id) == Seq("a.txt"))
 
   private def newStore(requestTimeout: FiniteDuration = 60.seconds): GrpcActionCacheStore =
     val base = Files.createTempDirectory("grpc-action-cache-test")

@@ -877,6 +877,10 @@ object Defaults extends BuildCommon with DefExtra:
       derive(compilersSetting),
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value)),
       derive(scalaEarlyVersion := CrossVersion.earlyScalaVersion(scalaVersion.value)),
+      derive(
+        resolvedScalacOptions := Compiler
+          .resolveVirtualizedScalacOptions(scalacOptions.value, rootPaths.value)
+      ),
     )
   )
 
@@ -1141,9 +1145,6 @@ object Defaults extends BuildCommon with DefExtra:
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
       consoleQuick / scalacOptions := Compiler.toConsoleScalacOptions(scalacOptions.value),
-      resolvedScalacOptions := Def.uncached {
-        Compiler.resolveVirtualizedScalacOptions(scalacOptions.value, rootPaths.value)
-      },
       consoleQuick / forkOptions := Def.uncached((console / forkOptions).value),
       discoveredMainClasses := compile
         .map(discoverMainClasses)

@@ -16,6 +16,7 @@ $ touch marker
 $ sleep 1000
 $ copy-file changes/C.scala use/src/main/scala/C.scala
 > use/compile
+> use/checkPortableAnalysis
 $ exists out2/jvm/scala-3.8.4/use/classes/A1.class
 $ newer out2/jvm/scala-3.8.4/use/classes/C.class marker
 -$ newer out2/jvm/scala-3.8.4/use/classes/A1.class marker

@@ -4,6 +4,8 @@ scalaVersion := "2.13.16"
 
 addCompilerPlugin(("org.typelevel" % "kind-projector" % "0.13.3").cross(CrossVersion.full))
 
+Test / compile / scalacOptions += "-deprecation"
+
 check := Def.uncached {
   val raw = (Compile / scalacOptions).value
   val resolved = (Compile / resolvedScalacOptions).value
@@ -23,4 +25,10 @@ check := Def.uncached {
   val jar = new java.io.File(pluginArg.stripPrefix("-Xplugin:"))
   assert(jar.isAbsolute, s"resolved -Xplugin path is not absolute: $jar")
   assert(jar.exists, s"resolved -Xplugin jar does not exist: $jar")
+
+  val testResolved = (Test / compile / resolvedScalacOptions).value
+  assert(
+    testResolved.contains("-deprecation"),
+    s"Test / compile / resolvedScalacOptions misses compile-scoped scalacOptions: $testResolved"
+  )
 }

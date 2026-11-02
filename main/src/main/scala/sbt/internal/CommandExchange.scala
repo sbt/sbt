@@ -24,6 +24,7 @@ import sbt.BasicCommandStrings.{
   networkExecPrefix
 }
 import sbt.BasicKeys.*
+import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.server.*
 import sbt.internal.ui.UITask
@@ -203,6 +204,16 @@ private[sbt] final class CommandExchange:
     })
     notifyExecsChanged()
     removed.result()
+
+  /** Removes the waiting execs matching `p` and tells each network owner who cancelled them. */
+  private[sbt] def cancelWaiting(p: ExecInfo => Boolean, by: String): Vector[Exec] =
+    val removed = removeWaiting(p)
+    for
+      e <- removed
+      s <- e.source
+      case nc: NetworkChannel <- channelForName(s.channelName)
+    do nc.respondError(ErrorCodes.RequestCancelled, s"cancelled by $by", e.execId)
+    removed
 
   /** Sends sbt/execsChanged to the subscribed channels when the execs have changed. */
   private[sbt] def notifyExecsChanged(): Unit = lastExecInfos.synchronized {
@@ -507,21 +518,6 @@ private[sbt] final class CommandExchange:
     lastActivityTime.set(System.currentTimeMillis)
     if (previous ++ exec).exists(execInfo(_, "running").isDefined) then notifyExecsChanged()
 
-  /**
-   * Handles an `sbt/shutdown` request with `force: true`. A graceful request is queued like
-   * `sbt/exec shutdown` and does not come here. Every forced request is accepted, including one
-   * sent while a shutdown is already pending.
-   *
-   * Unlike a `shutdown` typed in a console, this request does not disconnect the requesting channel early.
-   */
-  private[sbt] def onForceShutdownRequest(
-      channelName: String,
-      requestId: String,
-      respond: ExecStatusEvent => Unit
-  ): Unit =
-    respond(ExecStatusEvent("Processing", Some(channelName), Some(requestId), Vector.empty))
-    shutdown(channelName, requestId)
-
   private def idleSeconds: Long =
     (System.currentTimeMillis - lastActivityTime.get) / 1000
 
@@ -604,11 +600,13 @@ private[sbt] final class CommandExchange:
       }
 
   /**
-   * Forces a shutdown: replaces the queue with a `shutdown` and then cancels the running command,
-   * so the main loop finds nothing else to start once the cancelled command ends.
+   * Forces a shutdown: answers and drops the waiting execs, queues a `shutdown` and cancels the
+   * running command, so the main loop finds nothing else to start once the cancelled command ends.
    */
   private[sbt] def shutdown(name: String, execId: String = Exec.newExecId): Unit =
     val running = currentExec
+    val client = channelForName(name).fold(name)(_.clientName)
+    cancelWaiting(_ => true, s"shutdown from $client")
     commandQueue.clear()
     commandQueue.add(Exec(Shutdown, Some(execId), Some(CommandSource(name))))
     running.foreach(cancel)

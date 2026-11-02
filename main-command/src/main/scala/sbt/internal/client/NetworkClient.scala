@@ -1218,7 +1218,8 @@ class NetworkClient(
       )
       sendAndWait(Shutdown, None)
     else
-      // released only when the server answers with an error; success never answers, it closes
+      // released only when the server answers with an error; an accepted request is never
+      // answered, the server closes the connection instead
       val refused = CountDownLatch(1)
       val execId = UUID.randomUUID.toString
       def handleShutdownResponse(msg: JsonRpcResponseMessage): Unit =

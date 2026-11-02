@@ -1,6 +1,11 @@
 import sbt.internal.util.CacheEventSummary
+import java.nio.charset.StandardCharsets.ISO_8859_1
+import java.nio.file.Files
+import java.util.zip.GZIPInputStream
+import scala.util.Using
 
 lazy val checkHit = taskKey[Unit]("asserts the previous command was a pure cache hit")
+lazy val checkPortableAnalysis = taskKey[Unit]("asserts the analysis holds no machine path")
 
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
@@ -14,7 +19,16 @@ lazy val plugin = project.settings(
 
 lazy val use = project
   .dependsOn(plugin % Configurations.CompilerPlugin)
-  .settings(autoCompilerPlugins := true)
+  .settings(
+    autoCompilerPlugins := true,
+    checkPortableAnalysis := Def.uncached {
+      val analysis = (Compile / compileAnalysisFile).value.toPath
+      val stored = Using.resource(new GZIPInputStream(Files.newInputStream(analysis))): in =>
+        new String(in.readAllBytes(), ISO_8859_1)
+      Seq((ThisBuild / baseDirectory).value.toPath.toString, sys.props("user.home")).foreach: p =>
+        assert(!stored.contains(p), s"$analysis holds the machine path $p")
+    },
+  )
 
 lazy val app = project.dependsOn(use)
 

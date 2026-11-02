@@ -96,9 +96,7 @@ private[sbt] object LanguageServerProtocol:
               .map(Converter.fromJson[SbtShutdownParams](_).get)
               .flatMap(_.force)
               .getOrElse(false)
-            if force then
-              StandardMain.exchange
-                .onForceShutdownRequest(name, r.id, jsonRpcRespond(_, Some(r.id)))
+            if force then StandardMain.exchange.shutdown(name, r.id)
             else appendExec(BasicCommandStrings.Shutdown, Some(r.id))
           }
 

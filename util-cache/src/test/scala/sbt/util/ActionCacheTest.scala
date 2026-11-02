@@ -1251,6 +1251,26 @@ object ActionCacheTest extends BasicTestSuite:
         assert(store.syncBlobs(Seq(ref), outDir.toPath).nonEmpty)
         assert(store.storeName == disk.storeName)
 
+  // An action result recorded for blobs that did not land is an entry its own key cannot be
+  // served from, so a store that drops blobs has to fail rather than report a shorter list.
+  test("putBlobsIfNeeded fails when a blob did not land"):
+    class DroppingStore extends AbstractActionCacheStore:
+      override def storeName: String = "dropping"
+      override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+        Left(notFound)
+      override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+        Left(notFound)
+      override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] = Nil
+      override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+        Nil
+      override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] = Nil
+    val message =
+      try
+        DroppingStore().putBlobsIfNeeded(Seq(StringVirtualFile1("a.txt", "hello")))
+        "no exception"
+      catch case e: IOException => e.getMessage
+    assert(message.contains("failed to store 1 of 1 blobs"), message)
+
   test("Disk cache recovers when the cache directory is deleted mid-session"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: outDir =>
