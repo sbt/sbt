@@ -142,7 +142,8 @@ object Keys {
   @transient
   val remoteCacheRequestTimeout = settingKey[FiniteDuration]("Timeout for remote cache operations.")
   @transient
-  val remoteCacheReadOnly = settingKey[Boolean]("Read from the remote cache without writing to it.")
+  val remoteCacheUploadResults =
+    settingKey[Boolean]("Upload results to the remote cache, as opposed to only reading from it.")
 
   val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 

@@ -58,7 +58,7 @@ object RemoteCachePlugin extends AutoPlugin:
                 disk = disk,
                 requestTimeout = remoteCacheRequestTimeout.value,
               )
-          orig ++ Seq(if remoteCacheReadOnly.value then ReadOnlyCacheStore(r) else r)
+          orig ++ Seq(if remoteCacheUploadResults.value then r else ReadOnlyCacheStore(r))
         case _ => orig
       end match
     },
