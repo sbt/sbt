@@ -22,8 +22,9 @@ object RemoteCacheFailure:
     case _              => CacheFailure.Answered
 
   /**
-   * Matches the status by name because shading strips the enum flag from `Status.Code`, which
-   * leaves its constants unreachable from Scala.
+   * Matches the name rather than the constants of the shaded `Status.Code`: reading one of those
+   * compiles, then fails at runtime with `NoSuchFieldError: ... Status MODULE$`, as though the
+   * class were a Scala object. The classfile itself is a well-formed Java enum.
    */
   private def fromGrpc(code: String): CacheFailure = code match
     case "PERMISSION_DENIED" | "UNAUTHENTICATED" => CacheFailure.Permanent
