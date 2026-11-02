@@ -1,7 +1,7 @@
 package sbt
 package internal
 
-import com.eed3si9n.remoteapis.shaded.io.grpc.StatusRuntimeException
+import com.eed3si9n.remoteapis.shaded.io.grpc.{ Status, StatusRuntimeException }
 import gigahorse.StatusError
 import java.io.IOException
 import sbt.util.CacheFailure
@@ -14,21 +14,17 @@ object RemoteCacheFailure:
    * counts as an answer, so an unexpected failure keeps the cache in use rather than disabling it.
    */
   private[sbt] def classify(e: Throwable): CacheFailure = e match
-    case e: StatusRuntimeException => fromGrpc(e.getStatus().getCode().name())
+    case e: StatusRuntimeException => fromGrpc(e.getStatus().getCode())
     case e: StatusError            => fromHttp(e.status)
     case _: TimeoutException       => CacheFailure.Transient
     // A refused connection or a reset socket, which gRPC would have reported as UNAVAILABLE.
     case _: IOException => CacheFailure.Transient
     case _              => CacheFailure.Answered
 
-  /**
-   * Matches the name rather than the constants of the shaded `Status.Code`: reading one of those
-   * compiles, then fails at runtime with `NoSuchFieldError: ... Status MODULE$`, as though the
-   * class were a Scala object. The classfile itself is a well-formed Java enum.
-   */
-  private def fromGrpc(code: String): CacheFailure = code match
-    case "PERMISSION_DENIED" | "UNAUTHENTICATED" => CacheFailure.Permanent
-    case "UNAVAILABLE" | "DEADLINE_EXCEEDED" | "INTERNAL" | "RESOURCE_EXHAUSTED" | "ABORTED" =>
+  private def fromGrpc(code: Status.Code): CacheFailure = code match
+    case Status.Code.PERMISSION_DENIED | Status.Code.UNAUTHENTICATED => CacheFailure.Permanent
+    case Status.Code.UNAVAILABLE | Status.Code.DEADLINE_EXCEEDED | Status.Code.INTERNAL |
+        Status.Code.RESOURCE_EXHAUSTED | Status.Code.ABORTED =>
       CacheFailure.Transient
     case _ => CacheFailure.Answered
 
