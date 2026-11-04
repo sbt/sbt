@@ -206,7 +206,8 @@ object Keys {
   @transient
   val resources = taskKey[Seq[File]]("All resource files, both managed and unmanaged.").withRank(DTask)
   val resourcesVF = taskKey[Vector[HashedVirtualFileRef]]("All resource files, both managed and unmanaged.").withRank(BTask)
-  private[sbt] val resourceDigests = taskKey[Seq[Digest]]("All resource files, both managed and unmanaged.").withRank(BTask)
+  private[sbt] val resourceDigests = taskKey[Seq[Digest]]("All resource files on the classpath, also of other projects.").withRank(BTask)
+  private[sbt] val ownResourceDigests = taskKey[Seq[Digest]]("All resource files of the configuration, both managed and unmanaged.").withRank(BTask)
 
   // Output paths
   @transient

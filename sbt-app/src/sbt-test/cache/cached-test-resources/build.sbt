@@ -17,12 +17,12 @@ lazy val app = project
     libraryDependencies += verify % Test,
     testFrameworks += new TestFramework("verify.runner.Framework"),
     Compile / unmanagedResourceDirectories += baseDirectory.value / "extra-resources",
-    inConfig(Test)(checkResourceDigests := {
-      val digests = sbt.internal.IncrementalTest.classpathResourceDigestsTask.value
+    Test / checkResourceDigests := {
+      val digests = (Test / sbt.cachedtestresources.PrivateKeys.resourceDigests).value
       val expected = Seq("app.txt", "same.txt", "core.txt", "same.txt", "util.txt")
       val message = s"expected the digests of $expected, got ${digests.size}"
       assert(digests.size == expected.size, message)
-    }),
+    },
   )
 
 lazy val remapped = project

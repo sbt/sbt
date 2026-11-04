@@ -683,11 +683,12 @@ object Defaults extends BuildCommon with DefExtra:
     resourcesVF := Def.uncached(
       managedResourcesVF.value ++ unmanagedResourcesVF.value
     ),
-    resourceDigests := Def.uncached {
+    ownResourceDigests := Def.uncached {
       val uifs = (unmanagedResources / inputFileStamps).value
       val mifs = (managedResources / inputFileStamps).value
       IncrementalTest.resourceDigests(uifs ++ mifs, resourceDirectories.value)
     },
+    resourceDigests := Def.uncached(IncrementalTest.classpathResourceDigestsTask.value),
   )
   lazy val outputConfigPaths: Seq[Setting[?]] = Seq(
     classDirectory := target.value / (prefix(configuration.value.name) + "classes"),

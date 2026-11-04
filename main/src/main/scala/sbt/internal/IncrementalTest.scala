@@ -79,7 +79,7 @@ object IncrementalTest:
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
     val opts = (Keys.test / Keys.testOptionDigests).value
     val converter = fileConverter.value
-    val rds = classpathResourceDigestsTask.value
+    val rds = Keys.resourceDigests.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
     val scope = DigestHasher.hashUnsafe(Def.setting {
@@ -119,7 +119,7 @@ object IncrementalTest:
           val configs =
             ((ref, self.name) +: ClasspathImpl.interSort(ref, conf, data, deps)).distinct
           configs
-            .map((p, c) => ClasspathImpl.getClasspath(Keys.resourceDigests, p, c, data))
+            .map((p, c) => ClasspathImpl.getClasspath(Keys.ownResourceDigests, p, c, data))
             .distinct
             .join
             .map(_.flatten)
