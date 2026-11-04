@@ -10,6 +10,8 @@ package sbt
 package internal
 
 import java.io.File
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import Keys.{ fileConverter, fullClasspath, streams }
 import sbt.Def.Initialize
@@ -17,7 +19,9 @@ import sbt.internal.inc.Analysis
 import sbt.internal.util.Attributed
 import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
+import sbt.nio.FileStamp
 import sbt.protocol.testing.TestResult
+import sbt.std.TaskExtra.*
 import sbt.util.{
   ActionCache,
   BuildWideCacheConfiguration,
@@ -95,6 +99,50 @@ object IncrementalTest:
         case None     => Nil
     )*)
   }
+
+  /**
+   * The resource digests of this configuration and of the configurations on its classpath, also of
+   * other projects, once per task. The classpath configuration can be another one.
+   */
+  def classpathResourceDigestsTask: Initialize[Task[Seq[Digest]]] =
+    Def
+      .task:
+        (
+          Keys.thisProjectRef.value,
+          Keys.classpathConfiguration.value,
+          Keys.configuration.value,
+          Keys.settingsData.value,
+          Keys.buildDependencies.value,
+        )
+      .flatMapTask: (ref, conf, self, data, deps) =>
+        Def.value[Task[Seq[Digest]]]:
+          val configs =
+            ((ref, self.name) +: ClasspathImpl.interSort(ref, conf, data, deps)).distinct
+          configs
+            .map((p, c) => ClasspathImpl.getClasspath(Keys.ownResourceDigests, p, c, data))
+            .distinct
+            .join
+            .map(_.flatten)
+
+  /**
+   * Digests of resources by their path on the classpath, as copyResources maps them, and content,
+   * ordered by that path and then by the position of their resource directory.
+   */
+  def resourceDigests(stamps: Seq[(Path, FileStamp)], dirs: Seq[File]): Seq[Digest] =
+    val sortedDirs = dirs.sorted
+    def name(p: Path): String =
+      sortedDirs.iterator
+        .flatMap(IO.relativize(_, p.toFile))
+        .nextOption()
+        .getOrElse(p.getFileName.toString)
+        .replace('\\', '/')
+    def dirIndex(p: Path): Int =
+      val i = dirs.indexWhere(d => p.startsWith(d.toPath))
+      if i < 0 then dirs.size else i
+    stamps
+      .map((p, stamp) => (name(p), dirIndex(p), FileStamp.toDigest(p, stamp)))
+      .sortBy((n, i, _) => (n, i))
+      .map((n, _, d) => Digest.sha256Hash(Digest.sha256Hash(n.getBytes(UTF_8)), d))
 
   def extraTestDigestsTask: Initialize[Task[Seq[Digest]]] = Def.cachedTask {
     // by default this captures JVM version
