@@ -48,5 +48,6 @@ object RemoteCache:
     remoteCacheTlsClientKey := SysProp.remoteCacheTlsClientKey,
     remoteCacheHeaders := SysProp.remoteCacheHeaders,
     remoteCacheRequestTimeout := SysProp.remoteCacheRequestTimeout,
+    remoteCacheCooldown := SysProp.remoteCacheCooldown,
   )
 end RemoteCache

@@ -104,6 +104,8 @@ object SysProp:
     .toList
   def remoteCacheRequestTimeout: FiniteDuration =
     long("sbt.remote_cache.request_timeout", 60L).seconds
+  def remoteCacheCooldown: FiniteDuration =
+    long("sbt.remote_cache.cooldown", 60L).seconds
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
