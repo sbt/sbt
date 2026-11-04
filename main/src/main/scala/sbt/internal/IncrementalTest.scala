@@ -18,6 +18,7 @@ import sbt.internal.util.Attributed
 import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.protocol.testing.TestResult
+import sbt.std.TaskExtra.*
 import sbt.util.{
   ActionCache,
   BuildWideCacheConfiguration,
@@ -75,7 +76,7 @@ object IncrementalTest:
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
     val opts = (Keys.test / Keys.testOptionDigests).value
     val converter = fileConverter.value
-    val rds = Keys.resourceDigests.value
+    val rds = classpathResourceDigestsTask.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
     val scope = DigestHasher.hashUnsafe(Def.setting {
@@ -95,6 +96,30 @@ object IncrementalTest:
         case None     => Nil
     )*)
   }
+
+  /**
+   * The resource digests of this configuration and of the configurations on its classpath, also of
+   * other projects, once per task. The classpath configuration can be another one.
+   */
+  def classpathResourceDigestsTask: Initialize[Task[Seq[Digest]]] =
+    Def
+      .task:
+        (
+          Keys.thisProjectRef.value,
+          Keys.classpathConfiguration.value,
+          Keys.configuration.value,
+          Keys.settingsData.value,
+          Keys.buildDependencies.value,
+        )
+      .flatMapTask: (ref, conf, self, data, deps) =>
+        Def.value[Task[Seq[Digest]]]:
+          val configs =
+            ((ref, self.name) +: ClasspathImpl.interSort(ref, conf, data, deps)).distinct
+          configs
+            .map((p, c) => ClasspathImpl.getClasspath(Keys.resourceDigests, p, c, data))
+            .distinct
+            .join
+            .map(_.flatten)
 
   def extraTestDigestsTask: Initialize[Task[Seq[Digest]]] = Def.cachedTask {
     // by default this captures JVM version
