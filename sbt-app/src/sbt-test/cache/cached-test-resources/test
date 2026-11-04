@@ -1,6 +1,7 @@
 > app/Test/checkResourceDigests
 > app/test
 > remapped/test
+> shadowed/test
 
 # a changed main resource invalidates the cached test results
 $ copy-file app/src/main/resources/app.txt saved/app.txt
@@ -26,6 +27,15 @@ $ delete ran
 > app/test
 $ absent ran
 
+# swapping the contents of two resources with the same path on the classpath invalidates the
+# results too, whichever of them the test reads
+$ copy-file shadowed/src/main/resources/shadow.txt saved/shadow.txt
+$ copy-file shadowed/extra-resources/shadow.txt shadowed/src/main/resources/shadow.txt
+$ copy-file saved/shadow.txt shadowed/extra-resources/shadow.txt
+$ delete ran-shadowed
+> shadowed/test
+$ exists ran-shadowed
+
 # and so does removing one of two equal resources of different projects
 $ copy-file app/src/main/resources/same.txt saved/same.txt
 $ delete app/src/main/resources/same.txt
@@ -35,3 +45,15 @@ $ copy-file saved/same.txt app/src/main/resources/same.txt
 # and a changed test resource, also when the classpath configuration is another one
 $ copy-file changes/other.txt remapped/src/test/resources/remapped.txt
 -> remapped/test
+
+# a resource moved to another resource directory keeps its path on the classpath, and the result
+$ copy-file app/src/main/resources/app.txt app/extra-resources/app.txt
+$ delete app/src/main/resources/app.txt
+$ delete ran
+> app/test
+$ absent ran
+
+# but a renamed resource invalidates the results, also with the same content
+$ copy-file app/extra-resources/app.txt app/extra-resources/renamed.txt
+$ delete app/extra-resources/app.txt
+-> app/test

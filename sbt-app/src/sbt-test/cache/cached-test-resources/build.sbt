@@ -16,6 +16,7 @@ lazy val app = project
   .settings(
     libraryDependencies += verify % Test,
     testFrameworks += new TestFramework("verify.runner.Framework"),
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "extra-resources",
     inConfig(Test)(checkResourceDigests := {
       val digests = sbt.internal.IncrementalTest.classpathResourceDigestsTask.value
       val expected = Seq("app.txt", "same.txt", "core.txt", "same.txt", "util.txt")
@@ -29,4 +30,12 @@ lazy val remapped = project
     libraryDependencies += verify % Runtime,
     testFrameworks += new TestFramework("verify.runner.Framework"),
     Test / classpathConfiguration := Runtime,
+  )
+
+lazy val shadowed = project
+  .settings(
+    exportJars := false,
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "extra-resources",
+    libraryDependencies += verify % Test,
+    testFrameworks += new TestFramework("verify.runner.Framework"),
   )
