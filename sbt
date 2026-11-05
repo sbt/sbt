@@ -365,7 +365,15 @@ addJdkWorkaround () {
     :
   else
     if [[ "$is_25" == "1" ]]; then
-      addJava "--sun-misc-unsafe-memory-access=allow"
+      local sun_misc_unsafe="false"
+      for i in "${java_args[@]}"; do
+        if [[ "${i}" == *--sun-misc-unsafe-memory-access=* ]] ; then
+          sun_misc_unsafe="true"
+        fi
+      done
+      if [[ "$sun_misc_unsafe" != "true" ]] ; then
+        addJava "--sun-misc-unsafe-memory-access=allow"
+      fi
       addJava "--enable-native-access=ALL-UNNAMED"
     fi
   fi
