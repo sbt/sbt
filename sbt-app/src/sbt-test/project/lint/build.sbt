@@ -2,6 +2,8 @@ ThisBuild / doc / scalacOptions += "-Xsomething"
 
 ThisBuild / shellPrompt := { state => "sbt> " }
 
+ThisBuild / initialProject := Some(root)
+
 // watch related settings
 ThisBuild / sbt.nio.Keys.watchTriggers := Seq()
 ThisBuild / sbt.nio.Keys.watchPersistFileStamps := true
