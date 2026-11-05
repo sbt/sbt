@@ -25,7 +25,7 @@ object Runner:
     if isSbt2 then 17 else 8
 
   def buildSbtOpts(opts: LauncherOptions): Seq[String] =
-    var s: Seq[String] = Nil
+    var s: Vector[String] = Vector.empty
     if opts.debug then s = s :+ "-debug"
     if opts.debugInc then s = s :+ "-Dxsbt.inc.debug=true"
     if opts.noColors then s = s :+ "-Dsbt.log.noformat=true"
