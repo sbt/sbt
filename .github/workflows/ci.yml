@@ -98,6 +98,10 @@ jobs:
           Get-Process sbt -ErrorAction SilentlyContinue | Stop-Process -Force
           # Remove all SBT named pipes, suppress errors if none exist
           Remove-Item "\\.\pipe\sbt-*" -ErrorAction SilentlyContinue
+      - uses: eed3si9n/scruff@v0.3.0
+        with:
+          format: false
+          lint: true
       - name: Setup JDK
         uses: actions/setup-java@v6
         with:

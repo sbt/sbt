@@ -1,0 +1,14 @@
+version = "0.3.0"
+dialect = "scala3"
+
+exclude-paths = [
+  "glob:**/src/sbt-test/**",
+  "glob:**/community-build/**",
+  "glob:**/io/io/**",
+  "glob:**/zinc/internal/**",
+]
+
+[lint]
+select = [
+  "no_return",
+]

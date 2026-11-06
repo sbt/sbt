@@ -48,7 +48,6 @@ ThisBuild / scmInfo := Some(
 )
 ThisBuild / resolvers += Resolver.mavenLocal
 ThisBuild / mimaFailOnNoPrevious := false
-ThisBuild / scalafixOnCompile := true
 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
