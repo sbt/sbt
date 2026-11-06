@@ -98,8 +98,11 @@ object Main:
           sbtOpts = finalSbt
 
           if !opts.noHideJdkWarnings && javaVer >= 25 then
+            if !sbtOpts.exists(_.contains("--sun-misc-unsafe-memory-access=")) then
+              sbtOpts = sbtOpts ++ Seq("--sun-misc-unsafe-memory-access=allow")
+            end if
+
             sbtOpts = sbtOpts ++ Seq(
-              "--sun-misc-unsafe-memory-access=allow",
               "--enable-native-access=ALL-UNNAMED"
             )
           val javaOptsWithDebug = opts.jvmDebug.fold(finalJava)(port =>
