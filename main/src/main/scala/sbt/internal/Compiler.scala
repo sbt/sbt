@@ -34,7 +34,7 @@ import sbt.librarymanagement.{
   SemanticSelector,
   VersionNumber
 }
-import sbt.util.Logger
+import sbt.util.{ ActionCacheStore, Logger, ReadOnlyCacheStore }
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.util.{ Random, Using }
@@ -731,4 +731,19 @@ object Compiler:
       case Some(a: Analysis) => a.relations.allSources.nonEmpty
       case _                 => false
 
+  /** Closes the stores in `oldStores` whose unwrapped store is not reused by `newStores`. */
+  def closeDroppedCacheStores(
+      oldStores: Seq[ActionCacheStore],
+      newStores: Seq[ActionCacheStore]
+  ): Unit =
+    def unwrap(store: ActionCacheStore): ActionCacheStore = store match
+      case r: ReadOnlyCacheStore => unwrap(r.underlying)
+      case _                     => store
+    val kept = newStores.map(unwrap)
+    oldStores
+      .map(unwrap)
+      .distinct
+      .foreach:
+        case store: AutoCloseable if !kept.exists(_ eq store) => store.close()
+        case _                                                => ()
 end Compiler

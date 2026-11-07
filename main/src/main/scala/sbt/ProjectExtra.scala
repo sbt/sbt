@@ -40,6 +40,7 @@ import Scope.{ Global, ThisScope }
 import sbt.ScopeAxis.Select
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{
+  Compiler,
   Load,
   BuildStructure,
   KeyIndex,
@@ -375,14 +376,9 @@ trait ProjectExtra extends Scoped.Syntax:
       val hs: Option[Seq[ServerHandler]] = get(ThisBuild / fullServerHandlers)
       val caches: Option[Seq[ActionCacheStore]] = get(cacheStores)
       // cacheStores is recomputed on every reload; close any store dropped from the new value.
-      s.attributes.get(cacheStores.key) match
-        case Some(oldCaches) =>
-          val kept = caches.getOrElse(Nil)
-          oldCaches.foreach {
-            case store: AutoCloseable if !kept.exists(_ eq store) => store.close()
-            case _                                                => ()
-          }
-        case None => ()
+      s.attributes
+        .get(cacheStores.key)
+        .foreach(Compiler.closeDroppedCacheStores(_, caches.getOrElse(Nil)))
       val rod: Option[NioPath] = get(rootOutputDirectory)
       val fileConverter: Option[FileConverter] = get(Keys.fileConverter)
       val commandDefs = allCommands.distinct.flatten[Command].map(_.tag(projectCommand, true))
