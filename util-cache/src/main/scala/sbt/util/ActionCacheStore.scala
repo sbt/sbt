@@ -155,7 +155,7 @@ end AggregateActionCacheStore
  * Passes reads through to `underlying` and drops writes, for a cache this build may read but not
  * write. Short-circuiting in `put` also skips the `findBlobs` call `putBlobsIfNeeded` would make.
  */
-final class ReadOnlyCacheStore(underlying: ActionCacheStore)
+final class ReadOnlyCacheStore(val underlying: ActionCacheStore)
     extends AbstractActionCacheStore,
       AutoCloseable:
   override def storeName: String = underlying.storeName

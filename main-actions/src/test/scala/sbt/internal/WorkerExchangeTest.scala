@@ -1,7 +1,7 @@
 package sbt
 package internal
 
-import hedgehog.*
+import hedgehog.{ sbt as _, * }
 import hedgehog.runner.*
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.core.Result
@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.*
 import scala.sys.process.Process
 import scala.util.Using
-import _root_.sbt.util.Logger
+import sbt.util.Logger
 
 object WorkerExchangeTest extends Properties:
   given Gen[WorkerConnection] =

@@ -14,13 +14,13 @@ Property-based testing with HedgeHog
 
 sbt contains various testing frameworks, but our preferred unit testing framework is HedgeHog.
 
-See [main-actions/src/test/scala/sbt/internal/WorkerExchangeTest.scala](../main-actions/src/test/scala/sbt/internal/WorkerExchangeTest.scala) for an example.
+Often the test sources live in the `sbt` package, and `import hedgehog.*` brings in a `hedgehog.sbt` package that shadows it, breaking imports such as `sbt.io.IO`. Mask it in the import with `import hedgehog.{ sbt as _, * }`. See [main-actions/src/test/scala/sbt/internal/WorkerExchangeTest.scala](../main-actions/src/test/scala/sbt/internal/WorkerExchangeTest.scala) for an example.
 
 ```scala
 package sbt
 package internal
 
-import hedgehog.*
+import hedgehog.{ sbt as _, * }
 import hedgehog.runner.*
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.core.Result
@@ -59,7 +59,7 @@ HedgeHog can be used for simple unit testing as well using `example(...)`:
 ```scala
 package sbt.internal.util
 
-import hedgehog.*
+import hedgehog.{ sbt as _, * }
 import hedgehog.runner.*
 
 object SourcePositionTest extends Properties:
