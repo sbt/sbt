@@ -71,12 +71,14 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
         final StringBuilder builder = new StringBuilder();
         for (final URL u : urls) {
           final File f = new File(u.getPath());
-          if (f.exists()) builder.append(f.toString()).append('\n');
+          if (!f.exists()) builder.append(f.toString()).append('\n');
         }
         final String deleted = builder.toString();
         if (!deleted.isEmpty()) {
           final String msg =
-              "Couldn't load class $name. "
+              "Couldn't load class "
+                  + name
+                  + ". "
                   + "The following urls on the classpath do not exist:\n"
                   + deleted
                   + "This may be due to shutdown hooks added during an invocation of `run`.";
