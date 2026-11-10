@@ -1,0 +1,3 @@
+> run target
+$ sleep 3000
+> check

@@ -50,6 +50,19 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
       this.urls = urls;
     }
 
+    @Override
+    protected Class<?> loadClass(final String name, final boolean resolve)
+        throws ClassNotFoundException {
+      synchronized (getClassLoadingLock(name)) {
+        final Class<?> loaded = ManagedClassLoader.this.findLoadedClass(name);
+        if (loaded != null) {
+          if (resolve) resolveClass(loaded);
+          return loaded;
+        }
+        return super.loadClass(name, resolve);
+      }
+    }
+
     Class<?> lookupClass(final String name) throws ClassNotFoundException {
       try {
         synchronized (getClassLoadingLock(name)) {
