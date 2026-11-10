@@ -761,6 +761,44 @@ object ActionCacheTest extends BasicTestSuite:
       )
   end testEnvironmentalCompileFailureNotCached
 
+  test("Disk cache does not cache a javac write error that has a source position"):
+    withDiskCache(testPositionedWriteErrorNotCached)
+
+  def testPositionedWriteErrorNotCached(cache: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val ioProblem = new Problem:
+      override def category(): String = "Test"
+      override def severity(): Severity = Severity.Error
+      override def message(): String =
+        "error while writing p.P: could not create parent directories"
+      override def position(): Position = new Position:
+        override def line(): Optional[Integer] = Optional.of(3)
+        override def lineContent(): String = ""
+        override def offset(): Optional[Integer] = Optional.empty()
+        override def pointer(): Optional[Integer] = Optional.of(7)
+        override def pointerSpace(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.of("/src/main/java/p/P.java")
+        override def sourceFile(): Optional[java.io.File] = Optional.empty()
+
+    val ioException = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(ioProblem)
+      override def getMessage(): String = "javac returned non-zero exit code"
+
+    val action: ((Int, Int)) => InternalActionResult[Int] = (_, _) =>
+      called += 1
+      throw ioException
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+      for _ <- 1 to 2 do
+        try
+          ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+          assert(false, "Expected CompileFailed to be thrown")
+        catch case _: CompileFailed => ()
+      assert(called == 2, s"javac write error must not be cached (called=$called)")
+  end testPositionedWriteErrorNotCached
+
   test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
     withDiskCache(testLegacyPoisonedFailureCured)
 

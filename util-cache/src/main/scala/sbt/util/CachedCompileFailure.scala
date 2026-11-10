@@ -63,12 +63,20 @@ object CachedCompileFailure
    * It is a function of the sources only when every error has a source position; a position-less
    * error such as "error writing X.class" is an environmental I/O fault, and caching it replays a
    * stale failure on every later build until the global cache is cleared by hand (sbt/sbt#9455).
-   * Such failures are treated as not cacheable.
+   * Such failures are treated as not cacheable. javac attaches the source position to its
+   * "error while writing X" I/O errors, so those are also treated as not cacheable.
    */
   def hasSufficientInfo(e: CompileFailed): Boolean =
     import sbt.util.InterfaceUtil.toOption
     val errors = e.problems().filter(_.severity == Severity.Error)
-    errors.nonEmpty && errors.forall(p => toOption(p.position.sourcePath).isDefined)
+    errors.nonEmpty && errors.forall(p =>
+      toOption(p.position.sourcePath).isDefined && !isWriteError(p.message)
+    )
+
+  private val writeErrorPrefixes = Seq("error while writing ", "error writing ")
+
+  private def isWriteError(message: String): Boolean =
+    Option(message).exists(m => writeErrorPrefixes.exists(m.trim.startsWith))
 
   def fromException(e: CompileFailed): CachedCompileFailure =
     CachedCompileFailure(

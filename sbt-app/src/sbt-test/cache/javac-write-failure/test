@@ -1,0 +1,6 @@
+> compile
+$ copy-file changes/P.java src/main/java/p/P.java
+> blockPackageDir
+-> compile
+> unblockPackageDir
+> compile
