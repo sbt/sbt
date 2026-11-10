@@ -761,17 +761,11 @@ object ActionCacheTest extends BasicTestSuite:
       )
   end testEnvironmentalCompileFailureNotCached
 
-  test("Disk cache does not cache a javac write error that has a source position"):
-    withDiskCache(testPositionedWriteErrorNotCached)
-
-  def testPositionedWriteErrorNotCached(cache: DiskActionCacheStore): Unit =
-    import sjsonnew.BasicJsonProtocol.*
-    var called = 0
+  private def positionedWriteError(msg: String): CompileFailed =
     val ioProblem = new Problem:
       override def category(): String = "Test"
       override def severity(): Severity = Severity.Error
-      override def message(): String =
-        "error while writing p.P: could not create parent directories"
+      override def message(): String = msg
       override def position(): Position = new Position:
         override def line(): Optional[Integer] = Optional.of(3)
         override def lineContent(): String = ""
@@ -780,12 +774,24 @@ object ActionCacheTest extends BasicTestSuite:
         override def pointerSpace(): Optional[String] = Optional.empty()
         override def sourcePath(): Optional[String] = Optional.of("/src/main/java/p/P.java")
         override def sourceFile(): Optional[java.io.File] = Optional.empty()
-
-    val ioException = new CompileFailed:
+    new CompileFailed:
       override def arguments(): Array[String] = Array.empty
       override def problems(): Array[Problem] = Array(ioProblem)
       override def getMessage(): String = "javac returned non-zero exit code"
 
+  private val writeErrorMessages = Seq(
+    "error while writing p.P: could not create parent directories",
+    " error: error while writing p.P: could not create parent directories",
+  )
+
+  test("Disk cache does not cache a javac write error that has a source position"):
+    withDiskCache: cache =>
+      writeErrorMessages.foreach(testPositionedWriteErrorNotCached(cache, _))
+
+  def testPositionedWriteErrorNotCached(cache: DiskActionCacheStore, msg: String): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val ioException = positionedWriteError(msg)
     val action: ((Int, Int)) => InternalActionResult[Int] = (_, _) =>
       called += 1
       throw ioException
@@ -796,8 +802,34 @@ object ActionCacheTest extends BasicTestSuite:
           ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
           assert(false, "Expected CompileFailed to be thrown")
         catch case _: CompileFailed => ()
-      assert(called == 2, s"javac write error must not be cached (called=$called)")
+      assert(called == 2, s"javac write error must not be cached: $msg (called=$called)")
   end testPositionedWriteErrorNotCached
+
+  test("A positioned write error cached by an older sbt is not replayed"):
+    withDiskCache: cache =>
+      import sjsonnew.BasicJsonProtocol.*
+      import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+      var called = 0
+      val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
+        called += 1
+        InternalActionResult(a + b, Nil)
+      IO.withTemporaryDirectory: tempDir =>
+        val config = getCacheConfig(cache, tempDir)
+        val digest = ActionCache.mkInput((1, 1), Digest.zero, Digest.zero, config.cacheVersion)
+        val failure =
+          CachedCompileFailure.fromException(positionedWriteError(writeErrorMessages.head))
+        val json = Converter.toJsonUnsafe(failure)
+        val failureFile = StringVirtualFile1(ActionCache.mkValuePath(digest), CompactPrinter(json))
+        cache.put(
+          UpdateActionResultRequest(
+            digest,
+            Vector(failureFile),
+            exitCode = ActionCache.failureExitCode
+          )
+        )
+        val v = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(v == 2)
+        assert(called == 1, s"cached write error must not replay (called=$called)")
 
   test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
     withDiskCache(testLegacyPoisonedFailureCured)

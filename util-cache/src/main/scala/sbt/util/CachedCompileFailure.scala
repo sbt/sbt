@@ -76,7 +76,9 @@ object CachedCompileFailure
   private val writeErrorPrefixes = Seq("error while writing ", "error writing ")
 
   private def isWriteError(message: String): Boolean =
-    Option(message).exists(m => writeErrorPrefixes.exists(m.trim.startsWith))
+    Option(message).exists: m =>
+      val text = m.trim.stripPrefix("error:").trim
+      writeErrorPrefixes.exists(text.startsWith)
 
   def fromException(e: CompileFailed): CachedCompileFailure =
     CachedCompileFailure(
