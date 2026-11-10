@@ -9,17 +9,27 @@ public class Main {
     final Arg arg = new Arg();
     final Path dir = Paths.get(args[0]);
     Files.createDirectories(dir);
-    Thread t = new Thread(() -> {
-      try {
-        Thread.sleep(1000);
-        Late.use(arg);
-        Files.writeString(dir.resolve("result-ok"), "ok");
-      } catch (Throwable e) {
-        StringWriter sw = new StringWriter();
-        e.printStackTrace(new PrintWriter(sw));
-        try { Files.writeString(dir.resolve("result-error"), sw.toString()); } catch (Exception ignored) {}
-      }
-    });
+    Thread t =
+        new Thread(
+            () -> {
+              try {
+                final long deadline = System.currentTimeMillis() + 60000;
+                while (!Files.exists(dir.resolve("go"))) {
+                  if (System.currentTimeMillis() > deadline)
+                    throw new IllegalStateException("go file not created");
+                  Thread.sleep(50);
+                }
+                Late.use(arg);
+                Files.writeString(dir.resolve("result-ok"), "ok");
+              } catch (Throwable e) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                try {
+                  Files.writeString(dir.resolve("result-error"), sw.toString());
+                } catch (Exception ignored) {
+                }
+              }
+            });
     t.setDaemon(true);
     t.start();
   }

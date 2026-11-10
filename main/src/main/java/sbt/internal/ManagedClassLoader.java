@@ -53,14 +53,12 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
     @Override
     protected Class<?> loadClass(final String name, final boolean resolve)
         throws ClassNotFoundException {
-      synchronized (getClassLoadingLock(name)) {
-        final Class<?> loaded = ManagedClassLoader.this.findLoadedClass(name);
-        if (loaded != null) {
-          if (resolve) resolveClass(loaded);
-          return loaded;
-        }
-        return super.loadClass(name, resolve);
+      final Class<?> loaded = ManagedClassLoader.this.findLoadedClass(name);
+      if (loaded != null) {
+        if (resolve) resolveClass(loaded);
+        return loaded;
       }
+      return super.loadClass(name, resolve);
     }
 
     Class<?> lookupClass(final String name) throws ClassNotFoundException {
@@ -96,13 +94,7 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
               + "has completed. This is a likely resource leak";
       logger.warn((Supplier<String>) () -> msg);
     }
-    final ZombieClassLoader maybeLoader = zombieLoader.get();
-    if (maybeLoader != null) return maybeLoader;
-    else {
-      final ZombieClassLoader zb = new ZombieClassLoader(getURLs());
-      zombieLoader.set(zb);
-      return zb;
-    }
+    return zombieLoader.updateAndGet(z -> z != null ? z : new ZombieClassLoader(getURLs()));
   }
 
   @Override
