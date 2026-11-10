@@ -69,9 +69,9 @@ object CachedCompileFailure
   def hasSufficientInfo(e: CompileFailed): Boolean =
     import sbt.util.InterfaceUtil.toOption
     val errors = e.problems().filter(_.severity == Severity.Error)
-    errors.nonEmpty && errors.forall(p =>
-      toOption(p.position.sourcePath).isDefined && !isWriteError(p.message)
-    )
+    errors.nonEmpty && errors.forall: p =>
+      toOption(p.position.sourcePath).exists: path =>
+        !(path.endsWith(".java") && isWriteError(p.message))
 
   private val writeErrorPrefixes = Seq("error while writing ", "error writing ")
 
