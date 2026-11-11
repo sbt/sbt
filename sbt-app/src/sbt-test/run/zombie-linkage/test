@@ -1,0 +1,3 @@
+> run target
+$ touch target/go
+> check
