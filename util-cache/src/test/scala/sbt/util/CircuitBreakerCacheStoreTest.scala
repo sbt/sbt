@@ -109,6 +109,29 @@ object CircuitBreakerCacheStoreTest extends BasicTestSuite:
       catch case _: RuntimeException => true
     assert(thrown)
 
+  /**
+   * A Ctrl-C landing on the probe call is not news about the store, and leaving the probe claimed
+   * would turn away every later call, reads included, for the rest of the session.
+   */
+  test("A probe killed by a fatal throwable leaves the store callable"):
+    val store = StubStore(CacheFailure.Transient)
+    val clock = Clock()
+    val breaker = newBreaker(store, clock)
+
+    assert(breaker.get(request).isLeft)
+    clock.advance(cooldown)
+    store.fatal = true
+    val interrupted =
+      try
+        breaker.get(request)
+        false
+      catch case _: InterruptedException => true
+    assert(interrupted)
+
+    store.fatal = false
+    store.outcome = None
+    assert(breaker.get(request).isRight, "every call was turned away after the probe was killed")
+
   // ---------- helpers ----------
 
   private def request = GetActionResultRequest(Digest.zero, false, false, Vector.empty)
@@ -140,11 +163,13 @@ object CircuitBreakerCacheStoreTest extends BasicTestSuite:
       extends AbstractActionCacheStore:
     var calls = 0
     var outcome: Option[CacheFailure] = Some(kind)
+    var fatal = false
 
     override def storeName: String = "stub"
 
     private def failure(isWrite: Boolean): Option[Throwable] =
       calls += 1
+      if fatal then throw InterruptedException("simulated interrupt")
       if writesOnly && !isWrite then None else outcome.map(Failed(_))
 
     override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =

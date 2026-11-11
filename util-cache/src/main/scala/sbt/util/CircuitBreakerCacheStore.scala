@@ -84,6 +84,9 @@ final class CircuitBreakerCacheStore(
         case NonFatal(e) =>
           failed(e, direction)
           throw e
+        case e: Throwable =>
+          abandoned()
+          throw e
 
   private def guardEither(direction: Direction)(
       call: => Either[Throwable, ActionResult]
@@ -97,6 +100,9 @@ final class CircuitBreakerCacheStore(
       catch
         case NonFatal(e) =>
           failed(e, direction)
+          throw e
+        case e: Throwable =>
+          abandoned()
           throw e
 
   @tailrec
@@ -119,6 +125,13 @@ final class CircuitBreakerCacheStore(
   private def succeeded(direction: Direction): Unit = update(None, direction)
 
   private def failed(e: Throwable, direction: Direction): Unit = update(Some(e), direction)
+
+  /**
+   * A fatal throwable says nothing about the store, but the probe it killed still has to be
+   * released, or every later call is turned away for the rest of the session.
+   */
+  private def abandoned(): Unit =
+    val _ = state.updateAndGet(_.copy(probing = false))
 
   @tailrec
   private def update(failure: Option[Throwable], direction: Direction): Unit =
