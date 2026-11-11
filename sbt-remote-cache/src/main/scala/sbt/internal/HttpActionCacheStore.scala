@@ -163,20 +163,21 @@ class HttpActionCacheStore private (
         case status => Left(StatusError(status))
     catch case NonFatal(e) => Left(e)
 
+  /**
+   * A refused upload is reported as the status the remote gave, so that a caller classifying the
+   * failure can tell a withheld permission from an outage; the highest status wins, because
+   * retrying an outage costs less than disabling the cache for the session.
+   */
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    val uploads = blobs
-      .filter(BazelRemote.isSupported)
+    val supported = blobs.filter(BazelRemote.isSupported)
+    val uploads = supported
       .map(b => Digest(b) -> b)
       .distinctBy(_._1)
       .map: (digest, blob) =>
         statusOf(uploadRequest(digest, blob))
-          .map(status => digest -> isOk(status))
-          .recover { case NonFatal(_) => digest -> false }
-    val uploaded = await(Future.sequence(uploads)).collect { case (digest, true) => digest }.toSet
-    blobs.flatMap: blob =>
-      if BazelRemote.isSupported(blob) && uploaded(Digest(blob)) then
-        Some(HashedVirtualFileRef.of(blob.id, blob.contentHashStr, blob.sizeBytes))
-      else None
+    val refused = await(Future.sequence(uploads)).filterNot(isOk)
+    if refused.nonEmpty then throw StatusError(refused.max)
+    supported.map(b => HashedVirtualFileRef.of(b.id, b.contentHashStr, b.sizeBytes))
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
     val lookups = refs

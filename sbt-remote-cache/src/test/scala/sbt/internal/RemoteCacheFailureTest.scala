@@ -42,5 +42,7 @@ object RemoteCacheFailureTest extends verify.BasicTestSuite:
     val grpc = ofGrpc(Status.Code.NOT_FOUND, Status.Code.INVALID_ARGUMENT, Status.Code.CANCELLED)
     assert(grpc.forall(_ == CacheFailure.Answered), grpc.toString)
     assert(classify(StatusError(404)) == CacheFailure.Answered)
+    // A digest function the remote does not accept, which the rest of the build can work around.
+    assert(classify(StatusError(400)) == CacheFailure.Answered)
     assert(classify(new RuntimeException("not found")) == CacheFailure.Answered)
 end RemoteCacheFailureTest
