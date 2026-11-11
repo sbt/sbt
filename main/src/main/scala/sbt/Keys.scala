@@ -518,8 +518,10 @@ object Keys {
   val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
   val bspBuildTarget = taskKey[BuildTarget]("Description of the BSP build targets").withRank(DTask)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
+  @transient
   val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)
   val bspBuildTargetResources = inputKey[Unit]("").withRank(DTask)
+  @transient
   val bspBuildTargetResourcesItem = taskKey[ResourcesItem]("").withRank(DTask)
   val bspBuildTargetDependencySources = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetDependencySourcesItem = taskKey[DependencySourcesItem]("").withRank(DTask)
@@ -538,6 +540,7 @@ object Keys {
   @transient
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
   val bspBuildTargetJavacOptions = inputKey[Unit]("Implementation of buildTarget/javacOptions").withRank(DTask)
+  @transient
   val bspBuildTargetJavacOptionsItem = taskKey[JavacOptionsItem]("Item of buildTarget/javacOptions").withRank(DTask)
 
   val bspBuildTargetJVMRunEnvironment = inputKey[Unit]("Implementation of buildTarget/jvmRunEnvironment").withRank(DTask)

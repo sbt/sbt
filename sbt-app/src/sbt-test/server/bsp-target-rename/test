@@ -1,0 +1,5 @@
+> checkTarget
+
+$ copy-file changes/build.sbt build.sbt
+> reload
+> checkTarget
