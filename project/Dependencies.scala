@@ -71,7 +71,7 @@ object Dependencies:
   // and the JLine 2 fork version, which uses the same JAnsi
   val jline =
     "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-9a88bc413e2b34a4580c001c654d1a7f4f65bf18"
-  val jline3Version = "3.27.1"
+  val jline3Version = "3.30.17"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3JNI = "org.jline" % "jline-terminal-jni" % jline3Version
   val jline3Native = "org.jline" % "jline-native" % jline3Version
