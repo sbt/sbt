@@ -1,0 +1,6 @@
+> useDumbTerminal
+> consoleProject
+$ exists console-ok
+$ delete console-ok
+> consoleProject
+$ exists console-ok

@@ -8,7 +8,7 @@
 
 package sbt.internal.util
 
-import java.io.{ InputStream, OutputStream, PrintWriter }
+import java.io.{ FilterInputStream, FilterOutputStream, InputStream, OutputStream, PrintWriter }
 import java.nio.ByteBuffer
 import java.nio.charset.{ CharacterCodingException, Charset, CharsetDecoder }
 import java.util.{ Arrays, EnumSet }
@@ -39,8 +39,15 @@ private[sbt] object JLine3:
     term
   private[sbt] def apply(term: Terminal): JTerminal =
     if System.getProperty("jline.terminal", "") == "none" then
-      new DumbTerminal(term.inputStream, term.outputStream)
+      new DumbTerminal(unclosable(term.inputStream), unclosable(term.outputStream))
     else wrapTerminal(term)
+
+  /** Since JLine 3.30, closing a DumbTerminal closes its streams, which belong to sbt. */
+  private def unclosable(in: InputStream): InputStream = new FilterInputStream(in):
+    override def close(): Unit = ()
+  private def unclosable(out: OutputStream): OutputStream = new FilterOutputStream(out):
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = this.out.write(b, off, len)
+    override def close(): Unit = flush()
   private[util] def decodeInput(decoder: CharsetDecoder, inputStream: InputStream): Int =
     val bytes = new Array[Byte](4)
     var i = 0
@@ -66,11 +73,11 @@ private[sbt] object JLine3:
       Charset.forName("UTF-8"),
       SignalHandler.SIG_DFL
     ):
-      val closed = new AtomicBoolean(false)
+      val wrapperClosed = new AtomicBoolean(false)
       setOnClose { () =>
         doClose()
         reader.close()
-        if closed.compareAndSet(false, true) then
+        if wrapperClosed.compareAndSet(false, true) then
           // This is necessary to shutdown the non blocking input reader
           // so that it doesn't keep blocking
           term.inputStream match
@@ -102,7 +109,7 @@ private[sbt] object JLine3:
             case r              => r
       override val output: OutputStream = new OutputStream:
         override def write(b: Int): Unit = write(Array[Byte](b.toByte))
-        override def write(b: Array[Byte]): Unit = if !closed.get then
+        override def write(b: Array[Byte]): Unit = if !wrapperClosed.get then
           term.withPrintStream { ps =>
             ps.write(b)
             term.prompt match
