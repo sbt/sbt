@@ -761,30 +761,73 @@ object ActionCacheTest extends BasicTestSuite:
       )
   end testEnvironmentalCompileFailureNotCached
 
-  test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
-    withDiskCache(testLegacyPoisonedFailureCured)
-
-  def testLegacyPoisonedFailureCured(cache: DiskActionCacheStore): Unit =
-    import sjsonnew.BasicJsonProtocol.*
-    import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
-    var called = 0
+  private def writeFailure(msg: String, path: Option[String]): CompileFailed =
     val ioProblem = new Problem:
       override def category(): String = "Test"
       override def severity(): Severity = Severity.Error
-      override def message(): String = "error writing Meta$.class: AccessDeniedException"
+      override def message(): String = msg
       override def position(): Position = new Position:
         override def line(): Optional[Integer] = Optional.empty()
         override def lineContent(): String = ""
         override def offset(): Optional[Integer] = Optional.empty()
         override def pointer(): Optional[Integer] = Optional.empty()
         override def pointerSpace(): Optional[String] = Optional.empty()
-        override def sourcePath(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.ofNullable(path.orNull)
         override def sourceFile(): Optional[java.io.File] = Optional.empty()
-    val ioException = new CompileFailed:
+    new CompileFailed:
       override def arguments(): Array[String] = Array.empty
       override def problems(): Array[Problem] = Array(ioProblem)
       override def getMessage(): String = "Compilation failed"
 
+  private val javaSource = Some("/src/main/java/p/P.java")
+  private val javacWriteErrors = Seq(
+    "error while writing p.P: could not create parent directories",
+    " error: error while writing p.P: could not create parent directories",
+  )
+
+  private def failingCalls(cache: DiskActionCacheStore, failure: CompileFailed): Int =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val action: ((Int, Int)) => InternalActionResult[Int] = (_, _) =>
+      called += 1
+      throw failure
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+      for _ <- 1 to 2 do
+        try
+          ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+          assert(false, "Expected CompileFailed to be thrown")
+        catch case _: CompileFailed => ()
+    called
+
+  test("Disk cache does not cache a javac write error that has a source position"):
+    javacWriteErrors.foreach: msg =>
+      withDiskCache: cache =>
+        val called = failingCalls(cache, writeFailure(msg, javaSource))
+        assert(called == 2, s"javac write error must not be cached: $msg (called=$called)")
+
+  test("Disk cache caches a Scala source error that starts like a write error"):
+    withDiskCache: cache =>
+      val failure = writeFailure("error writing config: bad value", Some("/src/main/scala/A.scala"))
+      val called = failingCalls(cache, failure)
+      assert(called == 1, s"source error must stay cached (called=$called)")
+
+  test("A position-less failure cached by an older sbt is not replayed and is cured by a re-run"):
+    withDiskCache: cache =>
+      val failure = writeFailure("error writing Meta$.class: AccessDeniedException", None)
+      testLegacyPoisonedFailureCured(cache, failure)
+
+  test("A javac write error cached by an older sbt is not replayed and is cured by a re-run"):
+    withDiskCache: cache =>
+      testLegacyPoisonedFailureCured(cache, writeFailure(javacWriteErrors.head, javaSource))
+
+  def testLegacyPoisonedFailureCured(
+      cache: DiskActionCacheStore,
+      ioException: CompileFailed
+  ): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+    var called = 0
     val action: ((Int, Int)) => InternalActionResult[Int] = (a, b) =>
       called += 1
       InternalActionResult(a + b, Nil)
