@@ -201,4 +201,4 @@ jobs:
         if: ${{ matrix.jobtype == 12 }}
         shell: bash
         run: |
-          ./sbt -v --server "scripted cache/*"
+          ./sbt -v --server "scripted cache/* server/*"
