@@ -224,6 +224,14 @@ object HttpActionCacheStoreTest extends verify.BasicTestSuite:
     intercept[RuntimeException]:
       HttpActionCacheStore.baseUrl(URI("grpc://example.com"))
 
+  test("a withheld permission outranks an outage among refused uploads"):
+    assert(HttpActionCacheStore.worstStatus(Seq(500, 403)) == 403)
+    assert(HttpActionCacheStore.worstStatus(Seq(403, 500)) == 403)
+    assert(HttpActionCacheStore.worstStatus(Seq(400, 401)) == 401)
+    // Nothing authoritative was said, so an outage still beats a status the build can work around.
+    assert(HttpActionCacheStore.worstStatus(Seq(404, 503)) == 503)
+    assert(HttpActionCacheStore.worstStatus(Seq(400)) == 400)
+
   test("redact removes credentials from the URI"):
     assert(
       HttpActionCacheStore.redact(URI("http://user:pw@example.com:8000/inst")) ==

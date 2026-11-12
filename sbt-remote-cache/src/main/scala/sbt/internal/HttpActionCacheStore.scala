@@ -48,6 +48,17 @@ object HttpActionCacheStore:
       requestTimeout,
     )
 
+  /**
+   * The status to report when uploads were refused for more than one reason. A withheld
+   * permission outranks an outage, because it is the remote stating a fact about the token that
+   * holds for the rest of the session, whereas a 5xx says only that this attempt failed.
+   */
+  private[internal] def worstStatus(statuses: Seq[Int]): Int =
+    statuses.minBy: status =>
+      if status == 401 || status == 403 then 0
+      else if status >= 500 then 1
+      else 2
+
   /** The endpoint without credentials or a trailing slash; the path is the instance name. */
   private[internal] def baseUrl(uri: URI): String =
     val path = Option(uri.getPath()).getOrElse("").reverse.dropWhile(_ == '/').reverse
@@ -165,8 +176,7 @@ class HttpActionCacheStore private (
 
   /**
    * A refused upload is reported as the status the remote gave, so that a caller classifying the
-   * failure can tell a withheld permission from an outage; the highest status wins, because
-   * retrying an outage costs less than disabling the cache for the session.
+   * failure can tell a withheld permission from an outage.
    */
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
     val supported = blobs.filter(BazelRemote.isSupported)
@@ -176,7 +186,7 @@ class HttpActionCacheStore private (
       .map: (digest, blob) =>
         statusOf(uploadRequest(digest, blob))
     val refused = await(Future.sequence(uploads)).filterNot(isOk)
-    if refused.nonEmpty then throw StatusError(refused.max)
+    if refused.nonEmpty then throw StatusError(HttpActionCacheStore.worstStatus(refused))
     supported.map(b => HashedVirtualFileRef.of(b.id, b.contentHashStr, b.sizeBytes))
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
