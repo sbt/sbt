@@ -1,0 +1,6 @@
+> app/linkCoreJar
+> app/testFull
+> set app / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+> app/testFull
+> set app / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+> app/testFull

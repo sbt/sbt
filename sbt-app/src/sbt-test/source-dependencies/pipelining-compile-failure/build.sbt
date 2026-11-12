@@ -2,6 +2,7 @@ import sbt.pipeliningcompilefailure.Check
 
 ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / usePipelining := true
+ThisBuild / Compile / compile / cacheStores := Nil
 
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
