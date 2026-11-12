@@ -9,9 +9,11 @@
 package sbt
 package internal
 
-import java.io.{ IOException, File }
+import java.io.{ File, IOException }
 import java.net.URL
-import java.nio.file.Path
+import java.nio.file.{ FileAlreadyExistsException, Files, FileSystemException, Path }
+import java.nio.file.StandardCopyOption.{ ATOMIC_MOVE, COPY_ATTRIBUTES, REPLACE_EXISTING }
+import java.util.Locale
 import sbt.ClassLoaderLayeringStrategy.*
 import sbt.Keys.*
 import sbt.internal.classpath.ClassLoaderCache
@@ -27,21 +29,80 @@ import sbt.nio.Keys.*
 import sbt.util.Logger
 import xsbti.ArtifactInfo
 import xsbti.HashedVirtualFileRef
+import scala.collection.mutable
 
 private[sbt] object ClassLoaders:
 
-  /**
-   * https://github.com/sbt/sbt/issues/9468
-   * Resolves symlinks before converting to a URL. Classpath entries backed by a
-   * CAS cache would otherwise all share one URL across builds;
-   * the JVM's jar/URL connection caching is keyed by path, so once a jar: URL for that
-   * stable path has been opened, later reads can keep returning the first content seen\
-   * even after the symlink target (and the underlying file content) changes.
-   */
+  private val casBlobName = "[a-z][a-z0-9]*-[0-9a-f]{16,128}-[0-9]+".r
+  private val casAliasDirectory = "cas-classloader"
+
   private[sbt] def toRealURL(f: File): URL =
-    val real = try f.toPath.toRealPath().toFile
-    catch case _: IOException => f
-    real.toURI.toURL
+    val path = f.toPath
+    if isClassLoaderAlias(path) then f.toURI.toURL
+    else
+      val real = try path.toRealPath().toFile
+      catch case _: IOException => f
+      real.toURI.toURL
+
+  private def isClassLoaderAlias(path: Path): Boolean =
+    val parent = path.getParent
+    parent != null && Option(parent.getParent).exists(_.endsWith(casAliasDirectory)) &&
+    casBlobName.matches(parent.getFileName.toString) && isArchive(path.getFileName.toString)
+
+  private def isArchive(name: String): Boolean =
+    val lower = name.toLowerCase(Locale.ROOT)
+    lower.endsWith(".jar") || lower.endsWith(".zip")
+
+  private def isCasBlobPath(path: Path): Boolean =
+    Option(path.getParent).exists(_.endsWith("cas")) && casBlobName.matches(
+      path.getFileName.toString
+    )
+
+  private def casBlob(path: Path): Option[Path] =
+    try
+      val real = path.toRealPath()
+      val blob =
+        if isCasBlobPath(real) then Some(real)
+        else
+          val target = Files.readSymbolicLink(path)
+          if isCasBlobPath(target.normalize()) then
+            val absolute =
+              if target.isAbsolute then target
+              else path.toAbsolutePath.getParent.toRealPath().resolve(target)
+            val logical = absolute.normalize()
+            Option.when(Files.isSameFile(real, logical))(logical)
+          else None
+      blob.filter(Files.isRegularFile(_))
+    catch case _: IOException => None
+
+  private[internal] def classLoaderFile(file: File): File =
+    val path = file.toPath
+    if isArchive(file.getName) && Files.isSymbolicLink(path) && !isClassLoaderAlias(path) then
+      casBlob(path) match
+        case Some(target) =>
+          val alias = target.getParent
+            .resolveSibling(casAliasDirectory)
+            .resolve(target.getFileName)
+            .resolve(path.getFileName)
+          if !Files.isRegularFile(alias) then createAlias(alias, target)
+          alias.toFile
+        case _ => file
+    else file
+
+  private def createAlias(alias: Path, blob: Path): Unit =
+    Files.createDirectories(alias.getParent)
+    try Files.createSymbolicLink(alias, blob)
+    catch
+      case _: FileAlreadyExistsException if Files.isRegularFile(alias) => ()
+      case e: FileAlreadyExistsException                               => throw e
+      case _: UnsupportedOperationException | _: FileSystemException   =>
+        val temp = Files.createTempFile(alias.getParent, ".classpath-", ".tmp")
+        try
+          Files.copy(blob, temp, REPLACE_EXISTING, COPY_ATTRIBUTES)
+          try Files.move(temp, alias, ATOMIC_MOVE)
+          catch case _: FileSystemException if Files.isRegularFile(alias) => ()
+        finally Files.deleteIfExists(temp)
+    ()
 
   extension (files: Seq[File]) def urls: Array[URL] = files.toArray.map(toRealURL)
   private val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -168,14 +229,16 @@ private[sbt] object ClassLoaders:
       allowZombies: Boolean
   ): ClassLoader =
     val cpFiles = fullCP.map(_._1)
+    val loaderFiles = mutable.Map.empty[File, File]
+    def loaderFile(f: File): File = loaderFiles.getOrElseUpdate(f, classLoaderFile(f))
     strategy match
       case Flat | Raw =>
-        new FlatLoader(cpFiles.urls, interfaceLoader, tmp, close, allowZombies, logger)
+        val urls = cpFiles.map(loaderFile).urls
+        new FlatLoader(urls, interfaceLoader, tmp, close, allowZombies, logger)
       case _ =>
         val layerDependencies = strategy match
           case _: AllLibraryJars => true
           case _                 => false
-        val cpFiles = fullCP.map(_._1)
         val scalaLibraryLayer =
           val jars =
             if ScalaArtifacts.isScala3(si.version) || Classpaths.isScala213(si.version) then
@@ -188,10 +251,11 @@ private[sbt] object ClassLoaders:
                 )
                 .toArray
             else si.libraryJars
+          val loaderJars = jars.map(loaderFile)
           cache.apply(
-            jars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
+            loaderJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
             interfaceLoader,
-            () => new ScalaLibraryClassLoader(jars.map(_.toURI.toURL), interfaceLoader)
+            () => new ScalaLibraryClassLoader(loaderJars.map(_.toURI.toURL), interfaceLoader)
           )
 
         val allDependencies = cpFiles.filter(allDependenciesSet)
@@ -202,10 +266,11 @@ private[sbt] object ClassLoaders:
         }.flatten
         val scalaReflectLayer = scalaReflectJar
           .map { file =>
+            val jar = loaderFile(file)
             cache.apply(
-              file -> IO.getModifiedTimeOrZero(file) :: Nil,
+              jar -> IO.getModifiedTimeOrZero(jar) :: Nil,
               scalaLibraryLayer,
-              () => new ScalaReflectClassLoader(file.toURI.toURL, scalaLibraryLayer)
+              () => new ScalaReflectClassLoader(jar.toURI.toURL, scalaLibraryLayer)
             )
           }
           .getOrElse(scalaLibraryLayer)
@@ -213,12 +278,13 @@ private[sbt] object ClassLoaders:
         // layer 2 (optional if in the test config and the runtime layer is not shared)
         val dependencyLayer: ClassLoader =
           if layerDependencies && allDependencies.nonEmpty then
+            val loaderDependencies = allDependencies.map(loaderFile)
             cache(
-              allDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+              loaderDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
               scalaReflectLayer,
               () =>
                 new ReverseLookupClassLoaderHolder(
-                  classpath = allDependencies,
+                  classpath = loaderDependencies,
                   parent = scalaReflectLayer,
                   closeThis = close,
                   allowZombies = allowZombies,
@@ -235,12 +301,13 @@ private[sbt] object ClassLoaders:
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         dependencyLayer match
           case dl: ReverseLookupClassLoaderHolder =>
-            dl.checkout(cpFiles, tmp)
+            dl.checkout(cpFiles.map(loaderFile), tmp)
           case cl =>
             cl.getParent match
-              case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
+              case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles.map(loaderFile), tmp)
               case _                                  =>
-                new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, close, allowZombies, logger)
+                val urls = dynamicClasspath.map(loaderFile).urls
+                new LayeredClassLoader(urls, cl, tmp, close, allowZombies, logger)
     end match
   end buildLayers
 
