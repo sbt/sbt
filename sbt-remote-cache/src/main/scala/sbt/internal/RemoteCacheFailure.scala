@@ -32,4 +32,16 @@ object RemoteCacheFailure:
     if status == 401 || status == 403 then CacheFailure.Permanent
     else if status >= 500 then CacheFailure.Transient
     else CacheFailure.Answered
+
+  /**
+   * The status to report when uploads were refused for more than one reason. A withheld
+   * permission outranks an outage, because it is the remote stating a fact about the token that
+   * holds for the rest of the session, whereas a 5xx says only that this attempt failed.
+   */
+  private[sbt] def worstHttpStatus(statuses: Seq[Int]): Int =
+    statuses.minBy: status =>
+      fromHttp(status) match
+        case CacheFailure.Permanent => 0
+        case CacheFailure.Transient => 1
+        case CacheFailure.Answered  => 2
 end RemoteCacheFailure

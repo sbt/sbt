@@ -8,7 +8,7 @@ import sbt.util.CacheFailure
 import scala.concurrent.TimeoutException
 
 object RemoteCacheFailureTest extends verify.BasicTestSuite:
-  import RemoteCacheFailure.classify
+  import RemoteCacheFailure.{ classify, worstHttpStatus }
 
   /**
    * Classifies outside the assertion on purpose: verify's `assert` macro reifies the expression it
@@ -45,4 +45,12 @@ object RemoteCacheFailureTest extends verify.BasicTestSuite:
     // A digest function the remote does not accept, which the rest of the build can work around.
     assert(classify(StatusError(400)) == CacheFailure.Answered)
     assert(classify(new RuntimeException("not found")) == CacheFailure.Answered)
+
+  test("A withheld permission outranks an outage among refused uploads"):
+    assert(worstHttpStatus(Seq(500, 403)) == 403)
+    assert(worstHttpStatus(Seq(403, 500)) == 403)
+    assert(worstHttpStatus(Seq(400, 401)) == 401)
+    // Nothing authoritative was said, so an outage still beats a status the build can work around.
+    assert(worstHttpStatus(Seq(404, 503)) == 503)
+    assert(worstHttpStatus(Seq(400)) == 400)
 end RemoteCacheFailureTest
