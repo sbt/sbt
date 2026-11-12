@@ -1,0 +1,3 @@
+# get and put block in the task body, so without a breaker every cold task pays the deadline of a
+# cache that is not answering. The plugin puts one in front of the remote store it builds.
+> checkWrapped

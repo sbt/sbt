@@ -14,7 +14,8 @@ import scala.util.control.NonFatal
  * behavior observed with bazel-remote 2.6.2. bazel-remote itself accepts SHA-256 only;
  * `algorithm` stands in for a server configured with another digest function.
  */
-class FakeBazelRemote(algorithm: String = "SHA-256") extends AutoCloseable:
+class FakeBazelRemote(algorithm: String = "SHA-256", readOnly: Boolean = false)
+    extends AutoCloseable:
   val ac: ConcurrentHashMap[String, Array[Byte]] = ConcurrentHashMap()
   val cas: ConcurrentHashMap[String, Array[Byte]] = ConcurrentHashMap()
   val requests: ConcurrentLinkedQueue[FakeBazelRemote.Recorded] = ConcurrentLinkedQueue()
@@ -46,6 +47,7 @@ class FakeBazelRemote(algorithm: String = "SHA-256") extends AutoCloseable:
         case HexKey(kind, key) =>
           val store = if kind == "ac" then ac else cas
           method match
+            case "PUT" if readOnly                              => respond(exchange, 403)
             case "PUT" if !headers.contains("content-length")   => respond(exchange, 400)
             case "PUT" if kind == "ac" && !isActionResult(body) => respond(exchange, 400)
             case "PUT" if kind == "cas" && hash(body) != key    => respond(exchange, 500)
