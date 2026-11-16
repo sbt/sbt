@@ -2,8 +2,9 @@ package sbt
 package plugins
 
 import Keys.*
-import sbt.util.{ CircuitBreakerCacheStore, DiskActionCacheStore, ReadOnlyCacheStore }
+import sbt.util.{ DiskActionCacheStore, ReadOnlyCacheStore }
 import sbt.internal.{ GrpcActionCacheStore, HttpActionCacheStore, RemoteCacheFailure }
+import sbt.internal.util.CircuitBreakerCacheStore
 
 object RemoteCachePlugin extends AutoPlugin:
   override def trigger = AllRequirements

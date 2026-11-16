@@ -1,4 +1,4 @@
-import sbt.util.CircuitBreakerCacheStore
+import sbt.internal.util.CircuitBreakerCacheStore
 
 lazy val checkWrapped = taskKey[Unit]("asserts the remote store is behind a circuit breaker")
 

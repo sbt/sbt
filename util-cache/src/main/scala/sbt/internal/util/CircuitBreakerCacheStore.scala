@@ -6,13 +6,21 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.util
+package sbt.internal.util
 
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
+import sbt.util.{
+  AbstractActionCacheStore,
+  ActionCacheStore,
+  ActionResult,
+  GetActionResultRequest,
+  Logger,
+  UpdateActionResultRequest
+}
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
 
 /** How a cache store failure bears on whether calling that store again is worth it. */
