@@ -885,6 +885,10 @@ val isLinux = scala.util.Properties.isLinux
 val isArmArchitecture: Boolean = sys.props
   .getOrElse("os.arch", "")
   .toLowerCase(Locale.ROOT) == "aarch64"
+// sbtn for x86_64 Linux is a fully static musl binary, so it runs on any distro, glibc or
+// musl (Alpine) alike. sbtn for aarch64 Linux stays linked against glibc: GraalVM ships no
+// musl static libraries for aarch64 (https://github.com/oracle/graal/issues/5872).
+val staticMuslSbtn = isLinux && !isArmArchitecture
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
@@ -903,6 +907,10 @@ lazy val sbtClientProj = (project in file("client"))
     exportJars := true,
     libraryDependencies ++= scalatest,
     libraryDependencies ++= (if isWin then Seq(ipcSocket) else Nil),
+    // A static binary can't load JLine's JNI library, so JLine uses its exec provider (stty);
+    // leaving the JNI provider out avoids a warning when it fails to load on every start.
+    excludeDependencies ++=
+      (if staticMuslSbtn then Seq(ExclusionRule("org.jline", "jline-terminal-jni")) else Nil),
     Compile / mainClass := Some("sbt.client.Client"),
     nativeImageReady := { () =>
       ()
@@ -933,7 +941,7 @@ lazy val sbtClientProj = (project in file("client"))
         "-H:+ReportExceptionStackTraces",
         "-H:-ParseRuntimeOptions",
         s"-H:Name=${target.value / "bin" / "sbtn"}",
-      )
+      ) ++ (if staticMuslSbtn then Seq("--static", "--libc=musl") else Nil)
     ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")

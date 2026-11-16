@@ -56,15 +56,37 @@ jobs:
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1
       if: ${{ matrix.os == 'windows-latest' }}
+    - name: Setup musl toolchain (Linux)
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      shell: bash
+      run: |
+        # sbtn for Linux is linked statically against musl, which needs a musl zlib
+        sudo apt-get update
+        sudo apt-get install -y musl-tools musl-dev
+        curl -fsSL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz | tar xz
+        cd zlib-1.3.1
+        CC=musl-gcc ./configure --static --prefix=/usr/local/musl
+        make
+        sudo make install
+        sudo ln -sf /usr/local/musl/lib/libz.a /usr/lib/x86_64-linux-musl/libz.a
+        sudo ln -sf /usr/bin/musl-gcc /usr/local/bin/x86_64-linux-musl-gcc
     - name: Client test (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
         # test building sbtn on Linux (sbtw native-image dropped: scopt lazy vals break under Graal)
         sbt "-Dsbt.io.virtual=false" nativeImage
+        file ./target/out/jvm/u/sbt-client/bin/sbtn | grep "statically linked"
         # smoke test native Image
         ./target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$(pwd)/sbt about
         ./target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$(pwd)/sbt shutdown
+        # smoke test native Image on musl (Alpine), against a JDK 17 server
+        mkdir -p /tmp/alpine-smoke/project
+        cp project/build.properties /tmp/alpine-smoke/project/
+        docker run --rm -v "$(pwd):/sbt:ro" -v /tmp/alpine-smoke:/w -w /w eclipse-temurin:17-jdk-alpine sh -c '
+          apk add --no-cache bash &&
+          /sbt/target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=/sbt/sbt about &&
+          /sbt/target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=/sbt/sbt shutdown'
         # test launcher script
         echo build using JDK 17 test using JDK 17 and JDK 25
         sbt --server -Dsbt.build.version=$TEST_SBT_VER launcherPackage/Rpm/packageBin launcherPackage/Debian/packageBin

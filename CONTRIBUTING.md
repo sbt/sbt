@@ -215,6 +215,10 @@ Generated-by: Claude Opus 4.5
 $ sbt nativeImage
 ```
 
+On x86_64 Linux, sbtn is linked statically against musl, so it runs on glibc and musl (Alpine)
+distributions alike. This needs a musl toolchain with a static zlib; see the "Setup musl
+toolchain" step in [client-test.yml](.github/workflows/client-test.yml).
+
 On macOS, the following can be used to target ARM64:
 
 ```bash
