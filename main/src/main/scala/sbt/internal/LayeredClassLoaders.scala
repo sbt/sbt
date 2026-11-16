@@ -48,7 +48,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
 ) extends URLClassLoader(Array.empty, null):
   private val cached: AtomicReference[ReverseLookupClassLoader] = new AtomicReference
   private val closed = new AtomicBoolean(false)
-  private val urls = classpath.map(ClassLoaders.toRealURL).toArray
+  private val urls = classpath.map(_.toURI.toURL).toArray
 
   /**
    * Get a classloader. If there is a loader available in the cache, it will use that loader,
@@ -67,7 +67,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     reverseLookupClassLoader.setup(tempDir)
     new BottomClassLoader(
       ReverseLookupClassLoaderHolder.this,
-      fullClasspath.map(ClassLoaders.toRealURL).toArray,
+      fullClasspath.map(_.toURI.toURL).toArray,
       reverseLookupClassLoader,
       tempDir,
       closeThis,

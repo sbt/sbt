@@ -10,4 +10,14 @@ class ATest extends FunSuite:
       val actual = r.mkString.trim
       assert(actual == "hello", s"actual: $actual")
   }
+
+  test("hello.txt via getResource.openStream should contain hello"):
+    val url = getClass.getClassLoader.getResource("hello.txt")
+    Using.resource(url.openStream()): in =>
+      val actual = String(in.readAllBytes()).trim
+      assert(actual == "hello", s"actual: $actual")
+
+  test("resource URL should keep the .jar name"):
+    val url = getClass.getClassLoader.getResource("hello.txt").toString
+    assert(url.endsWith(".jar!/hello.txt"), url)
 end ATest
