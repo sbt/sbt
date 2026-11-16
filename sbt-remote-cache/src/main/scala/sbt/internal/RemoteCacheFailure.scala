@@ -4,7 +4,7 @@ package internal
 import com.eed3si9n.remoteapis.shaded.io.grpc.{ Status, StatusRuntimeException }
 import gigahorse.StatusError
 import java.io.IOException
-import sbt.util.CacheFailure
+import sbt.internal.util.CacheFailure
 import scala.concurrent.TimeoutException
 
 object RemoteCacheFailure:

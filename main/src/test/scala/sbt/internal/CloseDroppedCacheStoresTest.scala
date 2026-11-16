@@ -10,14 +10,8 @@ package sbt.internal
 
 import hedgehog.{ sbt as _, * }
 import hedgehog.runner.*
-import sbt.util.{
-  ActionCacheStore,
-  CacheFailure,
-  CircuitBreakerCacheStore,
-  InMemoryActionCacheStore,
-  Logger,
-  ReadOnlyCacheStore
-}
+import sbt.internal.util.{ CacheFailure, CircuitBreakerCacheStore }
+import sbt.util.{ ActionCacheStore, InMemoryActionCacheStore, Logger, ReadOnlyCacheStore }
 import scala.concurrent.duration.DurationInt
 
 object CloseDroppedCacheStoresTest extends Properties:

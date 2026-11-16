@@ -19,7 +19,7 @@ import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ScalaInstance, ZincLmUtil
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
 import sbt.internal.worker1.{ ConsoleInfo, WorkerMain }
-import sbt.internal.util.{ Attributed, RunHandler, Terminal as ITerminal }
+import sbt.internal.util.{ Attributed, CircuitBreakerCacheStore, RunHandler, Terminal as ITerminal }
 import sbt.io.IO
 import sbt.protocol.Serialization
 import sbt.librarymanagement.{
@@ -34,7 +34,7 @@ import sbt.librarymanagement.{
   SemanticSelector,
   VersionNumber
 }
-import sbt.util.{ ActionCacheStore, CircuitBreakerCacheStore, Logger, ReadOnlyCacheStore }
+import sbt.util.{ ActionCacheStore, Logger, ReadOnlyCacheStore }
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.util.{ Random, Using }

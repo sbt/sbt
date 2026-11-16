@@ -6,11 +6,21 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.util
+package sbt.internal.util
 
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.duration.*
+import sbt.util.{
+  AbstractActionCacheStore,
+  ActionCacheStore,
+  ActionResult,
+  Digest,
+  GetActionResultRequest,
+  Level,
+  Logger,
+  UpdateActionResultRequest
+}
 import verify.BasicTestSuite
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
 
