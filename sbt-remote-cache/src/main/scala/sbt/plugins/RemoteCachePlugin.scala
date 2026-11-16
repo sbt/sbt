@@ -2,8 +2,8 @@ package sbt
 package plugins
 
 import Keys.*
-import sbt.util.{ DiskActionCacheStore, ReadOnlyCacheStore }
-import sbt.internal.{ GrpcActionCacheStore, HttpActionCacheStore }
+import sbt.util.{ CircuitBreakerCacheStore, DiskActionCacheStore, ReadOnlyCacheStore }
+import sbt.internal.{ GrpcActionCacheStore, HttpActionCacheStore, RemoteCacheFailure }
 
 object RemoteCachePlugin extends AutoPlugin:
   override def trigger = AllRequirements
@@ -58,7 +58,15 @@ object RemoteCachePlugin extends AutoPlugin:
                 disk = disk,
                 requestTimeout = remoteCacheRequestTimeout.value,
               )
-          orig ++ Seq(if remoteCacheUploadResults.value then r else ReadOnlyCacheStore(r))
+          val breaker = CircuitBreakerCacheStore(
+            underlying = r,
+            classify = RemoteCacheFailure.classify,
+            cooldown = remoteCacheCooldown.value,
+            logger = sLog.value,
+          )
+          orig ++ Seq(
+            if remoteCacheUploadResults.value then breaker else ReadOnlyCacheStore(breaker)
+          )
         case _ => orig
       end match
     },

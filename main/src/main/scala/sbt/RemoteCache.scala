@@ -49,5 +49,6 @@ object RemoteCache:
     remoteCacheHeaders := SysProp.remoteCacheHeaders,
     remoteCacheRequestTimeout := SysProp.remoteCacheRequestTimeout,
     remoteCacheUploadResults := SysProp.remoteCacheUploadResults,
+    remoteCacheCooldown := SysProp.remoteCacheCooldown,
   )
 end RemoteCache

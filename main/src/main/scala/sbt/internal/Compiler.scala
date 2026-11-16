@@ -34,7 +34,7 @@ import sbt.librarymanagement.{
   SemanticSelector,
   VersionNumber
 }
-import sbt.util.{ ActionCacheStore, Logger, ReadOnlyCacheStore }
+import sbt.util.{ ActionCacheStore, CircuitBreakerCacheStore, Logger, ReadOnlyCacheStore }
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.util.{ Random, Using }
@@ -737,8 +737,9 @@ object Compiler:
       newStores: Seq[ActionCacheStore]
   ): Unit =
     def unwrap(store: ActionCacheStore): ActionCacheStore = store match
-      case r: ReadOnlyCacheStore => unwrap(r.underlying)
-      case _                     => store
+      case r: ReadOnlyCacheStore       => unwrap(r.underlying)
+      case b: CircuitBreakerCacheStore => unwrap(b.underlying)
+      case _                           => store
     val kept = newStores.map(unwrap)
     oldStores
       .map(unwrap)

@@ -1,6 +1,7 @@
 package sbt
 package internal
 
+import gigahorse.StatusError
 import java.io.IOException
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -79,7 +80,8 @@ object HttpActionCacheStoreTest extends verify.BasicTestSuite:
       val action = digestOf("SHA-512", "sha512", "action")
       val blob = hashedFile("SHA-512", "sha512", out.resolve("blob.txt"), "content")
       Using.resource(newStore(uri)): store =>
-        assert(store.putBlobs(Seq(blob)).isEmpty)
+        // A 400 counts as an answer, so the cache stays in use for the digests it does accept.
+        assert(statusOfRefusal(store.putBlobs(Seq(blob))) == Some(400))
         assert(store.findBlobs(Seq[HashedVirtualFileRef](blob)).isEmpty)
         assert(store.put(UpdateActionResultRequest(action, Vector(blob), 0)).isLeft)
         assert(store.get(GetActionResultRequest(action)).isLeft)
@@ -132,16 +134,30 @@ object HttpActionCacheStoreTest extends verify.BasicTestSuite:
         val found = store.findBlobs(Seq[HashedVirtualFileRef](present, absent))
         assert(found.map(_.id) == Seq(present.id))
 
-  test("a rejected blob upload is not reported, and no action result is written"):
+  test("a rejected blob upload is reported as its status, and no action result is written"):
     withRemote(): (remote, uri, out) =>
       val good = StringVirtualFile1(out.resolve("good.txt").toString, "good")
       val bad = new StringVirtualFile1(out.resolve("bad.txt").toString, "bad"):
         override def contentHashStr: String = "sha256-" + ("0" * 64)
       Using.resource(newStore(uri)): store =>
-        assert(store.putBlobs(Seq(good, bad)).map(_.id) == Seq(good.id))
+        assert(statusOfRefusal(store.putBlobs(Seq(good, bad))) == Some(500))
         val stored = store.put(UpdateActionResultRequest(actionDigest, Vector(good, bad), 0))
-        assert(stored.isLeft)
+        assert(statusOf(stored) == Some(500))
         assert(remote.ac.isEmpty)
+
+  /**
+   * The status has to survive as far as the caller, because a read-only token refusing every
+   * upload is not something retrying later fixes, and a short output list cannot say that.
+   */
+  test("an upload refused for lack of permission keeps its 403"):
+    withRemote(readOnly = true): (remote, uri, out) =>
+      val blob = StringVirtualFile1(out.resolve("blob.txt").toString, "content")
+      Using.resource(newStore(uri)): store =>
+        assert(statusOfRefusal(store.putBlobs(Seq(blob))) == Some(403))
+        val stored = store.put(UpdateActionResultRequest(actionDigest, Vector(blob), 0))
+        assert(statusOf(stored) == Some(403))
+        assert(remote.ac.isEmpty)
+        assert(remote.cas.isEmpty)
 
   test("syncBlobs skips a blob that is missing from the remote"):
     withRemote(): (_, uri, out) =>
@@ -223,10 +239,20 @@ object HttpActionCacheStoreTest extends verify.BasicTestSuite:
     new StringVirtualFile1(path.toString, content):
       override def contentHashStr: String = s"$algo-${digest.hashHexString}"
 
+  private def statusOf(result: Either[Throwable, ?]): Option[Int] =
+    result.left.toOption.collect { case e: StatusError => e.status }
+
+  private def statusOfRefusal(call: => Any): Option[Int] =
+    try
+      call
+      None
+    catch case e: StatusError => Some(e.status)
+
   private def withRemote(
-      algorithm: String = "SHA-256"
+      algorithm: String = "SHA-256",
+      readOnly: Boolean = false,
   )(f: (FakeBazelRemote, URI, Path) => Unit): Unit =
-    Using.resource(FakeBazelRemote(algorithm)): remote =>
+    Using.resource(FakeBazelRemote(algorithm, readOnly)): remote =>
       IO.withTemporaryDirectory: dir =>
         f(remote, remote.uri, dir.toPath.toRealPath())
 

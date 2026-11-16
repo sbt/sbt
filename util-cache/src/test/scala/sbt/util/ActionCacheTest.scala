@@ -333,6 +333,29 @@ object ActionCacheTest extends BasicTestSuite:
           assert(paths == Seq((tempDir / "a.txt").toPath(), (tempDir / "c.txt").toPath()))
           assert(aggregate.findBlobs(refs) == Seq[HashedVirtualFileRef](a, c))
 
+  test("An aggregate store keeps the blobs a store took when another refuses them"):
+    withDiskCache: disk =>
+      IO.withTemporaryDirectory: tempDir =>
+        val a = StringVirtualFile1(s"$tempDir/a.txt", "a")
+        val refused = RefusingBlobStore()
+        val stored = disk.putBlobs(a :: Nil)
+        // Either order: a refusal must not abort the stores that come after it either.
+        assert(AggregateActionCacheStore(Seq(disk, refused)).putBlobs(a :: Nil) == stored)
+        assert(AggregateActionCacheStore(Seq(refused, disk)).putBlobs(a :: Nil) == stored)
+        assert(refused.calls == 2, s"calls = ${refused.calls}")
+
+  test("An aggregate store reports the refusal when no store took the blobs"):
+    IO.withTemporaryDirectory: tempDir =>
+      val a = StringVirtualFile1(s"$tempDir/a.txt", "a")
+      val refused = RefusingBlobStore()
+      val aggregate = AggregateActionCacheStore(Seq(refused, RefusingBlobStore()))
+      val thrown =
+        try
+          aggregate.putBlobs(a :: Nil)
+          None
+        catch case e: RuntimeException => Some(e.getMessage)
+      assert(thrown == Some("refused"))
+
   test("Disk cache syncs a blob over a dangling link"):
     withDiskCache: cache =>
       IO.withTemporaryDirectory: tempDir =>
@@ -1400,6 +1423,27 @@ object ActionCacheTest extends BasicTestSuite:
   def binaryConverter = new FileConverter:
     override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
     override def toVirtualFile(path: Path): VirtualFile = DiskVirtualFile(path.toString)
+
+  /** Stands in for a remote store that reports a refused upload rather than a short list. */
+  final class RefusingBlobStore extends AbstractActionCacheStore:
+    var calls = 0
+
+    override def storeName: String = "refusing"
+
+    override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+      Left(notFound)
+
+    override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+      Left(notFound)
+
+    override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] = Nil
+
+    override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+      calls += 1
+      throw RuntimeException("refused")
+
+    override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] = Nil
+  end RefusingBlobStore
 
   final class DiskVirtualFile(path: String)
       extends xsbti.BasicVirtualFileRef(path)

@@ -115,11 +115,21 @@ case class AggregateActionCacheStore(stores: Seq[ActionCacheStore])
         val v = store.put(request)
         res.orElse(v)
 
+  /**
+   * Offers the blobs to every store, so that one store refusing them neither keeps the others
+   * from holding them nor discards what a store before it took. A refusal is reported only when
+   * no store took the blobs, because only then has the caller nothing to serve a hit from.
+   */
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    stores.foldLeft(Seq.empty[HashedVirtualFileRef]): (res, store) =>
-      // put the blobs in all stores
-      val xs = store.putBlobs(blobs)
-      if res.isEmpty then xs else res
+    val attempts = stores.map: store =>
+      try Right(store.putBlobs(blobs))
+      catch case NonFatal(e) => Left(e)
+    attempts.collectFirst { case Right(xs) if xs.nonEmpty => xs } match
+      case Some(xs) => xs
+      case None     =>
+        attempts.collectFirst { case Left(e) => e } match
+          case Some(e) => throw e
+          case None    => Nil
 
   /**
    * Syncs each blob from the first store that has it, asking a store only for the blobs the

@@ -144,6 +144,8 @@ object Keys {
   @transient
   val remoteCacheUploadResults =
     settingKey[Boolean]("Upload results to the remote cache, as opposed to only reading from it.")
+  @transient
+  val remoteCacheCooldown = settingKey[FiniteDuration]("How long to stop calling a remote cache that is not answering, before letting one call through again.")
 
   val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 
