@@ -75,4 +75,6 @@ import scala.concurrent.duration.{ Duration, FiniteDuration }
     lockFile: Option[File] = None,
     @since
     userAgent: Option[String] = None,
+    @since("2.1.1")
+    enableDependencyOverrides: Option[Boolean] = None,
 )
