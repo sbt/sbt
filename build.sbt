@@ -915,8 +915,8 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
-    nativeImageVersion := "23.0",
-    nativeImageJvm := "graalvm-java23",
+    nativeImageVersion := "25",
+    nativeImageJvm := "graalvm-java25",
     nativeImageOutput := {
       val outputDir = (target.value / "bin").toPath
       if !Files.exists(outputDir) then Files.createDirectories(outputDir)
@@ -930,7 +930,6 @@ lazy val sbtClientProj = (project in file("client"))
     },
     nativeImageOptions ++= Def.uncached(
       Seq(
-        "--no-fallback",
         s"--initialize-at-run-time=sbt.client",
         // "The current machine does not support all of the following CPU features that are required by
         // the image: [CX8, CMOV, FXSR, MMX, SSE, SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, LZCNT, AVX,
@@ -940,7 +939,9 @@ lazy val sbtClientProj = (project in file("client"))
         "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
         "-H:+ReportExceptionStackTraces",
         "-H:-ParseRuntimeOptions",
-        s"-H:Name=${target.value / "bin" / "sbtn"}",
+        s"-H:ConfigurationFileDirectories=${(Compile / resourceDirectory).value / "META-INF" / "native-image" / "org.scala-sbt" / "sbt-client"}",
+        "-o",
+        s"${target.value / "bin" / "sbtn"}",
       ) ++ (if staticMuslSbtn then Seq("--static", "--libc=musl") else Nil)
     ),
     buildThinClient := {
