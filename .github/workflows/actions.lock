@@ -7,7 +7,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-java@v6.3.0'
         - 'actions/setup-python@v7.1.0'
-        - 'eed3si9n/scruff@v0.3.3'
+        - 'eed3si9n/scruff@v0.4.3'
         - 'sbt/setup-sbt@v1.5.15'
     '.github/workflows/clean.yml': []
     '.github/workflows/client-test.yml':
@@ -98,9 +98,9 @@ dependencies:
         commit: 'sha1-89ae32b08ed1a541efecbab17912962a5e38981c'
         owner_id: 7513068
         repo_id: 113918130
-    'eed3si9n/scruff@v0.3.3':
-        ref: 'v0.3.3'
-        commit: 'sha1-976b1a4a39a18cd7e722a1b666cb776af3eb5109'
+    'eed3si9n/scruff@v0.4.3':
+        ref: 'v0.4.3'
+        commit: 'sha1-c23419a5cd919651a91631ac7ae67d9ceb87fd22'
         owner_id: 184683
         repo_id: 1443666788
         uses:
