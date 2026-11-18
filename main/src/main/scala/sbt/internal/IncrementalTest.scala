@@ -86,7 +86,7 @@ object IncrementalTest:
       val project = Keys.thisProject.value
       (
         project.id,
-        fileConverter.value.toVirtualFile(project.base.toPath).id,
+        fileConverter.value.toVirtualFileRef(project.base.toPath).id,
         Keys.configuration.value.name,
         Keys.platform.value,
       )

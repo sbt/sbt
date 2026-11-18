@@ -1,0 +1,6 @@
+# flake-inputs/self -> flake-inputs, as direnv's .direnv layout links the nixpkgs flake input.
+# The test digest scope is a settings node, so the loop has to be there before the build loads.
+# No $ exists / $ absent here: scripted's file commands walk the base directory recursively.
+> skipWindows createSymlinkLoop
+> skipWindows reload
+> skipWindows Test/definedTestDigests
