@@ -53,8 +53,14 @@ public final class WorkerMain {
   public static Gson mkGson() {
     RuntimeTypeAdapterFactory<Fingerprint> fingerprintFac =
         RuntimeTypeAdapterFactory.of(Fingerprint.class, "type");
-    fingerprintFac.registerSubtype(ForkTestMain.SubclassFingerscan.class, "SubclassFingerscan");
-    fingerprintFac.registerSubtype(ForkTestMain.AnnotatedFingerscan.class, "AnnotatedFingerscan");
+    fingerprintFac.registerSubtype(
+        ForkTestMain.SubclassFingerscan.class,
+        "SubclassFingerscan",
+        TestPayloadAdapters::readSubclassFingerscan);
+    fingerprintFac.registerSubtype(
+        ForkTestMain.AnnotatedFingerscan.class,
+        "AnnotatedFingerscan",
+        TestPayloadAdapters::readAnnotatedFingerscan);
     RuntimeTypeAdapterFactory<Selector> selectorFac =
         RuntimeTypeAdapterFactory.of(Selector.class, "type");
     selectorFac.registerSubtype(SuiteSelector.class, "SuiteSelector");
@@ -62,7 +68,7 @@ public final class WorkerMain {
     selectorFac.registerSubtype(NestedSuiteSelector.class, "NestedSuiteSelector");
     selectorFac.registerSubtype(NestedTestSelector.class, "NestedTestSelector");
     selectorFac.registerSubtype(TestWildcardSelector.class, "TestWildcardSelector");
-    return new GsonBuilder()
+    return TestPayloadAdapters.register(new GsonBuilder())
         .registerTypeAdapterFactory(fingerprintFac)
         .registerTypeAdapterFactory(selectorFac)
         .registerTypeAdapterFactory(ThrowableAdapterFactory.INSTANCE)
