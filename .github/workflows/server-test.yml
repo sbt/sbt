@@ -25,6 +25,7 @@ jobs:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7.0.1
         with:
