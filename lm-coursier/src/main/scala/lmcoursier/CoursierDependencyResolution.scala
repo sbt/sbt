@@ -294,6 +294,7 @@ class CoursierDependencyResolution(
           reconciliation0 = conf.reconciliation.map: (k, v) =>
             ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v),
           exclusions = excludeDependencies,
+          enableDependencyOverrides = conf.enableDependencyOverrides,
           rules = ToCoursier.sameVersions(conf.sameVersions)
         ),
       strictOpt = conf.strict.map(ToCoursier.strict),
