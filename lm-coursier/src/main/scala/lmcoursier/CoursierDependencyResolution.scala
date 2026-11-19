@@ -14,6 +14,7 @@ import lmcoursier.internal.{
   ArtifactsRun,
   CoursierModuleDescriptor,
   InterProjectRepository,
+  JniUtilsSetup,
   LockFile,
   LockedArtifactsRun,
   ResolutionParams,
@@ -43,6 +44,8 @@ class CoursierDependencyResolution(
       protocolHandlerConfiguration = None,
       bootstrappingProtocolHandler = true
     )
+
+  JniUtilsSetup.ensureSetup()
 
   private var protocolHandlerClassLoader: Option[ClassLoader] = None
   private val protocolHandlerClassLoaderLock = new Object
@@ -550,6 +553,8 @@ class CoursierDependencyResolution(
 end CoursierDependencyResolution
 
 object CoursierDependencyResolution:
+  JniUtilsSetup.ensureSetup()
+
   // Built at runtime, not as a single literal: lmCoursierShaded's relocation rewrites any string
   // constant shaped like a "coursier."-prefixed path, which would otherwise silently turn this
   // into "lmcoursier.internal.shaded.coursier.http.agent" and break the override.
