@@ -43,6 +43,18 @@ import xsbti.compile.{ CompileAnalysis, Inputs, PreviousResult }
 
 object Compiler:
   private val r = Random()
+  private val StagingFile = """(.*)\.[0-9a-f]{8}\.tmp""".r
+
+  /** Paths that `sbt.io.IO` may be writing through `path`, going by its staging file naming. */
+  private[sbt] def stagedWriteTargets(path: String): Seq[String] =
+    path match
+      case StagingFile(to) =>
+        val i = math.max(to.lastIndexOf('/'), to.lastIndexOf('\\')) + 1
+        val name = to.substring(i)
+        if name.startsWith("sbt-") && name.length < 7 then
+          Seq(to, to.substring(0, i) + name.drop(4))
+        else Seq(to)
+      case _ => Nil
 
   def scalaInstanceTask(
       configKey: TaskKey[ScalaInstanceConfig]
