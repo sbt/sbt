@@ -156,6 +156,7 @@ object LMCoursier:
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
       .withLockFile(lockFile)
       .withUserAgent(defaultUserAgent(sbtVer))
+      .withEnableDependencyOverrides(enableDependencyOverrides)
   end coursierConfiguration
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
