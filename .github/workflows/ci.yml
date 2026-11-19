@@ -104,7 +104,7 @@ jobs:
           gh actions-lock --verify
         env:
           GH_TOKEN: ${{ github.token }}
-      - uses: eed3si9n/scruff@v0.3.3
+      - uses: eed3si9n/scruff@v0.4.3
         with:
           format: false
           lint: true
