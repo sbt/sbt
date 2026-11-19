@@ -25,12 +25,13 @@ jobs:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
+    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           submodules: true
       - name: Setup JDK
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v6.3.0
         with:
           distribution: "${{ matrix.distribution }}"
           java-version: "${{ matrix.java }}"
@@ -44,13 +45,13 @@ jobs:
           else
             sudo -E bash scripts/distrust-emudhra.sh "$JAVA_HOME"
           fi
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.15
       - name: Set bazel-remote version
         id: bazel-remote-version
         run: echo "version=2.6.2" >> "$GITHUB_OUTPUT"
       - name: Cache bazel-remote
         id: cache-bazel-remote
-        uses: actions/cache@v6
+        uses: actions/cache@v6.1.0
         with:
           path: $RUNNER_TOOL_CACHE/local/bazel-remote
           key: bazel-remote-v${{ steps.bazel-remote-version.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
