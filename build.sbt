@@ -1390,6 +1390,8 @@ lazy val lmCoursierShaded = project
       case PathList("META-INF", "native", _*) => MergeStrategy.first
       case "META-INF/services/lmcoursier.internal.shaded.coursier.jniutils.NativeApi" =>
         MergeStrategy.first
+      case PathList("lmcoursier", "internal", "shaded", ps*) if ps.last.endsWith(".tasty") =>
+        MergeStrategy.discard
       case x =>
         val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
         oldStrategy(x)
