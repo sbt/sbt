@@ -18,7 +18,7 @@ jobs:
           - os: macos-latest
             java: 17
             distribution: temurin
-          - os: windows-latest
+          - os: windows-2022
             java: 17
             distribution: zulu
     runs-on: ${{ matrix.os }}
@@ -55,7 +55,7 @@ jobs:
         python-version: 3.12
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1.13.0
-      if: ${{ matrix.os == 'windows-latest' }}
+      if: ${{ runner.os == 'Windows' }}
     - name: Setup musl toolchain (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
@@ -108,7 +108,7 @@ jobs:
         # This fails due to the JLine issue
         # cd launcher-package/citest && ./test.sh
     - name: build image (Windows)
-      if: ${{ matrix.os == 'windows-latest' }}
+      if: ${{ runner.os == 'Windows' }}
       uses: nick-fields/retry@v4.0.0
       with:
         timeout_minutes: 10
@@ -118,7 +118,7 @@ jobs:
           # test building sbtn on Windows (sbtw native-image dropped: scopt lazy vals break under Graal)
           sbt "-Dsbt.io.virtual=false" nativeImage
     - name: sbtn test (Windows)
-      if: ${{ matrix.os == 'windows-latest' }}
+      if: ${{ runner.os == 'Windows' }}
       shell: bash
       run: |
         REPO_ROOT=$(pwd)
@@ -133,7 +133,7 @@ jobs:
         $REPO_ROOT/target/out/jvm/u/sbt-client/bin/sbtn --sbt-script=$REPO_ROOT/launcher-package/src/universal/bin/sbt.bat shutdown
         popd
     - name: Client test (Windows)
-      if: ${{ matrix.os == 'windows-latest' }}
+      if: ${{ runner.os == 'Windows' }}
       shell: bash
       run: |
         # test launcher script
