@@ -117,13 +117,14 @@ object Dependencies:
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.26"
+  val coursierVersion = "2.1.27"
 
   val coursier = "io.get-coursier" %% "coursier" % coursierVersion
 
-  // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
-  // io.get-coursier::coursier depends on.
-  val jniUtilsVersion = "0.3.3"
+  // lm-coursier/src/main/java/lmcoursier/internal/jniutils/LmNativeApi.java is copied from
+  // windows-jni-utils-lmcoursier in coursier/jni-utils at this tag, which must match the
+  // windows-jni-utils version pulled by coursier.
+  val jniUtilsVersion = "0.5.0"
 
   val asm = "org.ow2.asm" % "asm" % "9.11.1" % Test
 end Dependencies

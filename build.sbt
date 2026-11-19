@@ -1291,7 +1291,6 @@ lazy val lmCoursierDefinitions = project
 lazy val lmCoursierDependencies = Def.settings(
   libraryDependencies ++= Seq(
     coursier,
-    "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
   ),
   libraryDependencies ++= Dependencies.scalatest,
@@ -1332,6 +1331,7 @@ lazy val lmCoursierShaded = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (lmCoursier / Compile / sources).value,
+    Compile / unmanagedResourceDirectories ++= (lmCoursier / Compile / unmanagedResourceDirectories).value,
     Compile / doc / sources := Nil,
     lmCoursierDependencies,
     autoScalaLibrary := false,
@@ -1349,6 +1349,7 @@ lazy val lmCoursierShaded = project
         "macrocompat",
         "io.github.alexarchambault.isterminal",
         "io.github.alexarchambault.windowsansi",
+        "io.github.alexarchambault.nativeterm",
         "concurrentrefhashmap",
         "com.github.ghik",
         // pulled by the plexus-archiver stuff that coursier-cache
@@ -1388,8 +1389,6 @@ lazy val lmCoursierShaded = project
       case PathList("sjsonnew")               => MergeStrategy.discard
       case PathList("xsbti")                  => MergeStrategy.discard
       case PathList("META-INF", "native", _*) => MergeStrategy.first
-      case "META-INF/services/lmcoursier.internal.shaded.coursier.jniutils.NativeApi" =>
-        MergeStrategy.first
       case PathList("lmcoursier", "internal", "shaded", ps*) if ps.last.endsWith(".tasty") =>
         MergeStrategy.discard
       case x =>
