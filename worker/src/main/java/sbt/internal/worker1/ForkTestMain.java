@@ -30,9 +30,13 @@ public class ForkTestMain {
     private final boolean requireNoArgConstructor;
 
     public SubclassFingerscan(final SubclassFingerprint print) {
-      isModule = print.isModule();
-      superclassName = print.superclassName();
-      requireNoArgConstructor = print.requireNoArgConstructor();
+      this(print.isModule(), print.superclassName(), print.requireNoArgConstructor());
+    }
+
+    SubclassFingerscan(boolean isModule, String superclassName, boolean requireNoArgConstructor) {
+      this.isModule = isModule;
+      this.superclassName = superclassName;
+      this.requireNoArgConstructor = requireNoArgConstructor;
     }
 
     public boolean isModule() {
@@ -53,8 +57,12 @@ public class ForkTestMain {
     private final String annotationName;
 
     public AnnotatedFingerscan(final AnnotatedFingerprint print) {
-      isModule = print.isModule();
-      annotationName = print.annotationName();
+      this(print.isModule(), print.annotationName());
+    }
+
+    AnnotatedFingerscan(boolean isModule, String annotationName) {
+      this.isModule = isModule;
+      this.annotationName = annotationName;
     }
 
     public boolean isModule() {
@@ -92,6 +100,21 @@ public class ForkTestMain {
       else this.throwable = originalThrowable;
 
       this.duration = e.duration();
+    }
+
+    ForkEvent(
+        String fullyQualifiedName,
+        Fingerprint fingerprint,
+        Selector selector,
+        Status status,
+        OptionalThrowable throwable,
+        long duration) {
+      this.fullyQualifiedName = fullyQualifiedName;
+      this.fingerprint = fingerprint;
+      this.selector = selector;
+      this.status = status;
+      this.throwable = throwable;
+      this.duration = duration;
     }
 
     public String fullyQualifiedName() {
