@@ -3,6 +3,7 @@ package lmcoursier
 import coursier.cache.CacheDefaults
 import lmcoursier.credentials.*
 import lmcoursier.definitions.*
+import lmcoursier.internal.JniUtilsSetup
 import sbt.librarymanagement.{ Resolver, UpdateConfiguration }
 import xsbti.Logger
 
@@ -10,6 +11,8 @@ import scala.concurrent.duration.{ Duration, FiniteDuration }
 import java.io.File
 
 package object syntax:
+  JniUtilsSetup.ensureSetup()
+
   extension (value: CoursierConfiguration.type)
     @deprecated(
       "Legacy cache location support was dropped, this method does nothing.",

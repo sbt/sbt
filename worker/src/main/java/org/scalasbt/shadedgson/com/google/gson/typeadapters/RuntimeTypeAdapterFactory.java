@@ -19,6 +19,7 @@ package org.scalasbt.shadedgson.com.google.gson.typeadapters;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 import org.scalasbt.shadedgson.com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -173,6 +174,8 @@ public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
   private final String typeFieldName;
   private final Map<String, Class<?>> labelToSubtype = new LinkedHashMap<>();
   private final Map<Class<?>, String> subtypeToLabel = new LinkedHashMap<>();
+  private final Map<String, BiFunction<Gson, JsonObject, ? extends T>> subtypeReaders =
+      new LinkedHashMap<>();
   private final boolean maintainType;
   private boolean recognizeSubtypes;
 
@@ -230,6 +233,13 @@ public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
    */
   @CanIgnoreReturnValue
   public RuntimeTypeAdapterFactory<T> registerSubtype(Class<? extends T> type, String label) {
+    return registerSubtype(type, label, null);
+  }
+
+  /** Registers a subtype with a custom reader and the usual serialization delegate. */
+  @CanIgnoreReturnValue
+  public <S extends T> RuntimeTypeAdapterFactory<T> registerSubtype(
+      Class<S> type, String label, BiFunction<Gson, JsonObject, S> reader) {
     if (type == null || label == null) {
       throw new NullPointerException();
     }
@@ -238,6 +248,9 @@ public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
     }
     labelToSubtype.put(label, type);
     subtypeToLabel.put(type, label);
+    if (reader != null) {
+      subtypeReaders.put(label, reader);
+    }
     return this;
   }
 
@@ -266,6 +279,8 @@ public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
     }
 
     TypeAdapter<JsonElement> jsonElementAdapter = gson.getAdapter(JsonElement.class);
+    Map<String, BiFunction<Gson, JsonObject, ? extends T>> labelToReader =
+        new LinkedHashMap<>(subtypeReaders);
     Map<String, TypeAdapter<?>> labelToDelegate = new LinkedHashMap<>();
     Map<Class<?>, TypeAdapter<?>> subtypeToDelegate = new LinkedHashMap<>();
     for (Map.Entry<String, Class<?>> entry : labelToSubtype.entrySet()) {
@@ -293,6 +308,12 @@ public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
                   + typeFieldName);
         }
         String label = labelJsonElement.getAsString();
+        BiFunction<Gson, JsonObject, ? extends T> reader = labelToReader.get(label);
+        if (reader != null) {
+          @SuppressWarnings("unchecked")
+          R result = (R) reader.apply(gson, jsonElement.getAsJsonObject());
+          return result;
+        }
         @SuppressWarnings("unchecked") // registration requires that subtype extends T
         TypeAdapter<R> delegate = (TypeAdapter<R>) labelToDelegate.get(label);
         if (delegate == null) {
