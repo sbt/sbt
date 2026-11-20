@@ -159,7 +159,7 @@ object ParseKeySpec extends Properties:
       structure: Structure,
       key: ScopedKey[?],
       mask: ScopeMask,
-      showZeroConfig: Boolean = false,
+      showZeroConfig: Boolean = false, // scruff: ignore(no_default_param)
   )(f: ScopedKey[?] => hedgehog.Result): hedgehog.Result =
     val s = displayMasked(key, mask, showZeroConfig)
     val parser = makeParser(structure)

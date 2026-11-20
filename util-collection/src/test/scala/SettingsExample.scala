@@ -12,7 +12,7 @@ import sbt.util.Show
 
 /** Define our settings system */
 // A basic scope indexed by an integer.
-final case class Scope(nestIndex: Int, idAtIndex: Int = 0)
+final case class Scope(nestIndex: Int, idAtIndex: Int = 0) // scruff: ignore(no_default_param)
 
 // Extend the Init trait.
 //  (It is done this way because the Scope type parameter is used everywhere in Init.

@@ -13,6 +13,7 @@ import sbt.internal.util.*
 import sbt.protocol.LogEvent
 import sbt.util.Level
 
+// scruff: ignore(no_default_param)
 class RelayAppender(override val name: String, targetChannel: Option[String] = None)
     extends ConsoleAppender(
       name,

@@ -87,7 +87,7 @@ object GlobalLogging:
       newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
       newBackingFile: => File,
       console: ConsoleOut,
-      initialLevel: Level.Value = Level.Info
+      initialLevel: Level.Value = Level.Info // scruff: ignore(no_default_param)
   ): GlobalLogging =
     val loggerName = generateName
     val log = LoggerContext.globalContext.logger(loggerName, None, None)

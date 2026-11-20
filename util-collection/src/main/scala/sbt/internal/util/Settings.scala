@@ -105,7 +105,7 @@ trait Init:
   def setting[A1](
       key: ScopedKey[A1],
       init: Initialize[A1],
-      pos: SourcePosition = NoPosition
+      pos: SourcePosition = NoPosition // scruff: ignore(no_default_param)
   ): Setting[A1] = Setting[A1](key, init, pos)
 
   def valueStrict[A1](value: A1): Initialize[A1] = pure(() => value)
@@ -150,10 +150,10 @@ trait Init:
    */
   final def derive[A1](
       s: Setting[A1],
-      allowDynamic: Boolean = false,
-      filter: ScopeType => Boolean = const(true),
-      trigger: AttributeKey[?] => Boolean = const(true),
-      default: Boolean = false
+      allowDynamic: Boolean = false, // scruff: ignore(no_default_param)
+      filter: ScopeType => Boolean = const(true), // scruff: ignore(no_default_param)
+      trigger: AttributeKey[?] => Boolean = const(true), // scruff: ignore(no_default_param)
+      default: Boolean = false // scruff: ignore(no_default_param)
   ): Setting[A1] =
     deriveAllowed(s, allowDynamic) foreach sys.error
     val d = new DerivedSetting[A1](s.key, s.init, s.pos, filter, trigger)
@@ -197,6 +197,7 @@ trait Init:
     result.addAll(others)
     result.asScala.toVector
 
+  // scruff: ignore(no_default_param)
   def compiled(init: Seq[Setting[?]], actual: Boolean = true)(using
       delegates: ScopeType => Seq[ScopeType],
       scopeLocal: ScopeLocal,
@@ -704,6 +705,7 @@ trait Init:
       make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
 
     /** Turn this setting into a `DefaultSetting` if it's not already, otherwise returns `this` */
+    // scruff: ignore(no_default_param)
     private[sbt] def default(id: => Long = nextDefaultID()): DefaultSetting[A1] =
       DefaultSetting(key, init, pos, id)
   end Setting

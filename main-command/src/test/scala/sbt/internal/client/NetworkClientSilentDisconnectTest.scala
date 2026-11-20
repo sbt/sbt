@@ -121,6 +121,7 @@ object NetworkClientSilentDisconnectTest extends BasicTestSuite:
     try runBatchClient(base, Array("shutdown"))
     catch case _: Exception => ()
 
+  // scruff: ignore(no_default_param)
   private def runBatchClient(base: File, args: Array[String] = Array("compile")): (Int, String) =
     val errBytes = new ByteArrayOutputStream
     val outBytes = new ByteArrayOutputStream

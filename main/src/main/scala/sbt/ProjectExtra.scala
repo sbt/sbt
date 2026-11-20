@@ -209,7 +209,7 @@ trait ProjectExtra extends Scoped.Syntax:
 
     def showContextKey2(
         session: SessionSettings,
-        keyNameColor: Option[String] = None
+        keyNameColor: Option[String] = None // scruff: ignore(no_default_param)
     ): Show[ScopedKey[?]] =
       Def.showRelativeKey2(session.current, keyNameColor)
 
@@ -234,7 +234,7 @@ trait ProjectExtra extends Scoped.Syntax:
 
     def showLoadingKey(
         loaded: LoadedBuild,
-        keyNameColor: Option[String] = None
+        keyNameColor: Option[String] = None // scruff: ignore(no_default_param)
     ): Show[ScopedKey[?]] =
       val configNameToIdent = buildConfigNameToIdent(loaded)
       val current = ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head)
@@ -486,8 +486,8 @@ trait ProjectExtra extends Scoped.Syntax:
       def printScopes(
           label: String,
           scopes: Iterable[ScopedKey[?]],
-          max: Int = Int.MaxValue,
-          prefix: ScopedKey[?] => String = const("")
+          max: Int = Int.MaxValue, // scruff: ignore(no_default_param)
+          prefix: ScopedKey[?] => String = const("") // scruff: ignore(no_default_param)
       ) =
         if scopes.isEmpty then ""
         else

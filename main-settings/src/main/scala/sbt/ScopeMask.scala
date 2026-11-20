@@ -10,10 +10,10 @@ package sbt
 
 /** Specifies the Scope axes that should be used for an operation.  `true` indicates an axis should be used. */
 final case class ScopeMask(
-    project: Boolean = true,
-    config: Boolean = true,
-    task: Boolean = true,
-    extra: Boolean = true
+    project: Boolean = true, // scruff: ignore(no_default_param)
+    config: Boolean = true, // scruff: ignore(no_default_param)
+    task: Boolean = true, // scruff: ignore(no_default_param)
+    extra: Boolean = true // scruff: ignore(no_default_param)
 ):
   def concatShow(p: String, c: String, t: String, sep: String, x: String): String =
     val sb = new StringBuilder

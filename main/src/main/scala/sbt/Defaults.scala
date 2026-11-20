@@ -2269,6 +2269,7 @@ object Defaults extends BuildCommon with DefExtra:
     ()
   }
 
+  // scruff: ignore(no_default_param)
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[?]] =
     inTask(key)(
       Seq(
@@ -4505,9 +4506,9 @@ object Classpaths:
       configurations: Vector[ConfigRef],
       artifacts: Vector[(Artifact, File)],
       checksums: Vector[String],
-      resolverName: String = "local",
-      logging: UpdateLogging = UpdateLogging.DownloadOnly,
-      overwrite: Boolean = false
+      resolverName: String = "local", // scruff: ignore(no_default_param)
+      logging: UpdateLogging = UpdateLogging.DownloadOnly, // scruff: ignore(no_default_param)
+      overwrite: Boolean = false // scruff: ignore(no_default_param)
   ) =
     PublishConfiguration(
       publishMavenStyle,
@@ -4527,9 +4528,10 @@ object Classpaths:
       status: String,
       configurations: Vector[ConfigRef],
       checksums: Vector[String],
+      // scruff: ignore(no_default_param)
       logging: sbt.librarymanagement.UpdateLogging = UpdateLogging.DownloadOnly,
-      overwrite: Boolean = false,
-      optResolverName: Option[String] = None
+      overwrite: Boolean = false, // scruff: ignore(no_default_param)
+      optResolverName: Option[String] = None // scruff: ignore(no_default_param)
   ) =
     PublishConfiguration(
       publishMavenStyle,
@@ -5184,9 +5186,11 @@ trait BuildExtra extends BuildCommon with DefExtra:
    * Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
    * This is useful for reducing Test/compile time when not running test.
    */
+  // scruff: ignore(no_default_param)
   def noTestCompletion(config: Configuration = Test): Setting[?] =
     inConfig(config)(Seq(definedTests := Def.uncached(detectTests.value))).head
 
+  // scruff: ignore(no_default_param)
   def filterKeys(ss: Seq[Setting[?]], transitive: Boolean = false)(
       f: ScopedKey[?] => Boolean
   ): Seq[Setting[?]] =

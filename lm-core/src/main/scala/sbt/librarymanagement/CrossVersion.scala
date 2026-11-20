@@ -48,6 +48,7 @@ final class Binary private (val prefix: String, val suffix: String)
     37 * (37 * (37 * (17 + "sbt.librarymanagement.Binary".##) + prefix.##) + suffix.##)
   override def toString: String =
     "Binary(" + prefix + ", " + suffix + ")"
+  // scruff: ignore(no_default_param)
   private def copy(prefix: String = prefix, suffix: String = suffix): Binary =
     new Binary(prefix, suffix)
   def withPrefix(prefix: String): Binary =
@@ -117,6 +118,7 @@ final class Full private (val prefix: String, val suffix: String)
     37 * (37 * (37 * (17 + "sbt.librarymanagement.Full".##) + prefix.##) + suffix.##)
   override def toString: String =
     "Full(" + prefix + ", " + suffix + ")"
+  // scruff: ignore(no_default_param)
   private def copy(prefix: String = prefix, suffix: String = suffix): Full =
     new Full(prefix, suffix)
   def withPrefix(prefix: String): Full =
@@ -147,6 +149,7 @@ final class For3Use2_13 private (val prefix: String, val suffix: String)
     37 * (37 * (37 * (17 + "sbt.librarymanagement.For3Use2_13".##) + prefix.##) + suffix.##)
   override def toString: String =
     "For3Use2_13(" + prefix + ", " + suffix + ")"
+  // scruff: ignore(no_default_param)
   private def copy(prefix: String = prefix, suffix: String = suffix): For3Use2_13 =
     new For3Use2_13(prefix, suffix)
   def withPrefix(prefix: String): For3Use2_13 =
@@ -177,6 +180,7 @@ final class For2_13Use3 private (val prefix: String, val suffix: String)
     37 * (37 * (37 * (17 + "sbt.librarymanagement.For3Use2_13".##) + prefix.##) + suffix.##)
   override def toString: String =
     "For3Use2_13(" + prefix + ", " + suffix + ")"
+  // scruff: ignore(no_default_param)
   private def copy(prefix: String = prefix, suffix: String = suffix): For2_13Use3 =
     new For2_13Use3(prefix, suffix)
   def withPrefix(prefix: String): For2_13Use3 =

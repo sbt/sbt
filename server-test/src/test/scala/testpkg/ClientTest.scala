@@ -32,6 +32,7 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach:
       -1
   val NullPrintStream = new PrintStream(_ => {}, false)
 
+  // scruff: ignore(no_default_param)
   class CachingPrintStream(cos: CachingOutputStream = new CachingOutputStream)
       extends PrintStream(cos, true):
     def lines = cos.lines

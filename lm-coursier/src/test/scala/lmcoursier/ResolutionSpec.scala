@@ -21,7 +21,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers:
       moduleId: ModuleID,
       deps: Vector[ModuleID],
       scalaFullVersion: Option[String],
-      overrideScalaVersion: Boolean = true
+      overrideScalaVersion: Boolean = true // scruff: ignore(no_default_param)
   ): ModuleDescriptor =
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(

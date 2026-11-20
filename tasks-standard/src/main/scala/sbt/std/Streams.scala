@@ -33,21 +33,22 @@ sealed trait TaskStreams[Key]:
   def outID = "out"
   def errorID = "err"
 
-  def getInput(key: Key, sid: String = default): Input
-  def getOutput(sid: String = default): Output
+  def getInput(key: Key, sid: String = default): Input // scruff: ignore(no_default_param)
+  def getOutput(sid: String = default): Output // scruff: ignore(no_default_param)
 
   /**
    * Provides a reader to read text from the stream `sid` for `key`. It is the caller's
    * responsibility to coordinate writing to the stream. That is, no synchronization or ordering is
    * provided and so this method should only be called when writing is complete.
    */
-  def readText(key: Key, sid: String = default): BufferedReader
+  def readText(key: Key, sid: String = default): BufferedReader // scruff: ignore(no_default_param)
 
   /**
    * Provides an output stream to read from the stream `sid` for `key`. It is the caller's
    * responsibility to coordinate writing to the stream. That is, no synchronization or ordering is
    * provided and so this method should only be called when writing is complete.
    */
+  // scruff: ignore(no_default_param)
   def readBinary(a: Key, sid: String = default): BufferedInputStream
 
   final def readText(a: Key, sid: Option[String]): BufferedReader = readText(a, getID(sid))
@@ -57,10 +58,10 @@ sealed trait TaskStreams[Key]:
   def key: Key
 
   /** Provides a writer for writing text to the stream with the given ID. */
-  def text(sid: String = default): PrintWriter
+  def text(sid: String = default): PrintWriter // scruff: ignore(no_default_param)
 
   /** Provides an output stream for writing to the stream with the given ID. */
-  def binary(sid: String = default): BufferedOutputStream
+  def binary(sid: String = default): BufferedOutputStream // scruff: ignore(no_default_param)
 
   /** A cache directory that is unique to the context of this streams instance. */
   def cacheDirectory: File
@@ -137,21 +138,23 @@ object Streams:
       private var opened: List[Closeable] = nil
       private var closed = false
 
-      def getInput(a: Key, sid: String = default): Input =
+      def getInput(a: Key, sid: String = default): Input = // scruff: ignore(no_default_param)
         make(a, sid)(f => new FileInput(f))
 
-      def getOutput(sid: String = default): Output =
+      def getOutput(sid: String = default): Output = // scruff: ignore(no_default_param)
         make(a, sid)(f => new FileOutput(f))
 
+      // scruff: ignore(no_default_param)
       def readText(a: Key, sid: String = default): BufferedReader =
         make(a, sid)(f =>
           new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset))
         )
 
+      // scruff: ignore(no_default_param)
       def readBinary(a: Key, sid: String = default): BufferedInputStream =
         make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
 
-      def text(sid: String = default): PrintWriter =
+      def text(sid: String = default): PrintWriter = // scruff: ignore(no_default_param)
         make(a, sid)(f =>
           new PrintWriter(
             new DeferredWriter(
@@ -162,7 +165,7 @@ object Streams:
           )
         )
 
-      def binary(sid: String = default): BufferedOutputStream =
+      def binary(sid: String = default): BufferedOutputStream = // scruff: ignore(no_default_param)
         make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))
 
       lazy val cacheDirectory: File =

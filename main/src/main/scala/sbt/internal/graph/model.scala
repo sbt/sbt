@@ -36,11 +36,11 @@ end GraphModuleId
 
 private[sbt] case class Module(
     id: GraphModuleId,
-    license: Option[String] = None,
-    extraInfo: String = "",
-    evictedByVersion: Option[String] = None,
-    jarFile: Option[File] = None,
-    error: Option[String] = None
+    license: Option[String] = None, // scruff: ignore(no_default_param)
+    extraInfo: String = "", // scruff: ignore(no_default_param)
+    evictedByVersion: Option[String] = None, // scruff: ignore(no_default_param)
+    jarFile: Option[File] = None, // scruff: ignore(no_default_param)
+    error: Option[String] = None // scruff: ignore(no_default_param)
 ):
   def hadError: Boolean = error.isDefined
   def isUsed: Boolean = !isEvicted

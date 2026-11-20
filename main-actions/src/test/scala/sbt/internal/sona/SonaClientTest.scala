@@ -35,7 +35,7 @@ object SonaClientTest extends BasicTestSuite:
   private def doTest(
       errorsJsonText: Option[String],
       expectedErrorMessage: String,
-      expectedLogText: String = ""
+      expectedLogText: String = "" // scruff: ignore(no_default_param)
   ): Unit =
     val logger = new RecordingLogger()
     val errorsNode = errorsJsonText.map(Parser.parseUnsafe)

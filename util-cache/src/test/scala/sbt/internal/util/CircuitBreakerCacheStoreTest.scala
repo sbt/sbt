@@ -155,6 +155,7 @@ object CircuitBreakerCacheStoreTest extends BasicTestSuite:
   private def newBreaker(
       store: ActionCacheStore,
       clock: Clock,
+      // scruff: ignore(no_default_param)
       messages: mutable.ListBuffer[String] = mutable.ListBuffer.empty,
   ): CircuitBreakerCacheStore =
     val logger = new Logger:
@@ -169,6 +170,7 @@ object CircuitBreakerCacheStoreTest extends BasicTestSuite:
 
   private case class Failed(kind: CacheFailure) extends RuntimeException(s"simulated $kind")
 
+  // scruff: ignore(no_default_param)
   private final class StubStore(kind: CacheFailure, writesOnly: Boolean = false)
       extends AbstractActionCacheStore:
     var calls = 0

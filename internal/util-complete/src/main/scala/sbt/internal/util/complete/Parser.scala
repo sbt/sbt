@@ -107,6 +107,7 @@ sealed trait RichParser[A]:
   def examples(s: String*): Parser[A]
 
   /** Explicitly defines the completions for the original Parser. */
+  // scruff: ignore(no_default_param)
   def examples(s: Set[String], check: Boolean = false): Parser[A]
 
   /**
@@ -223,9 +224,11 @@ object Parser extends ParserMain:
     private[sbt] def ++(f: Failure) = mkFailures(errors ++ f.errors)
   end Failure
 
+  // scruff: ignore(no_default_param)
   def mkFailures(errors: => Seq[String], definitive: Boolean = false): Failure =
     new Failure(errors.distinct, definitive)
 
+  // scruff: ignore(no_default_param)
   def mkFailure(error: => String, definitive: Boolean = false): Failure =
     new Failure(error :: Nil, definitive)
 
@@ -294,6 +297,7 @@ object Parser extends ParserMain:
   def zeroOrMore[T](p: Parser[T]): Parser[Seq[T]] = repeat(p, 0, Infinite)
   def oneOrMore[T](p: Parser[T]): Parser[Seq[T]] = repeat(p, 1, Infinite)
 
+  // scruff: ignore(no_default_param)
   def repeat[T](p: Parser[T], min: Int = 0, max: UpperBound = Infinite): Parser[Seq[T]] =
     repeat(None, p, min, max, Nil)
 
@@ -361,6 +365,7 @@ trait ParserMain:
     def &(o: Parser[?]) = and(a, o)
     def examples(s: String*): Parser[A] = examples(s.toSet)
 
+    // scruff: ignore(no_default_param)
     def examples(s: Set[String], check: Boolean = false): Parser[A] =
       examples(new FixedSetExamples(s), s.size, check)
 
@@ -385,6 +390,7 @@ trait ParserMain:
    * p`, if `p` doesn't match the empty sequence, the failure will come from the Parser constructed
    * by the `softFailure` method.
    */
+  // scruff: ignore(no_default_param)
   private[sbt] def softFailure(msg: => String, definitive: Boolean = false): Parser[Nothing] =
     SoftInvalid(mkFailures(msg :: Nil, definitive))
 
@@ -392,6 +398,7 @@ trait ParserMain:
    * Defines a parser that always fails on any input with messages `msgs`. If `definitive` is
    * `true`, any failures by later alternatives are discarded.
    */
+  // scruff: ignore(no_default_param)
   def invalid(msgs: => Seq[String], definitive: Boolean = false): Parser[Nothing] =
     Invalid(mkFailures(msgs, definitive))
 
@@ -399,6 +406,7 @@ trait ParserMain:
    * Defines a parser that always fails on any input with message `msg`. If `definitive` is `true`,
    * any failures by later alternatives are discarded.
    */
+  // scruff: ignore(no_default_param)
   def failure(msg: => String, definitive: Boolean = false): Parser[Nothing] =
     invalid(msg :: Nil, definitive)
 
@@ -432,6 +440,7 @@ trait ParserMain:
    * Defines a Parser that parses a single character only if the predicate `f` returns true for that
    * character. If this parser fails, `label` is used as the failure message.
    */
+  // scruff: ignore(no_default_param)
   def charClass(f: Char => Boolean, label: String = "<unspecified>"): Parser[Char] =
     new CharacterClass(f, label)
 
@@ -481,6 +490,7 @@ trait ParserMain:
    *
    * See also [[sampleParse]] and [[sampleCompletions]].
    */
+  // scruff: ignore(no_default_param)
   def sample(str: String, parser: Parser[?], completions: Boolean = false): Unit =
     if completions then sampleCompletions(str, parser) else sampleParse(str, parser)
 
@@ -499,6 +509,7 @@ trait ParserMain:
    * the available completions are displayed on separate lines. If parsing fails, the error message
    * is displayed.
    */
+  // scruff: ignore(no_default_param)
   def sampleCompletions(str: String, parser: Parser[?], level: Int = 1): Unit =
     Parser.completions(parser, str, level).get foreach println
 
@@ -537,6 +548,7 @@ trait ParserMain:
     // The x Completions.empty removes any trailing token completions where append.isEmpty
     apply(p)(s).completions(level).x(Completions.empty)
 
+  // scruff: ignore(no_default_param)
   def examples[A](a: Parser[A], completions: Set[String], check: Boolean = false): Parser[A] =
     examples(a, new FixedSetExamples(completions), completions.size, check)
 
@@ -572,8 +584,8 @@ trait ParserMain:
 
   def matched(
       t: Parser[?],
-      seen: Vector[Char] = Vector.empty,
-      partial: Boolean = false
+      seen: Vector[Char] = Vector.empty, // scruff: ignore(no_default_param)
+      partial: Boolean = false // scruff: ignore(no_default_param)
   ): Parser[String] =
     t match
       case i: Invalid => if partial && seen.nonEmpty then success(seen.mkString) else i

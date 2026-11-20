@@ -98,11 +98,11 @@ object BuildLoader:
   def full(f: Loader): Components = components(full = f)
   def transformAll(t: TransformAll) = components(transformAll = t)
   def components(
-      resolver: Resolver = const(None),
-      builder: Builder = const(None),
-      transformer: Transformer = _.unit,
-      full: Loader = const(None),
-      transformAll: TransformAll = idFun
+      resolver: Resolver = const(None), // scruff: ignore(no_default_param)
+      builder: Builder = const(None), // scruff: ignore(no_default_param)
+      transformer: Transformer = _.unit, // scruff: ignore(no_default_param)
+      full: Loader = const(None), // scruff: ignore(no_default_param)
+      transformAll: TransformAll = idFun // scruff: ignore(no_default_param)
   ) =
     new Components(resolver, builder, transformer, full, transformAll)
 

@@ -19,7 +19,7 @@ import scala.annotation.tailrec
 class LoggerWriter(
     delegate: Logger,
     unbufferedLevel: Option[Level.Value],
-    nl: String = System.getProperty("line.separator")
+    nl: String = System.getProperty("line.separator") // scruff: ignore(no_default_param)
 ) extends java.io.Writer:
   def this(delegate: Logger, level: Level.Value) = this(delegate, Some(level))
   def this(delegate: Logger) = this(delegate, None)

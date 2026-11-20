@@ -45,7 +45,7 @@ final class CircuitBreakerCacheStore(
     classify: Throwable => CacheFailure,
     cooldown: FiniteDuration,
     logger: Logger,
-    nanoTime: () => Long = () => System.nanoTime(),
+    nanoTime: () => Long = () => System.nanoTime(), // scruff: ignore(no_default_param)
 ) extends AbstractActionCacheStore,
       AutoCloseable:
   import CircuitBreakerCacheStore.*
@@ -199,9 +199,9 @@ object CircuitBreakerCacheStore:
    * answering is retried once `retryAt` passes, by letting a single probing call through.
    */
   private case class State(
-      readsRefused: Boolean = false,
-      writesRefused: Boolean = false,
-      retryAt: Option[Long] = None,
-      probing: Boolean = false,
+      readsRefused: Boolean = false, // scruff: ignore(no_default_param)
+      writesRefused: Boolean = false, // scruff: ignore(no_default_param)
+      retryAt: Option[Long] = None, // scruff: ignore(no_default_param)
+      probing: Boolean = false, // scruff: ignore(no_default_param)
   )
 end CircuitBreakerCacheStore

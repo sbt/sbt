@@ -67,7 +67,7 @@ class WatchSourceTest extends AbstractServerTest:
     assert(awaitFile(stopped) == owner, "The termination callback lost the watch's source")
   end checkCancellation
 
-  private def checkDisconnection(mode: String = ""): Unit =
+  private def checkDisconnection(mode: String = ""): Unit = // scruff: ignore(no_default_param)
     val started = testPath.resolve("watch-started")
     val stopped = testPath.resolve("watch-stopped")
     Files.deleteIfExists(started)

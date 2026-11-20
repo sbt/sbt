@@ -21,6 +21,7 @@ object TestResultLoggerSummaryTest extends verify.BasicTestSuite:
   private def output(suites: (String, SuiteResult)*): Tests.Output =
     Tests.Output(TestResult.Passed, suites.toMap, Iterable.empty)
 
+  // scruff: ignore(no_default_param)
   private def suite(passed: Int, failed: Int = 0, errors: Int = 0): SuiteResult =
     val result =
       if errors > 0 then TestResult.Error
@@ -31,7 +32,7 @@ object TestResultLoggerSummaryTest extends verify.BasicTestSuite:
   private def entry(
       taskName: String,
       out: Tests.Output,
-      cached: Vector[String] = Vector.empty
+      cached: Vector[String] = Vector.empty // scruff: ignore(no_default_param)
   ): (Tests.Output, String, Vector[String]) = (out, taskName, cached)
 
   private def render(mode: TestSummary, entries: Vector[(Tests.Output, String, Vector[String])]) =

@@ -59,6 +59,7 @@ object ParserTest extends Properties("Completing Parser"):
   def p[T](f: T): T =
     println(f); f
 
+  // scruff: ignore(no_default_param)
   def checkSingle(in: String, expect: Completion)(expectDisplay: Completion = expect) =
     (("token '" + in + "'") |: checkOne(in, nested, expect)) &&
       (("display '" + in + "'") |: checkOne(in, nestedDisplay, expectDisplay))

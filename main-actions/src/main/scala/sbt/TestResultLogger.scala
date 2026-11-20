@@ -43,14 +43,14 @@ trait TestResultLogger:
   /** Only allow invocation if certain criteria is met, else use another `TestResultLogger` (defaulting to nothing) . */
   final def onlyIf(
       f: (Output, String) => Boolean,
-      otherwise: TestResultLogger = TestResultLogger.Null
+      otherwise: TestResultLogger = TestResultLogger.Null // scruff: ignore(no_default_param)
   ) =
     TestResultLogger.choose(f, this, otherwise)
 
   /** Allow invocation unless a certain predicate passes, in which case use another `TestResultLogger` (defaulting to nothing) . */
   final def unless(
       f: (Output, String) => Boolean,
-      otherwise: TestResultLogger = TestResultLogger.Null
+      otherwise: TestResultLogger = TestResultLogger.Null // scruff: ignore(no_default_param)
   ) =
     TestResultLogger.choose(f, otherwise, this)
 end TestResultLogger
@@ -145,11 +145,14 @@ object TestResultLogger:
 
     /** sbt's default `TestResultLogger`. Use `copy()` to change selective portions. */
     case class Main(
+        // scruff: ignore(no_default_param)
         printStandard_? : Output => Boolean = Defaults.printStandard_?,
-        printSummary: TestResultLogger = Defaults.printSummary,
+        printSummary: TestResultLogger = Defaults.printSummary, // scruff: ignore(no_default_param)
+        // scruff: ignore(no_default_param)
         printStandard: TestResultLogger = Defaults.printStandard,
+        // scruff: ignore(no_default_param)
         printFailures: TestResultLogger = Defaults.printFailures,
-        printNoTests: TestResultLogger = Defaults.printNoTests
+        printNoTests: TestResultLogger = Defaults.printNoTests // scruff: ignore(no_default_param)
     ) extends TestResultLogger:
 
       override def run(log: Logger, results: Output, taskName: String): Unit =

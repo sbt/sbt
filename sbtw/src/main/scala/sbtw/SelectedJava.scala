@@ -14,7 +14,7 @@ import java.io.File
 final case class SelectedJava(
     javaCmd: String,
     envOverlay: Seq[(String, String)],
-    explicit: Boolean = false
+    explicit: Boolean = false // scruff: ignore(no_default_param)
 ):
   /** Overlay for the native-client handoff, plus the one-hop explicit marker. */
   def handoffEnv: Seq[(String, String)] =
@@ -29,7 +29,7 @@ object SelectedJava:
   /** Resolves `--java-home` > `JAVACMD` > `JAVA_HOME` > `PATH`; an invalid `--java-home` is an error. */
   def resolve(
       javaHome: Option[String],
-      env: Map[String, String] = sys.env
+      env: Map[String, String] = sys.env // scruff: ignore(no_default_param)
   ): Either[String, SelectedJava] =
     javaHome match
       case Some(home) =>

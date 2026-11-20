@@ -1318,6 +1318,7 @@ private[sbt] object ContinuousCommands:
         cs.afterCommand(postState)
       case None => discardStoppedWatches(state)
   }
+  // scruff: ignore(no_default_param)
   private def exitWatchShared(error: Boolean, action: Option[Watch.Action] = None) =
     (channel: String, state: State) =>
       state.get(watchStates).flatMap(_.get(channel)) match

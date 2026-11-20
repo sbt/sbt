@@ -46,7 +46,7 @@ import java.util.UUID
  */
 private[sbt] class ServerSessionImpl(
     socket: Socket,
-    threadName: String = "sbt-server-session-read-thread"
+    threadName: String = "sbt-server-session-read-thread" // scruff: ignore(no_default_param)
 ) extends ServerSession:
 
   /** Controls the read loop; set to `false` to stop reading from the socket. */
