@@ -91,7 +91,7 @@ object IncrementalTest:
         Keys.platform.value,
       )
     }.value)
-    val testDigestExtra = scope +: (extra ++ rds ++ opts)
+    val testDigestExtra = Vector(scope, externalClasspathDigest(cp)) ++ extra ++ rds ++ opts
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
       stamper.transitiveStamp(name, testDigestExtra, s.log) match
@@ -99,6 +99,15 @@ object IncrementalTest:
         case None     => Nil
     )*)
   }
+
+  private[sbt] def externalClasspathDigest(
+      classpath: Seq[Attributed[HashedVirtualFileRef]],
+  ): Digest =
+    val entries = classpath.iterator.collect:
+      case entry if entry.get(Keys.analysis).isEmpty =>
+        val ref = entry.data
+        CacheImplicits.hashedVirtualFileRefToStr(ref).stripPrefix(s"${ref.id()}>")
+    DigestHasher.hashUnsafe(entries.toVector)
 
   /**
    * The resource digests of this configuration and of the configurations on its classpath, also of
