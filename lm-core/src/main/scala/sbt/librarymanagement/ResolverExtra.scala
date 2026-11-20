@@ -26,6 +26,7 @@ final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(n
     hash
 
 private[librarymanagement] abstract class MavenRepositoryFunctions:
+  // scruff: ignore(no_default_param)
   def apply(name: String, root: String, localIfFile: Boolean = true): MavenRepository =
     MavenRepo(name, root, localIfFile)
 
@@ -410,8 +411,8 @@ private[librarymanagement] abstract class ResolverFunctions:
 
   private[librarymanagement] def expandMavenSettings(
       str: String,
-      envVars: Map[String, String] = sys.env,
-      props: Map[String, String] = sys.props.toMap
+      envVars: Map[String, String] = sys.env, // scruff: ignore(no_default_param)
+      props: Map[String, String] = sys.props.toMap // scruff: ignore(no_default_param)
   ): String =
     // Aren't regular expressions beautifully clear and concise.
     // This means "find all ${...}" blocks, with the first group of each being the text between curly brackets.

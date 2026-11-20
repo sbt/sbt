@@ -12,18 +12,18 @@ trait DependencyFilterExtra:
   // Avoid initializer statements in the body
 
   def moduleFilter(
-      organization: NameFilter = AllPassFilter,
-      name: NameFilter = AllPassFilter,
-      revision: NameFilter = AllPassFilter
+      organization: NameFilter = AllPassFilter, // scruff: ignore(no_default_param)
+      name: NameFilter = AllPassFilter, // scruff: ignore(no_default_param)
+      revision: NameFilter = AllPassFilter // scruff: ignore(no_default_param)
   ): ModuleFilter =
     (m: ModuleID) =>
       organization.accept(m.organization) && name.accept(m.name) && revision.accept(m.revision)
 
   def artifactFilter(
-      name: NameFilter = AllPassFilter,
-      `type`: NameFilter = AllPassFilter,
-      extension: NameFilter = AllPassFilter,
-      classifier: NameFilter = AllPassFilter
+      name: NameFilter = AllPassFilter, // scruff: ignore(no_default_param)
+      `type`: NameFilter = AllPassFilter, // scruff: ignore(no_default_param)
+      extension: NameFilter = AllPassFilter, // scruff: ignore(no_default_param)
+      classifier: NameFilter = AllPassFilter // scruff: ignore(no_default_param)
   ): ArtifactFilter =
     (a: Artifact) =>
       name.accept(a.name) && `type`.accept(a.`type`) && extension.accept(
@@ -31,15 +31,17 @@ trait DependencyFilterExtra:
       ) && classifier
         .accept(a.classifier getOrElse "")
 
+  // scruff: ignore(no_default_param)
   def configurationFilter(name: NameFilter = AllPassFilter): ConfigurationFilter =
     (c: ConfigRef) => name.accept(c.name)
 end DependencyFilterExtra
 
 object DependencyFilter extends DependencyFilterExtra:
   def make(
+      // scruff: ignore(no_default_param)
       configuration: ConfigurationFilter = configurationFilter(),
-      module: ModuleFilter = moduleFilter(),
-      artifact: ArtifactFilter = artifactFilter()
+      module: ModuleFilter = moduleFilter(), // scruff: ignore(no_default_param)
+      artifact: ArtifactFilter = artifactFilter() // scruff: ignore(no_default_param)
   ): DependencyFilter =
     (c: ConfigRef, m: ModuleID, a: Artifact) => configuration(c) && module(m) && artifact(a)
   def apply(

@@ -53,7 +53,7 @@ class ServerSysPropsTest extends AnyFunSuite:
    */
   private def withServer(
       sysProps: Seq[String],
-      optionsFor: Option[File] = None
+      optionsFor: Option[File] = None // scruff: ignore(no_default_param)
   )(f: (File, scala.sys.process.Process) => Unit): Unit =
     val base: Path = Files.createTempDirectory("sbt-sysprops")
     val buildDir = base.toFile / testDirectory

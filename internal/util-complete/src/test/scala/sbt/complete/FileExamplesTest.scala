@@ -60,7 +60,7 @@ object FileExamplesTest extends Properties:
   def sameElements(actual: List[String], expected: List[String]): Result =
     actual.sorted ==== expected.sorted
 
-  def withDirectoryStructure(withCompletionPrefix: String = "")(
+  def withDirectoryStructure(withCompletionPrefix: String = "")( // scruff: ignore(no_default_param)
       thunk: DirectoryStructure => Result
   ): Result =
     IO.withTemporaryDirectory: tempDir =>

@@ -48,10 +48,10 @@ object CompletionSpec extends Properties:
     )
 
   private def complete(
-      buildURI: URI = new URI("file", "///path/", null),
-      projectID: String = "p",
-      configName: String = "compile",
-      attributeName: String = "a",
+      buildURI: URI = new URI("file", "///path/", null), // scruff: ignore(no_default_param)
+      projectID: String = "p", // scruff: ignore(no_default_param)
+      configName: String = "compile", // scruff: ignore(no_default_param)
+      attributeName: String = "a", // scruff: ignore(no_default_param)
       line: String,
       expected: String,
   ): Result =

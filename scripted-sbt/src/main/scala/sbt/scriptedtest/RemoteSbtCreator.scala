@@ -45,7 +45,7 @@ final class LauncherBasedRemoteSbtCreator(
       directory: File,
       launcher: File,
       log: Logger,
-      launchOpts: Seq[String] = Nil,
+      launchOpts: Seq[String] = Nil, // scruff: ignore(no_default_param)
   ) = this(directory, launcher, log, "java", launchOpts)
 
   def newRemote(server: IPC.Server): Process =
@@ -76,7 +76,7 @@ final class RunFromSourceBasedRemoteSbtCreator(
   def this(
       directory: File,
       log: Logger,
-      launchOpts: Seq[String] = Nil,
+      launchOpts: Seq[String] = Nil, // scruff: ignore(no_default_param)
       scalaVersion: String,
       sbtVersion: String,
       classpath: Seq[File],

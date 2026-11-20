@@ -57,6 +57,7 @@ private[sbt] object BuildDef:
     override def projectDefinitions(base: File): Seq[Project] =
       defaultAggregatedProject(id, base, aggregate) :: Nil
 
+  // scruff: ignore(no_default_param)
   def defaultID(base: File, prefix: String = "default"): String =
     prefix + "-" + Hash.trimHashString(base.getAbsolutePath, 6)
 

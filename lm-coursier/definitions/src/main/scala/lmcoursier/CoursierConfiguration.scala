@@ -1,3 +1,5 @@
+// scruff: file_ignore(no_default_param)
+
 package lmcoursier
 
 import java.io.File

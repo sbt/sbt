@@ -4,5 +4,5 @@ import dataclass.data
 
 @data class FileCredentials(
     path: String,
-    optional: Boolean = true
+    optional: Boolean = true // scruff: ignore(no_default_param)
 ) extends Credentials

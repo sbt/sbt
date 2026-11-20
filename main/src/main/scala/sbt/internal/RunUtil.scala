@@ -132,7 +132,7 @@ object RunUtil:
       cp: Classpath,
       fo: ForkOptions,
       conv: FileConverter,
-      windowTitle: Option[String] = None
+      windowTitle: Option[String] = None // scruff: ignore(no_default_param)
   ): RunInfo =
     val strategy = fo.outputStrategy.map(_.getClass().getSimpleName().filter(_ != '$'))
     val javaHome =

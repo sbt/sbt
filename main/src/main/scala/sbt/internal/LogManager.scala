@@ -82,10 +82,11 @@ object LogManager:
     withLoggers(screen = mk)
 
   def withLoggers(
+      // scruff: ignore(no_default_param)
       screen: (ScopedKey[?], State) => Appender = (_, s) => defaultScreen(s.globalLogging.console),
-      backed: PrintWriter => Appender = defaultBacked,
-      relay: Unit => Appender = defaultRelay,
-      extra: AppenderSupplier = _ => Nil
+      backed: PrintWriter => Appender = defaultBacked, // scruff: ignore(no_default_param)
+      relay: Unit => Appender = defaultRelay, // scruff: ignore(no_default_param)
+      extra: AppenderSupplier = _ => Nil // scruff: ignore(no_default_param)
   ): LogManager = new DefaultLogManager(screen, backed, relay, extra)
 
   private class DefaultLogManager(

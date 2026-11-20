@@ -37,12 +37,12 @@ final class Configuration private[sbt] (
   override def toString: String = name
 
   private def copy(
-      id: String = id,
-      name: String = name,
-      description: String = description,
-      isPublic: Boolean = isPublic,
-      extendsConfigs: Vector[Configuration] = extendsConfigs,
-      transitive: Boolean = transitive
+      id: String = id, // scruff: ignore(no_default_param)
+      name: String = name, // scruff: ignore(no_default_param)
+      description: String = description, // scruff: ignore(no_default_param)
+      isPublic: Boolean = isPublic, // scruff: ignore(no_default_param)
+      extendsConfigs: Vector[Configuration] = extendsConfigs, // scruff: ignore(no_default_param)
+      transitive: Boolean = transitive // scruff: ignore(no_default_param)
   ): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
 

@@ -33,6 +33,7 @@ import java.net.MalformedURLException
 import org.jline.builtins.InputRC
 
 trait LineReader extends AutoCloseable:
+  // scruff: ignore(no_default_param)
   def readLine(prompt: String, mask: Option[Char] = None): Option[String]
   override def close(): Unit = {}
 
@@ -140,7 +141,7 @@ object LineReader:
   def createJLine2Reader(
       historyPath: Option[File],
       terminal: Terminal,
-      prompt: Prompt = Prompt.Running,
+      prompt: Prompt = Prompt.Running, // scruff: ignore(no_default_param)
   ): ConsoleReader =
     val cr = Terminal.createReader(terminal, prompt)
     cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
@@ -155,8 +156,8 @@ object LineReader:
   def simple(terminal: Terminal): LineReader = new SimpleReader(None, HandleCONT, terminal)
   def simple(
       historyPath: Option[File],
-      handleCONT: Boolean = HandleCONT,
-      injectThreadSleep: Boolean = false
+      handleCONT: Boolean = HandleCONT, // scruff: ignore(no_default_param)
+      injectThreadSleep: Boolean = false // scruff: ignore(no_default_param)
   ): LineReader = new SimpleReader(historyPath, handleCONT, injectThreadSleep)
 end LineReader
 
@@ -164,6 +165,7 @@ abstract class JLine extends LineReader:
   protected def handleCONT: Boolean
   protected def reader: ConsoleReader
 
+  // scruff: ignore(no_default_param)
   override def readLine(prompt: String, mask: Option[Char] = None): Option[String] =
     unsynchronizedReadLine(prompt, mask)
 

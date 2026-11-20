@@ -34,6 +34,7 @@ object Output:
   )(using display: Show[ScopedKey[?]]): Unit =
     printLines(flatLines(lastLines(keys, streams, sid))(idFun))
 
+  // scruff: ignore(no_default_param)
   def last(file: File, printLines: Seq[String] => Unit, tailDelim: String = DefaultTail): Unit =
     printLines(tailLines(file, tailDelim))
 
@@ -56,7 +57,7 @@ object Output:
       file: File,
       patternString: String,
       printLines: Seq[String] => Unit,
-      tailDelim: String = DefaultTail
+      tailDelim: String = DefaultTail // scruff: ignore(no_default_param)
   ): Unit =
     printLines(grep(tailLines(file, tailDelim), patternString))
 
@@ -79,7 +80,7 @@ object Output:
   def lastLines(
       keys: Values[Any],
       streams: Streams,
-      sid: Option[String] = None
+      sid: Option[String] = None // scruff: ignore(no_default_param)
   ): Values[Seq[String]] =
     val outputs = keys map { (kv: KeyValue[?]) =>
       KeyValue(kv.key, lastLines(kv.key, streams, sid))

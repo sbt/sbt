@@ -69,13 +69,13 @@ object TerminalColorSpec extends BasicTestSuite:
   // isColorDefault pure function tests
 
   private def colorDefault(
-      propsColor: Option[Boolean] = None,
-      colorProp: Option[Boolean] = None,
-      logFormatOpt: Option[Boolean] = None,
-      hasConsole: Boolean = false,
-      isDumbTerminal: Boolean = false,
-      isCI: Boolean = false,
-      isEmacs: Boolean = false,
+      propsColor: Option[Boolean] = None, // scruff: ignore(no_default_param)
+      colorProp: Option[Boolean] = None, // scruff: ignore(no_default_param)
+      logFormatOpt: Option[Boolean] = None, // scruff: ignore(no_default_param)
+      hasConsole: Boolean = false, // scruff: ignore(no_default_param)
+      isDumbTerminal: Boolean = false, // scruff: ignore(no_default_param)
+      isCI: Boolean = false, // scruff: ignore(no_default_param)
+      isEmacs: Boolean = false, // scruff: ignore(no_default_param)
   ): Boolean =
     Terminal.isColorDefault(
       propsColor,

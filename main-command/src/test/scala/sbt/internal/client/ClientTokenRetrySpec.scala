@@ -107,7 +107,7 @@ object ClientTokenRetrySpec extends BasicTestSuite:
     AtomicCloseable.release(socket) // i took over
   end refusing
 
-  private def withRefusingServer(every: Boolean = false)(
+  private def withRefusingServer(every: Boolean = false)( // scruff: ignore(no_default_param)
       f: (NetworkClient, File, Handshakes) => Unit
   ): Unit =
     // the socket path has a length limit, so keep the directory short

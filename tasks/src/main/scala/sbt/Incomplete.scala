@@ -31,10 +31,10 @@ import scala.jdk.CollectionConverters.*
  */
 final case class Incomplete(
     node: Option[AnyRef],
-    tpe: IValue = Error,
-    message: Option[String] = None,
-    causes: Seq[Incomplete] = Nil,
-    directCause: Option[Throwable] = None
+    tpe: IValue = Error, // scruff: ignore(no_default_param)
+    message: Option[String] = None, // scruff: ignore(no_default_param)
+    causes: Seq[Incomplete] = Nil, // scruff: ignore(no_default_param)
+    directCause: Option[Throwable] = None // scruff: ignore(no_default_param)
 ) extends Exception(message.orNull, directCause.orNull)
     with sbt.internal.util.UnprintableException:
   override def toString =

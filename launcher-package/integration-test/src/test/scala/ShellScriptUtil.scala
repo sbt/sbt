@@ -14,6 +14,7 @@ trait ShellScriptUtil extends BasicTestSuite:
 
   protected val javaBinDir = new File("bin").getAbsolutePath
 
+  // scruff: ignore(no_default_param)
   protected def retry[A1](f: () => A1, maxAttempt: Int = 10): A1 =
     try f()
     catch
@@ -30,17 +31,17 @@ trait ShellScriptUtil extends BasicTestSuite:
    */
   inline def testOutput(
       name: String,
-      javaOpts: String = "",
-      sbtOpts: String = "",
-      sbtOptsFileContents: String = "",
-      javaToolOptions: String = "",
-      distSbtoptsContents: String = "",
-      machineSbtoptsContents: String = "",
-      jvmoptsFileContents: String = "",
-      buildPropsContents: String = "",
-      stagedRunnerVersionOverride: String = "",
-      windowsSupport: Boolean = true,
-      citestVariant: String = "citest",
+      javaOpts: String = "", // scruff: ignore(no_default_param)
+      sbtOpts: String = "", // scruff: ignore(no_default_param)
+      sbtOptsFileContents: String = "", // scruff: ignore(no_default_param)
+      javaToolOptions: String = "", // scruff: ignore(no_default_param)
+      distSbtoptsContents: String = "", // scruff: ignore(no_default_param)
+      machineSbtoptsContents: String = "", // scruff: ignore(no_default_param)
+      jvmoptsFileContents: String = "", // scruff: ignore(no_default_param)
+      buildPropsContents: String = "", // scruff: ignore(no_default_param)
+      stagedRunnerVersionOverride: String = "", // scruff: ignore(no_default_param)
+      windowsSupport: Boolean = true, // scruff: ignore(no_default_param)
+      citestVariant: String = "citest", // scruff: ignore(no_default_param)
   )(args: String*)(f: List[String] => Any) =
     if isGitBashTest && !isWindows then
       test("gitbash: " + name):

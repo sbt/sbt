@@ -192,16 +192,17 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   infix def in(dir: File): Project = copy(base = dir)
 
   private[sbt] def copy(
-      id: String = id,
-      base: File = base,
-      aggregate: Seq[ProjectReference] = aggregate,
+      id: String = id, // scruff: ignore(no_default_param)
+      base: File = base, // scruff: ignore(no_default_param)
+      aggregate: Seq[ProjectReference] = aggregate, // scruff: ignore(no_default_param)
+      // scruff: ignore(no_default_param)
       dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
-      settings: Seq[Setting[?]] = settings,
-      commonSettings: Seq[Setting[?]] = commonSettings,
-      configurations: Seq[Configuration] = configurations,
-      plugins: Plugins = plugins,
-      autoPlugins: Seq[AutoPlugin] = autoPlugins,
-      projectOrigin: ProjectOrigin = projectOrigin,
+      settings: Seq[Setting[?]] = settings, // scruff: ignore(no_default_param)
+      commonSettings: Seq[Setting[?]] = commonSettings, // scruff: ignore(no_default_param)
+      configurations: Seq[Configuration] = configurations, // scruff: ignore(no_default_param)
+      plugins: Plugins = plugins, // scruff: ignore(no_default_param)
+      autoPlugins: Seq[AutoPlugin] = autoPlugins, // scruff: ignore(no_default_param)
+      projectOrigin: ProjectOrigin = projectOrigin, // scruff: ignore(no_default_param)
   ): Project =
     Project.unresolved(
       id,

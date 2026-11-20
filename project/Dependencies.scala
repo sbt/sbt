@@ -41,7 +41,7 @@ object Dependencies:
       path: Option[String],
       projectName: String,
       moduleId: ModuleID,
-      c: Option[Configuration] = None
+      c: Option[Configuration] = None // scruff: ignore(no_default_param)
   ) = (p: Project) =>
     val m0 = moduleId.withConfigurations(c.map(_.name))
     val m = m0

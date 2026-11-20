@@ -18,7 +18,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
 private[sbt] abstract class AbstractTaskExecuteProgress(
-    configNameToIdent: String => String = Scope.guessConfigIdent
+    configNameToIdent: String => String = Scope.guessConfigIdent // scruff: ignore(no_default_param)
 ) extends ExecuteProgress:
   import AbstractTaskExecuteProgress.Timer
 

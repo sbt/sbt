@@ -881,6 +881,7 @@ class BuildServerTest extends AbstractServerTest:
   }
    */
 
+  // scruff: ignore(no_default_param)
   private def initializeRequest(metals: Option[MetalsMetadata] = None): String =
     val params = InitializeBuildParams(
       "test client",

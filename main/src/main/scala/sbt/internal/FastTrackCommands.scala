@@ -21,7 +21,7 @@ private[sbt] object FastTrackCommands:
   private def fromCommand(
       cmd: String,
       command: Command,
-      arguments: Boolean = true,
+      arguments: Boolean = true, // scruff: ignore(no_default_param)
   ): (State, String) => Option[State] =
     (s, c) =>
       Parser.parse(if arguments then c else "", command.parser(s)) match

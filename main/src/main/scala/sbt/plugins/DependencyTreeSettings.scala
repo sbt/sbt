@@ -315,7 +315,9 @@ OPTIONS
   def openBrowser(
       uri: URI,
       log: Logger,
+      // scruff: ignore(no_default_param)
       isDesktopSupported: => Boolean = java.awt.Desktop.isDesktopSupported,
+      // scruff: ignore(no_default_param)
       getDesktop: => java.awt.Desktop = java.awt.Desktop.getDesktop
   ): Boolean =
     try

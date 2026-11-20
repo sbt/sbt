@@ -44,8 +44,8 @@ object Sync:
   @deprecated("Use sync, which doesn't take the unused outStyle param", "1.1.1")
   def apply(
       store: CacheStore,
-      inStyle: FileInfo.Style = FileInfo.lastModified,
-      outStyle: FileInfo.Style = FileInfo.exists
+      inStyle: FileInfo.Style = FileInfo.lastModified, // scruff: ignore(no_default_param)
+      outStyle: FileInfo.Style = FileInfo.exists // scruff: ignore(no_default_param)
   ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, inStyle)
 
@@ -57,7 +57,7 @@ object Sync:
 
   def sync(
       store: CacheStore,
-      inStyle: FileInfo.Style = FileInfo.lastModified,
+      inStyle: FileInfo.Style = FileInfo.lastModified, // scruff: ignore(no_default_param)
   ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, inStyle, MappedFileConverter.empty)
 

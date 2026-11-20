@@ -118,7 +118,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       val logger: ManagedLogger,
       val workingDirectory: File,
       val job: BackgroundJob,
-      @volatile var isAutoCancel: Boolean = false,
+      @volatile var isAutoCancel: Boolean = false, // scruff: ignore(no_default_param)
   ) extends AbstractJobHandle:
     def humanReadableName: String = job.humanReadableName
 

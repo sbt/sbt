@@ -1383,8 +1383,8 @@ object ActionCacheTest extends BasicTestSuite:
   def getCacheConfig(
       cache: ActionCacheStore,
       outputDir: File,
-      cacheVersion: Long = 0L,
-      converter: FileConverter = fileConverter,
+      cacheVersion: Long = 0L, // scruff: ignore(no_default_param)
+      converter: FileConverter = fileConverter, // scruff: ignore(no_default_param)
   ): BuildWideCacheConfiguration =
     val logger = new Logger:
       override def trace(t: => Throwable): Unit = ()

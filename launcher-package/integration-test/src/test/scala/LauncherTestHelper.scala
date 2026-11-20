@@ -14,6 +14,7 @@ object LauncherTestHelper:
     isWindows && sys.props.get("sbt.test.useSbtw").contains("true")
 
   /** Command prefix to run the launcher: either script path or java -cp sbtw.Main */
+  // scruff: ignore(no_default_param)
   def launcherCommand(scriptPath: String, useGitBash: Boolean = false): Seq[String] =
     if useGitBash then
       Seq("C:\\Program Files\\Git\\bin\\bash.EXE", "--noprofile", "-e", "--", scriptPath)

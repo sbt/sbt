@@ -24,10 +24,11 @@ private[sbt] object PomGenerator:
       deps: Vector[ModuleID],
       configurations: Option[Vector[Configuration]],
       extra: NodeSeq,
-      scalaModuleInfo: Option[ScalaModuleInfo] = None,
-      resolvers: Vector[Resolver] = Vector.empty,
+      scalaModuleInfo: Option[ScalaModuleInfo] = None, // scruff: ignore(no_default_param)
+      resolvers: Vector[Resolver] = Vector.empty, // scruff: ignore(no_default_param)
+      // scruff: ignore(no_default_param)
       filterRepositories: MavenRepository => Boolean = _ => true,
-      allRepositories: Boolean = false,
+      allRepositories: Boolean = false, // scruff: ignore(no_default_param)
   ): Node =
     val crossMid = crossVersionDep(mid, scalaModuleInfo)
     val keepConfs: Set[String] =
