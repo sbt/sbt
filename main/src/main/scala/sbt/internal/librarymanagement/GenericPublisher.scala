@@ -129,6 +129,8 @@ class GenericPublisher private[sbt] (
           configuration.overwrite,
           log
         )
+      case ssh: SshBasedRepository =>
+        ivylessPublishToSsh(artifacts, configuration.checksums, ssh, configuration.overwrite, log)
       case pbr: PatternsBasedRepository if isFilePatterned(pbr) =>
         // File repo detected by pattern (e.g. scripted classloader makes type match fail)
         val pat = pbr.patterns.artifactPatterns.head
@@ -490,6 +492,28 @@ class GenericPublisher private[sbt] (
       log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
       ivylessPublishLocal(artifacts, checksumAlgorithms, repoDir, overwrite, log)
   end ivylessPublishToFile
+
+  /** Lays the artifacts out as a file repository would, then uploads that tree over SFTP. */
+  private def ivylessPublishToSsh(
+      artifacts: Vector[(Artifact, File)],
+      checksumAlgorithms: Vector[String],
+      repo: SshBasedRepository,
+      overwrite: Boolean,
+      log: Logger
+  ): Unit =
+    IO.withTemporaryDirectory: staging =>
+      if repo.patterns.isMavenCompatible then
+        ivylessPublishMavenToFile(artifacts, checksumAlgorithms, staging, true, Logger.Null)
+      else ivylessPublishLocal(artifacts, checksumAlgorithms, staging, true, Logger.Null)
+      val files = sbt.io.Path
+        .allSubpaths(staging)
+        .collect:
+          case (f, rel) if f.isFile && f.getName != "maven-metadata-local.xml" =>
+            (rel.replace('\\', '/'), f)
+        .toVector
+        .sortBy(_._1)
+      val directCreds = credentials.collect { case d: Credentials.DirectCredentials => d }
+      SshPublish.upload(repo, directCreds, files, overwrite, log)
 
   private def normalizedChecksumAlgorithm(algo: String): String =
     algo.toLowerCase match

@@ -789,6 +789,7 @@ lazy val mainProj = (project in file("main"))
         caffeine,
         scala3Library,
         scalaCollectionCompat,
+        sshdSftp % Test,
       ),
     libraryDependencies ++= List(scalaPar),
     contrabandSettings,
