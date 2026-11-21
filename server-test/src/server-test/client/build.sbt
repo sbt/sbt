@@ -1,4 +1,6 @@
-scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.8.4"
+
+lazy val root = (project in file("."))
 
 TaskKey[Unit]("willSucceed") := println("success")
 
@@ -15,3 +17,11 @@ TaskKey[Unit]("runThenFail") := Def.uncached {
   val _ = (Compile / run).toTask("").value
   throw new Exception("failed")
 }
+
+lazy val serverFork = project
+  .settings(
+    run / fork := true,
+    run / connectInput := true,
+    run / outputStrategy := Some(StdoutOutput),
+    run / clientSide := false,
+  )
