@@ -889,6 +889,7 @@ val isArmArchitecture: Boolean = sys.props
 // musl (Alpine) alike. sbtn for aarch64 Linux stays linked against glibc: GraalVM ships no
 // musl static libraries for aarch64 (https://github.com/oracle/graal/issues/5872).
 val staticMuslSbtn = isLinux && !isArmArchitecture
+val JLineFFM = config("jline-ffm").hide
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
@@ -907,6 +908,8 @@ lazy val sbtClientProj = (project in file("client"))
     exportJars := true,
     libraryDependencies ++= scalatest,
     libraryDependencies ++= (if isWin then Seq(ipcSocket) else Nil),
+    ivyConfigurations += JLineFFM,
+    libraryDependencies += (jline3FFM % JLineFFM).intransitive(),
     // A static binary can't load JLine's JNI library, so JLine uses its exec provider (stty);
     // leaving the JNI provider out avoids a warning when it fails to load on every start.
     excludeDependencies ++=
@@ -939,6 +942,14 @@ lazy val sbtClientProj = (project in file("client"))
         "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
         "-H:+ReportExceptionStackTraces",
         "-H:-ParseRuntimeOptions",
+        "-H:+UnlockExperimentalVMOptions",
+        "-H:+ForeignAPISupport",
+        "-H:-UnlockExperimentalVMOptions",
+        "--enable-native-access=ALL-UNNAMED",
+        "-cp",
+        update.value
+          .select(configurationFilter(JLineFFM.name))
+          .mkString(java.io.File.pathSeparator),
         s"-H:ConfigurationFileDirectories=${(Compile / resourceDirectory).value / "META-INF" / "native-image" / "org.scala-sbt" / "sbt-client"}",
         "-o",
         s"${target.value / "bin" / "sbtn"}",

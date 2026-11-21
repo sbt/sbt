@@ -74,6 +74,7 @@ object Dependencies:
   val jline3Version = "3.30.17"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3JNI = "org.jline" % "jline-terminal-jni" % jline3Version
+  val jline3FFM = "org.jline" % "jline-terminal-ffm" % jline3Version
   val jline3Native = "org.jline" % "jline-native" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
