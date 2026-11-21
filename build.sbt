@@ -246,7 +246,6 @@ val collectionProj = project
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     libraryDependencies ++= Seq(scalaPar),
     mimaSettings,
-    conflictWarning := ConflictWarning.disable,
   )
 
 // Command line-related utilities.
@@ -451,7 +450,6 @@ lazy val testingProj = (project in file("testing"))
       scalaVerify % Test,
     ),
     testFrameworks += TestFramework("verify.runner.Framework"),
-    conflictWarning := ConflictWarning.disable,
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
@@ -1283,7 +1281,6 @@ lazy val lmCoursierDefinitions = project
       coursier,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
     ),
-    conflictWarning := ConflictWarning.disable,
     Utils.noPublish,
   )
   .dependsOn(lmCore % "provided")
@@ -1340,7 +1337,6 @@ lazy val lmCoursierShaded = project
       scala3Library % Provided,
     ),
     assembly / assemblyOption ~= { _.withIncludeScala(false) },
-    conflictWarning := ConflictWarning.disable,
     Utils.noPublish,
     assemblyShadeRules := {
       val namespacesToShade = Seq(
