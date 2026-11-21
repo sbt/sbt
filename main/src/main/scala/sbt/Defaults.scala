@@ -1933,7 +1933,8 @@ object Defaults extends BuildCommon with DefExtra:
       }.toSet
       allMappings
         .filterNot { (p, path) =>
-          resourcePaths(path) && p.toPath.toAbsolutePath.normalize.startsWith(classDirPath)
+          (resourcePaths(path) || Compiler.stagedWriteTargets(path).exists(resourcePaths)) &&
+          p.toPath.toAbsolutePath.normalize.startsWith(classDirPath)
         }
         .map { (p, path) =>
           val vf = converter.toVirtualFile(p.toPath())

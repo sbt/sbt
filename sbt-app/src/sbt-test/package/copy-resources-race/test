@@ -1,0 +1,2 @@
+# products is held until copyResources is mid-copy, and the mappings until the copy is done (sbt/sbt#10085)
+> all Compile/copyResources Compile/packageInternal
