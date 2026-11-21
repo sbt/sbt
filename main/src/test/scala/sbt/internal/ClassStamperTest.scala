@@ -11,10 +11,12 @@ package internal
 
 import hedgehog.*
 import hedgehog.runner.*
+import _root_.sbt.Keys
 import _root_.sbt.internal.inc.{ Analysis, APIs, Relations }
 import _root_.sbt.internal.inc.EmptyStamp
+import _root_.sbt.internal.util.Attributed
 import _root_.sbt.util.{ Digest, Level, Logger }
-import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
+import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.api.{ DependencyContext, ExternalDependency, InternalDependency }
 import java.nio.file.{ Files, Path }
 
@@ -25,6 +27,10 @@ object ClassStamperTest extends Properties:
     example("returns Some for class with library dep", returnsSomeForClassWithLibraryDep),
     example("digest reflects internal deps", digestReflectsInternalDeps),
     example("digest reflects library deps", digestReflectsLibraryDeps),
+    example(
+      "digest reflects external classpath content and order",
+      digestReflectsExternalClasspath
+    ),
     example("external dep without library is no-op", externalDepWithoutLibraryIsNoOp),
     example("digest is order-independent", digestIsOrderIndependent),
     example("digest is deterministic", digestIsDeterministic),
@@ -240,6 +246,24 @@ object ClassStamperTest extends Properties:
       )
     )
   end digestReflectsLibraryDeps
+
+  def digestReflectsExternalClasspath: Result =
+    val fixed = stamper(analysisOf("Suite", classes = Seq("Suite" -> "Suite")))
+    def entry(path: String, hash: String): Attributed[HashedVirtualFileRef] =
+      Attributed.blank(HashedVirtualFileRef.of(path, s"sha256-$hash", 1L))
+    def suiteDigest(classpath: Attributed[HashedVirtualFileRef]*): Option[Digest] =
+      stamp(fixed, "Suite", Seq(IncrementalTest.externalClasspathDigest(classpath)))
+
+    val first = entry("first.jar", "aa")
+    val second = entry("second.jar", "bb")
+    val baseline = suiteDigest(first, second)
+    val projectOutput = entry("classes.jar", "cc").put(Keys.analysis, "project-analysis")
+    assert(baseline.isDefined)
+    assert(baseline != suiteDigest(first, entry("second.jar", "dd")))
+    assert(baseline != suiteDigest(second, first))
+    assert(baseline == suiteDigest(first, entry("moved/second.jar", "bb")))
+    assert(baseline == suiteDigest(projectOutput, first, second))
+    Result.success
 
   def externalDepWithoutLibraryIsNoOp: Result =
     // An external dep with no matching library entry contributes nothing
