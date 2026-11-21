@@ -17,6 +17,7 @@ private[sbt] final class TaskEngineTracker(cleanup: Logger => Unit):
   private var cancelling = false
   private var log: Logger = Logger.Null
 
+  // scruff: ignore(no_default_param)
   def add(engine: RunningTaskEngine, rootLog: Logger = Logger.Null): () => Unit =
     val (current, alreadyCancelled) = synchronized:
       if engines.isEmpty then log = rootLog

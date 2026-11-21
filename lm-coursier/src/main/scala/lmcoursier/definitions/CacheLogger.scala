@@ -28,7 +28,7 @@ abstract class CacheLogger:
   def removedCorruptFile(url: String, reason: Option[String]): Unit = {}
 
   // sizeHint: estimated # of artifacts to be downloaded (doesn't include side stuff like checksums)
-  def init(sizeHint: Option[Int] = None): Unit = {}
+  def init(sizeHint: Option[Int] = None): Unit = {} // scruff: ignore(no_default_param)
   def stop(): Unit = {}
 end CacheLogger
 

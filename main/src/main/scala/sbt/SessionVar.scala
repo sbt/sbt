@@ -72,6 +72,7 @@ object SessionVar:
   def load[T](key: ScopedKey[Task[T]], state: State)(using f: JsonFormat[T]): Option[T] =
     get(key, state) orElse read(key, state)(using f)
 
+  // scruff: ignore(no_default_param)
   def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(using
       f: JsonFormat[T]
   ): (State, Option[T]) =

@@ -249,13 +249,14 @@ object HttpActionCacheStoreTest extends verify.BasicTestSuite:
     catch case e: StatusError => Some(e.status)
 
   private def withRemote(
-      algorithm: String = "SHA-256",
-      readOnly: Boolean = false,
+      algorithm: String = "SHA-256", // scruff: ignore(no_default_param)
+      readOnly: Boolean = false, // scruff: ignore(no_default_param)
   )(f: (FakeBazelRemote, URI, Path) => Unit): Unit =
     Using.resource(FakeBazelRemote(algorithm, readOnly)): remote =>
       IO.withTemporaryDirectory: dir =>
         f(remote, remote.uri, dir.toPath.toRealPath())
 
+  // scruff: ignore(no_default_param)
   private def newStore(uri: URI, headers: List[String] = Nil): HttpActionCacheStore =
     val base = Files.createTempDirectory("http-action-cache-test")
     val disk = DiskActionCacheStore(base, converter)

@@ -38,13 +38,16 @@ final class EvictionWarningOptions private[sbt] (
     copy(guessCompatible = guessCompatible)
 
   private[sbt] def copy(
-      configurations: Seq[ConfigRef] = configurations,
+      configurations: Seq[ConfigRef] = configurations, // scruff: ignore(no_default_param)
+      // scruff: ignore(no_default_param)
       warnScalaVersionEviction: Boolean = warnScalaVersionEviction,
-      warnDirectEvictions: Boolean = warnDirectEvictions,
+      warnDirectEvictions: Boolean = warnDirectEvictions, // scruff: ignore(no_default_param)
+      // scruff: ignore(no_default_param)
       warnTransitiveEvictions: Boolean = warnTransitiveEvictions,
-      warnEvictionSummary: Boolean = warnEvictionSummary,
-      infoAllEvictions: Boolean = infoAllEvictions,
-      showCallers: Boolean = showCallers,
+      warnEvictionSummary: Boolean = warnEvictionSummary, // scruff: ignore(no_default_param)
+      infoAllEvictions: Boolean = infoAllEvictions, // scruff: ignore(no_default_param)
+      showCallers: Boolean = showCallers, // scruff: ignore(no_default_param)
+      // scruff: ignore(no_default_param)
       guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
         guessCompatible
   ): EvictionWarningOptions =

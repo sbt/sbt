@@ -146,6 +146,7 @@ private[sbt] object SbtParser:
     )
 
   private[sbt] final class ParseDriver(
+      // scruff: ignore(no_default_param)
       options: List[String] = List("-classpath", s"$defaultClasspath")
   ) extends Driver:
     override protected val sourcesRequired: Boolean = false

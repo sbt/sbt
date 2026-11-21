@@ -55,8 +55,9 @@ object ParserWithExamplesTest extends Properties:
   def allExamples: ParserExample = ParserExample(removeInvalidExamples = false)
 
   case class ParserExample(
+      // scruff: ignore(no_default_param)
       examples: Iterable[String] = Set("blue", "yellow", "green_", "block", "red"),
-      maxNumberOfExamples: Int = 25,
+      maxNumberOfExamples: Int = 25, // scruff: ignore(no_default_param)
       removeInvalidExamples: Boolean
   ):
 

@@ -19,13 +19,13 @@ class RichURI(uri: URI):
    * that accepts each component individually.  It is thus limited by the implementation restrictions of the relevant methods.
    */
   def copy(
-      scheme: String = uri.getScheme,
-      userInfo: String = uri.getUserInfo,
-      host: String = uri.getHost,
-      port: Int = uri.getPort,
-      path: String = uri.getPath,
-      query: String = uri.getQuery,
-      fragment: String = uri.getFragment
+      scheme: String = uri.getScheme, // scruff: ignore(no_default_param)
+      userInfo: String = uri.getUserInfo, // scruff: ignore(no_default_param)
+      host: String = uri.getHost, // scruff: ignore(no_default_param)
+      port: Int = uri.getPort, // scruff: ignore(no_default_param)
+      path: String = uri.getPath, // scruff: ignore(no_default_param)
+      query: String = uri.getQuery, // scruff: ignore(no_default_param)
+      fragment: String = uri.getFragment // scruff: ignore(no_default_param)
   ) =
     new URI(scheme, userInfo, host, port, path, query, fragment)
 

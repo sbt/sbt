@@ -74,7 +74,7 @@ object DependencyLockManager:
       scalaVersion: Option[String],
       buildClock: String,
       log: Logger,
-      cacheDir: Option[File] = None
+      cacheDir: Option[File] = None // scruff: ignore(no_default_param)
   ): LockFileData =
     val configurations = report.configurations.map { configReport =>
       val deps = configReport.modules.map { moduleReport =>

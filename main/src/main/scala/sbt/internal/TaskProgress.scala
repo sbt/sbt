@@ -40,7 +40,7 @@ private[sbt] class TaskProgress(
     threshold: FiniteDuration,
     logger: Logger,
     resolutionProgress: ResolutionProgress,
-    configNameToIdent: String => String = Scope.guessConfigIdent
+    configNameToIdent: String => String = Scope.guessConfigIdent // scruff: ignore(no_default_param)
 ) extends AbstractTaskExecuteProgress(configNameToIdent)
     with ExecuteProgress
     with AutoCloseable:

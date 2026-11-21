@@ -9,5 +9,5 @@ import dataclass.data
 @data class ModuleMatchers(
     exclude: Set[Module],
     include: Set[Module],
-    includeByDefault: Boolean = true
+    includeByDefault: Boolean = true // scruff: ignore(no_default_param)
 )

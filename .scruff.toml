@@ -6,9 +6,11 @@ exclude-paths = [
   "glob:**/community-build/**",
   "glob:**/io/io/**",
   "glob:**/zinc/internal/**",
+  "glob:**/contraband-scala/**",
 ]
 
 [lint]
 select = [
   "no_return",
+  "no_default_param",
 ]

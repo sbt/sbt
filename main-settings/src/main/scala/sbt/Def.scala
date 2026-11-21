@@ -91,13 +91,13 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   def showRelativeKey(
       current: ProjectRef,
       multi: Boolean,
-      keyNameColor: Option[String] = None
+      keyNameColor: Option[String] = None // scruff: ignore(no_default_param)
   ): Show[ScopedKey[?]] =
     showRelativeKey2(current, keyNameColor)
 
   def showRelativeKey2(
       current: ProjectRef,
-      keyNameColor: Option[String] = None,
+      keyNameColor: Option[String] = None, // scruff: ignore(no_default_param)
   ): Show[ScopedKey[?]] =
     Show[ScopedKey[?]](key =>
       val color: String => String = withColor(_, keyNameColor)
@@ -138,13 +138,13 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
   def showBuildRelativeKey(
       currentBuild: URI,
       multi: Boolean,
-      keyNameColor: Option[String] = None,
+      keyNameColor: Option[String] = None, // scruff: ignore(no_default_param)
   ): Show[ScopedKey[?]] =
     showBuildRelativeKey2(currentBuild, keyNameColor)
 
   def showBuildRelativeKey2(
       currentBuild: URI,
-      keyNameColor: Option[String] = None,
+      keyNameColor: Option[String] = None, // scruff: ignore(no_default_param)
   ): Show[ScopedKey[?]] =
     Show[ScopedKey[?]](key =>
       Scope.display(
@@ -247,6 +247,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
    * A default Parser for splitting input into space-separated arguments.
    * `argLabel` is an optional, fixed label shown for an argument during tab completion.
    */
+  // scruff: ignore(no_default_param)
   def spaceDelimited(argLabel: String = "<arg>"): Parser[Seq[String]] =
     sbt.internal.util.complete.Parsers.spaceDelimited(argLabel)
 

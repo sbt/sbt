@@ -52,9 +52,10 @@ object ConsoleLogger:
    *   A new `ConsoleLogger` that logs to `out`.
    */
   def apply(
-      out: ConsoleOut = ConsoleOut.systemOut,
-      ansiCodesSupported: Boolean = Terminal.isAnsiSupported,
-      useFormat: Boolean = Terminal.isColorEnabled,
+      out: ConsoleOut = ConsoleOut.systemOut, // scruff: ignore(no_default_param)
+      ansiCodesSupported: Boolean = Terminal.isAnsiSupported, // scruff: ignore(no_default_param)
+      useFormat: Boolean = Terminal.isColorEnabled, // scruff: ignore(no_default_param)
+      // scruff: ignore(no_default_param)
       suppressedMessage: SuppressedTraceContext => Option[String] =
         ConsoleAppender.noSuppressedMessage
   ): ConsoleLogger =

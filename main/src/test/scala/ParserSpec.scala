@@ -49,10 +49,11 @@ object ParserSpec extends Properties:
     )
 
   private def parse(
+      // scruff: ignore(no_default_param)
       buildURI: URI = new java.net.URI("file", "///path/", null),
-      projectID: String = "p",
-      configName: String = "c",
-      attributeName: String = "a"
+      projectID: String = "p", // scruff: ignore(no_default_param)
+      configName: String = "c", // scruff: ignore(no_default_param)
+      attributeName: String = "a" // scruff: ignore(no_default_param)
   ) =
     val attributeKey = AttributeKey[String](attributeName)
     val scope = Scope(

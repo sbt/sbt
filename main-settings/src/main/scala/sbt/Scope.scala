@@ -36,10 +36,10 @@ final case class Scope private (
   def scope[K](key: Scoped.ScopingSetting[K]): K = key.rescope(this)
 
   def copy(
-      project: ScopeAxis[Reference] = this.project,
-      config: ScopeAxis[ConfigKey] = this.config,
-      task: ScopeAxis[AttributeKey[?]] = this.task,
-      extra: ScopeAxis[AttributeMap] = this.extra
+      project: ScopeAxis[Reference] = this.project, // scruff: ignore(no_default_param)
+      config: ScopeAxis[ConfigKey] = this.config, // scruff: ignore(no_default_param)
+      task: ScopeAxis[AttributeKey[?]] = this.task, // scruff: ignore(no_default_param)
+      extra: ScopeAxis[AttributeMap] = this.extra // scruff: ignore(no_default_param)
   ): Scope = Scope(project, config, task, extra)
 
   override def toString: String = this match
@@ -283,13 +283,13 @@ object Scope:
 
   def projectPrefix(
       project: ScopeAxis[Reference],
-      show: Reference => String = showProject
+      show: Reference => String = showProject // scruff: ignore(no_default_param)
   ): String =
     project.foldStrict(show, "Zero /", "./")
 
   def projectPrefix012Style(
       project: ScopeAxis[Reference],
-      show: Reference => String = showProject
+      show: Reference => String = showProject // scruff: ignore(no_default_param)
   ): String =
     project.foldStrict(show, "*/", "./")
 
@@ -418,6 +418,7 @@ object Scope:
   ): (T, Seq[ScopeAxis[T]]) =
     (init, linearize(Select(init))(direct(ref, _)))
 
+  // scruff: ignore(no_default_param)
   def linearize[T](axis: ScopeAxis[T], appendZero: Boolean = true)(
       inherit: T => Seq[T]
   ): Seq[ScopeAxis[T]] =

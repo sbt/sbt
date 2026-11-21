@@ -120,7 +120,7 @@ object SbtUpdateReportTest extends Properties:
       org: String,
       name: String,
       version: String,
-      callers: Vector[Caller] = Vector.empty
+      callers: Vector[Caller] = Vector.empty // scruff: ignore(no_default_param)
   ): ModuleReport =
     ModuleReport(
       ModuleID(org, name, version),

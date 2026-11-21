@@ -103,7 +103,7 @@ final class ScriptedTests(
       sbtInstances: Int,
       prop: RemoteSbtCreatorProp,
       log: Logger,
-      keepTempDirectory: Boolean = false,
+      keepTempDirectory: Boolean = false, // scruff: ignore(no_default_param)
   ): Seq[TestRunner] =
     batchScriptedRunner(
       testGroupAndNames,
@@ -740,9 +740,9 @@ class ScriptedRunner:
       prop: RemoteSbtCreatorProp,
       instances: Int,
       parallelExecution: Boolean,
-      keepTempDirectory: Boolean = false,
-      includeFilter: java.io.FileFilter = AllPassFilter,
-      excludeFilter: java.io.FileFilter = NothingFilter,
+      keepTempDirectory: Boolean = false, // scruff: ignore(no_default_param)
+      includeFilter: java.io.FileFilter = AllPassFilter, // scruff: ignore(no_default_param)
+      excludeFilter: java.io.FileFilter = NothingFilter, // scruff: ignore(no_default_param)
   ): Unit =
     val addTestFile = (f: File) =>
       prescripted.add(f); ()

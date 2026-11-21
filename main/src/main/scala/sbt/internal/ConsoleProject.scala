@@ -46,8 +46,8 @@ object ConsoleProject:
       dr: DependencyResolution,
       compilerBridgeBinaryBin: Seq[HashedVirtualFileRef],
       extra: String,
-      cleanupCommands: String = "",
-      options: Seq[String] = Nil
+      cleanupCommands: String = "", // scruff: ignore(no_default_param)
+      options: Seq[String] = Nil // scruff: ignore(no_default_param)
   )(using
       log: Logger
   ): Unit =

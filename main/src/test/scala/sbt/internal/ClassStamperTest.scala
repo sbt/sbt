@@ -140,10 +140,10 @@ object ClassStamperTest extends Properties:
    */
   private def analysisOf(
       srcName: String,
-      classes: Iterable[(String, String)] = Nil,
-      internalDeps: Iterable[(String, String)] = Nil,
-      externalDeps: Iterable[(String, String)] = Nil,
-      libraryDeps: Iterable[(VirtualFileRef, String)] = Nil,
+      classes: Iterable[(String, String)] = Nil, // scruff: ignore(no_default_param)
+      internalDeps: Iterable[(String, String)] = Nil, // scruff: ignore(no_default_param)
+      externalDeps: Iterable[(String, String)] = Nil, // scruff: ignore(no_default_param)
+      libraryDeps: Iterable[(VirtualFileRef, String)] = Nil, // scruff: ignore(no_default_param)
   ): Analysis =
     val rels = Relations.empty.addSource(
       src = src(srcName),
@@ -171,7 +171,7 @@ object ClassStamperTest extends Properties:
   private def stamp(
       s: ClassStamper,
       javaClassName: String,
-      extra: Seq[Digest] = Nil,
+      extra: Seq[Digest] = Nil, // scruff: ignore(no_default_param)
   ): Option[Digest] =
     s.transitiveStamp(javaClassName, extra, NoopLogger)
 

@@ -14,6 +14,7 @@ import verify.BasicTestSuite
 
 object CoalescingFlusherSpec extends BasicTestSuite:
 
+  // scruff: ignore(no_default_param)
   private def newFlusher(count: AtomicInteger, delayMillis: Long = 20L): CoalescingFlusher =
     new CoalescingFlusher(
       "test-flusher",

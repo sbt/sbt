@@ -325,6 +325,7 @@ object UpdateReportFormatSpec extends verify.BasicTestSuite:
     haystack.sliding(needle.length).count(_ == needle)
 
   /** Two modules, deliberately not in alphabetical order, in two configurations. */
+  // scruff: ignore(no_default_param)
   private def fixture(dir: File, publicationDate: Option[Calendar] = None): UpdateReport =
     val descriptor = new File(dir, "ivy.xml")
     IO.touch(descriptor)

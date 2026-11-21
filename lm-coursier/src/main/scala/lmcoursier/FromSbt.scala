@@ -25,7 +25,7 @@ object FromSbt:
       platformOpt: Option[String],
       scalaVersion: => String,
       scalaBinaryVersion: => String,
-      optionalCrossVer: Boolean = false,
+      optionalCrossVer: Boolean = false, // scruff: ignore(no_default_param)
       projectPlatform: Option[String],
   ): String =
     val name0 = name
@@ -115,8 +115,8 @@ object FromSbt:
       module: ModuleID,
       scalaVersion: String,
       scalaBinaryVersion: String,
-      optionalCrossVer: Boolean = false,
-      projectPlatform: Option[String] = None,
+      optionalCrossVer: Boolean = false, // scruff: ignore(no_default_param)
+      projectPlatform: Option[String] = None, // scruff: ignore(no_default_param)
   ): Seq[(Configuration, Dependency)] =
 
     // TODO Warn about unsupported properties in `module`

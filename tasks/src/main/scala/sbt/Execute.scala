@@ -30,6 +30,7 @@ private[sbt] object Execute:
     def process(): Unit = p
   def noTriggers = new Triggers(Map.empty, Map.empty, identity)
 
+  // scruff: ignore(no_default_param)
   def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config =
     new Config(checkCycles, overwriteNode)
   final class Config private[sbt] (

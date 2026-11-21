@@ -92,6 +92,7 @@ object EvictionError:
           case Some(winner) =>
             // from libraryDependencyScheme or defined in the pom using the `info.versionScheme` attribute
             val userDefinedSchemeOrFromPom =
+              // scruff: ignore(no_default_param)
               def fromLibraryDependencySchemes(org: String = "*", mod: String = "*") =
                 userDefinedSchemes.get((org, mod))
               def fromWinnerPom = VersionSchemes.extractFromExtraAttributes(
