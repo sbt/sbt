@@ -204,7 +204,7 @@ final class BuildServerReporterImpl(
     val _ = bspCompileState.isFirstReport.set(false)
 
   /**
-   * Map a given problem, in a Scala source file, to a Diagnostic in an user-facing source file.
+   * Map a given problem, in a Scala source file, to a Diagnostic in a user-facing source file.
    * E.g. if the source file is generated from Twirl, the diagnostic will be reported to the Twirl file.
    */
   private def mapProblemToDiagnostic(
