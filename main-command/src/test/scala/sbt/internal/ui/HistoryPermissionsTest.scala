@@ -8,8 +8,10 @@
 
 package sbt.internal.ui
 
-import java.nio.file.Files
-import java.nio.file.attribute.{ PosixFileAttributeView, PosixFilePermissions }
+import java.nio.file.{ FileSystems, Files }
+import java.nio.file.attribute.PosixFilePermissions
+
+import scala.util.Using
 
 import hedgehog.Result
 import hedgehog.runner.*
@@ -26,11 +28,18 @@ object HistoryPermissionsTest extends Properties:
 
   private def restrictsHistory: Result =
     IO.withTemporaryDirectory: dir =>
-      if Files.getFileStore(dir.toPath).supportsFileAttributeView(classOf[PosixFileAttributeView])
-      then
+      val options = java.util.Map.of(
+        "create",
+        "true",
+        "enablePosixFileAttributes",
+        "true",
+        "defaultPermissions",
+        "rw-r--r--",
+      )
+      Using.resource(FileSystems.newFileSystem(dir.toPath.resolve("history.zip"), options)): fs =>
         val contents = "compile\n"
-        val history = Files.writeString(dir.toPath.resolve(".history"), contents)
-        Files.setPosixFilePermissions(history, PosixFilePermissions.fromString("rw-r--r--"))
+        val history = Files.writeString(fs.getPath("/.history"), contents)
+        assert(PosixFilePermissions.toString(Files.getPosixFilePermissions(history)) == "rw-r--r--")
         UITask.restrictHistoryPermissions(history)
         assert(PosixFilePermissions.toString(Files.getPosixFilePermissions(history)) == "rw-------")
         assert(Files.readString(history) == contents)

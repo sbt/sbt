@@ -14,7 +14,7 @@ import java.nio.file.{ Files, Path }
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFileAttributeView
 import java.nio.file.attribute.PosixFilePermission.{ OWNER_EXECUTE, OWNER_READ, OWNER_WRITE }
-import java.util.EnumSet
+import java.util.{ EnumSet, HashSet }
 import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
@@ -113,7 +113,7 @@ private[sbt] object UITask:
         .foreach: view =>
           val attributes = view.readAttributes()
           if attributes.isRegularFile then
-            val permissions = attributes.permissions()
+            val permissions = new HashSet(attributes.permissions())
             if permissions.retainAll(EnumSet.of(OWNER_READ, OWNER_WRITE, OWNER_EXECUTE)) then
               view.setPermissions(permissions)
     catch case _: IOException | _: UnsupportedOperationException | _: SecurityException => ()
