@@ -788,6 +788,7 @@ lazy val mainProj = (project in file("main"))
         scala3Library,
         scalaCollectionCompat,
         sshdSftp % Test,
+        sshdScp % Test,
       ),
     libraryDependencies ++= List(scalaPar),
     contrabandSettings,

@@ -114,6 +114,7 @@ object Dependencies:
   // lm dependencies
   val jsch = ("com.github.mwiede" % "jsch" % "0.2.23").intransitive()
   val sshdSftp = "org.apache.sshd" % "sshd-sftp" % "2.15.0"
+  val sshdScp = "org.apache.sshd" % "sshd-scp" % "2.15.0"
   val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.9.8"
 
   // lm-coursier dependencies

@@ -18,6 +18,7 @@ import hedgehog.runner.*
 import lmcoursier.definitions.{ Info, Module, ModuleName, Organization, Project as CsrProject }
 import org.apache.sshd.common.config.keys.PublicKeyEntry
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory
+import org.apache.sshd.scp.server.ScpCommandFactory
 import org.apache.sshd.server.SshServer
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider
 import org.apache.sshd.sftp.server.SftpSubsystemFactory
@@ -33,7 +34,9 @@ object GenericPublisherSftpTest extends Properties:
     example("sftp resolver without base path publishes remotely", sftpWithoutBasePath),
     example("ssh resolver publishes Ivy layout", sshIvyLayout),
     example("sftp falls back to credentials for the host", sftpUsesCredentials),
-    example("sftp refuses to clobber a remote artifact", sftpRefusesToClobber),
+    example("sftp refuses to clobber a remote artifact", refusesToClobber(ssh = false)),
+    example("ssh refuses to clobber a remote artifact", refusesToClobber(ssh = true)),
+    example("sftp falls back to scp when the server lacks sftp", sftpFallsBackToScp),
     example("sftp follows a custom artifact pattern", sftpCustomPattern),
     example("a malformed default key is skipped", malformedKeySkipped),
     example("optional pattern groups need every token", substitutesOptionalGroups),
@@ -86,8 +89,10 @@ object GenericPublisherSftpTest extends Properties:
     GenericPublisher(null, Vector.empty, csrProject, credentials, Seq(repo))
       .publish(null, config(repo.name, artifacts, overwrite), Logger.Null)
 
-  /** Runs `f` against an SFTP server rooted at `dir / "server"`, trusting its host key. */
-  private def withServer[A](dir: File, trustHost: Boolean = true)(f: (Int, File) => A): A =
+  /** Runs `f` against an SCP and SFTP server rooted at `dir / "server"`, trusting its host key. */
+  private def withServer[A](dir: File, trustHost: Boolean = true, sftp: Boolean = true)(
+      f: (Int, File) => A
+  ): A =
     val root = dir / "server"
     IO.createDirectory(root)
     val sshd = SshServer.setUpDefaultServer()
@@ -95,7 +100,8 @@ object GenericPublisherSftpTest extends Properties:
     sshd.setPort(0)
     sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider((dir / "hostkey.ser").toPath))
     sshd.setPasswordAuthenticator((u, p, _) => u == user && p == secret)
-    sshd.setSubsystemFactories(Collections.singletonList(new SftpSubsystemFactory()))
+    if sftp then sshd.setSubsystemFactories(Collections.singletonList(new SftpSubsystemFactory()))
+    sshd.setCommandFactory(new ScpCommandFactory.Builder().build())
     sshd.setFileSystemFactory(new VirtualFileSystemFactory(root.toPath))
     sshd.start()
     val knownHosts = dir / "known_hosts"
@@ -107,6 +113,7 @@ object GenericPublisherSftpTest extends Properties:
     finally
       sys.props.remove(SshPublish.knownHostsProperty)
       sshd.stop(true)
+  end withServer
 
   private def mavenJar(base: File): File =
     base / "com" / "example" / moduleName / release / s"$moduleName-$release.jar"
@@ -137,16 +144,26 @@ object GenericPublisherSftpTest extends Properties:
         publish(Resolver.sftp("test-sftp", host, port), jar(dir, "c"), credentials = Seq(creds))
         Result.assert(IO.read(mavenJar(root)) == "c")
 
-  def sftpRefusesToClobber: Result =
+  def refusesToClobber(ssh: Boolean): Result =
     IO.withTemporaryDirectory: dir =>
       withServer(dir): (port, root) =>
-        val repo = Resolver.sftp("test-sftp", host, port).as(user, secret)
+        val repo =
+          if ssh then Resolver.ssh("test-ssh", host, port).as(user, secret)
+          else Resolver.sftp("test-sftp", host, port).as(user, secret)
         publish(repo, jar(dir, "first"))
         val second = Try(publish(repo, jar(dir, "second")))
         publish(repo, jar(dir, "third"), overwrite = true)
         Result
           .assert(second.failed.toOption.exists(_.getMessage.contains("already exists")))
           .and(Result.assert(IO.read(mavenJar(root)) == "third"))
+
+  def sftpFallsBackToScp: Result =
+    IO.withTemporaryDirectory: dir =>
+      withServer(dir, sftp = false): (port, root) =>
+        publish(Resolver.sftp("test-sftp", host, port, "/repo").as(user, secret), jar(dir, "s"))
+        Result
+          .assert(IO.read(mavenJar(root / "repo")) == "s")
+          .and(Result.assert(new File(mavenJar(root / "repo").getPath + ".md5").exists))
 
   def sftpCustomPattern: Result =
     IO.withTemporaryDirectory: dir =>
