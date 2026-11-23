@@ -17,13 +17,17 @@ import sbt.io.IO
 
 object HistoryPermissionsTest extends Properties:
   override def tests: List[Test] = List(
-    example("restricts existing history permissions without changing its contents", restrictsHistory),
+    example(
+      "restricts existing history permissions without changing its contents",
+      restrictsHistory
+    ),
     example("leaves missing history files absent", leavesMissingHistoryAbsent),
   )
 
   private def restrictsHistory: Result =
     IO.withTemporaryDirectory: dir =>
-      if Files.getFileStore(dir.toPath).supportsFileAttributeView(classOf[PosixFileAttributeView]) then
+      if Files.getFileStore(dir.toPath).supportsFileAttributeView(classOf[PosixFileAttributeView])
+      then
         val contents = "compile\n"
         val history = Files.writeString(dir.toPath.resolve(".history"), contents)
         Files.setPosixFilePermissions(history, PosixFilePermissions.fromString("rw-r--r--"))
