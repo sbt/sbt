@@ -12,6 +12,7 @@ package librarymanagement
 
 import java.io.File
 import java.util.Collections
+import com.jcraft.jsch.JSch
 import hedgehog.{ sbt as _, * }
 import hedgehog.runner.*
 import lmcoursier.definitions.{ Info, Module, ModuleName, Organization, Project as CsrProject }
@@ -34,6 +35,7 @@ object GenericPublisherSftpTest extends Properties:
     example("sftp falls back to credentials for the host", sftpUsesCredentials),
     example("sftp refuses to clobber a remote artifact", sftpRefusesToClobber),
     example("sftp follows a custom artifact pattern", sftpCustomPattern),
+    example("a malformed default key is skipped", malformedKeySkipped),
     example("optional pattern groups need every token", substitutesOptionalGroups),
     example("sftp rejects an unknown host key", sftpRejectsUnknownHost),
   )
@@ -161,6 +163,14 @@ object GenericPublisherSftpTest extends Properties:
         Result
           .assert(IO.read(moduleDir / s"$moduleName.jar") == "main")
           .and(Result.assert(IO.read(moduleDir / s"$moduleName-sources.jar") == "src"))
+
+  def malformedKeySkipped: Result =
+    IO.withTemporaryDirectory: dir =>
+      val key = dir / "id_rsa"
+      IO.write(key, "not a key")
+      val jsch = new JSch()
+      SshPublish.addIdentities(jsch, Seq(key), Logger.Null)
+      Result.assert(jsch.getIdentityNames.isEmpty)
 
   def substitutesOptionalGroups: Result =
     val pattern = "[organisation]/[module](_[scalaVersion])/[artifact](-[classifier]).[ext]"

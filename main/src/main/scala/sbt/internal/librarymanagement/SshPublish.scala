@@ -41,7 +41,8 @@ private[sbt] object SshPublish:
     val permissions = repo match
       case r: SshRepository => r.publishPermissions.map(Integer.parseInt(_, 8))
       case _                => None
-    withSftp(host, port, repo.connection.authentication, credentials.find(_.host == host)): sftp =>
+    val creds = credentials.find(_.host == host)
+    withSftp(host, port, repo.connection.authentication, creds, log): sftp =>
       if !overwrite then
         files
           .collectFirst:
@@ -59,11 +60,20 @@ private[sbt] object SshPublish:
         log.info(s"published $host:$path")
   end upload
 
+  /** Adds each readable key, skipping one that fails to load so other authentication can proceed. */
+  private[sbt] def addIdentities(jsch: JSch, keys: Seq[File], log: Logger): Unit =
+    keys
+      .filter(_.isFile)
+      .foreach: k =>
+        try jsch.addIdentity(k.getAbsolutePath)
+        catch case e: JSchException => log.debug(s"skipping SSH key $k: ${e.getMessage}")
+
   private def withSftp[A](
       host: String,
       port: Int,
       auth: Option[SshAuthentication],
-      hostCredentials: Option[Credentials.DirectCredentials]
+      hostCredentials: Option[Credentials.DirectCredentials],
+      log: Logger
   )(f: ChannelSftp => A): A =
     val jsch = new JSch()
     val sshDir = new File(sys.props("user.home"), ".ssh")
@@ -81,10 +91,7 @@ private[sbt] object SshPublish:
           case Some(c) => (c.userName, Some(c.passwd))
           case None    => (sys.props("user.name"), None)
     if !auth.exists(_.isInstanceOf[KeyFileAuthentication]) then
-      defaultKeys
-        .map(new File(sshDir, _))
-        .filter(_.isFile)
-        .foreach(k => jsch.addIdentity(k.getAbsolutePath))
+      addIdentities(jsch, defaultKeys.map(new File(sshDir, _)), log)
     try
       Using
         .Manager: use =>
