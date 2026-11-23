@@ -28,7 +28,7 @@ private[sbt] object SshPublish:
   given Using.Releasable[Session] = _.disconnect()
   given Using.Releasable[ChannelSftp] = _.disconnect()
 
-  /** Uploads `files`, given as repository-relative paths, beneath the repository's base path. */
+  /** Uploads each file to its remote path. */
   def upload(
       repo: SshBasedRepository,
       credentials: Seq[Credentials.DirectCredentials],
@@ -38,14 +38,12 @@ private[sbt] object SshPublish:
   ): Unit =
     val host = repo.connection.hostname.getOrElse(sys.error(s"${repo.name} has no hostname"))
     val port = repo.connection.port.getOrElse(22)
-    val base = remoteBase(repo)
     val permissions = repo match
       case r: SshRepository => r.publishPermissions.map(Integer.parseInt(_, 8))
       case _                => None
-    val targets = files.map((rel, f) => (base + rel, f))
     withSftp(host, port, repo.connection.authentication, credentials.find(_.host == host)): sftp =>
       if !overwrite then
-        targets
+        files
           .collectFirst:
             case (path, _) if !isChecksum(path) && exists(sftp, path) => path
           .foreach: path =>
@@ -54,20 +52,12 @@ private[sbt] object SshPublish:
                 "Publish a new version, or relax the setting as follows:\n\t" +
                 "publish / publishConfiguration := publishConfiguration.value.withOverwrite(true)"
             )
-      targets.foreach: (path, f) =>
+      files.foreach: (path, f) =>
         mkdirs(sftp, path.substring(0, path.lastIndexOf('/').max(0)))
         sftp.put(f.getAbsolutePath, path, ChannelSftp.OVERWRITE)
         permissions.foreach(sftp.chmod(_, path))
         log.info(s"published $host:$path")
   end upload
-
-  private[sbt] def remoteBase(repo: PatternsBasedRepository): String =
-    val pattern = repo.patterns.artifactPatterns.headOption
-      .getOrElse(sys.error(s"${repo.name} has no artifact pattern"))
-    val idx = pattern.indexOf("[organisation]")
-    if idx < 0 then sys.error(s"${repo.name}: pattern '$pattern' has no [organisation] token")
-    val base = pattern.substring(0, idx).replace('\\', '/')
-    if base.isEmpty || base.endsWith("/") then base else base + "/"
 
   private def withSftp[A](
       host: String,

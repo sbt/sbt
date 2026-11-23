@@ -245,27 +245,29 @@ class GenericPublisher private[sbt] (
     val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
     publishBytes(ivyXmlFile, overwrite, checksumAlgorithms, log)(IO.write(_, ivyXmlContent))
 
-    // Build a lookup from (type, classifier, ext) to cross-versioned publication name
-    val pubNameLookup: Map[(String, String, String), String] =
-      project.publications.map { (_, pub) =>
-        (pub.`type`.value, pub.classifier.value, pub.ext.value) -> pub.name
-      }.toMap
-
     // Publish each artifact
     artifacts.foreach: (artifact, sourceFile) =>
       val folder = typeToFolder(artifact.`type`)
       val targetDir = moduleDir / folder
 
-      // Look up the cross-versioned artifact name from publications, fall back to module name
-      val classifierStr = artifact.classifier.getOrElse("")
-      val artName = pubNameLookup
-        .getOrElse((artifact.`type`, classifierStr, artifact.extension), moduleName)
+      val artName = ivyArtifactName(artifact)
       val classifier = artifact.classifier.map("-" + _).getOrElse("")
       val fileName = s"$artName$classifier.${artifact.extension}"
       val targetFile = targetDir / fileName
 
       publishFile(sourceFile, targetFile, overwrite, checksumAlgorithms, log)
   end ivylessPublishLocal
+
+  /** The cross-versioned publication name for `artifact`, falling back to the module name. */
+  private def ivyArtifactName(artifact: Artifact): String =
+    project.publications
+      .collectFirst:
+        case (_, pub)
+            if pub.`type`.value == artifact.`type` &&
+              pub.classifier.value == artifact.classifier.getOrElse("") &&
+              pub.ext.value == artifact.extension =>
+          pub.name
+      .getOrElse(project.module.name.value)
 
   /**
    * Substitutes Ivy pattern placeholders for artifact URL.
@@ -493,7 +495,7 @@ class GenericPublisher private[sbt] (
       ivylessPublishLocal(artifacts, checksumAlgorithms, repoDir, overwrite, log)
   end ivylessPublishToFile
 
-  /** Lays the artifacts out as a file repository would, then uploads that tree over SFTP. */
+  /** Uploads each artifact, its checksums and, for Ivy layout, ivy.xml to the repository's patterns. */
   private def ivylessPublishToSsh(
       artifacts: Vector[(Artifact, File)],
       checksumAlgorithms: Vector[String],
@@ -501,19 +503,40 @@ class GenericPublisher private[sbt] (
       overwrite: Boolean,
       log: Logger
   ): Unit =
-    IO.withTemporaryDirectory: staging =>
-      if repo.patterns.isMavenCompatible then
-        ivylessPublishMavenToFile(artifacts, checksumAlgorithms, staging, true, Logger.Null)
-      else ivylessPublishLocal(artifacts, checksumAlgorithms, staging, true, Logger.Null)
-      val files = sbt.io.Path
-        .allSubpaths(staging)
-        .collect:
-          case (f, rel) if f.isFile && f.getName != "maven-metadata-local.xml" =>
-            (rel.replace('\\', '/'), f)
-        .toVector
-        .sortBy(_._1)
+    val maven = repo.patterns.isMavenCompatible
+    val org = project.module.organization.value
+    val moduleTokens = project.module.attributes ++ Map(
+      "organisation" -> (if maven then org.replace('.', '/') else org),
+      "module" -> project.module.name.value,
+      "revision" -> project.version,
+    )
+    def remotePath(patterns: Vector[String], name: String, a: Artifact): String =
+      val pattern = patterns.headOption.getOrElse(sys.error(s"${repo.name} has no pattern"))
+      val tokens = Map("artifact" -> name, "type" -> a.`type`, "ext" -> a.extension) ++
+        a.classifier.map("classifier" -> _)
+      GenericPublisher.substitutePattern(pattern, moduleTokens ++ tokens)
+    IO.withTemporaryDirectory: tmp =>
+      val ivyXml = Option.unless(maven):
+        val f = tmp / "ivy.xml"
+        IO.write(f, lmcoursier.IvyXml(project, Nil, Nil))
+        remotePath(repo.patterns.ivyPatterns, "ivy", Artifact("ivy", "ivy", "xml")) -> f
+      val files = artifacts.map: (a, f) =>
+        val name = if maven then artifactNameCross.fold(a.name)(_(a.name)) else ivyArtifactName(a)
+        remotePath(repo.patterns.artifactPatterns, name, a) -> f
+      val all = files ++ ivyXml
+      if all.map(_._1).distinct.size != all.size then
+        sys.error(s"Multiple artifacts map to the same path in ${repo.name}: ${all.map(_._1)}")
+      val withChecksums = all.zipWithIndex.flatMap:
+        case ((path, f), _) if path.endsWith(signatureExt) => Vector(path -> f)
+        case ((path, f), i)                                =>
+          (path -> f) +: checksumAlgorithms.map: algo =>
+            val digestAlgo = normalizedChecksumAlgorithm(algo)
+            val cf = tmp / s"$i.$digestAlgo"
+            IO.write(cf, sbt.util.Digest(digestAlgo, f.toPath).hashHexString)
+            s"$path.$digestAlgo" -> cf
       val directCreds = credentials.collect { case d: Credentials.DirectCredentials => d }
-      SshPublish.upload(repo, directCreds, files, overwrite, log)
+      SshPublish.upload(repo, directCreds, withChecksums, overwrite, log)
+  end ivylessPublishToSsh
 
   private def normalizedChecksumAlgorithm(algo: String): String =
     algo.toLowerCase match
@@ -887,6 +910,18 @@ object GenericPublisher:
       )
     result
   end mavenArtifacts
+
+  /** Fills Ivy pattern tokens, dropping each optional `(...)` group that has a missing token. */
+  private[sbt] def substitutePattern(pattern: String, tokens: Map[String, String]): String =
+    val token = """\[([^\]]+)\]""".r
+    def fill(s: String): Option[String] =
+      val missing = token.findAllMatchIn(s).exists(m => tokens.get(m.group(1)).forall(_.isEmpty))
+      Option.unless(missing)(
+        token.replaceAllIn(s, m => Matcher.quoteReplacement(tokens(m.group(1))))
+      )
+    val optionals = """\(([^()]*)\)""".r
+      .replaceAllIn(pattern, m => Matcher.quoteReplacement(fill(m.group(1)).getOrElse("")))
+    fill(optionals).getOrElse(sys.error(s"pattern '$pattern' has a token with no value"))
 
   def apply(
       dependencyResolution: DependencyResolution,

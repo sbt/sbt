@@ -33,6 +33,8 @@ object GenericPublisherSftpTest extends Properties:
     example("ssh resolver publishes Ivy layout", sshIvyLayout),
     example("sftp falls back to credentials for the host", sftpUsesCredentials),
     example("sftp refuses to clobber a remote artifact", sftpRefusesToClobber),
+    example("sftp follows a custom artifact pattern", sftpCustomPattern),
+    example("optional pattern groups need every token", substitutesOptionalGroups),
     example("sftp rejects an unknown host key", sftpRejectsUnknownHost),
   )
 
@@ -143,6 +145,30 @@ object GenericPublisherSftpTest extends Properties:
         Result
           .assert(second.failed.toOption.exists(_.getMessage.contains("already exists")))
           .and(Result.assert(IO.read(mavenJar(root)) == "third"))
+
+  def sftpCustomPattern: Result =
+    IO.withTemporaryDirectory: dir =>
+      withServer(dir): (port, root) =>
+        val patterns = Patterns(true, "/c/[organisation]/[module]/[artifact](-[classifier]).[ext]")
+        val src = dir / "src.jar"
+        IO.write(src, "src")
+        val sources = Artifact(moduleName, "src", "jar", "sources") -> src
+        publish(
+          Resolver.sftp("test-sftp", host, port)(using patterns).as(user, secret),
+          jar(dir, "main") :+ sources
+        )
+        val moduleDir = root / "c" / "com" / "example" / moduleName
+        Result
+          .assert(IO.read(moduleDir / s"$moduleName.jar") == "main")
+          .and(Result.assert(IO.read(moduleDir / s"$moduleName-sources.jar") == "src"))
+
+  def substitutesOptionalGroups: Result =
+    val pattern = "[organisation]/[module](_[scalaVersion])/[artifact](-[classifier]).[ext]"
+    val tokens = Map("organisation" -> "o", "module" -> "m", "artifact" -> "a", "ext" -> "jar")
+    val full = tokens ++ Map("scalaVersion" -> "3", "classifier" -> "src")
+    Result
+      .assert(GenericPublisher.substitutePattern(pattern, tokens) == "o/m/a.jar")
+      .and(Result.assert(GenericPublisher.substitutePattern(pattern, full) == "o/m_3/a-src.jar"))
 
   def sftpRejectsUnknownHost: Result =
     IO.withTemporaryDirectory: dir =>
