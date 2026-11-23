@@ -8,12 +8,17 @@
 
 package sbt.internal.ui
 
-import java.io.File
+import java.io.{ File, IOException }
 import java.nio.channels.ClosedChannelException
+import java.nio.file.{ Files, Path }
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.attribute.PosixFileAttributeView
+import java.nio.file.attribute.PosixFilePermission.{ OWNER_EXECUTE, OWNER_READ, OWNER_WRITE }
+import java.util.EnumSet
 import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
-import sbt.BasicKeys.{ historyPath, colorShellPrompt }
+import sbt.BasicKeys.{ historyPath, colorShellPrompt, rootOutputDirectory }
 import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
@@ -22,6 +27,7 @@ import sbt.internal.util.*
 import sbt.internal.util.complete.Parser
 
 import scala.annotation.tailrec
+import scala.util.Try
 
 private[sbt] trait UITask extends Runnable with AutoCloseable:
   private[sbt] val channel: CommandChannel
@@ -67,13 +73,14 @@ private[sbt] object UITask:
         state: State
     ): Reader = new Reader:
       val closed = new AtomicBoolean(false)
+      private lazy val historyFile = history(state)
       def readLine(): Either[String, String] =
         try
           val clear = terminal.ansi(ClearPromptLine, "")
           val res =
             val thread = Thread.currentThread
             if thread.isInterrupted || closed.get then throw interrupted
-            val reader = LineReader.createReader(history(state), parser, terminal)
+            val reader = LineReader.createReader(historyFile, parser, terminal)
             if thread.isInterrupted || closed.get then throw interrupted
             (try reader.readLine(clear + terminal.prompt.mkPrompt())
             finally reader.close) match
@@ -92,7 +99,25 @@ private[sbt] object UITask:
       override def close(): Unit = closed.set(true)
   end Reader
   private def history(s: State): Option[File] =
-    s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
+    val configured = s.get(historyPath)
+    val file = configured.getOrElse(Some(new File(s.baseDir, ".history")))
+    file.foreach: f =>
+      Try(f.toPath).toOption.foreach: path =>
+        if configured.isEmpty || s.get(rootOutputDirectory).exists(_.resolve(".history") == path)
+        then restrictHistoryPermissions(path)
+    file
+
+  private[ui] def restrictHistoryPermissions(path: Path): Unit =
+    try
+      Option(Files.getFileAttributeView(path, classOf[PosixFileAttributeView], NOFOLLOW_LINKS))
+        .foreach: view =>
+          val attributes = view.readAttributes()
+          if attributes.isRegularFile then
+            val permissions = attributes.permissions()
+            if permissions.retainAll(EnumSet.of(OWNER_READ, OWNER_WRITE, OWNER_EXECUTE)) then
+              view.setPermissions(permissions)
+    catch case _: IOException | _: UnsupportedOperationException | _: SecurityException => ()
+
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
     s.get(sbt.BasicKeys.shellPrompt) match
       case Some(NoShellPrompt) | None =>
