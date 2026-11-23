@@ -962,9 +962,10 @@ isRunClient() {
 }
 
 runClient() {
-  # sbtn is only built against glibc, so it can't run on musl-based Linux such as Alpine.
+  # sbtn for aarch64 Linux is only built against glibc, so it can't run on musl-based
+  # Linux such as Alpine (x86_64 sbtn is static and runs there).
   # There, use the JVM client unless SBTN_CMD names an sbtn to run.
-  if [[ "$OSTYPE" == "linux-musl"* ]] && [[ "$sbtn_command" == "" ]]; then
+  if [[ "$OSTYPE" == "linux-musl"* ]] && [[ "$(uname -m)" != "x86_64" ]] && [[ "$sbtn_command" == "" ]]; then
     use_jvm_client="1"
   fi
   if [[ "$use_jvm_client" != "1" ]]; then
