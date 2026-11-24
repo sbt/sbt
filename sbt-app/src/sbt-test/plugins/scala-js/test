@@ -1,3 +1,7 @@
 > update
+> Test/compile
+$ absent target/**/*-test-fastopt
+> checkDigests
+$ exists target/**/*-test-fastopt
 > testFull
 > checkReports
