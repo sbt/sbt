@@ -474,6 +474,7 @@ lazy val workerProj = (project in file("worker"))
     Compile / javacOptions := Seq("--release", "8"),
     JDK17 / javacOptions := Seq("--release", "17"),
     Compile / packageBin / packageOptions += Pkg.ManifestAttributes("Multi-Release" -> "true"),
+    Compile / packageInternal / packageOptions += Pkg.ManifestAttributes("Multi-Release" -> "true"),
     Compile / packageBin / mappings ++= {
       val _ = (JDK17 / compile).value
       val conv = fileConverter.value
