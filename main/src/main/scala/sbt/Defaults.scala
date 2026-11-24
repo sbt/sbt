@@ -1256,9 +1256,7 @@ object Defaults extends BuildCommon with DefExtra:
       .storeAs(definedTestNames)
       .triggeredBy(compile)
       .value,
-    definedTestDigests := IncrementalTest.definedTestDigestTask
-      .triggeredBy(compile)
-      .value,
+    definedTestDigests := IncrementalTest.definedTestDigestTask.value,
     testQuick / testFilter := Def.uncached(IncrementalTest.filterTask.value),
     extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
     executeTests := Def.uncached(Def.taskDyn {
