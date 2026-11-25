@@ -881,7 +881,11 @@ appendSbtoptsFromFile() {
   local file="$1"
   [[ ! -f "$file" ]] && return
   while IFS= read -r line || [[ -n "$line" ]]; do
-    line=$(printf '%s' "$line" | sed $'/^\#/d;s/[[:space:]]\{1,\}#.*//;s/\r$//')
+    # Strip comments and a trailing \r in bash: a sed per line (49 for the
+    # default conf/sbtopts) takes longer than running sbtn itself.
+    [[ "$line" == \#* ]] && continue
+    [[ "$line" =~ [[:space:]]+#.* ]] && line="${line%"${BASH_REMATCH[0]}"}"
+    line="${line%$'\r'}"
     [[ -z "$line" ]] && continue
     while IFS= read -r token; do
       [[ -n "$token" ]] && sbt_file_opts+=("$token")
