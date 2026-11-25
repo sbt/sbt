@@ -280,7 +280,7 @@ object Defaults extends BuildCommon with DefExtra:
       csrLogger := Def.uncached(LMCoursier.coursierLoggerTask.value),
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
-      csrMavenDependencyOverride :== false,
+      csrMavenDependencyOverride :== true,
       csrLocalArtifactsShouldBeCached :== false,
       csrCacheDirectory := LMCoursier.defaultCacheLocation,
       csrSameVersions :== Nil,
