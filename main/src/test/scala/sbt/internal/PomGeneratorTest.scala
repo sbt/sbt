@@ -21,6 +21,7 @@ object PomGeneratorTest extends Properties:
     example("preserves sbt plugin metadata through POM formatting", testPluginMetadata),
     example("does not add properties without extra attributes", testNoExtraAttributes),
     example("preserves uncrossed names in legacy-style plugin metadata", testLegacyNames),
+    example("writes one dependency per explicit artifact", testMultipleClassifiers),
   )
 
   private def testPluginMetadata: Result =
@@ -90,6 +91,18 @@ object PomGeneratorTest extends Properties:
     Result
       .assert(dependencyAttributes.contains("+module:#@#:+sbt-child:#@#:"))
       .and(Result.assert(!dependencyAttributes.contains("sbt-child_2.12_1.0")))
+
+  private def testMultipleClassifiers: Result =
+    val dep = ModuleID("io.netty", "netty-tcnative-boringssl-static", "2.0.86.Final")
+      .classifier("linux-x86_64")
+      .classifier("osx-aarch_64")
+      .classifier("windows-x86_64")
+    val formatted = formattedPom(ModuleID("org.example", "app_3", "1.0.0"), Vector(dep))
+    val classifiers = (formatted \ "dependencies" \ "dependency").map(d => (d \ "classifier").text)
+    Result
+      .assert(classifiers.toSet == Set("linux-x86_64", "osx-aarch_64", "windows-x86_64"))
+      .log(s"classifiers: $classifiers")
+      .and(Result.assert(classifiers.size == 3))
 
   private def pluginDependency(name: String, revision: String): ModuleID =
     ModuleID("org.example", name, revision)

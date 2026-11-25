@@ -252,10 +252,14 @@ private[sbt] object PomGenerator:
   private def makeDependencies(deps: Vector[ModuleID]): NodeSeq =
     if deps.isEmpty then NodeSeq.Empty
     else <dependencies>
-        {deps.map(makeDependencyElem)}
+        {deps.flatMap(makeDependencyElems)}
       </dependencies>
 
-  private def makeDependencyElem(dep: ModuleID): Elem =
+  private def makeDependencyElems(dep: ModuleID): Seq[Elem] =
+    if dep.explicitArtifacts.isEmpty then Seq(makeDependencyElem(dep, None))
+    else dep.explicitArtifacts.map(art => makeDependencyElem(dep, Some(art)))
+
+  private def makeDependencyElem(dep: ModuleID, artifact: Option[Artifact]): Elem =
     val (scope, optional) = getScopeAndOptional(dep.configurations)
     val mavenVersion = convertVersion(dep.revision)
     val versionNode: NodeSeq =
@@ -268,7 +272,7 @@ private[sbt] object PomGenerator:
         {versionNode}
         {scopeElem(scope)}
         {optionalElem(optional)}
-        {typeAndClassifierElems(dep)}
+        {typeAndClassifierElems(artifact)}
         {exclusions(dep)}
       </dependency>
     result
@@ -311,8 +315,8 @@ private[sbt] object PomGenerator:
   private def optionalElem(opt: Boolean): NodeSeq =
     if opt then <optional>true</optional> else NodeSeq.Empty
 
-  private def typeAndClassifierElems(dep: ModuleID): NodeSeq =
-    dep.explicitArtifacts.headOption match
+  private def typeAndClassifierElems(artifact: Option[Artifact]): NodeSeq =
+    artifact match
       case None      => NodeSeq.Empty
       case Some(art) =>
         val classifier = art.classifier
