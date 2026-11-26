@@ -11,7 +11,15 @@ package internal
 
 import hedgehog.*
 import hedgehog.runner.*
-import _root_.sbt.librarymanagement.{ Artifact, ConfigRef, ModuleID }
+import _root_.sbt.librarymanagement.{
+  Artifact,
+  ConfigRef,
+  CrossVersion,
+  Disabled,
+  InclExclRule,
+  ModuleID,
+  ScalaModuleInfo,
+}
 
 import scala.xml.{ Node, NodeSeq, PrettyPrinter, XML }
 
@@ -23,7 +31,44 @@ object PomGeneratorTest extends Properties:
     example("preserves uncrossed names in legacy-style plugin metadata", testLegacyNames),
     example("writes one dependency per explicit artifact", testMultipleClassifiers),
     example("skips sources and docs configurations", testSourcesDocsConfs),
+    example("writes exclusions, including wildcard ones", testExclusions),
   )
+
+  private def testExclusions: Result =
+    val dependency = ModuleID("org.example", "dependency_3", "1.0.0")
+      .excludeAll(
+        InclExclRule().withOrganization("org.excluded"),
+        InclExclRule().withName("excluded-name"),
+        InclExclRule().withOrganization("org.example").withName("excluded-module_3"),
+        InclExclRule("org.versioned", "versioned-module", "1.0", Vector.empty, Disabled()),
+        InclExclRule("org.crossed", "crossed-module", "*", Vector.empty, CrossVersion.binary),
+        InclExclRule("org.wildcard", "*", "*", Vector.empty, CrossVersion.binary),
+        InclExclRule.everything,
+        InclExclRule().withArtifact("excluded-artifact"),
+        InclExclRule().withConfigurations(Vector(ConfigRef("test"))),
+        InclExclRule().withOrganization("org.partial").withArtifact("excluded-artifact"),
+        InclExclRule().withName("partial-name").withConfigurations(Vector(ConfigRef("test"))),
+        InclExclRule("", "empty-organization"),
+        InclExclRule("org.empty", ""),
+      )
+    val formatted =
+      formattedPom(
+        ModuleID("org.example", "library_3", "1.0.0"),
+        Vector(dependency),
+        Some(ScalaModuleInfo("3.3.8", "3", Vector.empty, true, false, true)),
+      )
+    val exclusions = (formatted \ "dependencies" \ "dependency" \ "exclusions" \ "exclusion")
+      .map(e => (e \ "groupId").text -> (e \ "artifactId").text)
+    val expected = Vector(
+      "org.excluded" -> "*",
+      "*" -> "excluded-name",
+      "org.example" -> "excluded-module_3",
+      "org.versioned" -> "versioned-module",
+      "org.crossed" -> "crossed-module_3",
+      "org.wildcard" -> "*",
+    )
+    Result.assert(exclusions == expected).log(s"expected: $expected\nobtained: $exclusions")
+  end testExclusions
 
   private def testPluginMetadata: Result =
     val module = ModuleID("org.example", "sbt-parent_2.12_1.0", "1.0.0")
@@ -122,8 +167,12 @@ object PomGeneratorTest extends Properties:
     ModuleID("org.example", name, revision)
       .extra("sbtVersion" -> "1.0", "scalaVersion" -> "2.12")
 
-  private def formattedPom(module: ModuleID, dependencies: Vector[ModuleID]): Node =
-    val pom = PomGenerator.makePom(module, None, dependencies, None, NodeSeq.Empty)
+  private def formattedPom(
+      module: ModuleID,
+      dependencies: Vector[ModuleID],
+      scalaInfo: Option[ScalaModuleInfo] = None,
+  ): Node =
+    val pom = PomGenerator.makePom(module, None, dependencies, None, NodeSeq.Empty, scalaInfo)
     XML.loadString(new PrettyPrinter(1000, 4).format(pom))
 
 end PomGeneratorTest
