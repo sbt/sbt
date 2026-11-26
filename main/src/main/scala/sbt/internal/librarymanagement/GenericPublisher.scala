@@ -12,7 +12,6 @@ package librarymanagement
 
 import java.io.{ File, IOException }
 import java.net.{ URI, URL }
-import java.nio.file.{ Files, StandardCopyOption }
 import java.util.regex.Matcher
 
 import gigahorse.{ AuthScheme, Realm }
@@ -545,27 +544,6 @@ class GenericPublisher private[sbt] (
         throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
 
   /**
-   * Replaces `targetFile` in place, going through a sibling temp file so an interrupted
-   * publish cannot leave a half-written artifact behind.
-   */
-  private def atomicWrite(targetFile: File, write: File => Unit): Unit =
-    IO.createDirectory(targetFile.getParentFile)
-    val tmp = new File(targetFile.getPath + ".tmp")
-    try
-      write(tmp)
-      try
-        Files.move(
-          tmp.toPath,
-          targetFile.toPath,
-          StandardCopyOption.REPLACE_EXISTING,
-          StandardCopyOption.ATOMIC_MOVE
-        )
-      catch
-        case _: java.nio.file.AtomicMoveNotSupportedException =>
-          Files.move(tmp.toPath, targetFile.toPath, StandardCopyOption.REPLACE_EXISTING)
-    finally IO.delete(tmp)
-
-  /**
    * Writes one artifact into a file repository, overwriting whatever is there.
    *
    * A file repository is the developer's own scratch space, so what was just built always
@@ -589,7 +567,8 @@ class GenericPublisher private[sbt] (
   )(write: File => Unit): Unit =
     if targetFile.exists && !overwrite then
       log.warn(s"$targetFile already exists, overwriting (overwrite=$overwrite)")
-    atomicWrite(targetFile, write)
+    IO.createDirectory(targetFile.getParentFile)
+    IO.writeFile(targetFile)(write)
     log.info(s"published $targetFile")
     if !targetFile.getName.endsWith(signatureExt) then
       writeChecksumsForFile(targetFile, checksumAlgorithms, log)
