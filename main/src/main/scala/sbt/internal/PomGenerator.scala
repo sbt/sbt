@@ -71,9 +71,9 @@ private[sbt] object PomGenerator:
       val si = scalaInfo.get
       val crossedExclusions = crossDep.exclusions.map: excl =>
         CrossVersion(excl.crossVersion, si.scalaFullVersion, si.scalaBinaryVersion) match
-          case Some(fn) =>
+          case Some(fn) if excl.name != "*" =>
             excl.withName(fn(excl.name)).withCrossVersion(CrossVersion.disabled)
-          case None => excl
+          case _ => excl
       crossDep.withExclusions(crossedExclusions)
 
   private def confIntersects(confStr: String, keepConfs: Set[String]): Boolean =
@@ -351,7 +351,12 @@ private[sbt] object PomGenerator:
       val elems = dep.exclusions.flatMap { excl =>
         val g = excl.organization
         val a = excl.name
-        if g.nonEmpty && g != "*" && a.nonEmpty && a != "*" then Some(<exclusion>
+        val wholeModule = excl.artifact == "*" && excl.configurations.isEmpty
+        val expressible = (g, a) match
+          case ("*", "*")          => false
+          case ("*", _) | (_, "*") => wholeModule
+          case _                   => true
+        if g.nonEmpty && a.nonEmpty && expressible then Some(<exclusion>
             <groupId>{g}</groupId>
             <artifactId>{a}</artifactId>
           </exclusion>)
