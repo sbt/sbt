@@ -10,6 +10,7 @@ package sbt
 
 import java.io.{ File, IOException, PrintWriter, StringWriter }
 import java.net.InetAddress
+import java.nio.file.Files
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -299,15 +300,35 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   private def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
+  /** The report file for the suite `name`. */
+  def reportFile(name: String): File =
+    if legacyTestReport then new File(targetDir, s"${normalizeName(name)}.xml")
+    else new File(targetDir, s"TEST-${normalizeName(name)}.xml")
+
+  /** A report restored from the cache may link into the read-only cache, so it is replaced, not written through. */
+  private def saveReport(file: File, xml: Elem): Unit =
+    Files.deleteIfExists(file.toPath)
+    XML.save(file.getAbsolutePath, xml, "UTF-8", xmlDecl = true, null)
+
+  /** Marks the restored report of the cached suite `name` with the `sbt.cached` property. */
+  def markCached(name: String): Unit =
+    val file = reportFile(name)
+    if file.isFile then
+      val xml = XML.loadFile(file)
+      val cachedProp = <property name="sbt.cached" value="true"/>
+      val marked = xml.copy(child = xml.child.map:
+        case p: Elem if p.label == "properties" => p.copy(child = p.child :+ cachedProp)
+        case n                                  => n)
+      if logger != null then logger.debug(s"marking cached JUnit XML test report: $file")
+      saveReport(file, marked)
+
   private def writeSuite(group: String): Unit =
     val ref = suiteRef(group)
     val suite = ref.current.getOrElse(sys.error("no test suite"))
-    val file = if legacyTestReport then
-      new File(targetDir, s"${normalizeName(suite.name)}.xml").getAbsolutePath
-    else new File(targetDir, s"TEST-${normalizeName(suite.name)}.xml").getAbsolutePath
+    val file = reportFile(suite.name)
     if logger != null then logger.debug(s"writing JUnit XML test report: $file")
     val testSuiteResult = suite.stop()
-    XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
+    saveReport(file, testSuiteResult)
     /* Order matters: `clear()` releases the suite for this thread *and* for every thread that
      * inherited the cell, which `remove()` cannot reach. `remove()` then drops this thread's
      * own entry. Without the `clear()` the suite -- and through its buffered events the test

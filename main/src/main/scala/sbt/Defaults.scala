@@ -1360,6 +1360,7 @@ object Defaults extends BuildCommon with DefExtra:
       Seq(
         testListeners := Def.uncached {
           val stateLogLevel = state.value.get(Keys.logLevel.key).getOrElse(Level.Info)
+          val others = (TaskZero / testListeners).value
           TestLogger.make(
             streams.value.log,
             closeableTestLogger(
@@ -1368,12 +1369,11 @@ object Defaults extends BuildCommon with DefExtra:
               logBuffered.value
             ),
             Keys.logLevel.?.value.getOrElse(stateLogLevel),
-          ) +:
-            TestStatusReporter(
-              definedTestDigests.value,
-              Def.cacheConfiguration.value,
-            ) +:
-            (TaskZero / testListeners).value
+          ) +: (others :+ TestStatusReporter(
+            definedTestDigests.value,
+            Def.cacheConfiguration.value,
+            others.collect { case l: JUnitXmlTestsListener => l },
+          ))
         },
         testOptions := Def.uncached(
           Tests.Listeners(testListeners.value) +: (TaskZero / testOptions).value
@@ -1549,6 +1549,9 @@ object Defaults extends BuildCommon with DefExtra:
                   if frameworkOptions.nonEmpty then r.setArguments(frameworkOptions)
                 case _ => ()
           case _ => ()
+      val statusReporters = modifiedOpts.flatMap:
+        case Tests.Listeners(ls) => ls.collect { case r: TestStatusReporter => r }
+        case _                   => Nil
       val newConfig = config.copy(options = modifiedOpts)
       val output = allTestGroupsTask(
         s,
@@ -1584,6 +1587,7 @@ object Defaults extends BuildCommon with DefExtra:
             frameworkOptions,
             cacheTestResult,
           )
+          statusReporters.foreach(_.restoreReports(cached))
           TestSummary.append(taskName, out, cached, adhocOptions.toVector)
           try
             trl.run(s.log, out, taskName, cached)
