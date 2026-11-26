@@ -22,6 +22,19 @@ object DefaultsTest extends verify.BasicTestSuite:
     )
   }
 
+  test("`selectedFilter` should ignore framework options after --"):
+    val names = List("Test1", "Test2", "Other")
+    val cases = List(
+      List("--", "xonly", "timefactor", "5") -> names,
+      List("Test1", "--", "Test2") -> List("Test1"),
+      List("Test*", "--", "-Test1") -> List("Test1", "Test2"),
+      List("Test*", "-Test2", "--", "Test2") -> List("Test1"),
+      List("--") -> names,
+    )
+    cases.foreach: (args, expected) =>
+      val filters = IncrementalTest.selectedFilter(args)
+      assert(names.filter(name => filters.exists(_(name))) == expected, s"arguments: $args")
+
   test("it should work correctly with exact matches") {
     val expected = Map("Test1" -> true, "Test2" -> false, "Foo" -> false)
     val filter = List("Test1", "foo")

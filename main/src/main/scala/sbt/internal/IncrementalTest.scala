@@ -167,7 +167,7 @@ object IncrementalTest:
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
     def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
-    val (excludeArgs, includeArgs) = args.partition(_.startsWith("-"))
+    val (excludeArgs, includeArgs) = args.takeWhile(_ != "--").partition(_.startsWith("-"))
     val includeFilters = includeArgs.map(expandGlob).map(GlobFilter.apply)
     val excludeFilters = excludeArgs.map(_.substring(1)).map(expandGlob).map(GlobFilter.apply)
     (includeFilters, excludeArgs) match
