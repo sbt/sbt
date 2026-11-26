@@ -1,0 +1,36 @@
+# sbt
+# Copyright 2023, Scala center
+# Copyright 2011 - 2022, Lightbend, Inc.
+# Copyright 2008 - 2010, Mark Harrah
+# Licensed under Apache License 2.0 (see LICENSE)
+
+> testOnly -- xonly timefactor 5
+$ exists chosen-ran other-ran
+$ delete chosen-ran other-ran
+
+> testSelected -- xonly timefactor 5
+$ exists chosen-ran other-ran
+$ delete chosen-ran other-ran
+
+> test -- ex chosen
+$ exists chosen-ran
+$ absent other-ran
+$ delete chosen-ran
+> test -- ex chosen
+$ absent chosen-ran other-ran
+
+> testQuick -- ex other
+$ exists other-ran
+$ absent chosen-ran
+$ delete other-ran
+> testQuick -- ex other
+$ absent chosen-ran other-ran
+
+> testOnly ArgumentSpec -- ex chosen
+$ exists chosen-ran
+$ absent other-ran
+$ delete chosen-ran
+
+> testSelected ArgumentSpec -- ex other
+$ exists other-ran
+$ absent chosen-ran
