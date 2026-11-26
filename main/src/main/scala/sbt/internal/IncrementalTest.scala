@@ -11,12 +11,12 @@ package internal
 
 import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Path
+import java.nio.file.{ Files, Path }
 import java.util.concurrent.ConcurrentHashMap
 import Keys.{ fileConverter, fullClasspath, streams }
 import sbt.Def.Initialize
 import sbt.internal.inc.Analysis
-import sbt.internal.util.Attributed
+import sbt.internal.util.{ ActionCacheEvent, Attributed, StringVirtualFile1 }
 import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.nio.FileStamp
@@ -28,13 +28,15 @@ import sbt.util.{
   CacheLevelTag,
   Digest,
   DigestHasher,
-  Logger
+  Logger,
+  UpdateActionResultRequest
 }
 import sbt.util.CacheImplicits
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
 import scala.util.DynamicVariable
+import scala.util.control.NonFatal
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 
 object IncrementalTest:
@@ -217,6 +219,7 @@ end IncrementalTest
 private[sbt] case class TestStatusReporter(
     digests: Map[String, Digest],
     cacheConfiguration: BuildWideCacheConfiguration,
+    reportListeners: Seq[JUnitXmlTestsListener],
 ) extends TestsListener:
   // int value to represent success
   private final val successfulTest = 0
@@ -233,25 +236,54 @@ private[sbt] case class TestStatusReporter(
   def endGroup(name: String, t: Throwable): Unit = ()
 
   /**
-   * If the test has succeeded, record the fact that it has
-   * using its unique digest, so we can skip the test later.
+   * If the test has succeeded, record the fact that it has using its unique digest,
+   * together with its reports, so we can skip the test later and restore the reports.
    */
   def endGroup(name: String, result: TestResult): Unit =
     if result == TestResult.Passed && _cacheTestResult then
       digests.get(name) match
         case Some(ts) =>
-          // treat each test suite as a successful action that returns 0
           val input = IncrementalTest.cacheInput(ts, getArgs)
-          ActionCache.cache(
-            key = input._1,
-            codeContentHash = input._2,
-            extraHash = input._3,
-            tags = CacheLevelTag.all.toList,
-            config = cacheConfiguration,
-          ): (_) =>
-            ActionCache.actionResult(successfulTest)
+          storeResult(input, reportPaths(name))
         case None => ()
     else ()
+
+  private def reportPaths(name: String): Seq[Path] =
+    val outDir = cacheConfiguration.outputDirectory.toAbsolutePath.normalize
+    reportListeners
+      .map(_.reportFile(name).toPath.toAbsolutePath.normalize)
+      .filter(p => p.startsWith(outDir) && Files.isRegularFile(p))
+
+  /** Stores unconditionally, since a cache hit here would restore stale reports over fresh ones. */
+  private def storeResult(input: (Seq[String], Digest, Digest), reports: Seq[Path]): Unit =
+    import cacheConfiguration.*
+    try
+      val inputDigest = ActionCache.mkInput(input._1, input._2, input._3, cacheVersion)
+      val valueFile =
+        StringVirtualFile1(ActionCache.mkValuePath(inputDigest), successfulTest.toString)
+      val outputs = Vector(valueFile) ++ reports.map(cacheConfiguration.fileConverter.toVirtualFile)
+      cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+      store.put(UpdateActionResultRequest(inputDigest, outputs, exitCode = Some(successfulTest)))
+      ()
+    catch case NonFatal(e) => logger.debug(s"Skipping test result storage: ${e.getMessage}")
+
+  /** Restores the reports of suites reused from the cache, marked as cached. */
+  def restoreReports(cachedNames: Seq[String]): Unit =
+    if reportListeners.nonEmpty && _cacheTestResult then
+      cachedNames.foreach: name =>
+        digests
+          .get(name)
+          .foreach: ts =>
+            val input = IncrementalTest.cacheInput(ts, getArgs)
+            ActionCache
+              .get[Seq[String], Int](
+                input._1,
+                input._2,
+                input._3,
+                CacheLevelTag.all.toList,
+                cacheConfiguration
+              )
+              .foreach(_ => reportListeners.foreach(_.markCached(name)))
   def doComplete(finalResult: TestResult): Unit = ()
 end TestStatusReporter
 

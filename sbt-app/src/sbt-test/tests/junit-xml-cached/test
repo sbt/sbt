@@ -1,0 +1,9 @@
+> test
+> checkReport false
+
+$ delete target/out/jvm/scala-3.8.4/root/test-reports
+> test
+> checkReport true
+
+> testFull
+> checkReport false
