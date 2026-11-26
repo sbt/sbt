@@ -17,7 +17,6 @@ lazy val a = project
 lazy val b = project
   .settings(
     common,
-    csrMavenDependencyOverride := true,
     libraryDependencies += ("com.fasterxml.jackson" % "jackson-bom" % "2.21.0").pomOnly(),
     libraryDependencies += organization.value %% "a" % version.value,
     TaskKey[Unit]("checkBomFromA") := {

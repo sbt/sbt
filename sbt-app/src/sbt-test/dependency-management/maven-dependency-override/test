@@ -1,3 +1,3 @@
-> check 9.4.58.v20250814
-> set csrMavenDependencyOverride := true
 > check 9.4.49.v20220914
+> set csrMavenDependencyOverride := false
+> check 9.4.58.v20250814

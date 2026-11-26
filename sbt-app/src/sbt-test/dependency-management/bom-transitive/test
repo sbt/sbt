@@ -1,0 +1,3 @@
+> check 2.18.2
+> set csrMavenDependencyOverride := false
+> check 2.12.7
