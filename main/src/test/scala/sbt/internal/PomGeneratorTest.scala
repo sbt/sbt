@@ -11,7 +11,7 @@ package internal
 
 import hedgehog.*
 import hedgehog.runner.*
-import _root_.sbt.librarymanagement.ModuleID
+import _root_.sbt.librarymanagement.{ Artifact, ConfigRef, ModuleID }
 
 import scala.xml.{ Node, NodeSeq, PrettyPrinter, XML }
 
@@ -22,6 +22,7 @@ object PomGeneratorTest extends Properties:
     example("does not add properties without extra attributes", testNoExtraAttributes),
     example("preserves uncrossed names in legacy-style plugin metadata", testLegacyNames),
     example("writes one dependency per explicit artifact", testMultipleClassifiers),
+    example("skips sources and docs configurations", testSourcesDocsConfs),
   )
 
   private def testPluginMetadata: Result =
@@ -103,6 +104,19 @@ object PomGeneratorTest extends Properties:
       .assert(classifiers.toSet == Set("linux-x86_64", "osx-aarch_64", "windows-x86_64"))
       .log(s"classifiers: $classifiers")
       .and(Result.assert(classifiers.size == 3))
+
+  private def testSourcesDocsConfs: Result =
+    val docsArtifact = Artifact("partial", "javadoc").withConfigurations(Vector(ConfigRef("docs")))
+    val deps = Vector(
+      ModuleID("org.example", "sources-conf", "1.0.0").withConfigurations(Some("sources")),
+      ModuleID("org.example", "partial", "1.0.0").jar().artifacts(docsArtifact),
+    )
+    val formatted = formattedPom(ModuleID("org.example", "app_3", "1.0.0"), deps)
+    val elems = formatted \ "dependencies" \ "dependency"
+    Result
+      .assert(elems.map(d => (d \ "artifactId").text) == Seq("partial"))
+      .log(s"dependencies: $elems")
+      .and(Result.assert((elems \ "classifier").isEmpty))
 
   private def pluginDependency(name: String, revision: String): ModuleID =
     ModuleID("org.example", name, revision)

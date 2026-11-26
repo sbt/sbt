@@ -256,11 +256,31 @@ private[sbt] object PomGenerator:
       </dependencies>
 
   private def makeDependencyElems(dep: ModuleID): Seq[Elem] =
-    if dep.explicitArtifacts.isEmpty then Seq(makeDependencyElem(dep, None))
-    else dep.explicitArtifacts.map(art => makeDependencyElem(dep, Some(art)))
+    val moduleConfs = sourceConfs(dep.configurations)
+    val arts = dep.explicitArtifacts
+    if arts.isEmpty then
+      if onlySourcesOrDocs(moduleConfs) then Nil
+      else Seq(makeDependencyElem(dep, moduleConfs, None))
+    else
+      arts.flatMap: art =>
+        val artConfs = art.configurations.map(_.name).toSet
+        val confs = if artConfs.isEmpty || artConfs == Set("*") then moduleConfs else artConfs
+        if onlySourcesOrDocs(confs) then None
+        else Some(makeDependencyElem(dep, confs, Some(art)))
 
-  private def makeDependencyElem(dep: ModuleID, artifact: Option[Artifact]): Elem =
-    val (scope, optional) = getScopeAndOptional(dep.configurations)
+  private def onlySourcesOrDocs(confs: Set[String]): Boolean =
+    confs.nonEmpty && confs.forall(Set("sources", "docs"))
+
+  private def sourceConfs(configurations: Option[String]): Set[String] =
+    configurations.toSet.flatMap: confStr =>
+      confStr.split(';').flatMap(_.split("->").head.trim.split(',')).map(_.trim)
+
+  private def makeDependencyElem(
+      dep: ModuleID,
+      confs: Set[String],
+      artifact: Option[Artifact]
+  ): Elem =
+    val (scope, optional) = getScopeAndOptional(confs)
     val mavenVersion = convertVersion(dep.revision)
     val versionNode: NodeSeq =
       if mavenVersion == null || mavenVersion == "*" || mavenVersion.isEmpty then NodeSeq.Empty
@@ -276,19 +296,15 @@ private[sbt] object PomGenerator:
         {exclusions(dep)}
       </dependency>
     result
+  end makeDependencyElem
 
-  private def getScopeAndOptional(configurations: Option[String]): (Option[String], Boolean) =
-    configurations match
-      case None          => (None, false)
-      case Some(confStr) =>
-        val confs =
-          confStr.split(';').flatMap(_.split("->").head.trim.split(',')).map(_.trim).toSet
-        val optional = confs.contains(Configurations.Optional.name)
-        val notOptional = confs - Configurations.Optional.name
-        val scope = Configurations.defaultMavenConfigurations
-          .find(c => notOptional.contains(c.name))
-          .map(_.name)
-        (scope, optional)
+  private def getScopeAndOptional(confs: Set[String]): (Option[String], Boolean) =
+    val optional = confs.contains(Configurations.Optional.name)
+    val notOptional = confs - Configurations.Optional.name
+    val scope = Configurations.defaultMavenConfigurations
+      .find(c => notOptional.contains(c.name))
+      .map(_.name)
+    (scope, optional)
 
   /** Convert Ivy-style dynamic versions to Maven range format. */
   private def convertVersion(version: String): String =
