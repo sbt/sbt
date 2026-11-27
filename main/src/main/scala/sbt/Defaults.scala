@@ -1004,7 +1004,7 @@ object Defaults extends BuildCommon with DefExtra:
           CompileInputs2(
             packedBackendOutput +: data(dependencyClasspath.value).toVector,
             sourcesVF.value,
-            scalacOptions.value.toVector,
+            inputs.options.scalacOptions.toVector,
             javacOptions.value.toVector,
             outputPath.value + prefix(configuration.value.name),
             c.toVirtualFile(inputs.setup.cacheFile.toPath),
@@ -1107,18 +1107,6 @@ object Defaults extends BuildCommon with DefExtra:
             ).toJava
           )
           .withPipelining(usePipelining.value)
-      },
-      scalacOptions := {
-        val old = scalacOptions.value
-        if exportPipelining.value then
-          val sv = scalaVersion.value
-          val shouldApplyFlags = !ScalaArtifacts.isScala3(sv) || VersionNumber(sv).matchesSemVer(
-            SemanticSelector(">=3.5.0")
-          )
-          if shouldApplyFlags then
-            Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.id) ++ old
-          else old
-        else old
       },
       scalacOptions := {
         val old = scalacOptions.value
@@ -2613,15 +2601,15 @@ object Defaults extends BuildCommon with DefExtra:
         val vs0 = sourcesVF.value
         val vs = vs0.toVector.map: x =>
           c.toVirtualFile(c.toPath(x))
-        val eo = CompileOutput(c.toPath(earlyOutput.value))
-        val eoOpt =
-          if exportPipelining.value then Some(eo)
-          else None
+        val earlyJar = earlyOutput.value
+        val earlyJarOpt = Option.when(exportPipelining.value)(earlyJar)
+        val scalac =
+          Compiler.compileScalacOptions(scalacOptions.value, scalaVersion.value, earlyJarOpt)
         CompileOptions.of(
           cp.toArray,
           vs.toArray,
           c.toPath(backendOutput.value),
-          scalacOptions.value.toArray,
+          scalac.toArray,
           javacOptions.value.toArray,
           maxErrors.value,
           f1(
@@ -2631,7 +2619,7 @@ object Defaults extends BuildCommon with DefExtra:
           None.toJava: Optional[NioPath],
           Some(fileConverter.value).toJava,
           Some(reusableStamper.value).toJava,
-          eoOpt.toJava,
+          earlyJarOpt.map(jar => CompileOutput(c.toPath(jar))).toJava,
         )
       },
       compilerReporter := Def.uncached {
@@ -2661,7 +2649,7 @@ object Defaults extends BuildCommon with DefExtra:
         CompileInputs2(
           data(cp0).toVector,
           sourcesVF.value,
-          scalacOptions.value.toVector,
+          inputs.options.scalacOptions.toVector,
           javacOptions.value.toVector,
           outputPath.value + prefix(configuration.value.name),
           c.toVirtualFile(inputs.setup.cacheFile.toPath),
