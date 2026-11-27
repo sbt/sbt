@@ -4,7 +4,7 @@ import sbt.internal.util.CacheEventSummary
 lazy val checkHit = taskKey[Unit]("asserts the previous command was a pure cache hit")
 
 @transient
-lazy val checkOptions = taskKey[Unit]("asserts scalacOptions carry no machine output paths")
+lazy val checkOptions = taskKey[Unit]("checks the compiler options exposed to Zinc and BSP")
 
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
@@ -15,12 +15,26 @@ semanticdbEnabled := true
 lazy val a = project
 lazy val b = project.dependsOn(a)
 
-LocalRootProject / checkOptions := {
+def checkOptionsFor(config: Configuration) = Def.task {
   val out = rootOutputDirectory.value.toString
-  val opts = (a / Compile / scalacOptions).value ++ (b / Test / scalacOptions).value
-  assert(opts.contains("-Ypickle-write"), opts.toString)
-  assert(opts.contains("-semanticdb-target"), opts.toString)
-  assert(!opts.exists(_.contains(out)), opts.toString)
+  val jar = (b / config / earlyOutput).value.id
+  val opts = (b / config / scalacOptions).value
+  val bsp = (b / config / bspBuildTargetScalacOptionsItem).value.options
+  val zinc = (b / config / compile / compileInputs).value.options.scalacOptions.toVector
+  Seq(opts, bsp).foreach { exposed =>
+    assert(!exposed.contains("-Ypickle-java") && !exposed.contains("-Ypickle-write"), exposed)
+    assert(exposed.contains("-semanticdb-target"), exposed)
+  }
+  assert(zinc == Seq("-Ypickle-java", "-Ypickle-write", jar) ++ opts, zinc)
+  assert(!zinc.exists(_.contains(out)), zinc)
+  jar
+}
+
+LocalRootProject / checkOptions := {
+  val _ = (b / Test / compile).value
+  val compileJar = checkOptionsFor(Compile).value
+  val testJar = checkOptionsFor(Test).value
+  assert(compileJar != testJar, compileJar)
 }
 
 LocalRootProject / checkHit := {

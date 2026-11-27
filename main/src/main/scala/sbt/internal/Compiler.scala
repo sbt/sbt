@@ -38,7 +38,7 @@ import sbt.util.{ ActionCacheStore, Logger, ReadOnlyCacheStore }
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.util.{ Random, Using }
-import xsbti.{ HashedVirtualFileRef, ScalaProvider }
+import xsbti.{ HashedVirtualFileRef, ScalaProvider, VirtualFileRef }
 import xsbti.compile.{ CompileAnalysis, Inputs, PreviousResult }
 
 object Compiler:
@@ -647,6 +647,18 @@ object Compiler:
       )
       .withEnvVars(sys.env)
   }
+
+  private[sbt] def compileScalacOptions(
+      options: Seq[String],
+      scalaVersion: String,
+      earlyOutput: Option[VirtualFileRef]
+  ): Seq[String] =
+    earlyOutput match
+      case Some(jar)
+          if !ScalaArtifacts.isScala3(scalaVersion) ||
+            VersionNumber(scalaVersion).matchesSemVer(SemanticSelector(">=3.5.0")) =>
+        Vector("-Ypickle-java", "-Ypickle-write", jar.id) ++ options
+      case _ => options
 
   /**
    * Strips `-Ypickle-java` and `-Ypickle-write <path>` from scalac options so they don't
