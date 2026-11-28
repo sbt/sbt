@@ -156,6 +156,17 @@ val contrabandSettings: Seq[Def.Setting[?]] = Seq(
   Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
 )
 
+val evalClasspathResourceSettings: Seq[Def.Setting[?]] = Def.settings(
+  Test / resourceGenerators += Def.task {
+    val converter = fileConverter.value
+    val classpath = (Compile / fullClasspathAsJars).value
+      .map(entry => converter.toPath(entry.data).toAbsolutePath.toString)
+    val resource = (Test / resourceManaged).value / "sbt-eval-classpath.txt"
+    IO.writeLines(resource, classpath)
+    Seq(resource)
+  }.taskValue,
+)
+
 val scriptedSbtMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
@@ -743,6 +754,7 @@ lazy val buildFileProj = (project in file("buildfile"))
     name := "build file",
     libraryDependencies ++= Seq(scalaCompiler),
     mimaSettings,
+    evalClasspathResourceSettings,
   )
   .dependsOn(lmCore)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
@@ -822,14 +834,7 @@ lazy val sbtProj = (project in file("sbt-app"))
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
-    Test / resourceGenerators += Def.task {
-      val converter = fileConverter.value
-      val classpath = (Compile / fullClasspathAsJars).value
-        .map(entry => converter.toPath(entry.data).toAbsolutePath.toString)
-      val resource = (Test / resourceManaged).value / "sbt-eval-classpath.txt"
-      IO.writeLines(resource, classpath)
-      Seq(resource)
-    }.taskValue,
+    evalClasspathResourceSettings,
     Test / testOptions ++= {
       val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val framework = TestFrameworks.ScalaTest
