@@ -93,6 +93,20 @@ This will copy your test build into a temporary dir, and executes the `test` scr
 [success] Total time: 12 s
 ```
 
+Isolation
+---------
+
+Each test gets its own `sbt.global.base`. Scripted also sends `publishLocal` to
+`<test dir>/global/local-repo` (`-Dsbt.local_repository`) and `publishM2` to
+`<test dir>/global/m2-repo` (`-Dmaven.repo.local`), and empties both before each test. The
+resolvers include the isolated local repository as `local-publish`, except when
+`sbt.override.build.repos` is set.
+
+The coursier cache and `~/.ivy2/local` stay shared, so a test can still read the sbt or plugin
+under test. `mavenLocal` follows `maven.repo.local`, so a test cannot read the real `~/.m2`. A
+build that sets `ivyPaths` keeps publishing under that Ivy home. To publish to the real
+repository again, set the property in `scriptedLaunchOpts`.
+
 Custom assertion
 ----------------
 
