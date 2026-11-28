@@ -73,9 +73,9 @@ object ScopeFilter:
    * Generally, always specify the project axis.
    */
   def apply(
-      projects: ProjectFilter = inProjects(ThisProject),
-      configurations: ConfigurationFilter = zeroAxis,
-      tasks: TaskFilter = zeroAxis
+      projects: ProjectFilter = inProjects(ThisProject), // scruff: ignore(no_default_param)
+      configurations: ConfigurationFilter = zeroAxis, // scruff: ignore(no_default_param)
+      tasks: TaskFilter = zeroAxis // scruff: ignore(no_default_param)
   ): ScopeFilter =
     new ScopeFilter:
       def apply(data: Data): Set[Scope] =
@@ -250,8 +250,8 @@ object ScopeFilter:
      */
     def inAggregates(
         ref: ProjectReference,
-        transitive: Boolean = true,
-        includeRoot: Boolean = true
+        transitive: Boolean = true, // scruff: ignore(no_default_param)
+        includeRoot: Boolean = true // scruff: ignore(no_default_param)
     ): ProjectFilter =
       byDeps(
         ref,
@@ -267,8 +267,8 @@ object ScopeFilter:
      */
     def inDependencies(
         ref: ProjectReference,
-        transitive: Boolean = true,
-        includeRoot: Boolean = true
+        transitive: Boolean = true, // scruff: ignore(no_default_param)
+        includeRoot: Boolean = true // scruff: ignore(no_default_param)
     ): ProjectFilter =
       byDeps(
         ref,

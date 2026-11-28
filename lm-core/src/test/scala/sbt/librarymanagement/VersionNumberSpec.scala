@@ -166,9 +166,9 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside:
   private def assertBreaksDownTo(
       v: VersionString,
       major: Option[Long],
-      minor: Option[Long] = None,
-      patch: Option[Long] = None,
-      buildNumber: Option[Long] = None
+      minor: Option[Long] = None, // scruff: ignore(no_default_param)
+      patch: Option[Long] = None, // scruff: ignore(no_default_param)
+      buildNumber: Option[Long] = None // scruff: ignore(no_default_param)
   ): Unit =
     s"should breakdown to ($major, $minor, $patch, $buildNumber)" in inside(v.value) {
       case VersionNumber(ns, ts, es) =>

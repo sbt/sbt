@@ -163,7 +163,7 @@ object VersionRange:
 
   /** Converts Ivy revision ranges to that of Maven POM */
   def fromIvyToMavenVersion(revision: String): String =
-    def plusRange(s: String, shift: Int = 0) =
+    def plusRange(s: String, shift: Int = 0) = // scruff: ignore(no_default_param)
       def pow(i: Int): Int = if i > 0 then 10 * pow(i - 1) else 1
       val (prefixVersion, lastVersion) = (s + "0" * shift).reverse.split("\\.", 2) match
         case Array(revLast, revRest) =>

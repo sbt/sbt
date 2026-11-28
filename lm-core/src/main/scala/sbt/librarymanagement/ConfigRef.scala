@@ -20,7 +20,7 @@ final class ConfigRef private (val name: String) extends Serializable:
   override def toString: String =
     name
 
-  private def copy(name: String = name): ConfigRef =
+  private def copy(name: String = name): ConfigRef = // scruff: ignore(no_default_param)
     ConfigRef(name)
 
   def withName(name: String): ConfigRef =

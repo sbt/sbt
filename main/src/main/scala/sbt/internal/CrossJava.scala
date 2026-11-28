@@ -419,6 +419,7 @@ private[sbt] object CrossJava:
               case Failure(_) => None
         }.flatten
 
+    // scruff: ignore(no_default_param)
     class WindowsDiscoverConfig(base: File, vendors: Seq[String] = Seq.empty)
         extends JavaDiscoverConf:
 

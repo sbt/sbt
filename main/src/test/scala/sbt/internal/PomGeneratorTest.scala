@@ -170,6 +170,7 @@ object PomGeneratorTest extends Properties:
   private def formattedPom(
       module: ModuleID,
       dependencies: Vector[ModuleID],
+      // scruff: ignore(no_default_param)
       scalaInfo: Option[ScalaModuleInfo] = None,
   ): Node =
     val pom = PomGenerator.makePom(module, None, dependencies, None, NodeSeq.Empty, scalaInfo)

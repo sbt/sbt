@@ -427,7 +427,7 @@ private[sbt] final class CommandExchange:
       err: JsonRpcResponseError,
       execId: Option[String],
       source: Option[CommandSource],
-      skipExecRequests: Boolean = false
+      skipExecRequests: Boolean = false // scruff: ignore(no_default_param)
   ): Unit =
     for
       source <- source.map(_.channelName)
@@ -603,6 +603,7 @@ private[sbt] final class CommandExchange:
    * Forces a shutdown: answers and drops the waiting execs, queues a `shutdown` and cancels the
    * running command, so the main loop finds nothing else to start once the cancelled command ends.
    */
+  // scruff: ignore(no_default_param)
   private[sbt] def shutdown(name: String, execId: String = Exec.newExecId): Unit =
     val running = currentExec
     val client = channelForName(name).fold(name)(_.clientName)

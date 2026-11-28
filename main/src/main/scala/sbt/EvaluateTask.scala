@@ -459,7 +459,7 @@ object EvaluateTask:
       state: State,
       streams: Streams,
       roots: Seq[ScopedKey[?]],
-      dummies: DummyTaskMap = DummyTaskMap(Nil)
+      dummies: DummyTaskMap = DummyTaskMap(Nil) // scruff: ignore(no_default_param)
   ): NodeView =
     Transform(
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
@@ -631,6 +631,7 @@ object EvaluateTask:
     case i => i
   }
 
+  // scruff: ignore(no_default_param)
   def processResult2[T](result: Result[T], show: Boolean = false): T =
     onResult(result) { v =>
       if show then println("Result: " + v); v

@@ -32,10 +32,10 @@ final case class BenchmarkResult(
 object UpdateReportPersistenceBenchmark:
 
   def run(
-      iterations: Int = 500,
-      configs: Seq[String] = Seq("compile", "test"),
-      modulesPerConfig: Int = 50,
-      warmupIterations: Int = 10
+      iterations: Int = 500, // scruff: ignore(no_default_param)
+      configs: Seq[String] = Seq("compile", "test"), // scruff: ignore(no_default_param)
+      modulesPerConfig: Int = 50, // scruff: ignore(no_default_param)
+      warmupIterations: Int = 10 // scruff: ignore(no_default_param)
   ): Either[String, BenchmarkResult] =
     for
       _ <- Either.cond(iterations > 0, (), "iterations must be positive")

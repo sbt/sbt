@@ -17,10 +17,10 @@ object SysPropSpec extends Properties:
     Gen.string(Gen.alpha, Range.linear(1, 10)).map("/" + _)
 
   private def cache(
-      props: Map[String, String] = Map.empty,
-      env: Map[String, String] = Map.empty,
-      windows: Boolean = false,
-      mac: Boolean = false,
+      props: Map[String, String] = Map.empty, // scruff: ignore(no_default_param)
+      env: Map[String, String] = Map.empty, // scruff: ignore(no_default_param)
+      windows: Boolean = false, // scruff: ignore(no_default_param)
+      mac: Boolean = false, // scruff: ignore(no_default_param)
       home: String
   ): File =
     SysProp.globalLocalCacheFrom(props.get, env.get, windows, mac, new File(home))

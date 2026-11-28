@@ -33,7 +33,7 @@ final case class ResolutionParams(
     strictOpt: Option[Strict],
     missingOk: Boolean,
     retry: (FiniteDuration, Int),
-    boms: Seq[BomDependency] = Nil
+    boms: Seq[BomDependency] = Nil // scruff: ignore(no_default_param)
 ):
 
   lazy val allConfigExtends: Map[Configuration, Set[Configuration]] =

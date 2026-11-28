@@ -15,6 +15,7 @@ import hedgehog.runner.*
 import scala.annotation.nowarn
 
 object TaskCancellationTest extends Properties:
+  // scruff: ignore(no_default_param)
   private class Engine(cancel: () => Unit = () => ()) extends RunningTaskEngine:
     val cancellations = new AtomicInteger()
     def cancelAndShutdown(): Unit =
@@ -24,6 +25,7 @@ object TaskCancellationTest extends Properties:
     override def hashCode(): Int = 0
   end Engine
 
+  // scruff: ignore(no_default_param)
   private class Log(write: () => Unit = () => ()) extends Logger:
     val warnings = new AtomicInteger()
     def trace(t: => Throwable): Unit = ()

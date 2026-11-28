@@ -1469,18 +1469,18 @@ object NetworkClient:
       val sbtScript: String,
       val bsp: Boolean,
       val sbtLaunchJar: Option[String],
-      val launcherValueArgs: Seq[String] = Nil,
+      val launcherValueArgs: Seq[String] = Nil, // scruff: ignore(no_default_param)
       // false when -D options went to the JVM running this client instead of its arguments,
       // in which case they say nothing about the server
-      val forwardsSysProps: Boolean = true,
+      val forwardsSysProps: Boolean = true, // scruff: ignore(no_default_param)
   ):
     def withBaseDirectory(file: File): Arguments =
       copy(baseDirectory = file)
     def withoutSysProps: Arguments =
       copy(forwardsSysProps = false)
     private def copy(
-        baseDirectory: File = baseDirectory,
-        forwardsSysProps: Boolean = forwardsSysProps
+        baseDirectory: File = baseDirectory, // scruff: ignore(no_default_param)
+        forwardsSysProps: Boolean = forwardsSysProps // scruff: ignore(no_default_param)
     ): Arguments =
       new Arguments(
         baseDirectory,
@@ -1598,7 +1598,7 @@ object NetworkClient:
   private[client] def sysPropsDiff(
       recorded: Seq[String],
       current: Seq[String],
-      deferred: Set[String] = Set.empty
+      deferred: Set[String] = Set.empty // scruff: ignore(no_default_param)
   ): (Seq[String], Seq[String], Seq[String]) =
     val was = recorded
       .map(r => r.takeWhile(_ != '=') -> r.dropWhile(_ != '=').drop(1))

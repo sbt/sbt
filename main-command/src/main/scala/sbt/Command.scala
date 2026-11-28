@@ -64,6 +64,7 @@ object Command:
 
   // Lowest-level command construction
 
+  // scruff: ignore(no_default_param)
   def make(name: String, help: Help = Help.empty)(parser: State => Parser[() => State]): Command =
     new SimpleCommand(name, help, parser, AttributeMap.empty)
 
@@ -75,7 +76,7 @@ object Command:
   // General command construction
 
   /** Construct a command with the given name, parser and effect. */
-  def apply[T](name: String, help: Help = Help.empty)(
+  def apply[T](name: String, help: Help = Help.empty)( // scruff: ignore(no_default_param)
       parser: State => Parser[T]
   )(effect: (State, T) => State): Command =
     make(name, help)(applyEffect(parser)(effect))
@@ -88,6 +89,7 @@ object Command:
   // No-argument command construction
 
   /** Construct a no-argument command with the given name and effect. */
+  // scruff: ignore(no_default_param)
   def command(name: String, help: Help = Help.empty)(f: State => State): Command =
     make(name, help)(state => success(() => f(state)))
 
@@ -97,6 +99,7 @@ object Command:
   // Single-argument command construction
 
   /** Construct a single-argument command with the given name and effect. */
+  // scruff: ignore(no_default_param)
   def single(name: String, help: Help = Help.empty)(f: (State, String) => State): Command =
     make(name, help)(state => token(trimmed(spacedAny(name)).map(apply1(f, state))))
 
@@ -108,6 +111,7 @@ object Command:
   // Multi-argument command construction
 
   /** Construct a multi-argument command with the given name, tab completion display and effect. */
+  // scruff: ignore(no_default_param)
   def args(name: String, display: String, help: Help = Help.empty)(
       f: (State, Seq[String]) => State
   ): Command =
@@ -125,9 +129,11 @@ object Command:
 
   private[sbt] def custom(parser: State => Parser[() => State], help: Help, name: String): Command =
     new ArbitraryCommand(parser, const(help), AttributeMap.empty, Some(name))
+  // scruff: ignore(no_default_param)
   def custom(parser: State => Parser[() => State], help: Help = Help.empty): Command =
     customHelp(parser, const(help))
 
+  // scruff: ignore(no_default_param)
   def arb[T](parser: State => Parser[T], help: Help = Help.empty)(
       effect: (State, T) => State
   ): Command =
@@ -194,8 +200,8 @@ object Command:
   def suggestions(
       a: String,
       bs: Seq[String],
-      maxDistance: Int = 3,
-      maxSuggestions: Int = 3
+      maxDistance: Int = 3, // scruff: ignore(no_default_param)
+      maxSuggestions: Int = 3 // scruff: ignore(no_default_param)
   ): Seq[String] =
     bs map (b =>
       (b, distance(a, b))
@@ -243,6 +249,7 @@ object Help:
   def apply(name: String, briefHelp: (String, String), detail: String): Help =
     apply(briefHelp, Map((name, detail)))
 
+  // scruff: ignore(no_default_param)
   def apply(briefHelp: (String, String), detailedHelp: Map[String, String] = Map.empty): Help =
     apply(briefHelp :: Nil, detailedHelp)
 

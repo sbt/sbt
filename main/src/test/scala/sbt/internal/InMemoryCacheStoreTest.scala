@@ -36,6 +36,7 @@ object InMemoryCacheStoreTest extends Properties:
       first.close()
       second.close()
 
+  // scruff: ignore(no_default_param)
   private def withStore[A](budget: Long = 1024L * 1024L)(f: (Path, CacheStore) => A): A =
     val dir = Files.createTempDirectory("sbt-inmemory-cache")
     val factoryFactory = InMemoryCacheStore.factory(budget)

@@ -14,6 +14,7 @@ object Signals:
   val CONT = "CONT"
   val INT = "INT"
 
+  // scruff: ignore(no_default_param)
   def withHandler[T](handler: () => Unit, signal: String = INT)(action: () => T): T =
     val result =
       try
@@ -33,6 +34,7 @@ object Signals:
    * Register a signal handler that can be removed later. NOTE: Does not stack with other signal
    * handlers!!!!
    */
+  // scruff: ignore(no_default_param)
   def register(handler: () => Unit, signal: String = INT): Registration =
     // TODO - Maybe we can just ignore things if not is-supported.
     if supported(signal) then

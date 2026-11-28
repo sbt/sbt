@@ -41,7 +41,7 @@ object TreeView:
   private[rendering] def processSubtree(
       graph: ModuleGraph,
       module: Module,
-      parents: Set[GraphModuleId] = Set()
+      parents: Set[GraphModuleId] = Set() // scruff: ignore(no_default_param)
   ): ModuleModel =
     processSubtreeImpl(graph, module, parents, mutable.Set.empty[GraphModuleId])
 

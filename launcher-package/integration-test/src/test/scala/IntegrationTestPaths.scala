@@ -27,7 +27,7 @@ object IntegrationTestPaths:
           else "../../target/out/jvm/u/sbt-launcher-packaging/universal/stage/bin/sbt"
         new File(rel).getAbsoluteFile
 
-  def citestDir(citestVariant: String = "citest"): File =
+  def citestDir(citestVariant: String = "citest"): File = // scruff: ignore(no_default_param)
     baseDir match
       case Some(b) =>
         new File(b.getParentFile, citestVariant).getAbsoluteFile

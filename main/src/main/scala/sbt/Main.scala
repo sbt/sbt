@@ -254,6 +254,7 @@ object StandardMain:
     args.flatMap(levelFromArg).headOption.getOrElse(Level.Info)
 
   private def initialGlobalLogging(file: Option[File], initialLevel: Level.Value): GlobalLogging =
+    // scruff: ignore(no_default_param)
     def createTemp(prefix: String)(attempt: Int = 0): File = Retry:
       file.foreach(f => if !f.exists() then IO.createDirectory(f))
       File.createTempFile(prefix, ".log", file.orNull)

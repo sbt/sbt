@@ -57,6 +57,7 @@ sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSo
  * @param prefix
  *   the part of the path already written by the user.
  */
+// scruff: ignore(no_default_param)
 class FileExamples(base: File, prefix: String = "") extends ExampleSource:
   override def apply(): LazyList[String] = files(base).map(_.substring(prefix.length))
 

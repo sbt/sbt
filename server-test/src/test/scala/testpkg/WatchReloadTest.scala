@@ -35,7 +35,7 @@ class WatchReloadTest extends AbstractServerTest with BeforeAndAfterEach:
     "iteration-other",
   )
 
-  private def write(name: String, value: String = ""): Unit =
+  private def write(name: String, value: String = ""): Unit = // scruff: ignore(no_default_param)
     Files.writeString(testPath.resolve(name), value)
     ()
 
@@ -64,6 +64,7 @@ class WatchReloadTest extends AbstractServerTest with BeforeAndAfterEach:
     override def read(): Int = bytes.take()
   end QueueInput
 
+  // scruff: ignore(no_default_param)
   private class WatchClient(command: String = "~marker", interactive: Boolean = false)
       extends AutoCloseable:
     private val label = if command.endsWith("other") then "other" else "marker"
@@ -97,7 +98,7 @@ class WatchReloadTest extends AbstractServerTest with BeforeAndAfterEach:
       output.close()
   end WatchClient
 
-  private def owner(command: String = "marker"): String =
+  private def owner(command: String = "marker"): String = // scruff: ignore(no_default_param)
     awaitText(s"iteration-$command")(_.startsWith("network-")).takeWhile(_ != ':')
 
   private def bspReload(expectSuccess: Boolean): Unit =

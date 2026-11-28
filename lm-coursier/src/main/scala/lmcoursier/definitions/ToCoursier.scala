@@ -44,7 +44,7 @@ object ToCoursier:
   def module(
       organization: String,
       name: String,
-      attributes: Map[String, String] = Map.empty
+      attributes: Map[String, String] = Map.empty // scruff: ignore(no_default_param)
   ): coursier.core.Module =
     coursier.core.Module(
       coursier.core.Organization(organization),
@@ -212,7 +212,7 @@ object ToCoursier:
         logger.gettingLengthResult(url, length)
       override def removedCorruptFile(url: String, reason: Option[String]): Unit =
         logger.removedCorruptFile(url, reason)
-      override def init(sizeHint: Option[Int] = None): Unit =
+      override def init(sizeHint: Option[Int] = None): Unit = // scruff: ignore(no_default_param)
         logger.init(sizeHint)
       override def stop(): Unit =
         logger.stop()

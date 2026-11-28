@@ -1,3 +1,5 @@
+// scruff: file_ignore(no_default_param)
+
 package sbtw
 
 case class LauncherOptions(

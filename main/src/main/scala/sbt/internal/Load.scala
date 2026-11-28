@@ -61,8 +61,8 @@ private[sbt] object Load:
       state: State,
       baseDirectory: File,
       log: Logger,
-      isPlugin: Boolean = false,
-      topLevelExtras: List[URI] = Nil
+      isPlugin: Boolean = false, // scruff: ignore(no_default_param)
+      topLevelExtras: List[URI] = Nil // scruff: ignore(no_default_param)
   ): (() => Eval, BuildStructure) =
     val (base, config) = timed("Load.defaultLoad until apply", log) {
       val globalBase = getGlobalBase(state)

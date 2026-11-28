@@ -29,6 +29,7 @@ class FailedLoadPromptTest extends AbstractServerTest:
     private val byteBuffer = new mutable.ArrayBuffer[Byte]
     override def write(i: Int) = Util.ignoreResult(synchronized(byteBuffer += i.toByte))
     def text: String = new String(synchronized(byteBuffer.toArray), "UTF-8")
+  // scruff: ignore(no_default_param)
   private class CachingPrintStream(val cos: CachingOutputStream = new CachingOutputStream)
       extends PrintStream(cos, true):
     def text: String = cos.text

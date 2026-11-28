@@ -42,6 +42,7 @@ private[librarymanagement] abstract class ArtifactTypeFilterFunctions:
 private[librarymanagement] abstract class ConflictManagerFunctions:
   // To avoid NPE (or making the val's below lazy)
   // For case classes refchecks rewrites apply calls to constructor calls, we have to do it manually
+  // scruff: ignore(no_default_param)
   def apply(name: String, organization: String = "*", module: String = "*"): ConflictManager
   def ConflictManager(name: String) = apply(name)
 

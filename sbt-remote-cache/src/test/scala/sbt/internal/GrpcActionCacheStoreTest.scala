@@ -133,6 +133,7 @@ object GrpcActionCacheStoreTest extends verify.BasicTestSuite:
     val one = GrpcActionCacheStore.storedBlobs(Seq(a, b), Seq(response(a, 0), response(b, 7)))
     assert(one.map(_.id) == Seq("a.txt"))
 
+  // scruff: ignore(no_default_param)
   private def newStore(requestTimeout: FiniteDuration = 60.seconds): GrpcActionCacheStore =
     val base = Files.createTempDirectory("grpc-action-cache-test")
     val disk = DiskActionCacheStore(base, PlainVirtualFileConverter.converter)

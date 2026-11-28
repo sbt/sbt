@@ -13,6 +13,7 @@ import verify.BasicTestSuite
 
 object AsciiTreeTest extends BasicTestSuite:
 
+  // scruff: ignore(no_default_param)
   private def render(adj: Map[Int, Seq[Int]], root: Int, width: Int = 80): String =
     Graph.toAscii[Int](root, n => adj.getOrElse(n, Nil), _.toString, width)
 

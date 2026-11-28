@@ -10,6 +10,7 @@ package internal
 package parser
 
 abstract class CheckIfParsedSpec(
+    // scruff: ignore(no_default_param)
     val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 ) extends AbstractSpec:
 

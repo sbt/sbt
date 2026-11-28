@@ -22,13 +22,13 @@ object EditDistance:
   def levenshtein(
       s: String,
       t: String,
-      insertCost: Int = 1,
-      deleteCost: Int = 1,
-      subCost: Int = 1,
-      transposeCost: Int = 1,
-      matchCost: Int = 0,
-      caseCost: Int = 1,
-      transpositions: Boolean = false
+      insertCost: Int = 1, // scruff: ignore(no_default_param)
+      deleteCost: Int = 1, // scruff: ignore(no_default_param)
+      subCost: Int = 1, // scruff: ignore(no_default_param)
+      transposeCost: Int = 1, // scruff: ignore(no_default_param)
+      matchCost: Int = 0, // scruff: ignore(no_default_param)
+      caseCost: Int = 1, // scruff: ignore(no_default_param)
+      transpositions: Boolean = false // scruff: ignore(no_default_param)
   ): Int =
     val _ = transposeCost
     val n = s.length

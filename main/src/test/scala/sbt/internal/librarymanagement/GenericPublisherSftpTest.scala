@@ -83,14 +83,22 @@ object GenericPublisherSftpTest extends Properties:
   private def publish(
       repo: Resolver,
       artifacts: Vector[(Artifact, File)],
+      // scruff: ignore(no_default_param)
       overwrite: Boolean = false,
+      // scruff: ignore(no_default_param)
       credentials: Seq[Credentials] = Nil,
   ): Unit =
     GenericPublisher(null, Vector.empty, csrProject, credentials, Seq(repo))
       .publish(null, config(repo.name, artifacts, overwrite), Logger.Null)
 
   /** Runs `f` against an SCP and SFTP server rooted at `dir / "server"`, trusting its host key. */
-  private def withServer[A](dir: File, trustHost: Boolean = true, sftp: Boolean = true)(
+  private def withServer[A](
+      dir: File,
+      // scruff: ignore(no_default_param)
+      trustHost: Boolean = true,
+      // scruff: ignore(no_default_param)
+      sftp: Boolean = true
+  )(
       f: (Int, File) => A
   ): A =
     val root = dir / "server"

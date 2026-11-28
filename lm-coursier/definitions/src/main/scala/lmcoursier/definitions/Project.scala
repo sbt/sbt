@@ -11,5 +11,5 @@ import dataclass.{ data, since }
     packagingOpt: Option[Type],
     publications: Seq[(Configuration, Publication)],
     info: Info,
-    @since privateConfigs: Set[Configuration] = Set.empty
+    @since privateConfigs: Set[Configuration] = Set.empty // scruff: ignore(no_default_param)
 )

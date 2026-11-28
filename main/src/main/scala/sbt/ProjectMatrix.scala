@@ -780,21 +780,25 @@ object ProjectMatrix:
       }.toSeq
 
     def copy(
-        id: String = id,
-        base: File = base,
-        scalaVersions: Seq[String] = scalaVersions,
-        rows: Seq[ProjectRow] = rows,
-        aggregate: Seq[ProjectMatrixReference] = aggregate,
+        id: String = id, // scruff: ignore(no_default_param)
+        base: File = base, // scruff: ignore(no_default_param)
+        scalaVersions: Seq[String] = scalaVersions, // scruff: ignore(no_default_param)
+        rows: Seq[ProjectRow] = rows, // scruff: ignore(no_default_param)
+        aggregate: Seq[ProjectMatrixReference] = aggregate, // scruff: ignore(no_default_param)
+        // scruff: ignore(no_default_param)
         nonMatrixAggregate: Seq[ProjectReference] = nonMatrixAggregate,
+        // scruff: ignore(no_default_param)
         dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]] = dependencies,
+        // scruff: ignore(no_default_param)
         nonMatrixDependencies: Seq[ClasspathDep[ProjectReference]] = nonMatrixDependencies,
-        settings: Seq[Def.Setting[?]] = settings,
-        configurations: Seq[Configuration] = configurations,
-        plugins: Plugins = plugins,
-        transforms: Seq[Project => Project] = transforms,
+        settings: Seq[Def.Setting[?]] = settings, // scruff: ignore(no_default_param)
+        configurations: Seq[Configuration] = configurations, // scruff: ignore(no_default_param)
+        plugins: Plugins = plugins, // scruff: ignore(no_default_param)
+        transforms: Seq[Project => Project] = transforms, // scruff: ignore(no_default_param)
+        // scruff: ignore(no_default_param)
         rowTransforms: Seq[VirtualAxis.ProjectRowKey => Option[Project => Project]] = rowTransforms,
-        defAxes: Seq[VirtualAxis] = defAxes,
-        pluginClassLoader: ClassLoader = pluginClassLoader,
+        defAxes: Seq[VirtualAxis] = defAxes, // scruff: ignore(no_default_param)
+        pluginClassLoader: ClassLoader = pluginClassLoader, // scruff: ignore(no_default_param)
     ): ProjectMatrix =
       val matrix = unresolved(
         id,
