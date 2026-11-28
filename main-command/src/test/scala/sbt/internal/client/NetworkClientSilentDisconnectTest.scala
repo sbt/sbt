@@ -69,6 +69,18 @@ object NetworkClientSilentDisconnectTest extends BasicTestSuite:
         s"client exited 1 without explaining the disconnect: '$explained'"
       )
 
+  test("a server that fails to start ends the client without exiting the JVM"):
+    val base = Files.createTempDirectory("failed-server-project").toFile
+    val missingScript = new File(base, "missing-sbt").getPath.replace(" ", "%20")
+    val (started, _) = runBatchClient(base, Array(s"--sbt-script=$missingScript", "compile"))
+    assert(started == 1, s"expected exit 1 when the server cannot start, got $started")
+    val (code, explained) = runBatchClient(base, Array("shutdown"))
+    assert(code == 0, s"expected exit 0 from shutdown with no server, got $code")
+    assert(
+      explained.contains("no sbt server is running"),
+      s"shutdown did not explain that no server is running: '$explained'"
+    )
+
   test("a corrupt portfile is replaced and a fresh server connection is attempted"):
     val base = Files.createTempDirectory("corrupt-portfile-project").toFile
     Files.writeString(

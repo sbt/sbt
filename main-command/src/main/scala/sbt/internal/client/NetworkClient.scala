@@ -415,23 +415,23 @@ class NetworkClient(
       if !portfile.exists then
         if shutdownOnly then
           console.appendLog(Level.Info, "no sbt server is running. ciao")
-          System.exit(0)
+          throw NetworkClient.ClientExitException(0)
         else if !serverAutoStart then
           console.appendLog(Level.Error, "no sbt server is running (sbt.server.autostart=false)")
-          System.exit(1)
+          throw NetworkClient.ClientExitException(1)
         else if promptCompleteUsers then
           val msg = if noTab then "" else "No sbt server is running. Press <tab> to start one..."
           errorStream.print(s"\n$msg")
-          if noStdErr then System.exit(0)
+          if noStdErr then throw NetworkClient.ClientExitException(0)
           else if noTab then waitForServer(portfile, log = true, startServer = true)
           else
             startInputThread()
             stdinBytes.poll(5, TimeUnit.SECONDS) match
-              case null        => System.exit(0)
+              case null        => throw NetworkClient.ClientExitException(0)
               case i if i == 9 =>
                 errorStream.println("\nStarting server...")
                 waitForServer(portfile, !promptCompleteUsers, startServer = true)
-              case _ => System.exit(0)
+              case _ => throw NetworkClient.ClientExitException(0)
         else waitForServer(portfile, log = true, startServer = true)
       end if
       @tailrec def connect(attempt: Int): (Socket, Option[String]) =
@@ -1832,14 +1832,7 @@ object NetworkClient:
         errorStream,
         useJNI,
       )
-    try
-      if client.connect(promptCompleteUsers = false) then client.run()
-      else 1
-    catch
-      case e: Exception =>
-        client.logFailure(e)
-        1
-    finally client.close()
+    clientImpl(client, isBsp = false)
   end client
   def client(
       baseDirectory: File,
@@ -1868,7 +1861,8 @@ object NetworkClient:
       else if client.connect(promptCompleteUsers = false) then client.run()
       else 1
     catch
-      case e: Exception =>
+      case e: ClientExitException => e.code
+      case e: Exception           =>
         client.logFailure(e)
         1
     finally client.close()
@@ -1949,7 +1943,9 @@ object NetworkClient:
           else Nil
         out.println(results.sorted.distinct mkString "\n")
         0
-      catch case _: Exception => 1
+      catch
+        case e: ClientExitException => e.code
+        case _: Exception           => 1
       finally client.close()
     catch case _: AccessDeniedException => 1
   end complete
@@ -1972,4 +1968,8 @@ object NetworkClient:
     val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   private class AccessDeniedException extends Throwable
+
+  /** Ends a client run with `code`, leaving it to the entry point whether to exit the JVM. */
+  private[sbt] final class ClientExitException(val code: Int)
+      extends RuntimeException(null, null, false, false)
 end NetworkClient
